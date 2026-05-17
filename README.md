@@ -3,7 +3,7 @@
 [![C#](https://img.shields.io/badge/language-C%23-239120?logo=c-sharp&logoColor=white)](https://dotnet.microsoft.com/)
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 [![Platform](https://img.shields.io/badge/platform-Windows-0078D4)](https://www.microsoft.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Un classico ed intramontabile **Snake Game** sviluppato in **C#** e **Windows Forms**. 
 Questo repository nasce come **progetto didattico** per esplorare le funzionalità di C# e testare la piattaforma **.NET 10**. È l'ideale per imparare i concetti base della programmazione a eventi, della gestione del rendering con GDI+ e per fare pratica con la gestione del game loop in un'applicazione desktop.
