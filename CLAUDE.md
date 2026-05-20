@@ -2,6 +2,18 @@
 
 Guide for Claude Code (and other AI agents) when working in this repository.
 
+## 🌐 Repository language — English only
+
+**This project is English.** Every artifact committed to the repository — source code, identifiers, inline comments, XML doc comments, log messages, user-facing strings, asset filenames, commit messages, branch names, PR titles and descriptions, issue templates, Markdown documentation — **must be written in English**.
+
+This rule is independent of the language used in chat:
+
+- The user may chat in any language (often Italian).
+- The assistant replies to the user in the user's chat language.
+- **Nothing of the chat language ever leaks into the repository.** If the user writes a task description in Italian, translate the intent into English before writing anything to disk, naming a branch, or composing a commit message.
+
+If you spot any non-English content already in the repo, treat it as a bug to fix in the same change you are making.
+
 ## Project overview
 
 A classic Snake Game, born as a learning project in **C# / .NET 10 / Windows Forms** to practice event-driven programming, game loops and GDI+ rendering.
@@ -54,7 +66,7 @@ Everything lives in a single `SnakeForm` class. The logical areas, though not sp
 
 ## Conventions and guidelines for working in this repo
 
-- **Language**: README, UI and user-facing comments are in **English**. Keep English for user-visible strings, commit messages and PRs.
+- **Language**: see the "Repository language — English only" section at the top of this file. Everything committed is English; the chat language is irrelevant.
 - **Naming**: private fields with underscore prefix (`_snake`, `_score`); PascalCase for methods and types; constants SCREAMING or PascalCase depending on the existing context.
 - **Branch**: development of the Godot migration happens on `claude/snake-godot-migration-vL9R6`. Do not push to `main` without explicit permission.
 - **Roadmap-driven**: before adding a new feature, check `ROADMAP.md` to see whether it fits into an existing step, and complete steps in order. Every roadmap step must remain **buildable and testable** on its own.

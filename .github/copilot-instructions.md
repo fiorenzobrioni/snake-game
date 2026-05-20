@@ -1,5 +1,9 @@
 # Copilot Instructions
 
+## 🌐 Repository language — English only
+
+**This project is English.** All committed artifacts — source code, identifiers, comments, log messages, user-facing strings, asset filenames, commit messages, branch names, PR titles/descriptions and Markdown docs — **must be in English**, regardless of the language the user uses in chat. Reply to the user in the user's language, but never let any other language end up on disk or in git history.
+
 ## Build & Run
 
 ```powershell
