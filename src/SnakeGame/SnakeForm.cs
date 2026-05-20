@@ -37,16 +37,16 @@ public partial class SnakeForm : Form
     private const int MinGridSize = 6;
     private const int MaxGridSize = 40;
 
-    private static readonly string[] LevelNames = { "Principiante", "Avventuriero", "Guerriero", "Campione", "Leggenda" };
+    private static readonly string[] LevelNames = { "Beginner", "Adventurer", "Warrior", "Champion", "Legend" };
 
     // Board size presets: name, width in cells, height in cells
     private static readonly (string Name, int W, int H)[] BoardSizes =
     {
-        ("Tascabile",   30,  20),
-        ("Classico",    45,  30),
-        ("Grandioso",   60,  40),
-        ("Colossale",   75,  50),
-        ("Infinito",   120,  80),
+        ("Pocket",     30,  20),
+        ("Classic",    45,  30),
+        ("Grand",      60,  40),
+        ("Colossal",   75,  50),
+        ("Infinite",  120,  80),
     };
 
     private static int GetLevelObstacleCount(int level) => level switch
@@ -109,7 +109,7 @@ public partial class SnakeForm : Form
 
         _btnPause = new Button
         {
-            Text = "⏸ Pausa",
+            Text = "⏸ Pause",
             Size = new Size(110, 30),
             Font = new Font("Arial", 10, FontStyle.Bold),
             TabStop = false,
@@ -125,7 +125,7 @@ public partial class SnakeForm : Form
 
         _btnStart = new Button
         {
-            Text = "\uD83C\uDFAE Nuova Partita",
+            Text = "\uD83C\uDFAE New Game",
             Size = new Size(120, 30),
             Font = new Font("Arial", 10, FontStyle.Bold),
             TabStop = false,
@@ -160,7 +160,7 @@ public partial class SnakeForm : Form
 
         var panelTitle = new Label
         {
-            Text = "⚔ LIVELLO",
+            Text = "⚔ LEVEL",
             ForeColor = Color.White,
             Font = new Font("Arial", 10, FontStyle.Bold),
             AutoSize = false,
@@ -208,7 +208,7 @@ public partial class SnakeForm : Form
         // Board size section title
         var sizeTitle = new Label
         {
-            Text = "📐 DIMENSIONE",
+            Text = "📐 SIZE",
             ForeColor = Color.White,
             Font = new Font("Arial", 10, FontStyle.Bold),
             AutoSize = false,
@@ -256,7 +256,7 @@ public partial class SnakeForm : Form
         int hintsY = separatorY + 40 + BoardSizes.Length * 32 + 10;
         var hintsLabel = new Label
         {
-            Text = "⌨ Scorciatoie:\n\nSpazio = Pausa\nR = Ricomincia\n\n← ↑ ↓ → = Muovi",
+            Text = "⌨ Shortcuts:\n\nSpace = Pause\nR = Restart\n\n← ↑ ↓ → = Move",
             ForeColor = Color.FromArgb(160, 160, 160),
             Font = new Font("Arial", 8),
             Location = new Point(10, hintsY),
@@ -375,9 +375,9 @@ public partial class SnakeForm : Form
         _isGameOver = false;
         _isPaused = false;
         _lblScore.Text = $"Score: {_score}";
-        _btnStart.Text = "\uD83D\uDD04 Ricomincia";
+        _btnStart.Text = "\uD83D\uDD04 Restart";
         _btnStart.Enabled = true;
-        _btnPause.Text = "⏸ Pausa";
+        _btnPause.Text = "⏸ Pause";
         _btnPause.Visible = true;
         SetLevelButtonsEnabled(false);
         SetSizeButtonsEnabled(false);
@@ -406,7 +406,7 @@ public partial class SnakeForm : Form
         if (roll < 3) { type = FoodType.MegaGold; size = 2; increase = 24; }
         else if (roll < 10) { type = FoodType.MegaRed; size = 2; increase = 16; }
         else if (roll < 20) { type = FoodType.MegaGreen; size = 2; increase = 8; }
-        else if (roll < 30) { type = FoodType.Blue; size = 1; increase = _random.Next(2, 25); } // random da 2 a 24
+        else if (roll < 30) { type = FoodType.Blue; size = 1; increase = _random.Next(2, 25); } // random from 2 to 24
         else if (roll < 45) { type = FoodType.Gold; size = 1; increase = 6; }
         else if (roll < 70) { type = FoodType.Red; size = 1; increase = 4; }
         else { type = FoodType.Green; size = 1; increase = 2; }
@@ -507,7 +507,7 @@ public partial class SnakeForm : Form
         if (eaten != null)
         {
             int growth = eaten.IncreaseAmount;
-            int scoreAdd = growth * 10; // Punteggio scalato sull'incremento di lunghezza
+            int scoreAdd = growth * 10; // Score scales with the length increase
 
             _score += scoreAdd;
             _lblScore.Text = $"Score: {_score}";
@@ -561,12 +561,12 @@ public partial class SnakeForm : Form
     {
         _isGameOver = true;
         _gameTimer.Stop();
-        _btnStart.Text = "\uD83C\uDFAE Nuova Partita";
+        _btnStart.Text = "\uD83C\uDFAE New Game";
         _btnStart.Enabled = true;
         _btnPause.Visible = false;
         SetLevelButtonsEnabled(true);
         SetSizeButtonsEnabled(true);
-        MessageBox.Show($"Game Over! Punteggio Finale: {_score}", "Game Over", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        MessageBox.Show($"Game Over! Final Score: {_score}", "Game Over", MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 
     // Override ProcessCmdKey to intercept arrow keys before WinForms
@@ -620,7 +620,7 @@ public partial class SnakeForm : Form
         if (_isPaused)
         {
             _gameTimer.Stop();
-            _btnPause.Text = "▶ Riprendi";
+            _btnPause.Text = "▶ Resume";
             // Allow changing level and size during pause (will apply on restart)
             SetLevelButtonsEnabled(true);
             SetSizeButtonsEnabled(true);
@@ -628,7 +628,7 @@ public partial class SnakeForm : Form
         else
         {
             _gameTimer.Start();
-            _btnPause.Text = "⏸ Pausa";
+            _btnPause.Text = "⏸ Pause";
             SetLevelButtonsEnabled(false);
             SetSizeButtonsEnabled(false);
             this.Focus();
@@ -702,14 +702,14 @@ public partial class SnakeForm : Form
             using var overlay = new SolidBrush(Color.FromArgb(150, 0, 0, 0));
             g.FillRectangle(overlay, 0, 0, _gameCanvas.Width, _gameCanvas.Height);
 
-            string pauseText = "⏸ PAUSA";
+            string pauseText = "⏸ PAUSED";
             using var pauseFont = new Font("Arial", 28, FontStyle.Bold);
             var textSize = g.MeasureString(pauseText, pauseFont);
             float tx = (_gameCanvas.Width - textSize.Width) / 2;
             float ty = (_gameCanvas.Height - textSize.Height) / 2 - 20;
             g.DrawString(pauseText, pauseFont, Brushes.White, tx, ty);
 
-            string hintText = "Premi Spazio per riprendere";
+            string hintText = "Press Space to resume";
             using var hintFont = new Font("Arial", 12);
             var hintSize = g.MeasureString(hintText, hintFont);
             float hx = (_gameCanvas.Width - hintSize.Width) / 2;

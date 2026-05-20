@@ -41,18 +41,18 @@ Five difficulty levels and five board size presets selectable via a left-side pa
 
 | Level | Name | Obstacles | Timer interval |
 |-------|------|-----------|----------------|
-| 1 | Principiante | 0 | 140 ms |
-| 2 | Avventuriero | 8 | 120 ms |
-| 3 | Guerriero | 15 | 100 ms |
-| 4 | Campione | 25 | 80 ms |
-| 5 | Leggenda | 40 | 60 ms |
+| 1 | Beginner    | 0  | 140 ms |
+| 2 | Adventurer  | 8  | 120 ms |
+| 3 | Warrior     | 15 | 100 ms |
+| 4 | Champion    | 25 | 80 ms  |
+| 5 | Legend      | 40 | 60 ms  |
 
 | Size Preset | Dimension (cells) |
 |-------------|-------------------|
-| Tascabile   | 30 × 20           |
-| Classico    | 45 × 30           |
-| Grandioso   | 60 × 40           |
-| Colossale   | 75 × 50           |
-| Infinito    | 120 × 80          |
+| Pocket      | 30 × 20           |
+| Classic     | 45 × 30           |
+| Grand       | 60 × 40           |
+| Colossal    | 75 × 50           |
+| Infinite    | 120 × 80          |
 
 `GetLevelObstacleCount()` and `GetLevelSpeed()` are the single source of truth for level configuration. `BoardSizes` defines the dimensions.
