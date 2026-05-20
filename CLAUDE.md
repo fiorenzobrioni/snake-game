@@ -1,72 +1,84 @@
 # CLAUDE.md
 
-Guida per Claude Code (e altri agenti AI) quando lavorano in questo repository.
+Guide for Claude Code (and other AI agents) when working in this repository.
 
-## Panoramica del progetto
+## 🌐 Repository language — English only
 
-Snake Game classico, nato come progetto didattico in **C# / .NET 10 / Windows Forms** per esercitarsi con event-driven programming, game loop e rendering GDI+.
+**This project is English.** Every artifact committed to the repository — source code, identifiers, inline comments, XML doc comments, log messages, user-facing strings, asset filenames, commit messages, branch names, PR titles and descriptions, issue templates, Markdown documentation — **must be written in English**.
 
-Il repository sta migrando verso **Godot 4 (.NET / C#)** per portare il progetto da livello amatoriale a livello "pro" con grafica accattivante, effetti, audio e build multi-piattaforma. La migrazione segue lo schema descritto in `ROADMAP.md`.
+This rule is independent of the language used in chat:
 
-## Stato corrente
+- The user may chat in any language (often Italian).
+- The assistant replies to the user in the user's chat language.
+- **Nothing of the chat language ever leaks into the repository.** If the user writes a task description in Italian, translate the intent into English before writing anything to disk, naming a branch, or composing a commit message.
 
-- **Versione attiva (legacy)**: WinForms in `src/SnakeGame/`
-  - Solo Windows, target `net10.0-windows`
-  - Tutta la logica + UI + rendering centralizzati in `SnakeForm.cs` (~740 righe)
-  - Rendering 2D con `Graphics`/GDI+ su `PictureBox` (rettangoli pieni, ellissi, poligoni stella per il cibo Blue)
-  - Game loop tramite `System.Windows.Forms.Timer`
-  - Input via override di `ProcessCmdKey` (intercetta frecce/spazio/P/R prima dei controlli)
-- **Versione target (in arrivo)**: Godot 4 (.NET) in `godot/` — vedi ROADMAP
+If you spot any non-English content already in the repo, treat it as a bug to fix in the same change you are making.
 
-## Comandi
+## Project overview
 
-### Build & run (versione WinForms, solo Windows)
+A classic Snake Game, born as a learning project in **C# / .NET 10 / Windows Forms** to practice event-driven programming, game loops and GDI+ rendering.
+
+The repository is migrating to **Godot 4 (.NET / C#)** to take the project from amateur level to "pro" level with eye-catching graphics, effects, audio and multi-platform builds. The migration follows the plan described in `ROADMAP.md`.
+
+## Current state
+
+- **Active version (legacy)**: WinForms in `src/SnakeGame/`
+  - Windows only, target `net10.0-windows`
+  - All logic + UI + rendering centralized in `SnakeForm.cs` (~740 lines)
+  - 2D rendering with `Graphics`/GDI+ on a `PictureBox` (filled rectangles, ellipses, star polygons for Blue food)
+  - Game loop via `System.Windows.Forms.Timer`
+  - Input via `ProcessCmdKey` override (intercepts arrows/space/P/R before the controls)
+- **Target version (upcoming)**: Godot 4 (.NET) in `godot/` — see ROADMAP
+
+## Commands
+
+### Build & run (WinForms version, Windows only)
 ```powershell
 cd src/SnakeGame
 dotnet build
 dotnet run
 ```
 
-Non esistono test automatici, linter o CI in questo momento.
+There are no automated tests, linters or CI at this time.
 
-### Build & run (versione Godot — disponibile dalla Fase 1 della roadmap)
+### Build & run (Godot version — available from Phase 1 of the roadmap)
 ```bash
-# Apri il progetto con l'editor Godot 4.x (.NET edition)
+# Open the project with the Godot 4.x editor (.NET edition)
 godot --path godot --editor
 
-# Run headless da CLI
+# Headless run from CLI
 godot --path godot
 ```
 
-## Architettura (legacy WinForms)
+## Architecture (legacy WinForms)
 
-File principale: `src/SnakeGame/SnakeForm.cs`.
+Main file: `src/SnakeGame/SnakeForm.cs`.
 
-Tutto è in un'unica classe `SnakeForm`. Le aree logiche, anche se non separate in file, sono:
+Everything lives in a single `SnakeForm` class. The logical areas, though not split into files, are:
 
-- **Configurazione livelli e board size**: array statici `LevelNames`, `BoardSizes`, e i metodi `GetLevelObstacleCount`/`GetLevelSpeed`.
-- **Stato del gioco**: `_snake` (lista di `Point`), `_obstacles`, `_foods` (lista di `FoodItem`), `_currentDirection`, flag `_isGameOver`/`_isPaused`, `_score`, `_pendingGrowth`.
-- **UI WinForms** (`InitializeGameUI`): pannello laterale con radio button livello/dimensione, score label, bottoni Start/Pause, `PictureBox` canvas.
+- **Level and board-size configuration**: static arrays `LevelNames`, `BoardSizes`, and the `GetLevelObstacleCount`/`GetLevelSpeed` methods.
+- **Game state**: `_snake` (list of `Point`), `_obstacles`, `_foods` (list of `FoodItem`), `_currentDirection`, `_isGameOver`/`_isPaused` flags, `_score`, `_pendingGrowth`.
+- **WinForms UI** (`InitializeGameUI`): side panel with level / size radio buttons, score label, Start/Pause buttons, `PictureBox` canvas.
 - **Game loop**: `_gameTimer.Tick` → `MoveSnake()` → `CheckCollision()` → `_gameCanvas.Invalidate()`.
-- **Tipi di cibo** (`FoodType`): Green/Red/Gold/Blue + varianti Mega. Probabilità in `SpawnFood` via roll percentuale. Il cibo Blue dà un incremento random 2-24.
-- **Rendering** (`GameCanvas_Paint`): disegna cibo (ellissi o stella per Blue), ostacoli (rect grigi), snake (rect verdi, testa Chartreuse), overlay di pausa.
-- **Input** (`ProcessCmdKey`): frecce → cambio direzione (con blocco 180°), Space/P → pausa, R → restart.
+- **Food types** (`FoodType`): Green/Red/Gold/Blue + Mega variants. Probabilities in `SpawnFood` via a percentage roll. Blue food grants a random increase of 2-24.
+- **Rendering** (`GameCanvas_Paint`): draws food (ellipses or stars for Blue), obstacles (gray rects), snake (green rects, Chartreuse head), pause overlay.
+- **Input** (`ProcessCmdKey`): arrows → direction change (with 180° block), Space/P → pause, R → restart.
 
-## Convenzioni e linee guida per lavorare su questo repo
+## Conventions and guidelines for working in this repo
 
-- **Lingua**: README, UI e commenti utente sono in **italiano**. Mantieni l'italiano per stringhe visibili all'utente, commit message e PR.
-- **Naming**: campi privati con underscore prefix (`_snake`, `_score`); PascalCase per metodi e tipi; constanti SCREAMING o PascalCase a seconda del contesto esistente.
-- **Branch**: lo sviluppo della migrazione Godot avviene su `claude/snake-godot-migration-vL9R6`. Non pushare su `main` senza permesso esplicito.
-- **Roadmap-driven**: prima di aggiungere una nuova funzionalità, verifica in `ROADMAP.md` se rientra in uno step esistente e completa gli step in ordine. Ogni step della roadmap deve restare **compilabile e testabile** a sé stante.
-- **Niente refactor "a sorpresa"** sul WinForms legacy: la migrazione affianca il progetto Godot senza riscrivere il vecchio se non strettamente necessario. Quando la versione Godot raggiunge parità di feature (fine Fase 1), il WinForms si archivia in `legacy/`.
-- **Asset**: nuovi asset grafici/audio devono essere free e con licenza compatibile (MIT/CC0/CC-BY). Documenta la fonte e la licenza in `godot/assets/CREDITS.md`.
+- **Language**: see the "Repository language — English only" section at the top of this file. Everything committed is English; the chat language is irrelevant.
+- **Naming**: private fields with underscore prefix (`_snake`, `_score`); PascalCase for methods and types; constants SCREAMING or PascalCase depending on the existing context.
+- **Branch**: development of the Godot migration happens on `claude/snake-godot-migration-vL9R6`. Do not push to `main` without explicit permission.
+- **Roadmap-driven**: before adding a new feature, check `ROADMAP.md` to see whether it fits into an existing step, and complete steps in order. Every roadmap step must remain **buildable and testable** on its own.
+- **No "surprise" refactors** on the legacy WinForms: the migration runs alongside the Godot project without rewriting the old one unless strictly necessary. When the Godot version reaches feature parity (end of Phase 1), the WinForms is archived in `legacy/`.
+- **Assets**: new graphic/audio assets must be free and have a compatible license (MIT/CC0/CC-BY). Document the source and license in `godot/assets/CREDITS.md`.
 
-## File chiave
+## Key files
 
-| Path | Ruolo |
+| Path | Role |
 |---|---|
-| `src/SnakeGame/SnakeForm.cs` | Tutta la logica + rendering della versione WinForms |
-| `src/SnakeGame/SnakeGame.csproj` | Progetto .NET 10 Windows |
-| `README.md` | Documentazione utente in italiano |
-| `ROADMAP.md` | Piano di migrazione a Godot, step-by-step |
-| `.github/copilot-instructions.md` | Istruzioni per Copilot (allineate a questo file) |
+| `src/SnakeGame/SnakeForm.cs` | All logic + rendering of the WinForms version |
+| `src/SnakeGame/SnakeGame.csproj` | .NET 10 Windows project |
+| `README.md` | User documentation in English |
+| `ROADMAP.md` | Step-by-step migration plan to Godot |
+| `.github/copilot-instructions.md` | Copilot instructions (aligned with this file) |
