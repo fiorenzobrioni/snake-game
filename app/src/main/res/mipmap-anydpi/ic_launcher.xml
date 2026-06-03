@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Legacy launcher icon for API 24-25 (no adaptive-icon support). Combines the
+     background and the snake foreground into a single self-contained vector. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:fillColor="#101418" android:pathData="M0,0 h108 v108 h-108 z" />
+    <path android:fillColor="#4CAF50" android:pathData="M30,62 h16 v16 h-16 z" />
+    <path android:fillColor="#4CAF50" android:pathData="M46,62 h16 v16 h-16 z" />
+    <path android:fillColor="#4CAF50" android:pathData="M46,46 h16 v16 h-16 z" />
+    <path android:fillColor="#7CFC00" android:pathData="M62,46 h16 v16 h-16 z" />
+    <path android:fillColor="#FFC107" android:pathData="M70,30 h12 v12 h-12 z" />
+</vector>

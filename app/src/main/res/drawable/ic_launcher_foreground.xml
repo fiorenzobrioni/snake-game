@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Placeholder snake icon. Body segments + a brighter head and a piece of
+     food, kept inside the 72dp adaptive-icon safe zone. Refined in Phase 7. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Body -->
+    <path android:fillColor="#4CAF50" android:pathData="M30,62 h16 v16 h-16 z" />
+    <path android:fillColor="#4CAF50" android:pathData="M46,62 h16 v16 h-16 z" />
+    <path android:fillColor="#4CAF50" android:pathData="M46,46 h16 v16 h-16 z" />
+    <!-- Head -->
+    <path android:fillColor="#7CFC00" android:pathData="M62,46 h16 v16 h-16 z" />
+    <!-- Food -->
+    <path android:fillColor="#FFC107" android:pathData="M70,30 h12 v12 h-12 z" />
+</vector>

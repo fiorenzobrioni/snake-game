@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Launch theme: shows the system splash screen, then hands off to the
+         main app theme. Backed by androidx.core:core-splashscreen. -->
+    <style name="Theme.SnakeGame" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/board_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.SnakeGame.Main</item>
+    </style>
+
+    <!-- Main app theme. Compose owns the actual UI, so this only needs to set a
+         no-action-bar, edge-to-edge-friendly window. -->
+    <style name="Theme.SnakeGame.Main" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/board_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+</resources>
