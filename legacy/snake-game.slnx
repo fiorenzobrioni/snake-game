@@ -1,0 +1,5 @@
+<Solution>
+  <Folder Name="/SnakeGame/">
+    <Project Path="SnakeGame/SnakeGame.csproj" />
+  </Folder>
+</Solution>
