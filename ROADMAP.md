@@ -106,40 +106,47 @@ snake-game/
 
 > 🎯 **End of Phase 0**: an installable app that launches to a themed, edge-to-edge, portrait screen.
 
-### Phase 1 — Core gameplay (model parity with v1.0.0)
+### Phase 1 — Core gameplay (model parity with v1.0.0) ✅ (implemented)
 
-- [ ] **Step 1.1** — Pure-Kotlin model in `game/`: `Direction`, `Cell`/`Position`, `Board`, `Snake`,
-      `GameState`. No rendering yet. Verify: model compiles; basic unit tests on movement/growth.
-- [ ] **Step 1.2** — Compose `Canvas` grid renderer: draw board, obstacles and a static 3-segment snake.
-      Verify: a centered board with a snake is visible.
-- [ ] **Step 1.3** — Game loop via coroutine (`withFrameNanos`/ticker) at a per-level interval; snake moves
-      in one direction. Verify: it advances steadily until the wall.
-- [ ] **Step 1.4** — Touch input: **swipe gestures** (`detectDragGestures`) + an optional on-screen D-pad;
-      180° reversal blocked. Verify: the snake is steered by swipes.
-- [ ] **Step 1.5** — Single food spawn + growth on eat + respawn. Verify: eating grows the snake.
-- [ ] **Step 1.6** — Collisions (walls, body, obstacles) → `GameOver` stops the loop. Verify: all three
-      deaths trigger correctly.
-- [ ] **Step 1.7** — Score HUD (Compose overlay). Verify: score updates on eat.
-- [ ] **Step 1.8** — Pause / Restart controls. Verify: pause overlay shows; restart resets state.
-- [ ] **Step 1.9** — Port the **5 difficulty levels** (speed + obstacle count). Verify: changing level
+- [x] **Step 1.1** — Pure-Kotlin model in `game/`: `Direction`, `Position`, `BoardSize`, `Level`, `Food`,
+      `GameState`, `GameEngine`. No rendering. Verify: model compiles; unit tests on movement/growth/
+      collisions/spawn pass (`./gradlew :app:testDebugUnitTest`).
+- [x] **Step 1.2** — Compose `Canvas` grid renderer (`GameBoard`): board background + grid, obstacles,
+      foods and the snake (bright head). Verify: a centered board with a snake is visible.
+- [x] **Step 1.3** — Game loop via coroutine in `GameViewModel` at the per-level interval. Verify: the
+      snake advances steadily until it dies.
+- [x] **Step 1.4** — Touch input: **swipe gestures** (`detectDragGestures`) + an on-screen D-pad; 180°
+      reversal blocked in the engine. Verify: the snake is steered by swipes and the pad.
+- [x] **Step 1.5** — Food spawn + growth on eat + respawn (two foods kept on the board, as in v1.0.0).
+      Verify: eating grows the snake.
+- [x] **Step 1.6** — Collisions (walls, body, obstacles) → `GameOver` stops the loop. Verify: all three
+      deaths trigger correctly (covered by unit tests).
+- [x] **Step 1.7** — Score HUD (Compose overlay). Verify: score updates on eat.
+- [x] **Step 1.8** — Pause / Restart controls (pause overlay, play-again, back-to-menu). Verify: pause
+      overlay shows; restart resets state.
+- [x] **Step 1.9** — Ported the **5 difficulty levels** (speed + obstacle count). Verify: changing level
       changes speed and obstacle count.
-- [ ] **Step 1.10** — Port the **5 board sizes** (Pocket → Infinite). Verify: changing size reshapes the board.
-- [ ] **Step 1.11** — Port the **7 food types** (Green/Red/Gold/Blue/Mega*) with the original probabilities
+- [x] **Step 1.10** — Ported the **5 board sizes** (Pocket → Infinite). Verify: changing size reshapes the board.
+- [x] **Step 1.11** — Ported the **7 food types** (Green/Red/Gold/Blue/Mega*) with the original probabilities
       and bonuses (Blue grants +2…+24). Verify: over time all types appear.
 
 > 🎯 **End of Phase 1 (M1)**: feature parity with v1.0.0, playable on a phone — still visually "blocky".
 
-### Phase 2 — Visual polish
+### Phase 2 — Visual polish ✅ (implemented)
 
-- [ ] **Step 2.1** — Snake drawn from sprites / vector shapes with head, body, curve and tail orientation.
-- [ ] **Step 2.2** — Themed board background (grass / dungeon / neon — pick one).
-- [ ] **Step 2.3** — Animated food (bobbing / sparkle) via Compose animation.
-- [ ] **Step 2.4** — Obstacle sprites instead of flat rectangles.
-- [ ] **Step 2.5** — **Smooth inter-tick motion**: interpolate segment positions with `Animatable`/`tween`
-      while logic stays grid-based. Verify: the snake glides, no longer jumps cell-to-cell.
-- [ ] **Step 2.6** — Particle burst on eat (color per food type) drawn on `Canvas`.
-- [ ] **Step 2.7** — Screen shake on game-over collision.
-- [ ] **Step 2.8** — Glow / trail on the snake's head.
+> Board presets were also re-tuned from 3:2 landscape (inherited from the desktop build) to **portrait**
+> (~7:10) so the board fills a phone screen; the app stays portrait-locked by design. See `BoardSize`.
+
+- [x] **Step 2.1** — Snake drawn from vector shapes: rounded body segments, a brighter head with eyes
+      oriented to travel direction (curve/tail sprite refinement can follow later).
+- [x] **Step 2.2** — Themed board background: vertical gradient + subtle grid, framed border.
+- [x] **Step 2.3** — Animated food (pulsing scale; slow spin on the blue star; halo on gold/mega).
+- [x] **Step 2.4** — Bevelled obstacle blocks (shadow + highlight) instead of flat rectangles.
+- [x] **Step 2.5** — **Smooth inter-tick motion**: each segment interpolates from its previous cell to the
+      current one over one tick via a `withFrameNanos` clock; logic stays grid-based.
+- [x] **Step 2.6** — Particle burst on eat (colour per food type), simulated in cell space on `Canvas`.
+- [x] **Step 2.7** — Screen shake on the game-over collision (damped wobble).
+- [x] **Step 2.8** — Glow on the snake's head (radial gradient halo).
 
 ### Phase 3 — Pro UI / UX
 

@@ -1,4 +1,0 @@
-# Game logic package
-
-Pure-Kotlin game model (Snake, Board, Food, Direction, GameState) lands here
-in Phase 1. Keep this package free of Android/Compose imports so it stays unit-testable.

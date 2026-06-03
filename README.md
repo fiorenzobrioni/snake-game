@@ -13,8 +13,9 @@ polished, **Google-Play-publishable** title with animation, particles, shaders, 
 Gameplay is drawn on a Compose `Canvas` — the natural evolution of the immediate-mode rendering this project
 started with. The step-by-step plan lives in [`ROADMAP.md`](ROADMAP.md).
 
-> 🧱 **Current status:** Phase 0 (foundations) — an installable app that launches to a themed, edge-to-edge,
-> portrait screen. Gameplay arrives in Phase 1.
+> 🧱 **Current status:** Phase 1 (core gameplay) — a fully playable Snake at feature parity with the frozen
+> v1.0.0: 5 difficulty levels, 5 board sizes, 7 food types, swipe + D-pad controls, score HUD and
+> pause/restart. Visual polish, audio and shaders arrive in later phases.
 
 ---
 
@@ -101,10 +102,12 @@ The project targets `minSdk 24` (Android 7.0) and `compileSdk`/`targetSdk 35` (A
 Guide the snake around the board, eat food to grow and score, and avoid the walls, the obstacles and your
 own body.
 
-**Controls (touch):** swipe to change direction (an optional on-screen D-pad is planned). 180° reversals are
-blocked, so you can't instantly fold back into your own body.
+**Controls (touch):** swipe to change direction, or use the on-screen D-pad. 180° reversals are blocked, so
+you can't instantly fold back into your own body. Pick a level and board size on the start screen; pause and
+restart from the in-game controls.
 
-> Controls, menus and the full HUD come online during Phase 1–3 of the [roadmap](ROADMAP.md).
+> Richer menus, persistent high scores and the polished HUD come online during Phases 2–3 of the
+> [roadmap](ROADMAP.md).
 
 ---
 
