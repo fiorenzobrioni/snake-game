@@ -2,6 +2,7 @@ package com.brioni.snake.ui.game
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
@@ -38,8 +39,13 @@ class GameViewModel : ViewModel() {
     var previousSnake by mutableStateOf(state.snake)
         private set
 
-    /** Increments once per simulation tick; the renderer keys interpolation on it. */
-    var tickId by mutableIntStateOf(0)
+    /**
+     * `System.nanoTime()` of the most recent tick (or reset). Updated atomically
+     * with [state]/[previousSnake] so the renderer can derive the interpolation
+     * fraction from a single consistent snapshot — no separately-updated
+     * fraction state that could lag a frame behind a committed move.
+     */
+    var tickTimeNanos by mutableLongStateOf(System.nanoTime())
         private set
 
     /** Latest eat event and a monotonic id so repeats are observable. */
@@ -91,8 +97,9 @@ class GameViewModel : ViewModel() {
 
     /** Replaces the state and resets interpolation bookkeeping to it. */
     private fun resetTo(newState: GameState) {
-        state = newState
         previousSnake = newState.snake
+        state = newState
+        tickTimeNanos = System.nanoTime()
     }
 
     private fun runLoop() {
@@ -121,9 +128,10 @@ class GameViewModel : ViewModel() {
             deathEventId++
         }
 
+        // Commit the interpolation snapshot atomically: previous, current, time.
         previousSnake = before.snake
         state = after
-        tickId++
+        tickTimeNanos = System.nanoTime()
     }
 
     private fun stopLoop() {

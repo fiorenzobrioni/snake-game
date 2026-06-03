@@ -79,7 +79,7 @@ fun GameScreen(
             GameBoard(
                 state = state,
                 previousSnake = viewModel.previousSnake,
-                tickId = viewModel.tickId,
+                tickTimeNanos = viewModel.tickTimeNanos,
                 tickMillis = state.level.tickMillis,
                 running = state.status == GameStatus.Running,
                 eatEvent = viewModel.eatEvent,

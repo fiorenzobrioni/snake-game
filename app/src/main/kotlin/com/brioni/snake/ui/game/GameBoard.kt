@@ -4,10 +4,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.toMutableStateList
@@ -48,7 +46,7 @@ import kotlin.math.sin
 fun GameBoard(
     state: GameState,
     previousSnake: List<Position>,
-    tickId: Int,
+    tickTimeNanos: Long,
     tickMillis: Long,
     running: Boolean,
     eatEvent: EatEvent?,
@@ -56,37 +54,25 @@ fun GameBoard(
     modifier: Modifier = Modifier,
 ) {
     val particles: SnapshotStateList<Particle> = remember { emptyList<Particle>().toMutableStateList() }
-    var fraction by remember { mutableFloatStateOf(1f) }
-    var frameNanos by remember { mutableLongStateOf(0L) }
-
-    val currentTickId by rememberUpdatedState(tickId)
-    val currentTickMillis by rememberUpdatedState(tickMillis.coerceAtLeast(1L))
+    // A monotonic per-frame timestamp (same clock as tickTimeNanos) that pulses
+    // a redraw each frame; the interpolation fraction is *derived* from it and
+    // tickTimeNanos at draw time, so it can never lag a committed move.
+    var frameNanos by remember { mutableLongStateOf(System.nanoTime()) }
 
     // A single frame-driven loop runs only while the game is running: it
-    // advances the interpolation fraction and the particles, and writes
-    // [frameNanos] to force a redraw each frame. When not running it leaves a
-    // static frame (fraction = 1) and clears any leftover particles.
+    // advances the particles and writes [frameNanos] to force a redraw each
+    // frame. When not running it clears any leftover particles.
     LaunchedEffect(running) {
         if (!running) {
-            fraction = 1f
             particles.clear()
             return@LaunchedEffect
         }
-        var lastFrame = withFrameNanos { it }
-        var tickStart = lastFrame
-        var seenTick = currentTickId
-        // Stay put until the next tick arrives, so resuming from pause doesn't
-        // replay the last move's interpolation.
-        fraction = 1f
+        var lastNanos = System.nanoTime()
         while (true) {
-            val now = withFrameNanos { it }
-            val dt = ((now - lastFrame) / 1_000_000_000.0).toFloat()
-            lastFrame = now
-            if (currentTickId != seenTick) {
-                seenTick = currentTickId
-                tickStart = now
-            }
-            fraction = (((now - tickStart) / 1_000_000.0).toFloat() / currentTickMillis).coerceIn(0f, 1f)
+            withFrameNanos { }
+            val now = System.nanoTime()
+            val dt = ((now - lastNanos) / 1_000_000_000.0).toFloat()
+            lastNanos = now
             updateParticles(particles, dt)
             frameNanos = now
         }
@@ -106,9 +92,12 @@ fun GameBoard(
         val cell = min(size.width / board.width, size.height / board.height)
         if (cell <= 0f) return@Canvas
 
-        // Read animation state so the Canvas redraws each frame while running.
+        // Derive everything from the per-frame clock and the tick snapshot, so
+        // reading `frameNanos` both redraws each frame and stays consistent with
+        // the committed state (no separate, potentially-stale fraction state).
         val now = frameNanos
-        val f = fraction
+        val periodNanos = (tickMillis.coerceAtLeast(1L) * 1_000_000L).toFloat()
+        val f = if (running) ((now - tickTimeNanos).toFloat() / periodNanos).coerceIn(0f, 1f) else 1f
         val seconds = now / 1_000_000_000.0
         val pulse = if (running) 0.9f + 0.1f * (sin(seconds * 6.0).toFloat() * 0.5f + 0.5f) else 1f
         val starAngle = if (running) (seconds * 0.9).toFloat() else 0f
