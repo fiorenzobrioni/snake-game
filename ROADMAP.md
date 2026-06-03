@@ -1,27 +1,52 @@
-# 🗺️ ROADMAP — Migration to Godot 4
+# 🗺️ ROADMAP — Native Android Snake (Kotlin + Jetpack Compose)
 
-Evolution plan for Snake Game from the current WinForms (GDI+) prototype to a "pro" production-quality game built on **Godot 4 (.NET / C#)**.
+Plan to take Snake from a learning prototype to a **polished, Play-Store-ready Android game**, built
+**from scratch** in **Kotlin + Jetpack Compose**.
+
+The original **C# / .NET 10 / WinForms (GDI+)** version shipped as **v1.0.0** and is now **frozen** under
+[`legacy/`](legacy/). It is kept only as a reference for the *game model* — no further feature work happens
+there. Everything below is the new app at the repository root.
 
 ---
 
 ## 🎯 Goal
 
-Transform the current amateur Snake into a visually polished, cross-platform game (Windows / Linux / macOS / Web) with animated graphics, particles, shaders, audio, menus and replayability — while keeping C# as the language.
+A native Android Snake that looks and feels professional — smooth animation, particles, shaders, audio,
+menus and replayability — and is **publishable on the Google Play Store** as a signed App Bundle (AAB).
 
 ## 🧰 Chosen stack
 
-- **Engine**: [Godot 4.x — .NET edition](https://godotengine.org/) (MIT, free)
-- **Language**: C# (.NET 8+, as required by Godot .NET)
-- **Recommended IDE**: VS Code or Rider (with the Godot extension)
-- **Assets**: free licenses only (CC0 / CC-BY / MIT). Suggested sources: [Kenney.nl](https://kenney.nl), [OpenGameArt](https://opengameart.org), [itch.io free assets](https://itch.io/game-assets/free)
+- **Language**: Kotlin
+- **UI / rendering**: **Jetpack Compose** (Material 3) — gameplay drawn on Compose `Canvas`, the natural
+  evolution of the immediate-mode GDI+ rendering learned in v1.0.0.
+- **Build**: Gradle (Kotlin DSL) + version catalog, Gradle wrapper pinned.
+- **Min/target SDK**: `minSdk 24` (Android 7.0), `compileSdk`/`targetSdk 35` (Android 15).
+- **Persistence**: Preferences **DataStore** (settings, highscores).
+- **Effects**: hand-drawn particles on `Canvas`; **AGSL `RuntimeShader`** for glow/background on **API 33+**
+  with a graceful fallback below.
+- **Audio**: `SoundPool` (SFX) + `MediaPlayer`/`ExoPlayer` (music).
+- **Assets**: free licenses only (CC0 / CC-BY / MIT), recorded in [`docs/CREDITS.md`](docs/CREDITS.md).
 
-### Why Godot and not something else
-- Native C# support → reuse of existing skills
-- Mature 2D editor: TileMap, AnimationPlayer, GPUParticles2D, GLSL-like shaders
-- Web (HTML5) export → publishable on itch.io / GitHub Pages
-- Open source, no royalties, large community
+### Why native Kotlin + Compose
+- Smallest, fastest Android binary; no game-engine runtime to ship.
+- Compose `Canvas` maps cleanly onto the grid-based rendering already prototyped in WinForms.
+- First-class access to Android platform APIs (haptics, AGSL shaders, splash screen, Play distribution).
 
-Alternatives discarded: MonoGame (no editor → more work), Unity (restrictive licensing, overkill), Stride (small community).
+---
+
+## 🛠️ Local tools / SDKs
+
+Install on your development machine:
+
+- **Android Studio** (latest stable) — bundles the JDK (JBR), the SDK Manager and the AVD emulator.
+- **Android SDK** via SDK Manager: **Platform API 35**, **Build-Tools 35.x**, **Platform-Tools** (`adb`),
+  **Emulator** + a system image (e.g. API 35).
+- A **test target**: an AVD emulator or a physical device with **USB debugging** enabled.
+- **Gradle**: not needed globally — use the project's `./gradlew` wrapper.
+- **For Play distribution (Phase 7)**: a **Google Play Console** account, an **upload keystore**
+  (`keytool` / Android Studio), and **Play App Signing** enabled.
+
+> Godot, the .NET SDK and Visual Studio are **no longer required** for the active project.
 
 ---
 
@@ -29,129 +54,152 @@ Alternatives discarded: MonoGame (no editor → more work), Unity (restrictive l
 
 ```
 snake-game/
-├── src/SnakeGame/         # Legacy WinForms (stays until parity is reached)
-├── godot/                 # New Godot project
-│   ├── project.godot
-│   ├── scenes/
-│   ├── scripts/
-│   ├── assets/
-│   │   ├── sprites/
-│   │   ├── audio/
-│   │   ├── fonts/
-│   │   ├── shaders/
-│   │   └── CREDITS.md
-│   └── themes/
-├── legacy/                # Final destination of the WinForms version (Phase 7)
-├── .github/workflows/     # Export CI (Phase 7)
-├── CLAUDE.md
-├── README.md
-└── ROADMAP.md
+├── settings.gradle.kts          # Gradle root (Kotlin DSL)
+├── build.gradle.kts
+├── gradle.properties
+├── gradle/
+│   ├── libs.versions.toml        # version catalog
+│   └── wrapper/                  # pinned Gradle wrapper
+├── gradlew / gradlew.bat
+├── app/
+│   ├── build.gradle.kts
+│   ├── proguard-rules.pro
+│   └── src/main/
+│       ├── AndroidManifest.xml
+│       ├── kotlin/com/brioni/snake/
+│       │   ├── MainActivity.kt
+│       │   ├── game/             # pure-Kotlin game model (no Android imports)
+│       │   ├── ui/               # Compose UI + theme
+│       │   └── data/             # DataStore persistence
+│       └── res/                  # themes, strings, colors, adaptive icon
+├── docs/CREDITS.md               # asset credits (CC0/CC-BY/MIT)
+├── legacy/SnakeGame/             # frozen C#/.NET 10 GDI+ v1.0.0 (learning)
+├── .github/workflows/            # release CI (Phase 7)
+├── CLAUDE.md  README.md  ROADMAP.md  LICENSE
 ```
 
 ---
 
 ## ✅ Execution principles
 
-1. **Every step must be buildable and testable** in isolation. Never leave the branch in a broken state.
-2. One step = one commit (or a small group of logically related commits).
-3. After each step: build + open the editor + manual smoke test, then tick the todo.
+1. **Every step must be buildable and testable** in isolation. Never leave the branch broken.
+2. One step = one commit (or a small group of related commits).
+3. After each step: Gradle sync + run on emulator/device + manual smoke test, then tick the todo.
 4. No opportunistic refactors outside the current step.
-5. Free assets only: every added asset must be recorded in `godot/assets/CREDITS.md` with source and license.
+5. The `game/` package stays free of Android/Compose imports so the model is **unit-testable**.
+6. Free assets only; every added asset is recorded in [`docs/CREDITS.md`](docs/CREDITS.md) with source and license.
 
 ---
 
 ## 🛣️ Roadmap
 
-### Phase 0 — Setup & foundations
+### Phase 0 — Foundations ✅ (implemented)
 
-- [ ] **Step 0.1** — Add `godot/` containing an empty Godot 4.x .NET project (`project.godot`, `.csproj`, `.gitignore` for `.godot/`, `.mono/`, `bin/`, `obj/`). Verify: the editor opens the project without errors.
-- [ ] **Step 0.2** — Create scene `Main.tscn` with a `Node2D` root and a full-screen `ColorRect` background. Verify: `godot --path godot` shows a colored window.
-- [ ] **Step 0.3** — Configure display: base resolution 1280×720, stretch mode `viewport`, aspect `keep`. Verify: resizing the window scales the contents correctly.
-- [ ] **Step 0.4** — Add `godot/assets/CREDITS.md` (empty template).
+- [x] **Step 0.1** — Restructure repo: move the .NET v1.0.0 prototype to `legacy/`; stand up the Gradle root
+      (Kotlin DSL), version catalog, wrapper and Android `.gitignore`. Verify: `settings.gradle.kts` parses;
+      Android Studio Gradle sync succeeds.
+- [x] **Step 0.2** — App entry: `MainActivity` (`ComponentActivity`) + Compose Material 3 theme rendering a
+      full-screen `Surface`. Splash via `core-splashscreen`. Verify: the app launches to a colored screen.
+- [x] **Step 0.3** — Display: **portrait lock**, **edge-to-edge**, content respects **safe-area insets**.
+      Verify: portrait, background draws under the bars, content stays clear of cutouts.
+- [x] **Step 0.4** — Adaptive-icon placeholder (+ legacy fallback for API 24–25) and `docs/CREDITS.md`.
 
-### Phase 1 — Core gameplay (functional parity with WinForms)
+> 🎯 **End of Phase 0**: an installable app that launches to a themed, edge-to-edge, portrait screen.
 
-- [ ] **Step 1.1** — `GameBoard.cs` script with `WIDTH`/`HEIGHT`/`CELL_SIZE` constants. Draw the play grid as a bordered `ColorRect` background. Verify: the board is visible and centered.
-- [ ] **Step 1.2** — `Snake.cs`: list of `Vector2I`, render the body as `ColorRect` repositioned every tick. No movement yet. Verify: a 3-segment snake is visible in the center.
-- [ ] **Step 1.3** — Game loop using a Godot `Timer` at 150ms: move the snake in a single direction. Verify: it moves steadily upward until the edge.
-- [ ] **Step 1.4** — Arrow input + 180° reversal block. Verify: controlled with arrows.
-- [ ] **Step 1.5** — Spawn basic food (single type, red `ColorRect`). Snake grows when eating. Verify: eating grows the snake and respawns food.
-- [ ] **Step 1.6** — Collisions: walls, body, obstacles. `GameOver` state stops the timer. Verify: the snake dies correctly in all three cases.
-- [ ] **Step 1.7** — HUD: Score `Label` at the top. Verify: the score updates when eating.
-- [ ] **Step 1.8** — Pause (Space/P) and Restart (R). Verify: keys work and a "PAUSED" overlay appears.
-- [ ] **Step 1.9** — Port the **5 difficulty levels** (speed + obstacle count). Side UI with `OptionButton` or `Button` group. Verify: changing level changes speed and obstacles.
-- [ ] **Step 1.10** — Port the **5 board sizes** (Pocket → Infinite). Verify: changing size resizes the board before the match.
-- [ ] **Step 1.11** — Port the **7 food types** (Green/Red/Gold/Blue/Mega*) with the same probabilities and bonuses as the original. Verify: over time all types appear.
+### Phase 1 — Core gameplay (model parity with v1.0.0)
 
-> 🎯 **End of Phase 1**: functional parity with WinForms. The game is playable but still visually "blocky".
+- [ ] **Step 1.1** — Pure-Kotlin model in `game/`: `Direction`, `Cell`/`Position`, `Board`, `Snake`,
+      `GameState`. No rendering yet. Verify: model compiles; basic unit tests on movement/growth.
+- [ ] **Step 1.2** — Compose `Canvas` grid renderer: draw board, obstacles and a static 3-segment snake.
+      Verify: a centered board with a snake is visible.
+- [ ] **Step 1.3** — Game loop via coroutine (`withFrameNanos`/ticker) at a per-level interval; snake moves
+      in one direction. Verify: it advances steadily until the wall.
+- [ ] **Step 1.4** — Touch input: **swipe gestures** (`detectDragGestures`) + an optional on-screen D-pad;
+      180° reversal blocked. Verify: the snake is steered by swipes.
+- [ ] **Step 1.5** — Single food spawn + growth on eat + respawn. Verify: eating grows the snake.
+- [ ] **Step 1.6** — Collisions (walls, body, obstacles) → `GameOver` stops the loop. Verify: all three
+      deaths trigger correctly.
+- [ ] **Step 1.7** — Score HUD (Compose overlay). Verify: score updates on eat.
+- [ ] **Step 1.8** — Pause / Restart controls. Verify: pause overlay shows; restart resets state.
+- [ ] **Step 1.9** — Port the **5 difficulty levels** (speed + obstacle count). Verify: changing level
+      changes speed and obstacle count.
+- [ ] **Step 1.10** — Port the **5 board sizes** (Pocket → Infinite). Verify: changing size reshapes the board.
+- [ ] **Step 1.11** — Port the **7 food types** (Green/Red/Gold/Blue/Mega*) with the original probabilities
+      and bonuses (Blue grants +2…+24). Verify: over time all types appear.
+
+> 🎯 **End of Phase 1 (M1)**: feature parity with v1.0.0, playable on a phone — still visually "blocky".
 
 ### Phase 2 — Visual polish
 
-- [ ] **Step 2.1** — Replace the `ColorRect` snake with a `Sprite2D` per segment using a tileset (head/body/curve/tail). Handle orientation and curves based on neighbors. Verify: the snake has proper sprites and curves rendered correctly.
-- [ ] **Step 2.2** — Background `TileMap` with textures (grass, dungeon, neon — pick one). Verify: the board has a coherent background, no longer flat black.
-- [ ] **Step 2.3** — Animated food sprites (`AnimatedSprite2D`, 4-6 frames of bobbing/sparkle). Verify: foods pulse/sparkle while idle.
-- [ ] **Step 2.4** — Obstacles with sprites (rocks / walls) instead of gray rects. Verify: the board feels "set" in a place.
-- [ ] **Step 2.5** — **Smooth movement**: interpolate segment positions via `Tween` between ticks (logical motion stays grid-based, but visually fluid). Verify: the snake no longer "jumps" between cells.
-- [ ] **Step 2.6** — `GPUParticles2D` "burst" when eating food (color based on type). Verify: each bite produces particles.
-- [ ] **Step 2.7** — Screen shake (Camera2D + tween) on game-over collision. Verify: on death the camera shakes briefly.
-- [ ] **Step 2.8** — "Trail" / glow effect on the snake's head (light or particle wake). Verify: the head is visually distinct from the body.
+- [ ] **Step 2.1** — Snake drawn from sprites / vector shapes with head, body, curve and tail orientation.
+- [ ] **Step 2.2** — Themed board background (grass / dungeon / neon — pick one).
+- [ ] **Step 2.3** — Animated food (bobbing / sparkle) via Compose animation.
+- [ ] **Step 2.4** — Obstacle sprites instead of flat rectangles.
+- [ ] **Step 2.5** — **Smooth inter-tick motion**: interpolate segment positions with `Animatable`/`tween`
+      while logic stays grid-based. Verify: the snake glides, no longer jumps cell-to-cell.
+- [ ] **Step 2.6** — Particle burst on eat (color per food type) drawn on `Canvas`.
+- [ ] **Step 2.7** — Screen shake on game-over collision.
+- [ ] **Step 2.8** — Glow / trail on the snake's head.
 
 ### Phase 3 — Pro UI / UX
 
-- [ ] **Step 3.1** — Import a custom font (e.g. *Press Start 2P* or *VT323*, free fonts) and create a reusable Godot `Theme`. Verify: the whole UI uses the new font.
-- [ ] **Step 3.2** — `MainMenu.tscn` scene with animated title, Play / Options / Quit buttons, animated background (demo snake moving behind). Verify: launching the game starts from the menu.
-- [ ] **Step 3.3** — `Settings.tscn` scene: choose level, board size, music/SFX volume. Persistence to `user://settings.cfg`. Verify: closing/reopening preserves choices.
-- [ ] **Step 3.4** — **Pause** overlay with a blur shader on the background. Verify: while paused the background is blurred.
-- [ ] **Step 3.5** — `GameOver.tscn` scene with final score, persistent **highscore** per (level, size), Retry / Menu buttons. Verify: highscores survive restarts.
-- [ ] **Step 3.6** — Animated HUD score (counter that increments progressively with `Tween`, not in jumps). Verify: the score "rolls" like in arcades.
-- [ ] **Step 3.7** — Scene transitions with fade-in/fade-out. Verify: no "hard" scene changes.
+- [ ] **Step 3.1** — Custom arcade font + a reusable Material 3 type scale.
+- [ ] **Step 3.2** — Main menu (animated title, Play / Settings / Quit) with Compose Navigation.
+- [ ] **Step 3.3** — Settings screen (level, board size, volumes, control scheme) persisted via **DataStore**.
+- [ ] **Step 3.4** — Pause overlay with a **blur** (`Modifier.blur` / `RenderEffect`) over the frozen board.
+- [ ] **Step 3.5** — Game-over screen + persistent **highscores per (level, size)**.
+- [ ] **Step 3.6** — Animated, rolling HUD score counter.
+- [ ] **Step 3.7** — Fade scene transitions.
 
 ### Phase 4 — Audio
 
-- [ ] **Step 4.1** — Add a looping background music track (CC0). `AudioStreamPlayer` with autoplay. Verify: music plays in the background.
-- [ ] **Step 4.2** — SFX: eat (variants per food type), game over, UI click, pause. Verify: every event has its own sound.
-- [ ] **Step 4.3** — Separate audio buses Master/Music/SFX + sliders in Settings. Verify: volumes are adjusted independently.
-- [ ] **Step 4.4** — Music crossfade between menu and gameplay. Verify: the transition is smooth.
+- [ ] **Step 4.1** — Looping background music (CC0) via `MediaPlayer`/`ExoPlayer`.
+- [ ] **Step 4.2** — SFX via `SoundPool`: eat (per food type), game over, UI click, pause.
+- [ ] **Step 4.3** — Master / Music / SFX volumes in Settings; **lifecycle-aware** pause/mute.
+- [ ] **Step 4.4** — Menu ↔ gameplay music crossfade.
 
-### Phase 5 — Shaders & FX
+### Phase 5 — Shaders & FX (AGSL)
 
-- [ ] **Step 5.1** — **Glow** shader on the snake's head (additive blending or `CanvasItem` shader). Verify: the head emits light.
-- [ ] **Step 5.2** — Pulsing shader on rare foods (Gold/Mega) with a luminous outline. Verify: rare foods clearly look more "precious".
-- [ ] **Step 5.3** — Background shader (animated gradient, parallax stars, or water caustics). Verify: the background feels alive.
-- [ ] **Step 5.4** — (Optional) CRT/scanline filter as a Settings-toggleable option. Verify: can be enabled/disabled in real time.
+- [ ] **Step 5.1** — `RuntimeShader` glow on the snake's head (API 33+), graceful fallback below.
+- [ ] **Step 5.2** — Pulsing shader outline on rare foods (Gold / Mega).
+- [ ] **Step 5.3** — Animated background shader (gradient / stars / caustics).
+- [ ] **Step 5.4** — (Optional) CRT / scanline filter, toggleable in Settings.
 
-### Phase 6 — Content and replayability
+### Phase 6 — Content & replayability
 
-- [ ] **Step 6.1** — **Skin** system (Classic / Neon / Retro / Pixel). Skin = sprite set + tileset + palette + optional shader. Selection in Settings. Verify: changing skin updates everything.
-- [ ] **Step 6.2** — Temporary power-ups: speed boost, ghost mode (pass through walls for 3s), magnet (attracts food). Rare spawn. Verify: power-ups appear and work, with HUD icon and timer.
-- [ ] **Step 6.3** — Highscore table per (level × size), shown in a "Records" menu. Verify: top 5 scores are visible and persistent.
-- [ ] **Step 6.4** — Local achievements (e.g. "100 foods eaten", "survive 5 min on Legend"). Verify: they unlock and are visible in a panel.
-- [ ] **Step 6.5** — Extra modes: "Endless" (no obstacles, growing board), "Time Attack" (60s). Verify: selectable from the menu, each has its own rules.
+- [ ] **Step 6.1** — Skin system (Classic / Neon / Retro / Pixel = palette + sprite set + optional shader).
+- [ ] **Step 6.2** — Temporary power-ups (speed boost, ghost, magnet) with HUD timer.
+- [ ] **Step 6.3** — Highscore tables per (level × size) in a "Records" screen.
+- [ ] **Step 6.4** — Local achievements.
+- [ ] **Step 6.5** — Extra modes: Endless, Time Attack.
 
-### Phase 7 — Distribution & cleanup
+### Phase 7 — Play Store distribution & cleanup
 
-- [ ] **Step 7.1** — Configure Godot export presets: Windows, Linux, Web (HTML5). Verify: a working build is produced for each target.
-- [ ] **Step 7.2** — GitHub Actions workflow that builds exports on every `v*` tag and publishes to Releases. Verify: creating a tag produces a release with the binaries.
-- [ ] **Step 7.3** — Web build published on GitHub Pages (or itch.io). Verify: playable in the browser.
-- [ ] **Step 7.4** — Move `src/SnakeGame/` to `legacy/SnakeGame/` and update README + CLAUDE.md to point to the Godot version as the "main" one. Verify: docs reflect the new state.
-- [ ] **Step 7.5** — Update `README.md` with screenshots/GIFs of the new version, Godot instructions, link to the web build. Verify: a new user understands what to do in 30 seconds.
+- [ ] **Step 7.1** — Final app icon / adaptive icon + branded **SplashScreen API**; set `versionCode`/`versionName`.
+- [ ] **Step 7.2** — Release hardening: **R8** + resource shrinking, verify the minified build runs.
+- [ ] **Step 7.3** — **Signing**: upload keystore wired via env/CI secrets (never committed) + **Play App Signing**.
+- [ ] **Step 7.4** — Build a signed **AAB**; **GitHub Actions** on `v*` tags → signed AAB artifact (optionally
+      upload to a Play track via service account / Gradle Play Publisher).
+- [ ] **Step 7.5** — Play readiness: privacy policy, **Data Safety** form, **IARC** rating, store listing
+      (icon, feature graphic, phone screenshots), **internal testing** track.
+- [ ] **Step 7.6** — Finalize docs: README screenshots/GIFs + Play link; confirm the legacy note.
 
 ---
 
 ## 🧪 Definition of Done (per step)
 
-- Builds without new warnings
-- Opens in the Godot editor without errors
-- Manual smoke test of the affected flow OK
-- `godot/assets/CREDITS.md` updated if assets were added
-- Commit message in English in the format: `feat(godot): step X.Y — <description>` or `fix`/`docs`/`chore`
+- Builds without new warnings (`./gradlew assembleDebug`).
+- Gradle sync succeeds in Android Studio.
+- Runs on an emulator/device; manual smoke test of the affected flow OK.
+- `docs/CREDITS.md` updated if assets were added.
+- Commit message in English: `feat(android): step X.Y — <description>` or `fix` / `docs` / `chore`.
 
 ## 📊 High-level milestones
 
 | Milestone | Steps | Outcome |
 |---|---|---|
-| **M1 — Parity** | End of Phase 1 | Snake playable in Godot, same gameplay as WinForms |
-| **M2 — Pretty** | End of Phases 2-3 | Polished graphics, UI with menus, professional look |
-| **M3 — Alive** | End of Phases 4-5 | Audio + shaders, "premium arcade" feel |
-| **M4 — Deep** | End of Phase 6 | Skins, power-ups, achievements, replayability |
-| **M5 — Public** | End of Phase 7 | Multi-platform + web builds, legacy archived |
+| **M1 — Parity** | End of Phase 1 | Snake playable on Android, same gameplay as v1.0.0 |
+| **M2 — Pretty** | End of Phases 2–3 | Polished graphics, menus, professional look |
+| **M3 — Alive** | End of Phases 4–5 | Audio + AGSL shaders, "premium arcade" feel |
+| **M4 — Deep** | End of Phase 6 | Skins, power-ups, achievements, extra modes |
+| **M5 — Published** | End of Phase 7 | Signed AAB on the Google Play Store, legacy archived |

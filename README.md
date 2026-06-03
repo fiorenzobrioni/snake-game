@@ -1,26 +1,32 @@
-# 🐍 Snake Game (.NET 10)
+# 🐍 Snake — Android (Kotlin + Jetpack Compose)
 
-[![C#](https://img.shields.io/badge/language-C%23-239120?logo=c-sharp&logoColor=white)](https://dotnet.microsoft.com/)
-[![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
-[![Platform](https://img.shields.io/badge/platform-Windows-0078D4)](https://www.microsoft.com/)
+[![Kotlin](https://img.shields.io/badge/language-Kotlin-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org/)
+[![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4?logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
+[![Android](https://img.shields.io/badge/platform-Android-3DDC84?logo=android&logoColor=white)](https://www.android.com/)
+[![minSdk](https://img.shields.io/badge/minSdk-24-blue)](https://developer.android.com/)
+[![targetSdk](https://img.shields.io/badge/targetSdk-35-blue)](https://developer.android.com/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A classic, timeless **Snake Game** built with **C#** and **Windows Forms**.
-This repository started as a **learning project** to explore C# features and put **.NET 10** through its paces. It is a great playground for picking up event-driven programming, GDI+ rendering and managing a game loop inside a desktop application.
+A classic **Snake**, rebuilt as a **native Android game** in **Kotlin + Jetpack Compose**, on the way to a
+polished, **Google-Play-publishable** title with animation, particles, shaders, audio and menus.
 
-> 🚧 **What's next:** the project is migrating to **Godot 4 (.NET / C#)** to evolve into a cross-platform game with polished graphics, shaders, audio and menus. See [`ROADMAP.md`](ROADMAP.md) for the full plan.
+Gameplay is drawn on a Compose `Canvas` — the natural evolution of the immediate-mode rendering this project
+started with. The step-by-step plan lives in [`ROADMAP.md`](ROADMAP.md).
+
+> 🧱 **Current status:** Phase 0 (foundations) — an installable app that launches to a themed, edge-to-edge,
+> portrait screen. Gameplay arrives in Phase 1.
 
 ---
 
-## 🎯 Project overview
+## 🎯 What it will be
 
-The project implements the classic Snake mechanics, extended with several modern and configurable features to make each run feel different:
+The classic Snake mechanics, extended with configurable features so every run feels different:
 
-- 🍎 **Multiple food types** — different kinds of food grant different bonuses (length and score). Rarer foods give more points and grow the snake more.
-- 🚧 **Randomly generated obstacles** — gray blocks scattered around the board raise the difficulty.
-- 🎚️ **Difficulty levels** — 5 levels (from *Beginner* to *Legend*) tune the snake's speed and the number of obstacles on the field.
+- 🍎 **Multiple food types** — different foods grant different growth and score; rarer foods are worth more.
+- 🚧 **Obstacles** — scattered blocks that raise the difficulty.
+- 🎚️ **Difficulty levels** — 5 levels (*Beginner* → *Legend*) tuning speed and obstacle count.
 - 📐 **Board sizes** — 5 presets, from *Pocket* (30×20) to *Infinite* (120×80).
-- ⏸️ **Pause & dynamic UI** — pause any time; the layout adapts when the window is resized.
+- ⏸️ **Pause, menus, highscores, audio, effects** — added progressively (see the roadmap).
 
 ### 🍽️ Food types at a glance
 
@@ -29,7 +35,7 @@ The project implements the classic Snake mechanics, extended with several modern
 | 🟢 Green      | ~25 %        | +2     | Common baseline                |
 | 🔴 Red        | ~25 %        | +4     | Better bite                    |
 | 🟡 Gold       | ~15 %        | +6     | Rare and tasty                 |
-| 🔷 Blue ⭐    | ~10 %        | +2…+24 | Star-shaped, random jackpot    |
+| 🔷 Blue ⭐    | ~10 %        | +2…+24 | Random jackpot                 |
 | 🟢🟢 Mega Green | ~10 %      | +8     | 2×2 cells                      |
 | 🔴🔴 Mega Red   | ~7 %       | +16    | 2×2 cells                      |
 | 🟡🟡 Mega Gold  | ~3 %       | +24    | 2×2 cells, the big one         |
@@ -58,77 +64,81 @@ The score reward scales with the growth amount (`+10 points` per unit of growth)
 
 ---
 
-## 🛠️ Requirements
+## 🛠️ Requirements & tools
 
-- **Operating system**: Windows (required to run Windows Forms applications)
-- **SDK**: .NET 10.0 SDK or newer installed on your system
+Install on your development machine:
+
+- **Android Studio** (latest stable) — bundles the JDK (JBR), the SDK Manager and the AVD emulator.
+- **Android SDK** via the SDK Manager: **Platform API 35**, **Build-Tools 35.x**, **Platform-Tools** (`adb`),
+  **Emulator** + a system image (e.g. API 35).
+- A **test target**: an AVD emulator or a physical device with **USB debugging** enabled.
+- **Gradle**: not needed globally — the project ships the **Gradle wrapper** (`./gradlew`).
+
+The project targets `minSdk 24` (Android 7.0) and `compileSdk`/`targetSdk 35` (Android 15).
 
 ---
 
 ## 🚀 Build & run
 
-1. **Clone the repository**:
-   ```powershell
+1. **Clone**:
+   ```bash
    git clone https://github.com/fiorenzobrioni/snake-game.git
    ```
-
-2. **Enter the project folder**:
-   ```powershell
-   cd snake-game/src/SnakeGame
+2. **Open the repository root** in **Android Studio** and let Gradle sync.
+3. **Run** on an emulator or a connected device (▶ Run, or):
+   ```bash
+   ./gradlew installDebug      # build + install the debug APK
+   ./gradlew assembleDebug     # build the debug APK only
    ```
 
-3. **Build the project**:
-   ```powershell
-   dotnet build
-   ```
-
-4. **Launch the game**:
-   ```powershell
-   dotnet run
-   ```
+> The Android SDK location is read from `local.properties` (created by Android Studio) or the
+> `ANDROID_HOME` environment variable.
 
 ---
 
 ## 🎮 How to play
 
-### Goal
-Guide the snake around the playfield. Pick up the food that appears at random to grow the snake's body and increase your score. Avoid crashing into the outer walls, the obstacles scattered on the field, and the snake's own body!
+Guide the snake around the board, eat food to grow and score, and avoid the walls, the obstacles and your
+own body.
 
-### Controls
+**Controls (touch):** swipe to change direction (an optional on-screen D-pad is planned). 180° reversals are
+blocked, so you can't instantly fold back into your own body.
 
-| Key                       | Action                          |
-|---------------------------|---------------------------------|
-| ⬆️ ⬇️ ⬅️ ➡️ Arrow keys  | Move the snake                  |
-| `Space` or `P`            | Pause / resume                  |
-| `R`                       | Restart the current run         |
-
-### Tips
-- 180° reversals are blocked: you cannot suddenly flip into your own body.
-- Pause is also a quick way to switch level or board size — the change takes effect on the next run.
+> Controls, menus and the full HUD come online during Phase 1–3 of the [roadmap](ROADMAP.md).
 
 ---
 
-## 👨‍💻 For the curious — code layout
+## 👨‍💻 Code layout
 
-The bulk of the game (logic, UI and rendering) lives in a single file:
-[`src/SnakeGame/SnakeForm.cs`](src/SnakeGame/SnakeForm.cs)
+```
+app/src/main/kotlin/com/brioni/snake/
+├── MainActivity.kt     # Compose entry point
+├── game/               # pure-Kotlin game model (no Android imports → unit-testable)
+├── ui/                 # Compose UI + Material 3 theme
+└── data/               # DataStore persistence (settings, highscores)
+```
 
-The project showcases a few foundational Windows Forms concepts:
-
-- **Game loop** — driven by a `System.Windows.Forms.Timer` with a dynamic interval per level.
-- **2D rendering** — entirely based on `Graphics` / `GDI+`, triggered by the `Paint` event of a `PictureBox`.
-- **Input handling** — `ProcessCmdKey` is overridden to capture keyboard input (arrows, hotkeys) at a low level, before standard UI controls consume it.
-
-For a deeper dive (architectural notes, file map, conventions), see [`CLAUDE.md`](CLAUDE.md).
+For architecture notes, conventions and the file map, see [`CLAUDE.md`](CLAUDE.md).
 
 ---
 
 ## 🗺️ Roadmap
 
-The next chapter of this project is a migration to **Godot 4** for a cross-platform, polished, web-publishable version. The full step-by-step plan — from initial Godot setup to shaders, audio, skins, power-ups and CI builds — is in [`ROADMAP.md`](ROADMAP.md).
+The full plan — from these foundations through gameplay, visual polish, audio, AGSL shaders, content and
+**Google Play distribution** — is in [`ROADMAP.md`](ROADMAP.md).
+
+---
+
+## 🏛️ Legacy — the v1.0.0 prototype
+
+This project began as a **learning exercise**: a Snake built in **C# / .NET 10 / Windows Forms** with **GDI+**
+rendering, shipped as **v1.0.0**. That desktop version is **frozen** and preserved under
+[`legacy/SnakeGame/`](legacy/SnakeGame/) as a reference for the game model. See
+[`legacy/README.md`](legacy/README.md) for its build notes. The native Android app described above is the
+project's active direction.
 
 ---
 
 ## 📄 License
 
-This project is distributed under the **MIT** license. Feel free to clone it, study it, modify it and use it for your own experiments! See the [LICENSE](LICENSE) file for details.
+Distributed under the **MIT** license — clone it, study it, modify it. See [LICENSE](LICENSE) for details.

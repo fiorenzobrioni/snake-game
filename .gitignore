@@ -480,3 +480,39 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# ──────────────────────────────────────────────────────────────────────────
+# Android / Gradle / Kotlin (native app at the repository root)
+# ──────────────────────────────────────────────────────────────────────────
+
+# Gradle
+.gradle/
+build/
+**/build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+captures/
+.navigation/
+
+# Android SDK location (machine-specific)
+local.properties
+
+# Build outputs
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Native build cache
+.cxx/
+
+# Signing — never commit keystores or signing secrets
+*.jks
+*.keystore
+keystore.properties
+
+# Kotlin
+.kotlin/
