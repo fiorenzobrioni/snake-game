@@ -132,17 +132,21 @@ snake-game/
 
 > 🎯 **End of Phase 1 (M1)**: feature parity with v1.0.0, playable on a phone — still visually "blocky".
 
-### Phase 2 — Visual polish
+### Phase 2 — Visual polish ✅ (implemented)
 
-- [ ] **Step 2.1** — Snake drawn from sprites / vector shapes with head, body, curve and tail orientation.
-- [ ] **Step 2.2** — Themed board background (grass / dungeon / neon — pick one).
-- [ ] **Step 2.3** — Animated food (bobbing / sparkle) via Compose animation.
-- [ ] **Step 2.4** — Obstacle sprites instead of flat rectangles.
-- [ ] **Step 2.5** — **Smooth inter-tick motion**: interpolate segment positions with `Animatable`/`tween`
-      while logic stays grid-based. Verify: the snake glides, no longer jumps cell-to-cell.
-- [ ] **Step 2.6** — Particle burst on eat (color per food type) drawn on `Canvas`.
-- [ ] **Step 2.7** — Screen shake on game-over collision.
-- [ ] **Step 2.8** — Glow / trail on the snake's head.
+> Board presets were also re-tuned from 3:2 landscape (inherited from the desktop build) to **portrait**
+> (~7:10) so the board fills a phone screen; the app stays portrait-locked by design. See `BoardSize`.
+
+- [x] **Step 2.1** — Snake drawn from vector shapes: rounded body segments, a brighter head with eyes
+      oriented to travel direction (curve/tail sprite refinement can follow later).
+- [x] **Step 2.2** — Themed board background: vertical gradient + subtle grid, framed border.
+- [x] **Step 2.3** — Animated food (pulsing scale; slow spin on the blue star; halo on gold/mega).
+- [x] **Step 2.4** — Bevelled obstacle blocks (shadow + highlight) instead of flat rectangles.
+- [x] **Step 2.5** — **Smooth inter-tick motion**: each segment interpolates from its previous cell to the
+      current one over one tick via a `withFrameNanos` clock; logic stays grid-based.
+- [x] **Step 2.6** — Particle burst on eat (colour per food type), simulated in cell space on `Canvas`.
+- [x] **Step 2.7** — Screen shake on the game-over collision (damped wobble).
+- [x] **Step 2.8** — Glow on the snake's head (radial gradient halo).
 
 ### Phase 3 — Pro UI / UX
 

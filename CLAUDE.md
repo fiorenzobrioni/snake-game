@@ -27,7 +27,8 @@ The project started as a learning exercise in **C# / .NET 10 / Windows Forms (GD
   - `minSdk 24`, `compileSdk`/`targetSdk 35`; `applicationId` `com.brioni.snake` (placeholder, finalize before first Play upload)
   - Phase 0 done: `MainActivity` launches a themed, edge-to-edge, **portrait** full-screen Compose surface, splash via `core-splashscreen`, adaptive-icon placeholder
   - Phase 1 done: full gameplay at parity with v1.0.0 — pure-Kotlin `game/` model + `GameEngine`, Compose `Canvas` renderer, coroutine loop in `GameViewModel`, swipe + D-pad input, 5 levels, 5 board sizes, 7 food types, score HUD, pause/restart; unit-tested. See `ROADMAP.md`
-  - Phase 2+ (visual polish, audio, shaders, distribution) still ahead — see `ROADMAP.md`
+  - Phase 2 done: visual polish — **portrait** board presets, smooth interpolated motion, gradient background, animated/haloed food, bevelled obstacles, glowing eyed snake head, eat particles and a game-over screen shake (`GameBoard`/`GameEffects`). See `ROADMAP.md`
+  - Phase 3+ (pro UI/menus, audio, shaders, distribution) still ahead — see `ROADMAP.md`
 - **Frozen (legacy)**: `legacy/SnakeGame/` — C#/.NET 10 WinForms v1.0.0
   - Windows only, target `net10.0-windows`; all logic + UI + rendering in `SnakeForm.cs`
   - Solution file `legacy/snake-game.slnx`; build notes in `legacy/README.md`
