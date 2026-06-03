@@ -1,4 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Snake</string>
+
+    <!-- Menu / titles -->
+    <string name="game_title">SNAKE</string>
+    <string name="menu_level">Level</string>
+    <string name="menu_board_size">Board size</string>
+    <string name="action_play">Play</string>
+
+    <!-- HUD -->
+    <string name="hud_score">Score: %1$d</string>
+    <string name="action_pause">Pause</string>
+    <string name="action_resume">Resume</string>
+    <string name="action_menu">Menu</string>
+
+    <!-- Pause overlay -->
+    <string name="paused_title">Paused</string>
+
+    <!-- Game over overlay -->
+    <string name="game_over_title">Game Over</string>
+    <string name="game_over_score">Final score: %1$d</string>
+    <string name="action_play_again">Play again</string>
+
+    <!-- Direction controls (content descriptions) -->
+    <string name="dir_up">Move up</string>
+    <string name="dir_down">Move down</string>
+    <string name="dir_left">Move left</string>
+    <string name="dir_right">Move right</string>
 </resources>
