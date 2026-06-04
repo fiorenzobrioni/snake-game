@@ -35,7 +35,7 @@ class SettingsRepository(private val context: Context) {
         Settings(
             level = prefs[LEVEL].toEnum(Level::valueOf) ?: Level.Beginner,
             scale = prefs[SCALE].toEnum(BoardScale::valueOf) ?: BoardScale.Classic,
-            controlScheme = prefs[CONTROL].toEnum(ControlScheme::valueOf) ?: ControlScheme.TwoButton,
+            controlScheme = prefs[CONTROL].toEnum(ControlScheme::valueOf) ?: ControlScheme.Swipe,
         )
     }
 

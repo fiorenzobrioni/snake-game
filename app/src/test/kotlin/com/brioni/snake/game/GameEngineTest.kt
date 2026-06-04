@@ -2,7 +2,6 @@ package com.brioni.snake.game
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.random.Random
@@ -72,15 +71,89 @@ class GameEngineTest {
         assertEquals(5, state.snake.size) // length now stable
     }
 
+    /** A grow food the snake walks onto next tick (head moves (5,5) → (6,5)). */
+    private fun growFood(segments: Int) = Food(
+        position = Position(6, 5),
+        category = FoodCategory.Grow,
+        tier = FoodTier.Medium,
+        size = FoodSize.Standard,
+        effect = FoodEffect.Grow(segments),
+    )
+
+    private fun shrinkFood(segments: Int, size: FoodSize = FoodSize.Standard) = Food(
+        position = Position(6, 5),
+        category = FoodCategory.Shrink,
+        tier = FoodTier.Medium,
+        size = size,
+        effect = FoodEffect.Shrink(segments),
+    )
+
     @Test
     fun eatingGrowsSnakeAndScores() {
-        val food = Food(Position(6, 5), FoodType.Red, growth = 4)
-        val next = engine.tick(runningState(Direction.Right, foods = listOf(food)))
-        assertEquals(4 * 10, next.score)
+        val next = engine.tick(runningState(Direction.Right, foods = listOf(growFood(4))))
+        assertEquals(4 * 10, next.score) // first eat → combo x1
         assertEquals(4, next.snake.size) // +1 this tick, 3 more queued
         assertEquals(3, next.pendingGrowth)
         assertFalse(next.foods.any { it.position == Position(6, 5) })
         assertEquals(GameEngine.FOOD_COUNT, next.foods.size) // refilled
+        assertTrue(next.lastEvents.any { it is GameEvent.Ate })
+    }
+
+    @Test
+    fun comboMultiplierScalesGrowScore() {
+        // A streak already at x1, still within its window: the next grow scores x2.
+        val state = runningState(Direction.Right, foods = listOf(growFood(3)))
+            .copy(combo = 1, comboDeadlineTick = 100, elapsedTicks = 10)
+        val next = engine.tick(state)
+        assertEquals(2, next.combo)
+        assertEquals(3 * 10 * 2, next.score)
+    }
+
+    @Test
+    fun lapsedStreakResetsComboToOne() {
+        val state = runningState(Direction.Right, foods = listOf(growFood(3)))
+            .copy(combo = 4, comboDeadlineTick = 5, elapsedTicks = 10)
+        val next = engine.tick(state)
+        assertEquals(1, next.combo) // deadline passed → fresh streak
+        assertEquals(3 * 10 * 1, next.score)
+    }
+
+    @Test
+    fun shrinkTrimsTailButNeverBelowFloor() {
+        // A 6-cell snake eating Shrink(2): head added (7), two tail cells dropped.
+        val longSnake = listOf(
+            Position(5, 5), Position(4, 5), Position(3, 5),
+            Position(2, 5), Position(1, 5), Position(1, 6),
+        )
+        val state = runningState(Direction.Right, foods = listOf(shrinkFood(2)))
+            .copy(snake = longSnake)
+        val next = engine.tick(state)
+        assertEquals(5, next.snake.size)
+        val shrunk = next.lastEvents.filterIsInstance<GameEvent.Shrunk>().single()
+        assertEquals(2, shrunk.removed)
+
+        // At the floor, a big shrink can only ever drop the freshly-added head cell.
+        val atFloor = runningState(Direction.Right, foods = listOf(shrinkFood(9)))
+        val floored = engine.tick(atFloor)
+        assertEquals(GameEngine.MIN_SNAKE_LENGTH, floored.snake.size)
+    }
+
+    @Test
+    fun shrinkAwardsReducedSymbolicPoints() {
+        val std = engine.tick(runningState(Direction.Right, foods = listOf(shrinkFood(2))))
+        assertEquals(GameEngine.SHRINK_POINTS, std.score)
+        val maxi = engine.tick(
+            runningState(Direction.Right, foods = listOf(shrinkFood(2, FoodSize.Maxi))),
+        )
+        assertEquals(GameEngine.SHRINK_POINTS_MAXI, maxi.score)
+    }
+
+    @Test
+    fun elapsedTicksAdvancesOnlyWhileRunning() {
+        val running = runningState()
+        assertEquals(1, engine.tick(running).elapsedTicks)
+        val ready = engine.setup(Level.Beginner, BoardDimensions(18, 26))
+        assertEquals(0, engine.tick(ready).elapsedTicks)
     }
 
     @Test
@@ -187,11 +260,42 @@ class GameEngineTest {
     }
 
     @Test
-    fun blueFoodGrowthStaysWithinPortedRange() {
-        // Sample the table heavily; Blue growth must land in 2..24 inclusive.
-        val table = (0 until 5000).map { FoodTable.roll(Random(it.toLong())) }
-        val blue = table.filter { it.type == FoodType.Blue }
-        assertNotNull(blue)
-        blue.forEach { assertTrue(it.growth in 2..24) }
+    fun earlyGameOnlySpawnsStandardGrowFood() {
+        // At the very start nothing but small/medium growing food is unlocked.
+        repeat(2000) { seed ->
+            val spec = FoodTable.roll(Random(seed.toLong()), elapsedTicks = 0, level = Level.Beginner)
+            assertEquals(FoodCategory.Grow, spec.category)
+            assertEquals(FoodSize.Standard, spec.size)
+            assertFalse(spec.tier == FoodTier.Mystery)
+            assertTrue(spec.effect is FoodEffect.Grow)
+        }
+    }
+
+    @Test
+    fun lateGameUnlocksShrinkMaxiAndMystery() {
+        // Far into a session every kind should appear across many samples.
+        val specs = (0 until 4000).map {
+            FoodTable.roll(Random(it.toLong()), elapsedTicks = 2000, level = Level.Beginner)
+        }
+        assertTrue("shrink unlocked", specs.any { it.category == FoodCategory.Shrink })
+        assertTrue("maxi unlocked", specs.any { it.size == FoodSize.Maxi })
+        assertTrue("mystery unlocked", specs.any { it.tier == FoodTier.Mystery })
+    }
+
+    @Test
+    fun mysteryAmountsStayWithinRangeAndAreDeterministic() {
+        val specs = (0 until 4000).map {
+            FoodTable.roll(Random(it.toLong()), elapsedTicks = 2000, level = Level.Beginner)
+        }
+        specs.filter { it.tier == FoodTier.Mystery }.forEach { spec ->
+            when (val e = spec.effect) {
+                is FoodEffect.Grow -> assertTrue(e.segments in 2..24)
+                is FoodEffect.Shrink -> assertTrue(e.segments in 2..14)
+            }
+        }
+        // Same seed + inputs → identical spec (resolved deterministically at spawn).
+        val a = FoodTable.roll(Random(7), elapsedTicks = 2000, level = Level.Beginner)
+        val b = FoodTable.roll(Random(7), elapsedTicks = 2000, level = Level.Beginner)
+        assertEquals(a, b)
     }
 }

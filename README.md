@@ -13,10 +13,13 @@ polished, **Google-Play-publishable** title with animation, particles, shaders, 
 Gameplay is drawn on a Compose `Canvas` — the natural evolution of the immediate-mode rendering this project
 started with. The step-by-step plan lives in [`ROADMAP.md`](ROADMAP.md).
 
-> 🧱 **Current status:** Phase 3 (pro UI/UX) — a polished, playable Snake: animated main menu and
-> settings, persistent highscores, a responsive full-screen board, two-button relative controls
-> (plus swipe and D-pad), smooth interpolated motion, particles, screen shake and a pause blur.
-> Audio and AGSL shaders arrive in later phases.
+> 🧱 **Current status:** Phase 3 (pro UI/UX) complete, on top of the **Phase 2.5 food system** — a
+> polished, playable Snake with an animated main menu and settings, persistent highscores, a
+> responsive full-screen board, control schemes (two-button relative by default, plus swipe and D-pad),
+> smooth interpolated motion, particles, screen shake and a pause blur. The food layer adds two
+> **categories** (grow / shrink) with magnitude tiers, **maxi** sizes, a **mystery "?"** piece, a
+> **time-gated** progression that ramps mid-session, and a **combo** score multiplier. Audio and AGSL
+> shaders arrive in later phases.
 
 ---
 
@@ -24,27 +27,31 @@ started with. The step-by-step plan lives in [`ROADMAP.md`](ROADMAP.md).
 
 The classic Snake mechanics, extended with configurable features so every run feels different:
 
-- 🍎 **Multiple food types** — different foods grant different growth and score; rarer foods are worth more.
+- 🍽️ **Two food categories** — **grow** food makes the snake longer; **shrink** food trims it back.
+- 🔠 **Magnitude tiers + maxi sizes** — each category comes in several strengths, and a 2×2 **maxi**
+  variant that amplifies the effect.
+- ❓ **Mystery pieces** — a "?" food per category with a random amount.
+- ⏳ **Time-gated progression** — early on you only see growing food; shrink, maxi and mystery pieces
+  unlock as the session goes on (sooner on harder levels), so a run ramps up in difficulty.
+- ✖️ **Combo multiplier** — eating in quick succession multiplies your score (up to ×5).
 - 🚧 **Obstacles** — scattered blocks that raise the difficulty.
 - 🎚️ **Difficulty levels** — 5 levels (*Beginner* → *Legend*) tuning speed and obstacle count.
 - 📐 **Responsive board** — pick a granularity (*Cozy* / *Classic* / *Epic*); the board's rows and
   columns are computed from your device's screen so it fills the display with square cells.
-- 🎮 **Control schemes** — two-button *relative* steering by default, or classic swipe / D-pad.
-- ⏸️ **Pause, menus, highscores, audio, effects** — added progressively (see the roadmap).
+- 🎮 **Control schemes** — **swipe** by default, or a two-button *relative* steering / classic D-pad.
+- ⏸️ **Pause, menus, highscores, audio, special power-ups** — added progressively (see the roadmap).
 
-### 🍽️ Food types at a glance
+### 🍽️ Food system at a glance
 
-| Food          | Spawn chance | Growth | Notes                          |
-|---------------|--------------|--------|--------------------------------|
-| 🟢 Green      | ~25 %        | +2     | Common baseline                |
-| 🔴 Red        | ~25 %        | +4     | Better bite                    |
-| 🟡 Gold       | ~15 %        | +6     | Rare and tasty                 |
-| 🔷 Blue ⭐    | ~10 %        | +2…+24 | Random jackpot                 |
-| 🟢🟢 Mega Green | ~10 %      | +8     | 2×2 cells                      |
-| 🔴🔴 Mega Red   | ~7 %       | +16    | 2×2 cells                      |
-| 🟡🟡 Mega Gold  | ~3 %       | +24    | 2×2 cells, the big one         |
+| Category | Tiers (standard growth/shrink) | Maxi (2×2) | Mystery "?" | Score |
+|----------|-------------------------------|------------|-------------|-------|
+| 🟢 **Grow**   | +2 / +4 / +6 / +8 | doubles the amount | random +2…+24 | `+10 × growth × combo` |
+| 🟠 **Shrink** | −2 / −3 / −5      | doubles the amount | random −2…−14 | small symbolic bonus (5 / 10 maxi) |
 
-The score reward scales with the growth amount (`+10 points` per unit of growth).
+The snake never shrinks below **3 segments**. Grow food drives the score (scaled by the combo
+multiplier); shrink food is a tactical tool — it gives only token points but lets you cut your length
+to manoeuvre. The big, rarer **special power-ups and hazards** (earthquake, explosion, speed, ghost,
+freeze, jackpot) are planned for a later phase — see the [roadmap](ROADMAP.md).
 
 ### ⚔️ Difficulty levels
 
@@ -109,11 +116,19 @@ The project targets `minSdk 24` (Android 7.0) and `compileSdk`/`targetSdk 35` (A
 Guide the snake around the board, eat food to grow and score, and avoid the walls, the obstacles and your
 own body.
 
-**Controls (touch):** by default, two large buttons fill the bottom of the screen and turn the snake
-**left / right relative to its heading**. Prefer something else? Switch to **swipe** or the classic
-**D-pad** in **Settings** — your choice is saved. 180° reversals are blocked, so you can't instantly
-fold back into your own body. Pick a level and board scale on the start screen; pause and restart from
-the in-game controls. Your best score is kept per (level, scale).
+**Food:** green = grow, warm/orange = shrink, "?" = a mystery amount. Bigger (2×2 maxi) pieces and the
+mystery and shrink foods only start appearing as the session runs on — so each run gets more eventful.
+Chain bites together to build a **combo** and multiply your score, and use shrink food to cut your length
+when the board gets tight (you never drop below 3 segments).
+
+**Controls (touch):** by default you **swipe** anywhere on the board to change direction. Prefer
+buttons? Switch in **Settings** to a **two-button** scheme (turn left / right relative to the snake's
+heading) or the classic **D-pad** — your choice is saved. 180° reversals are blocked, so you can't
+instantly fold back into your own body. Pick a level and board scale on the start screen; pause and
+restart from the in-game controls. Your best score is kept per (level, scale).
+
+> Audio and the special power-ups (earthquake, explosion, speed, ghost, freeze, jackpot) come online in
+> later phases of the [roadmap](ROADMAP.md).
 
 ---
 

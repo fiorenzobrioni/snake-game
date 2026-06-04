@@ -82,6 +82,11 @@ Everything lives in `legacy/SnakeGame/SnakeForm.cs` (single `SnakeForm` class): 
 - **Assets**: new graphic/audio/font/shader assets must be free with a compatible license (MIT/CC0/CC-BY). Record source and license in `docs/CREDITS.md` in the same change.
 - **Secrets**: never commit keystores or signing material (`*.jks`, `*.keystore`, `keystore.properties` are git-ignored). `local.properties` is machine-specific and git-ignored.
 
+## Deliverables to the user
+
+- **Debug APK at the end of every phase**: when a roadmap **phase** is completed, build the debug APK (`./gradlew assembleDebug`) and deliver it to the user **in chat** (the file at `app/build/outputs/apk/debug/app-debug.apk`) so they can install and try it. If the build environment has no Android SDK and one cannot be provisioned, say so explicitly instead of silently skipping.
+- **Keep `README.md` current**: at the end of **every implementation**, review `README.md` and update it if the change affects anything user-facing (features, gameplay rules, controls, screenshots, build/run instructions). If no update is needed, no action is required.
+
 ## Documentation files — what goes where
 
 Two files track the project's progress and health. **Write to both when completing a step.**
