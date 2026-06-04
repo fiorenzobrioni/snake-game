@@ -76,6 +76,20 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
+### 2026-06-04 — Toolchain: bump to API 36 (Android 16)
+
+- Raised `compileSdk`/`targetSdk` from **35 → 36** (Android 16) in `app/build.gradle.kts`;
+  `minSdk` stays at 24.
+- Upgraded the build toolchain so API 36 is officially supported (AGP 8.7.3 only certifies
+  up to API 35): **AGP 8.7.3 → 8.9.1** in `gradle/libs.versions.toml` and the **Gradle
+  wrapper 8.9 → 8.11.1** (AGP 8.9 requires Gradle ≥ 8.11.1). Kotlin 2.0.21 unchanged.
+- Verified the new environment end-to-end: `assembleDebug` (APK reports
+  `compileSdkVersion=36`, `targetSdkVersion=36`, `platformBuildVersionName=16`),
+  `testDebugUnitTest` and `lintDebug` all green on JDK 21 + SDK Platform 36 / Build-Tools 36.0.0.
+- Updated API-level references in `README.md` and `ROADMAP.md` (badge + tooling/requirements).
+
+---
+
 ### 2026-06-04 — Phase 5 complete: Shaders & FX (AGSL)
 
 Added GPU shader effects via AGSL `RuntimeShader`, completing milestone **M3 ("Alive")**.
