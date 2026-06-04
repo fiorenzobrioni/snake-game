@@ -11,7 +11,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import com.brioni.snake.ui.game.GameScreen
+import com.brioni.snake.ui.App
 import com.brioni.snake.ui.theme.SnakeGameTheme
 
 /**
@@ -39,7 +39,7 @@ private fun SnakeApp() {
     ) {
         // safeDrawingPadding keeps content clear of system bars / cutouts while
         // the background still draws edge-to-edge behind them.
-        GameScreen(
+        App(
             modifier = Modifier
                 .fillMaxSize()
                 .safeDrawingPadding(),

@@ -26,7 +26,7 @@ enum class GameStatus {
  * @param pendingGrowth    segments still owed from eaten food, paid one per tick.
  */
 data class GameState(
-    val board: BoardSize,
+    val board: BoardDimensions,
     val level: Level,
     val snake: List<Position>,
     val direction: Direction,

@@ -1,5 +1,6 @@
 package com.brioni.snake.game
 
+import kotlin.math.abs
 import kotlin.random.Random
 
 /**
@@ -17,7 +18,7 @@ class GameEngine(private val random: Random = Random.Default) {
      * Builds a [GameStatus.Ready] state: snake centred, obstacles generated for
      * [level], no food yet. The menu is shown over this until [start].
      */
-    fun setup(level: Level, board: BoardSize): GameState {
+    fun setup(level: Level, board: BoardDimensions): GameState {
         val cx = board.width / 2
         val cy = board.height / 2
         val snake = listOf(
@@ -49,7 +50,7 @@ class GameEngine(private val random: Random = Random.Default) {
     }
 
     /** Convenience: a fresh, already-running game. */
-    fun newGame(level: Level, board: BoardSize): GameState = start(setup(level, board))
+    fun newGame(level: Level, board: BoardDimensions): GameState = start(setup(level, board))
 
     /**
      * Buffers a direction change for the next tick. A 180° reversal of the
@@ -62,6 +63,19 @@ class GameEngine(private val random: Random = Random.Default) {
         if (direction.isOpposite(state.direction)) return state
         return state.copy(pendingDirection = direction)
     }
+
+    /**
+     * Turns the snake 90° left/right relative to its committed heading. Used by
+     * the two-button controls. Routed through [changeDirection] so the same
+     * buffering and reversal-safety rules apply; turning relative to the
+     * committed (not pending) direction also makes two quick taps within one
+     * tick safe — the second is validated against the still-committed heading.
+     */
+    fun turnLeft(state: GameState): GameState =
+        changeDirection(state, state.direction.turnedLeft)
+
+    fun turnRight(state: GameState): GameState =
+        changeDirection(state, state.direction.turnedRight)
 
     /** Toggles between [GameStatus.Running] and [GameStatus.Paused]. */
     fun togglePause(state: GameState): GameState = when (state.status) {
@@ -120,7 +134,7 @@ class GameEngine(private val random: Random = Random.Default) {
         )
     }
 
-    private fun isOutOfBounds(cell: Position, board: BoardSize): Boolean =
+    private fun isOutOfBounds(cell: Position, board: BoardDimensions): Boolean =
         cell.x < 0 || cell.x >= board.width || cell.y < 0 || cell.y >= board.height
 
     /** The head (index 0) hitting any other body cell. */
@@ -131,27 +145,63 @@ class GameEngine(private val random: Random = Random.Default) {
         return false
     }
 
+    /**
+     * Lays out obstacles with **4-fold symmetry**: cells are sampled in the
+     * top-left quadrant and mirrored across the vertical and horizontal axes
+     * (`x → w-1-x`, `y → h-1-y`) so the field looks deliberate rather than
+     * random. Two rows/columns next to every border are kept clear, and a zone
+     * around the centre (where the snake spawns) is excluded so a game never
+     * ends on the first ticks. Deterministic given the injected [random].
+     */
     private fun generateObstacles(
         level: Level,
-        board: BoardSize,
+        board: BoardDimensions,
         snake: List<Position>,
     ): Set<Position> {
         if (level.obstacleCount == 0) return emptySet()
+
+        val w = board.width
+        val h = board.height
+        // Inclusive sampling bounds: keep two cells clear by each border.
+        val minX = OBSTACLE_MARGIN
+        val minY = OBSTACLE_MARGIN
+        val maxXExclusive = (w + 1) / 2 // seed quadrant spans up to the centre
+        val maxYExclusive = (h + 1) / 2
+        if (maxXExclusive <= minX || maxYExclusive <= minY) return emptySet()
+
+        val cx = (w - 1) / 2f
+        val cy = (h - 1) / 2f
+        val clearRadiusX = (w * CENTER_CLEAR_FRACTION).coerceAtLeast(2f)
+        val clearRadiusY = (h * CENTER_CLEAR_FRACTION).coerceAtLeast(3f)
+
         val snakeCells = snake.toHashSet()
         val obstacles = LinkedHashSet<Position>()
-        repeat(level.obstacleCount) {
-            val cell = Position(
-                random.nextInt(1, board.width - 1),
-                random.nextInt(1, board.height - 1),
+        val perQuadrant = (level.obstacleCount + 3) / 4 // ceil — four mirrors each
+        val targetCount = perQuadrant * 4
+        var attempts = 0
+        val maxAttempts = perQuadrant * 40
+
+        while (obstacles.size < targetCount && attempts < maxAttempts) {
+            attempts++
+            val x = random.nextInt(minX, maxXExclusive)
+            val y = random.nextInt(minY, maxYExclusive)
+            // Keep the spawn area around the centre clear.
+            if (abs(x - cx) <= clearRadiusX && abs(y - cy) <= clearRadiusY) continue
+            val mirrored = listOf(
+                Position(x, y),
+                Position(w - 1 - x, y),
+                Position(x, h - 1 - y),
+                Position(w - 1 - x, h - 1 - y),
             )
-            if (cell !in snakeCells) obstacles.add(cell)
+            if (mirrored.any { it in snakeCells }) continue
+            obstacles.addAll(mirrored)
         }
         return obstacles
     }
 
     /** Tops the board up to [FOOD_COUNT] items, skipping if no cell is free. */
     private fun refill(
-        board: BoardSize,
+        board: BoardDimensions,
         snake: List<Position>,
         obstacles: Set<Position>,
         existing: List<Food>,
@@ -170,7 +220,7 @@ class GameEngine(private val random: Random = Random.Default) {
      * deterministic scan so a near-full board can't loop forever.
      */
     private fun spawnFood(
-        board: BoardSize,
+        board: BoardDimensions,
         snake: List<Position>,
         obstacles: Set<Position>,
         existing: List<Food>,
@@ -207,5 +257,11 @@ class GameEngine(private val random: Random = Random.Default) {
         /** Foods kept on the board at once — two, as in v1.0.0. */
         const val FOOD_COUNT = 2
         private const val MAX_SPAWN_ATTEMPTS = 200
+
+        /** Rows/columns kept clear next to every border for symmetric obstacles. */
+        private const val OBSTACLE_MARGIN = 2
+
+        /** Half-extent of the central spawn clear-zone, as a fraction of the board. */
+        private const val CENTER_CLEAR_FRACTION = 0.18f
     }
 }

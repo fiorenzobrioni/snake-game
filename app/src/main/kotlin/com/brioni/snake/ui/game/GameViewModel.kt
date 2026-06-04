@@ -7,7 +7,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.brioni.snake.game.BoardSize
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import com.brioni.snake.data.SettingsRepository
+import com.brioni.snake.game.BoardDimensions
+import com.brioni.snake.game.BoardScale
+import com.brioni.snake.game.ControlScheme
+import com.brioni.snake.game.DEFAULT_ASPECT
 import com.brioni.snake.game.Direction
 import com.brioni.snake.game.FoodType
 import com.brioni.snake.game.GameEngine
@@ -15,6 +21,7 @@ import com.brioni.snake.game.GameState
 import com.brioni.snake.game.GameStatus
 import com.brioni.snake.game.Level
 import com.brioni.snake.game.Position
+import com.brioni.snake.game.boardFor
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -26,13 +33,25 @@ data class EatEvent(val cell: Position, val type: FoodType, val span: Int)
  * Holds the [GameState] and drives the tick loop. All game rules live in
  * [GameEngine]; this class owns the timing coroutine, surfaces state to Compose
  * and publishes the data the renderer needs for inter-tick interpolation
- * ([previousSnake] + [tickId]) and effects ([eatEvent]/[deathEventId]).
+ * ([previousSnake] + [tickTimeNanos]) and effects ([eatEvent]/[deathEventId]).
+ *
+ * Player preferences (level, board scale, control scheme) and highscores are
+ * read from and written back to [repo]; the board's concrete dimensions are
+ * computed from the selected [scale] and the measured play-area aspect ratio.
  */
-class GameViewModel : ViewModel() {
+class GameViewModel(private val repo: SettingsRepository) : ViewModel() {
 
     private val engine = GameEngine()
 
-    var state by mutableStateOf(engine.setup(DEFAULT_LEVEL, DEFAULT_BOARD))
+    /** The selected granularity preset; concrete dims derive from it + the aspect. */
+    var scale by mutableStateOf(DEFAULT_SCALE)
+        private set
+
+    /** Active steering scheme (loaded from settings). */
+    var controlScheme by mutableStateOf(DEFAULT_CONTROL)
+        private set
+
+    var state by mutableStateOf(engine.setup(DEFAULT_LEVEL, boardFor(DEFAULT_SCALE, DEFAULT_ASPECT)))
         private set
 
     /** The snake as it was before the most recent tick, for smooth motion. */
@@ -42,8 +61,7 @@ class GameViewModel : ViewModel() {
     /**
      * `System.nanoTime()` of the most recent tick (or reset). Updated atomically
      * with [state]/[previousSnake] so the renderer can derive the interpolation
-     * fraction from a single consistent snapshot — no separately-updated
-     * fraction state that could lag a frame behind a committed move.
+     * fraction from a single consistent snapshot.
      */
     var tickTimeNanos by mutableLongStateOf(System.nanoTime())
         private set
@@ -58,26 +76,87 @@ class GameViewModel : ViewModel() {
     var deathEventId by mutableIntStateOf(0)
         private set
 
+    /** Best score for the current (level, scale), and whether the last run beat it. */
+    var bestScore by mutableIntStateOf(0)
+        private set
+    var isNewBest by mutableStateOf(false)
+        private set
+
     private var loop: Job? = null
+    private var bestJob: Job? = null
+    private var lastAspect = DEFAULT_ASPECT
 
     val level: Level get() = state.level
-    val board: BoardSize get() = state.board
+    val board: BoardDimensions get() = state.board
 
-    fun selectLevel(level: Level) {
-        if (state.status == GameStatus.Ready) resetTo(engine.setup(level, state.board))
+    init {
+        // Seed level/scale/scheme from persisted settings; only re-apply while
+        // Ready so a mid-game preference change can't disturb a live board.
+        viewModelScope.launch {
+            repo.settings.collect { settings ->
+                controlScheme = settings.controlScheme
+                if (state.status == GameStatus.Ready) {
+                    val levelChanged = settings.level != state.level
+                    scale = settings.scale
+                    if (levelChanged) {
+                        resetTo(engine.setup(settings.level, boardFor(scale, lastAspect)))
+                    } else {
+                        reconfigureBoard()
+                    }
+                    refreshBest()
+                }
+            }
+        }
     }
 
-    fun selectBoard(board: BoardSize) {
-        if (state.status == GameStatus.Ready) resetTo(engine.setup(state.level, board))
+    fun selectLevel(level: Level) {
+        if (state.status != GameStatus.Ready) return
+        viewModelScope.launch { repo.setLevel(level) }
+        resetTo(engine.setup(level, state.board))
+        refreshBest()
+    }
+
+    fun selectScale(scale: BoardScale) {
+        if (state.status != GameStatus.Ready) return
+        this.scale = scale
+        viewModelScope.launch { repo.setScale(scale) }
+        reconfigureBoard()
+        refreshBest()
+    }
+
+    /**
+     * Called by the UI when the play area is (re)measured. Resizes the board to
+     * fill it, but only while [GameStatus.Ready]; ignored once a game starts so
+     * dimensions stay locked during play. Idempotent against measurement jitter.
+     */
+    fun onPlayAreaMeasured(aspectRatio: Float) {
+        if (state.status != GameStatus.Ready) return
+        if (aspectRatio <= 0f || aspectRatio == lastAspect) return
+        lastAspect = aspectRatio
+        reconfigureBoard()
+    }
+
+    private fun reconfigureBoard() {
+        val dims = boardFor(scale, lastAspect)
+        if (dims != state.board) resetTo(engine.setup(state.level, dims))
     }
 
     fun start() {
         resetTo(engine.start(state))
+        isNewBest = false
         runLoop()
     }
 
     fun setDirection(direction: Direction) {
         state = engine.changeDirection(state, direction)
+    }
+
+    fun turnLeft() {
+        state = engine.turnLeft(state)
+    }
+
+    fun turnRight() {
+        state = engine.turnRight(state)
     }
 
     fun togglePause() {
@@ -87,12 +166,14 @@ class GameViewModel : ViewModel() {
 
     fun playAgain() {
         resetTo(engine.newGame(state.level, state.board))
+        isNewBest = false
         runLoop()
     }
 
     fun toMenu() {
         stopLoop()
         resetTo(engine.setup(state.level, state.board))
+        refreshBest()
     }
 
     /** Replaces the state and resets interpolation bookkeeping to it. */
@@ -126,12 +207,29 @@ class GameViewModel : ViewModel() {
         }
         if (after.status == GameStatus.GameOver && before.status == GameStatus.Running) {
             deathEventId++
+            onGameOver(after.score)
         }
 
         // Commit the interpolation snapshot atomically: previous, current, time.
         previousSnake = before.snake
         state = after
         tickTimeNanos = System.nanoTime()
+    }
+
+    private fun onGameOver(score: Int) {
+        isNewBest = score > bestScore
+        // Persist; the bestJob collector reflects the new value back into state.
+        viewModelScope.launch { repo.submitScore(state.level, scale, score) }
+    }
+
+    /** Tracks the best score for the current (level, scale) via a single collector. */
+    private fun refreshBest() {
+        bestJob?.cancel()
+        val level = state.level
+        val currentScale = scale
+        bestJob = viewModelScope.launch {
+            repo.highScore(level, currentScale).collect { bestScore = it }
+        }
     }
 
     private fun stopLoop() {
@@ -143,8 +241,13 @@ class GameViewModel : ViewModel() {
         stopLoop()
     }
 
-    private companion object {
-        val DEFAULT_LEVEL = Level.Beginner
-        val DEFAULT_BOARD = BoardSize.Classic
+    companion object {
+        private val DEFAULT_LEVEL = Level.Beginner
+        private val DEFAULT_SCALE = BoardScale.Classic
+        private val DEFAULT_CONTROL = ControlScheme.TwoButton
+
+        fun factory(repo: SettingsRepository) = viewModelFactory {
+            initializer { GameViewModel(repo) }
+        }
     }
 }

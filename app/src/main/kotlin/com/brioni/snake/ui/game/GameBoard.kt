@@ -21,7 +21,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.util.lerp
-import com.brioni.snake.game.BoardSize
+import com.brioni.snake.game.BoardDimensions
 import com.brioni.snake.game.Direction
 import com.brioni.snake.game.Food
 import com.brioni.snake.game.FoodType
@@ -156,7 +156,7 @@ fun GameBoard(
 }
 
 private fun DrawScope.drawBoardBackground(
-    board: BoardSize,
+    board: BoardDimensions,
     cell: Float,
     originX: Float,
     originY: Float,

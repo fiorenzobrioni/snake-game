@@ -1,17 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Placeholder snake icon. Body segments + a brighter head and a piece of
-     food, kept inside the 72dp adaptive-icon safe zone. Refined in Phase 7. -->
+<!-- Snake icon foreground: rounded green body segments curving up into a bright
+     lime head with an eye, plus a gold piece of food — mirroring the in-game
+     snake. Kept within the 72dp adaptive safe zone (≈ the central 21–87 square).
+     Shapes are circle paths so the monochrome/themed silhouette still reads. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Body -->
-    <path android:fillColor="#4CAF50" android:pathData="M30,62 h16 v16 h-16 z" />
-    <path android:fillColor="#4CAF50" android:pathData="M46,62 h16 v16 h-16 z" />
-    <path android:fillColor="#4CAF50" android:pathData="M46,46 h16 v16 h-16 z" />
+
+    <!-- Body segments (tail → neck) -->
+    <path android:fillColor="#3FA34D" android:pathData="M29,76 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z" />
+    <path android:fillColor="#3FA34D" android:pathData="M43,74 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z" />
+    <path android:fillColor="#3FA34D" android:pathData="M55,66 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z" />
+    <path android:fillColor="#3FA34D" android:pathData="M57,52 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z" />
+    <path android:fillColor="#3FA34D" android:pathData="M49,42 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z" />
+
     <!-- Head -->
-    <path android:fillColor="#7CFC00" android:pathData="M62,46 h16 v16 h-16 z" />
+    <path android:fillColor="#7CFC00" android:pathData="M34,32 a12,12 0 1,0 24,0 a12,12 0 1,0 -24,0 Z" />
+    <!-- Eye + catchlight -->
+    <path android:fillColor="#101418" android:pathData="M47,29 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0 Z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M50.5,27.5 a1,1 0 1,0 2,0 a1,1 0 1,0 -2,0 Z" />
+
     <!-- Food -->
-    <path android:fillColor="#FFC107" android:pathData="M70,30 h12 v12 h-12 z" />
+    <path android:fillColor="#FFC107" android:pathData="M67,40 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0 Z" />
 </vector>

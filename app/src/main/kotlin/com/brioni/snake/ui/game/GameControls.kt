@@ -4,7 +4,12 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
@@ -17,6 +22,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import com.brioni.snake.R
 import com.brioni.snake.game.Direction
 import kotlin.math.abs
@@ -52,6 +58,58 @@ fun Modifier.swipeToSteer(
             }
         },
     )
+}
+
+/**
+ * The default scheme: two large half-width buttons that turn the snake left /
+ * right **relative to its heading** (Left = counter-clockwise, Right =
+ * clockwise). They fill the bottom of the screen, split in half, for easy
+ * thumb reach with either hand.
+ */
+@Composable
+fun RelativeControls(
+    onLeft: () -> Unit,
+    onRight: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth().height(96.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        TurnButton(
+            glyph = "↺",
+            descriptionRes = R.string.turn_left,
+            onClick = onLeft,
+            modifier = Modifier.weight(1f).fillMaxHeight(),
+        )
+        TurnButton(
+            glyph = "↻",
+            descriptionRes = R.string.turn_right,
+            onClick = onRight,
+            modifier = Modifier.weight(1f).fillMaxHeight(),
+        )
+    }
+}
+
+@Composable
+private fun TurnButton(
+    glyph: String,
+    descriptionRes: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val description = stringResource(descriptionRes)
+    FilledTonalButton(
+        onClick = onClick,
+        shape = RoundedCornerShape(20.dp),
+        modifier = modifier.semantics { contentDescription = description },
+    ) {
+        Text(
+            text = glyph,
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.Bold,
+        )
+    }
 }
 
 /**

@@ -27,8 +27,9 @@ The project started as a learning exercise in **C# / .NET 10 / Windows Forms (GD
   - `minSdk 24`, `compileSdk`/`targetSdk 35`; `applicationId` `com.brioni.snake` (placeholder, finalize before first Play upload)
   - Phase 0 done: `MainActivity` launches a themed, edge-to-edge, **portrait** full-screen Compose surface, splash via `core-splashscreen`, adaptive-icon placeholder
   - Phase 1 done: full gameplay at parity with v1.0.0 — pure-Kotlin `game/` model + `GameEngine`, Compose `Canvas` renderer, coroutine loop in `GameViewModel`, swipe + D-pad input, 5 levels, 5 board sizes, 7 food types, score HUD, pause/restart; unit-tested. See `ROADMAP.md`
-  - Phase 2 done: visual polish — **portrait** board presets, smooth interpolated motion, gradient background, animated/haloed food, bevelled obstacles, glowing eyed snake head, eat particles and a game-over screen shake (`GameBoard`/`GameEffects`). See `ROADMAP.md`
-  - Phase 3+ (pro UI/menus, audio, shaders, distribution) still ahead — see `ROADMAP.md`
+  - Phase 2 done: visual polish — **portrait** board, smooth interpolated motion, gradient background, animated/haloed food, bevelled obstacles, glowing eyed snake head, eat particles and a game-over screen shake (`GameBoard`/`GameEffects`). See `ROADMAP.md`
+  - Phase 3 done: pro UI/UX — Orbitron type scale, state-based menu/settings navigation (`ui/App.kt`) with `Crossfade` fades, **DataStore** settings + per-(level, scale) highscores (`data/SettingsRepository`), pause blur, rolling HUD score. Plus gameplay changes: **two-button relative** controls (default) with swipe/D-pad still selectable; a **responsive** board (`BoardScale` granularity → `BoardDimensions` computed from the device aspect via `boardFor`, replacing the old fixed `BoardSize` presets); **4-fold symmetric** obstacles; ~25% slower per-level speed; a redrawn snake launcher icon. See `ROADMAP.md`
+  - Phase 4+ (audio, shaders, content, distribution) still ahead — see `ROADMAP.md`
 - **Frozen (legacy)**: `legacy/SnakeGame/` — C#/.NET 10 WinForms v1.0.0
   - Windows only, target `net10.0-windows`; all logic + UI + rendering in `SnakeForm.cs`
   - Solution file `legacy/snake-game.slnx`; build notes in `legacy/README.md`
@@ -56,9 +57,9 @@ dotnet run
 Package root: `com.brioni.snake` under `app/src/main/kotlin/`.
 
 - **`MainActivity.kt`** — single `ComponentActivity`; calls `installSplashScreen()` + `enableEdgeToEdge()`, then `setContent { SnakeGameTheme { ... } }`. Content uses `safeDrawingPadding()` so the background draws edge-to-edge while UI stays clear of system bars/cutouts. Portrait is locked in the manifest.
-- **`game/`** — pure-Kotlin game model: `Direction`, `Position`, `BoardSize`, `Level`, `Food`/`FoodTable`, `GameState`/`GameStatus` and the rules engine `GameEngine` (deterministic, `Random`-injectable). **Keep this package free of Android/Compose imports** so it stays unit-testable (`app/src/test/`).
-- **`ui/`** — Compose UI and `ui/theme/` (`Color.kt`, `Theme.kt`, `Type.kt`); dark-leaning Material 3 scheme, dynamic color intentionally off for a consistent brand look. `ui/game/` holds the gameplay surface: `GameScreen` (layout + overlays), `GameBoard` (Canvas renderer), `GameViewModel` (state + coroutine loop), `GameControls` (swipe + D-pad), `GameColors`.
-- **`data/`** — Preferences DataStore persistence (settings, highscores), from Phase 3.
+- **`game/`** — pure-Kotlin game model: `Direction`, `Position`, `BoardScale`/`BoardDimensions` (+ the `boardFor` responsive-sizing function in `BoardLayout`), `ControlScheme`, `Level`, `Food`/`FoodTable`, `GameState`/`GameStatus` and the rules engine `GameEngine` (deterministic, `Random`-injectable). **Keep this package free of Android/Compose imports** so it stays unit-testable (`app/src/test/`).
+- **`ui/`** — Compose UI and `ui/theme/` (`Color.kt`, `Theme.kt`, `Type.kt` — Orbitron type scale); dark-leaning Material 3 scheme, dynamic color intentionally off for a consistent brand look. `ui/App.kt` is the root, hosting state-based navigation (`Crossfade`) between `ui/menu/MainMenuScreen`, `ui/game/GameScreen` and `ui/settings/SettingsScreen`. `ui/game/` holds the gameplay surface: `GameScreen` (layout + overlays + board measurement), `GameBoard` (Canvas renderer), `GameViewModel` (state + coroutine loop, built via a `SettingsRepository` factory), `GameControls` (relative two-button / swipe / D-pad), `GameColors`.
+- **`data/`** — `SettingsRepository` over Preferences DataStore (control scheme, level, board scale, per-(level, scale) highscores), from Phase 3.
 - **Resources** (`app/src/main/res/`): `values/` (strings, colors, themes), adaptive icon in `mipmap-anydpi-v26/` with a self-contained vector fallback in `mipmap-anydpi/` for API 24–25.
 
 ### Gradle
