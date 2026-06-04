@@ -172,8 +172,8 @@ snake-game/
 
 ### Phase 3 — Pro UI / UX ✅ (implemented)
 
-> Alongside Phase 3 the gameplay was tuned: a **two-button relative** control scheme (turn
-> left/right relative to heading) is now the default, with classic swipe and the 4-button D-pad
+> Alongside Phase 3 the gameplay was tuned: **swipe** is the default control scheme, with a
+> **two-button relative** scheme (turn left/right relative to heading) and the 4-button D-pad
 > kept as selectable schemes; the board is now **responsive** — its rows×columns are computed from
 > the device's play-area aspect ratio for a chosen granularity (`BoardScale`: Cozy/Classic/Epic) so
 > it fills the screen with square cells (the old fixed `BoardSize` presets were dropped); obstacles

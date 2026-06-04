@@ -38,7 +38,7 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - 🎚️ **Difficulty levels** — 5 levels (*Beginner* → *Legend*) tuning speed and obstacle count.
 - 📐 **Responsive board** — pick a granularity (*Cozy* / *Classic* / *Epic*); the board's rows and
   columns are computed from your device's screen so it fills the display with square cells.
-- 🎮 **Control schemes** — two-button *relative* steering by default, or classic swipe / D-pad.
+- 🎮 **Control schemes** — **swipe** by default, or a two-button *relative* steering / classic D-pad.
 - ⏸️ **Pause, menus, highscores, audio, special power-ups** — added progressively (see the roadmap).
 
 ### 🍽️ Food system at a glance
@@ -121,11 +121,11 @@ mystery and shrink foods only start appearing as the session runs on — so each
 Chain bites together to build a **combo** and multiply your score, and use shrink food to cut your length
 when the board gets tight (you never drop below 3 segments).
 
-**Controls (touch):** by default, two large buttons fill the bottom of the screen and turn the snake
-**left / right relative to its heading**. Prefer something else? Switch to **swipe** or the classic
-**D-pad** in **Settings** — your choice is saved. 180° reversals are blocked, so you can't instantly
-fold back into your own body. Pick a level and board scale on the start screen; pause and restart from
-the in-game controls. Your best score is kept per (level, scale).
+**Controls (touch):** by default you **swipe** anywhere on the board to change direction. Prefer
+buttons? Switch in **Settings** to a **two-button** scheme (turn left / right relative to the snake's
+heading) or the classic **D-pad** — your choice is saved. 180° reversals are blocked, so you can't
+instantly fold back into your own body. Pick a level and board scale on the start screen; pause and
+restart from the in-game controls. Your best score is kept per (level, scale).
 
 > Audio and the special power-ups (earthquake, explosion, speed, ghost, freeze, jackpot) come online in
 > later phases of the [roadmap](ROADMAP.md).

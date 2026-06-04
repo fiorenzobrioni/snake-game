@@ -41,10 +41,10 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
   congelamento, jackpot) are deferred to **Phase 6.2** by decision — `FoodCategory.Special`,
   extra `FoodEffect` cases and `GameState.debris`/`effectTimers` are the reserved hooks. Don't add them
   before Phase 6.
-- **Control scheme**: Phase 3 shipped the **two-button relative** scheme as the default, with swipe
-  and the D-pad selectable in Settings (persisted via DataStore). NB: the original request was for
-  **swipe** as the default — flipping `GameViewModel.DEFAULT_CONTROL` (and the persisted default in
-  `SettingsRepository`) to `ControlScheme.Swipe` is a one-line change if that's still wanted.
+- **Control scheme**: the default is **Swipe** (set in `GameViewModel.DEFAULT_CONTROL` and the
+  persisted fallback in `SettingsRepository`); the two-button relative scheme and the D-pad remain
+  selectable in Settings (choice persisted via DataStore). Phase 3 had originally shipped two-button
+  as the default; it was flipped to swipe per the original request.
 - The food spawn table is **time- and level-aware** (`FoodTable.roll(random, elapsedTicks, level)`);
   early game is intentionally simple (grow only) and ramps up — keep this progression intact.
 

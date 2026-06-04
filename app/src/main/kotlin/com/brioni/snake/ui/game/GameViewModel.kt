@@ -256,7 +256,7 @@ class GameViewModel(private val repo: SettingsRepository) : ViewModel() {
     companion object {
         private val DEFAULT_LEVEL = Level.Beginner
         private val DEFAULT_SCALE = BoardScale.Classic
-        private val DEFAULT_CONTROL = ControlScheme.TwoButton
+        private val DEFAULT_CONTROL = ControlScheme.Swipe
 
         fun factory(repo: SettingsRepository) = viewModelFactory {
             initializer { GameViewModel(repo) }
