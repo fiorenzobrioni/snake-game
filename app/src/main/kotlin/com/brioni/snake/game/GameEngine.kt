@@ -43,7 +43,7 @@ class GameEngine(private val random: Random = Random.Default) {
     fun start(state: GameState): GameState {
         if (state.status != GameStatus.Ready) return state
         return state.copy(
-            foods = refill(state.board, state.snake, state.obstacles, emptyList()),
+            foods = refill(state.board, state.snake, state.obstacles, emptyList(), elapsedTicks = 0, level = state.level),
             status = GameStatus.Running,
         )
     }
@@ -73,12 +73,15 @@ class GameEngine(private val random: Random = Random.Default) {
     /**
      * Advances the simulation by one step. No-op unless [GameStatus.Running].
      *
-     * Order mirrors v1.0.0: commit the buffered direction, move the head, settle
-     * eating/growth (adjusting the tail), refill food, then test for death.
+     * Order: bump the tick counter, commit the buffered direction, move the
+     * head, apply the eaten food's [FoodEffect] (grow or shrink, with a length
+     * floor) and combo-scored points, refill food, then test for death. Every
+     * consequence is emitted as a [GameEvent] in [GameState.lastEvents].
      */
     fun tick(state: GameState): GameState {
         if (state.status != GameStatus.Running) return state
 
+        val elapsedTicks = state.elapsedTicks + 1
         val direction = state.pendingDirection
         val newHead = state.head.step(direction)
 
@@ -89,26 +92,46 @@ class GameEngine(private val random: Random = Random.Default) {
         var foods = state.foods
         var score = state.score
         var pendingGrowth = state.pendingGrowth
+        var combo = state.combo
+        var comboDeadlineTick = state.comboDeadlineTick
+        val events = ArrayList<GameEvent>(2)
 
         val eaten = foods.firstOrNull { it.occupies(newHead) }
-        when {
-            eaten != null -> {
-                score += eaten.growth * 10
-                pendingGrowth += eaten.growth - 1
-                foods = foods - eaten
-            }
-            pendingGrowth > 0 -> pendingGrowth--
-            else -> body.removeAt(body.lastIndex) // keep length: drop the tail
-        }
-
-        // Maintain the board's food count, avoiding the just-moved snake.
         if (eaten != null) {
-            foods = refill(state.board, body, state.obstacles, foods)
+            foods = foods - eaten
+            when (val effect = eaten.effect) {
+                is FoodEffect.Grow -> {
+                    // A fresh streak, or extend the running one if still in time.
+                    combo = if (elapsedTicks <= comboDeadlineTick) combo + 1 else 1
+                    comboDeadlineTick = elapsedTicks + COMBO_WINDOW_TICKS
+                    val points = effect.segments * 10 * combo.coerceAtMost(MAX_COMBO)
+                    score += points
+                    pendingGrowth += effect.segments - 1 // head already added this tick
+                    events.add(GameEvent.Ate(eaten, points, combo.coerceAtMost(MAX_COMBO)))
+                }
+                is FoodEffect.Shrink -> {
+                    // Shrinking neither feeds nor breaks the grow combo; it just
+                    // trims the tail down to the floor and pays a token score.
+                    pendingGrowth = 0
+                    val removable = (body.size - MIN_SNAKE_LENGTH).coerceAtLeast(0)
+                    val removed = effect.segments.coerceAtMost(removable)
+                    repeat(removed) { body.removeAt(body.lastIndex) }
+                    val points = if (eaten.size == FoodSize.Maxi) SHRINK_POINTS_MAXI else SHRINK_POINTS
+                    score += points
+                    events.add(GameEvent.Shrunk(eaten, removed, points))
+                }
+            }
+            foods = refill(state.board, body, state.obstacles, foods, elapsedTicks, state.level)
+        } else if (pendingGrowth > 0) {
+            pendingGrowth--
+        } else {
+            body.removeAt(body.lastIndex) // keep length: drop the tail
         }
 
         val dead = isOutOfBounds(newHead, state.board) ||
             newHead in state.obstacles ||
             collidesWithBody(newHead, body)
+        if (dead) events.add(GameEvent.Died)
 
         return state.copy(
             snake = body,
@@ -116,6 +139,10 @@ class GameEngine(private val random: Random = Random.Default) {
             foods = foods,
             score = score,
             pendingGrowth = pendingGrowth,
+            elapsedTicks = elapsedTicks,
+            combo = combo,
+            comboDeadlineTick = comboDeadlineTick,
+            lastEvents = events,
             status = if (dead) GameStatus.GameOver else GameStatus.Running,
         )
     }
@@ -155,10 +182,12 @@ class GameEngine(private val random: Random = Random.Default) {
         snake: List<Position>,
         obstacles: Set<Position>,
         existing: List<Food>,
+        elapsedTicks: Int,
+        level: Level,
     ): List<Food> {
         var foods = existing
         while (foods.size < FOOD_COUNT) {
-            val food = spawnFood(board, snake, obstacles, foods) ?: break
+            val food = spawnFood(board, snake, obstacles, foods, elapsedTicks, level) ?: break
             foods = foods + food
         }
         return foods
@@ -174,9 +203,11 @@ class GameEngine(private val random: Random = Random.Default) {
         snake: List<Position>,
         obstacles: Set<Position>,
         existing: List<Food>,
+        elapsedTicks: Int,
+        level: Level,
     ): Food? {
-        val spec = FoodTable.roll(random)
-        val span = spec.type.cellSpan
+        val spec = FoodTable.roll(random, elapsedTicks, level)
+        val span = spec.size.cellSpan
         // Top-left cell range that keeps the whole square off the border.
         val maxX = board.width - span
         val maxY = board.height - span
@@ -188,7 +219,7 @@ class GameEngine(private val random: Random = Random.Default) {
         existing.forEach { occupied.addAll(it.cells()) }
 
         fun candidateAt(x: Int, y: Int): Food? {
-            val food = Food(Position(x, y), spec.type, spec.growth)
+            val food = Food(Position(x, y), spec.category, spec.tier, spec.size, spec.effect)
             return if (food.cells().none { it in occupied }) food else null
         }
 
@@ -206,6 +237,20 @@ class GameEngine(private val random: Random = Random.Default) {
     companion object {
         /** Foods kept on the board at once — two, as in v1.0.0. */
         const val FOOD_COUNT = 2
+
+        /** The snake never shrinks below this many segments. */
+        const val MIN_SNAKE_LENGTH = 3
+
+        /** A grow streak survives if the next grow happens within this many ticks. */
+        const val COMBO_WINDOW_TICKS = 45
+
+        /** The score multiplier is capped here. */
+        const val MAX_COMBO = 5
+
+        /** Symbolic points for eating a shrinking food (standard / maxi). */
+        const val SHRINK_POINTS = 5
+        const val SHRINK_POINTS_MAXI = 10
+
         private const val MAX_SPAWN_ATTEMPTS = 200
     }
 }

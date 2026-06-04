@@ -5,12 +5,13 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.brioni.snake.game.BoardSize
 import com.brioni.snake.game.Direction
-import com.brioni.snake.game.FoodType
 import com.brioni.snake.game.GameEngine
+import com.brioni.snake.game.GameEvent
 import com.brioni.snake.game.GameState
 import com.brioni.snake.game.GameStatus
 import com.brioni.snake.game.Level
@@ -19,8 +20,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** A food-eaten event, surfaced to the renderer to spawn a particle burst. */
-data class EatEvent(val cell: Position, val type: FoodType, val span: Int)
+/**
+ * A food-eaten event, surfaced to the renderer to spawn a particle burst.
+ * [implode] selects the inward (shrink) burst over the outward (grow) one.
+ */
+data class EatEvent(val cell: Position, val span: Int, val color: Color, val implode: Boolean)
 
 /**
  * Holds the [GameState] and drives the tick loop. All game rules live in
@@ -62,6 +66,9 @@ class GameViewModel : ViewModel() {
 
     val level: Level get() = state.level
     val board: BoardSize get() = state.board
+
+    /** Current score multiplier (consecutive-eat streak), for the HUD. */
+    val combo: Int get() = state.combo
 
     fun selectLevel(level: Level) {
         if (state.status == GameStatus.Ready) resetTo(engine.setup(level, state.board))
@@ -112,20 +119,23 @@ class GameViewModel : ViewModel() {
         }
     }
 
-    /** One simulation step, deriving eat/death events from the transition. */
+    /** One simulation step, reacting to the events the engine emitted. */
     private fun advance() {
         val before = state
         val after = engine.tick(before)
 
-        if (after.score > before.score) {
-            val eaten = before.foods.firstOrNull { it.occupies(after.head) }
-            if (eaten != null) {
-                eatEvent = EatEvent(after.head, eaten.type, eaten.span)
-                eatEventId++
+        after.lastEvents.forEach { event ->
+            when (event) {
+                is GameEvent.Ate -> {
+                    eatEvent = EatEvent(event.food.position, event.food.span, GameColors.foodColor(event.food), implode = false)
+                    eatEventId++
+                }
+                is GameEvent.Shrunk -> {
+                    eatEvent = EatEvent(event.food.position, event.food.span, GameColors.foodColor(event.food), implode = true)
+                    eatEventId++
+                }
+                GameEvent.Died -> deathEventId++
             }
-        }
-        if (after.status == GameStatus.GameOver && before.status == GameStatus.Running) {
-            deathEventId++
         }
 
         // Commit the interpolation snapshot atomically: previous, current, time.

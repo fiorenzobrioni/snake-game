@@ -62,6 +62,41 @@ fun emitEatBurst(
 }
 
 /**
+ * Spawns an *inward* burst for shrinking food: particles start on a ring and
+ * converge on the centre, reading as an implosion rather than an explosion.
+ */
+fun emitImplodeBurst(
+    target: MutableList<Particle>,
+    centerX: Float,
+    centerY: Float,
+    color: Color,
+    span: Int,
+    random: Random = Random.Default,
+) {
+    val count = if (span >= 2) 20 else 14
+    val ringBase = if (span >= 2) 1.1f else 0.7f
+    repeat(count) {
+        val angle = random.nextFloat() * (2f * Math.PI.toFloat())
+        val ring = ringBase * (0.7f + random.nextFloat() * 0.5f)
+        val life = 0.35f + random.nextFloat() * 0.25f
+        // Velocity points back toward the centre so the ring collapses inward.
+        val speed = (2.2f + random.nextFloat() * 1.4f) * ring
+        target.add(
+            Particle(
+                x = centerX + cos(angle) * ring,
+                y = centerY + sin(angle) * ring,
+                vx = -cos(angle) * speed,
+                vy = -sin(angle) * speed,
+                life = life,
+                maxLife = life,
+                color = color,
+                radiusCells = 0.08f + random.nextFloat() * 0.08f,
+            ),
+        )
+    }
+}
+
+/**
  * Advances every particle by [dt] seconds and removes the dead ones. Mutates
  * [particles] in place; the caller forces a redraw each frame.
  */

@@ -148,11 +148,35 @@ snake-game/
 - [x] **Step 2.7** — Screen shake on the game-over collision (damped wobble).
 - [x] **Step 2.8** — Glow on the snake's head (radial gradient halo).
 
+### Phase 2.5 — Gameplay enrichment (food system) ✅ (implemented)
+
+> Inserted before Phase 3 to make a session less "static": the v1.0.0 model only had foods that
+> grow the snake. This step adds two food **categories**, magnitude **tiers**, **maxi** sizes, a
+> **mystery** piece per category and a **time-gated** progression, plus combo scoring — all in the
+> pure-Kotlin model. The flashier **special power-ups / hazards** (earthquake, explosion, …) are
+> deliberately deferred to **Phase 6.2**, where they can reuse the HUD timers, audio and shaders.
+
+- [x] **Step 2.5.1** — Food model redesign: orthogonal `FoodCategory` (Grow/Shrink), `FoodSize`
+      (Standard 1×1 / Maxi 2×2, maxi amplifies), `FoodTier` (Small→Huge + Mystery) and a sealed
+      `FoodEffect`. `FoodType`/`growth` removed. Verify: model unit tests pass.
+- [x] **Step 2.5.2** — Magnitude variants: Grow 2/4/6/8 and Shrink 2/3/5 (×2 for Maxi); a **mystery**
+      piece per category with a random, spawn-resolved amount drawn behind a "?".
+- [x] **Step 2.5.3** — Time-gated progression (`GameState.elapsedTicks`): only growing food at first;
+      shrink, then maxi, then mystery unlock as a session runs; harder levels reach the gates sooner.
+- [x] **Step 2.5.4** — Engine rules: shrink trims the tail with a **minimum-length floor** (never below
+      3); a **combo multiplier** rewards rapid consecutive eats; shrink awards only symbolic points.
+      Per-tick `GameEvent`s replace the renderer's fragile state re-derivation.
+- [x] **Step 2.5.5** — Rendering: grow (green) vs shrink (warm) colour families shaded by tier, maxi
+      halo, a "?" glyph for mystery (Canvas `TextMeasurer`), a shrink "implosion" particle burst and a
+      combo readout in the HUD.
+
 ### Phase 3 — Pro UI / UX
 
 - [ ] **Step 3.1** — Custom arcade font + a reusable Material 3 type scale.
 - [ ] **Step 3.2** — Main menu (animated title, Play / Settings / Quit) with Compose Navigation.
-- [ ] **Step 3.3** — Settings screen (level, board size, volumes, control scheme) persisted via **DataStore**.
+- [ ] **Step 3.3** — Settings screen (level, board size, volumes, **control scheme**) persisted via
+      **DataStore**. The control scheme **defaults to Swipe** and offers Swipe / D-Pad / Both (swipe
+      was found to be the most comfortable, so it is the default).
 - [ ] **Step 3.4** — Pause overlay with a **blur** (`Modifier.blur` / `RenderEffect`) over the frozen board.
 - [ ] **Step 3.5** — Game-over screen + persistent **highscores per (level, size)**.
 - [ ] **Step 3.6** — Animated, rolling HUD score counter.
@@ -175,7 +199,17 @@ snake-game/
 ### Phase 6 — Content & replayability
 
 - [ ] **Step 6.1** — Skin system (Classic / Neon / Retro / Pixel = palette + sprite set + optional shader).
-- [ ] **Step 6.2** — Temporary power-ups (speed boost, ghost, magnet) with HUD timer.
+- [ ] **Step 6.2** — **Special food pieces / power-ups & hazards** (extends the Phase 2.5 food system).
+      All are **maxi-sized** with a distinctive shape/symbol, **time-gated** (appear later in a session)
+      and surfaced through the existing `GameEvent` channel + HUD timers. They add `FoodCategory.Special`,
+      new `FoodEffect` cases, and `GameState` fields `debris: List<Debris>` + `effectTimers`.
+  - [ ] **Earthquake** — eats a chunk of the snake's tail; reuses the death screen-shake.
+  - [ ] **Explosion** — splits the snake in two; the detached tail stays on the board as **lethal,
+        time-limited debris** (crashing into it kills) that **auto-clears** after a timer.
+  - [ ] **Lampo / Lumaca** — temporary speed boost / slow-down (scales the tick interval) with a HUD timer.
+  - [ ] **Stella** — brief invincibility / ghost (pass through walls, obstacles and self) with a HUD timer.
+  - [ ] **Congelamento** — temporarily freezes hazard spawns / slows time — a strategic breather.
+  - [ ] **Jackpot** — rare piece granting a large score bonus (and a random growth).
 - [ ] **Step 6.3** — Highscore tables per (level × size) in a "Records" screen.
 - [ ] **Step 6.4** — Local achievements.
 - [ ] **Step 6.5** — Extra modes: Endless, Time Attack.

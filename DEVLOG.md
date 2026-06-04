@@ -12,6 +12,9 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 - [ ] Finalise `applicationId` from `com.brioni.snake` placeholder before first Play upload (Step 7.1)
 - [ ] Write unit tests for `GameEngine` edge-cases: wall collision on all four sides, body self-collision, 180° reversal block
 - [ ] Verify smooth-motion interpolation on low-end devices (API 24/25)
+- [ ] Verify the mystery "?" glyph renders crisply on small cells (dense boards) and on API 24
+- [ ] Re-tune the food spawn weights / time gates after playtesting on a device
+- [ ] Consider per-tier / per-category eat SFX cues when audio lands (Phase 4)
 
 ---
 
@@ -32,12 +35,53 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 - Dynamic color (`dynamicColor`) is **off** by design in `Theme.kt` — the game has a fixed dark-arcade brand palette.
 - AGSL `RuntimeShader` (Phase 5) requires API 33+; every usage needs a graceful Canvas fallback for API 24–32.
 - `game/` package must remain free of Android/Compose imports — this is what makes it testable with plain JUnit.
+- **Mystery foods are resolved at spawn, not at eat**: `FoodTable.roll` rolls the concealed amount and
+  stores the final `FoodEffect`, so `GameEngine.tick` consumes no randomness and stays deterministic.
+- **Special power-ups / hazards** (earthquake, explosion + lethal debris, lampo/lumaca, stella,
+  congelamento, jackpot) are deferred to **Phase 6.2** by decision — `FoodCategory.Special`,
+  extra `FoodEffect` cases and `GameState.debris`/`effectTimers` are the reserved hooks. Don't add them
+  before Phase 6.
+- **Control-scheme default = Swipe** is deferred to the Phase 3.3 Settings screen (DataStore-backed);
+  do not build a throwaway toggle before then.
+- The food spawn table is **time- and level-aware** (`FoodTable.roll(random, elapsedTicks, level)`);
+  early game is intentionally simple (grow only) and ramps up — keep this progression intact.
 
 ---
 
 ## Log
 
 > Newest entries at the top. One entry per completed phase/step or significant change.
+
+---
+
+### 2026-06-04 — Phase 2.5: Gameplay enrichment (food system overhaul)
+
+Reworked the food system to make a session less static, before starting Phase 3. The v1.0.0 model only
+had foods that grow the snake; this introduces purpose and progression while keeping the model pure and
+deterministic.
+
+**What was done:**
+- Redesigned the food model (`game/Food.kt`): orthogonal `FoodCategory` (Grow/Shrink/Special-reserved),
+  `FoodSize` (Standard/Maxi), `FoodTier` (Small→Huge + Mystery) and a sealed `FoodEffect`. Removed the
+  old flat `FoodType` enum and the `growth` field.
+- **Grow** tiers 2/4/6/8 and **Shrink** tiers 2/3/5 (×2 for Maxi); a **mystery** piece per category with
+  a random amount resolved at spawn and drawn behind a "?".
+- **Time-gated progression** via `GameState.elapsedTicks`: only growing food at first; shrink unlocks
+  (~15s), then maxi (~30s), then mystery (~45s); harder levels reach the gates sooner.
+- Engine rules: shrink trims the tail with a **minimum-length floor** (`MIN_SNAKE_LENGTH = 3`); a
+  **combo multiplier** (cap ×5, 45-tick window) rewards rapid consecutive eats; shrink awards only
+  symbolic points (5 / 10 maxi). The engine now emits per-tick `GameEvent`s (`Ate`/`Shrunk`/`Died`),
+  which the ViewModel consumes instead of re-deriving the eaten food from positions.
+- Rendering: grow (green) vs shrink (warm) colour families shaded by tier, maxi halo, a "?" glyph for
+  mystery via Canvas `TextMeasurer`, a shrink "implosion" particle burst, and a combo readout in the HUD.
+
+**Decisions:** specials deferred to Phase 6.2; control-scheme default-Swipe deferred to Phase 3.3;
+mystery resolved at spawn for determinism; explosion debris will be lethal + auto-clearing (Phase 6).
+
+**Verification:** the pure `game/` model was compiled and executed standalone (no Android SDK in this
+environment) and the JUnit suite passes (22 tests, incl. shrink floor, time gates, mystery range/
+determinism, combo). The UI changes (Compose) compile against the Android toolchain — pending an
+on-device smoke test.
 
 ---
 

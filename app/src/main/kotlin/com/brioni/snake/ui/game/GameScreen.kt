@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -43,6 +44,7 @@ fun GameScreen(
 ) {
     val state = viewModel.state
     val playing = state.status == GameStatus.Running || state.status == GameStatus.Paused
+    val textMeasurer = rememberTextMeasurer()
 
     // Screen shake on death (step 2.7): a single 0→1 ramp drives a damped wobble.
     val shake = remember { Animatable(0f) }
@@ -62,6 +64,7 @@ fun GameScreen(
         Column(modifier = Modifier.fillMaxSize()) {
             Hud(
                 score = state.score,
+                combo = state.combo,
                 levelLabel = state.level.displayName,
                 boardLabel = state.board.displayName,
                 showPause = state.status == GameStatus.Running,
@@ -84,6 +87,7 @@ fun GameScreen(
                 running = state.status == GameStatus.Running,
                 eatEvent = viewModel.eatEvent,
                 eatEventId = viewModel.eatEventId,
+                textMeasurer = textMeasurer,
                 modifier = boardModifier,
             )
 
@@ -125,6 +129,7 @@ fun GameScreen(
 @Composable
 private fun Hud(
     score: Int,
+    combo: Int,
     levelLabel: String,
     boardLabel: String,
     showPause: Boolean,
@@ -147,6 +152,15 @@ private fun Hud(
                 text = "$levelLabel · $boardLabel",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+            )
+        }
+        if (combo > 1) {
+            Text(
+                text = stringResource(R.string.hud_combo, combo),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.tertiary,
+                modifier = Modifier.padding(end = 12.dp),
             )
         }
         if (showPause) {

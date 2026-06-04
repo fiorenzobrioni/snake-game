@@ -16,18 +16,20 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.util.lerp
 import com.brioni.snake.game.BoardSize
 import com.brioni.snake.game.Direction
 import com.brioni.snake.game.Food
-import com.brioni.snake.game.FoodType
+import com.brioni.snake.game.FoodCategory
 import com.brioni.snake.game.GameState
 import com.brioni.snake.game.Position
-import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
 
@@ -51,6 +53,7 @@ fun GameBoard(
     running: Boolean,
     eatEvent: EatEvent?,
     eatEventId: Int,
+    textMeasurer: TextMeasurer,
     modifier: Modifier = Modifier,
 ) {
     val particles: SnapshotStateList<Particle> = remember { emptyList<Particle>().toMutableStateList() }
@@ -83,7 +86,11 @@ fun GameBoard(
         if (eatEventId > 0 && event != null) {
             val cx = event.cell.x + event.span / 2f
             val cy = event.cell.y + event.span / 2f
-            emitEatBurst(particles, cx, cy, GameColors.foodColor(event.type), event.span)
+            if (event.implode) {
+                emitImplodeBurst(particles, cx, cy, event.color, event.span)
+            } else {
+                emitEatBurst(particles, cx, cy, event.color, event.span)
+            }
         }
     }
 
@@ -100,7 +107,6 @@ fun GameBoard(
         val f = if (running) ((now - tickTimeNanos).toFloat() / periodNanos).coerceIn(0f, 1f) else 1f
         val seconds = now / 1_000_000_000.0
         val pulse = if (running) 0.9f + 0.1f * (sin(seconds * 6.0).toFloat() * 0.5f + 0.5f) else 1f
-        val starAngle = if (running) (seconds * 0.9).toFloat() else 0f
 
         val boardWidth = cell * board.width
         val boardHeight = cell * board.height
@@ -116,7 +122,7 @@ fun GameBoard(
                 drawObstacle(cell, originX + obstacle.x * cell, originY + obstacle.y * cell)
             }
             state.foods.forEach { food ->
-                drawFood(food, cell, originX, originY, pulse, starAngle)
+                drawFood(food, cell, originX, originY, pulse, textMeasurer)
             }
             val snake = state.snake
             for (k in snake.indices.reversed()) {
@@ -215,21 +221,16 @@ private fun DrawScope.drawFood(
     originX: Float,
     originY: Float,
     pulse: Float,
-    starAngle: Float,
+    textMeasurer: TextMeasurer,
 ) {
-    val color = GameColors.foodColor(food.type)
+    val color = GameColors.foodColor(food)
     val extent = cell * food.span
     val centerX = originX + food.position.x * cell + extent / 2f
     val centerY = originY + food.position.y * cell + extent / 2f
-
-    if (food.type == FoodType.Blue) {
-        drawStar(centerX, centerY, extent * 0.46f * pulse, extent * 0.2f * pulse, starAngle, color)
-        return
-    }
-
     val radius = extent * 0.42f * pulse
-    // Soft halo for the rarer (mega/gold) foods.
-    if (food.span >= 2 || food.type == FoodType.Gold) {
+
+    // Soft halo for the bigger (maxi) and concealed (mystery) pieces.
+    if (food.span >= 2 || food.isMystery) {
         drawCircle(
             brush = Brush.radialGradient(
                 colors = listOf(color.copy(alpha = 0.35f), Color.Transparent),
@@ -241,10 +242,48 @@ private fun DrawScope.drawFood(
         )
     }
     drawCircle(color = color, radius = radius, center = Offset(centerX, centerY))
-    drawCircle(
-        color = Color.White.copy(alpha = 0.35f),
-        radius = radius * 0.32f,
-        center = Offset(centerX - radius * 0.28f, centerY - radius * 0.28f),
+
+    when {
+        // Mystery pieces hide their amount behind a "?" in the snake's palette.
+        food.isMystery -> drawGlyph(textMeasurer, "?", centerX, centerY, radius * 1.25f, Color.White)
+        // Shrink food reads as "hollow" with a darker inner ring.
+        food.category == FoodCategory.Shrink -> {
+            drawCircle(
+                color = Color.Black.copy(alpha = 0.28f),
+                radius = radius * 0.5f,
+                center = Offset(centerX, centerY),
+                style = Stroke(width = radius * 0.18f),
+            )
+        }
+        else -> Unit
+    }
+
+    // Glossy shine (skipped under the glyph so it stays crisp).
+    if (!food.isMystery) {
+        drawCircle(
+            color = Color.White.copy(alpha = 0.30f),
+            radius = radius * 0.30f,
+            center = Offset(centerX - radius * 0.30f, centerY - radius * 0.30f),
+        )
+    }
+}
+
+/** Draws [glyph] centred on a food, sized to [sizePx], in the game's style. */
+private fun DrawScope.drawGlyph(
+    textMeasurer: TextMeasurer,
+    glyph: String,
+    centerX: Float,
+    centerY: Float,
+    sizePx: Float,
+    color: Color,
+) {
+    val layout = textMeasurer.measure(
+        text = glyph,
+        style = TextStyle(color = color, fontSize = sizePx.toSp(), fontWeight = FontWeight.Black),
+    )
+    drawText(
+        textLayoutResult = layout,
+        topLeft = Offset(centerX - layout.size.width / 2f, centerY - layout.size.height / 2f),
     )
 }
 
@@ -312,24 +351,4 @@ private fun DrawScope.drawEyes(centerX: Float, centerY: Float, cell: Float, dire
             Offset(ex + forwardX * cell * 0.03f, ey + forwardY * cell * 0.03f),
         )
     }
-}
-
-private fun DrawScope.drawStar(
-    centerX: Float,
-    centerY: Float,
-    outer: Float,
-    inner: Float,
-    angleOffset: Float,
-    color: Color,
-) {
-    val path = Path()
-    for (i in 0 until 10) {
-        val angle = i * Math.PI / 5.0 - Math.PI / 2.0 + angleOffset
-        val radius = if (i % 2 == 0) outer else inner
-        val x = (centerX + cos(angle) * radius).toFloat()
-        val y = (centerY + sin(angle) * radius).toFloat()
-        if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
-    }
-    path.close()
-    drawPath(path, color = color)
 }

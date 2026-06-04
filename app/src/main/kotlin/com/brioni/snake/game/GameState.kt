@@ -24,6 +24,15 @@ enum class GameStatus {
  * @param pendingDirection the next direction to commit, buffered from input
  *                         and already validated against 180° reversals.
  * @param pendingGrowth    segments still owed from eaten food, paid one per tick.
+ * @param elapsedTicks     monotonic count of ticks since the game started;
+ *                         drives the time-gated food progression.
+ * @param combo            length of the current consecutive-eat streak (the
+ *                         score multiplier), reset when a streak lapses.
+ * @param comboDeadlineTick the streak survives only if the next food is eaten
+ *                         on or before this tick.
+ * @param lastEvents       what happened on the most recent tick, for the UI to
+ *                         react to (particle bursts, future effects). Not part
+ *                         of the logical state — cleared/replaced every tick.
  */
 data class GameState(
     val board: BoardSize,
@@ -36,6 +45,10 @@ data class GameState(
     val score: Int,
     val pendingGrowth: Int,
     val status: GameStatus,
+    val elapsedTicks: Int = 0,
+    val combo: Int = 0,
+    val comboDeadlineTick: Int = 0,
+    val lastEvents: List<GameEvent> = emptyList(),
 ) {
     val head: Position get() = snake.first()
 
