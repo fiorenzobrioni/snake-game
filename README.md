@@ -4,7 +4,7 @@
 [![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4?logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
 [![Android](https://img.shields.io/badge/platform-Android-3DDC84?logo=android&logoColor=white)](https://www.android.com/)
 [![minSdk](https://img.shields.io/badge/minSdk-24-blue)](https://developer.android.com/)
-[![targetSdk](https://img.shields.io/badge/targetSdk-35-blue)](https://developer.android.com/)
+[![targetSdk](https://img.shields.io/badge/targetSdk-36-blue)](https://developer.android.com/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A classic **Snake**, rebuilt as a **native Android game** in **Kotlin + Jetpack Compose**, on the way to a
@@ -92,12 +92,12 @@ play-area aspect ratio so the board fills the screen with square cells.
 Install on your development machine:
 
 - **Android Studio** (latest stable) — bundles the JDK (JBR), the SDK Manager and the AVD emulator.
-- **Android SDK** via the SDK Manager: **Platform API 35**, **Build-Tools 35.x**, **Platform-Tools** (`adb`),
-  **Emulator** + a system image (e.g. API 35).
+- **Android SDK** via the SDK Manager: **Platform API 36**, **Build-Tools 36.x**, **Platform-Tools** (`adb`),
+  **Emulator** + a system image (e.g. API 36).
 - A **test target**: an AVD emulator or a physical device with **USB debugging** enabled.
 - **Gradle**: not needed globally — the project ships the **Gradle wrapper** (`./gradlew`).
 
-The project targets `minSdk 24` (Android 7.0) and `compileSdk`/`targetSdk 35` (Android 15).
+The project targets `minSdk 24` (Android 7.0) and `compileSdk`/`targetSdk 36` (Android 16).
 
 ---
 

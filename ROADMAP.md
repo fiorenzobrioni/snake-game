@@ -20,7 +20,7 @@ menus and replayability — and is **publishable on the Google Play Store** as a
 - **UI / rendering**: **Jetpack Compose** (Material 3) — gameplay drawn on Compose `Canvas`, the natural
   evolution of the immediate-mode GDI+ rendering learned in v1.0.0.
 - **Build**: Gradle (Kotlin DSL) + version catalog, Gradle wrapper pinned.
-- **Min/target SDK**: `minSdk 24` (Android 7.0), `compileSdk`/`targetSdk 35` (Android 15).
+- **Min/target SDK**: `minSdk 24` (Android 7.0), `compileSdk`/`targetSdk 36` (Android 16).
 - **Persistence**: Preferences **DataStore** (settings, highscores).
 - **Effects**: hand-drawn particles on `Canvas`; **AGSL `RuntimeShader`** for glow/background on **API 33+**
   with a graceful fallback below.
@@ -39,8 +39,8 @@ menus and replayability — and is **publishable on the Google Play Store** as a
 Install on your development machine:
 
 - **Android Studio** (latest stable) — bundles the JDK (JBR), the SDK Manager and the AVD emulator.
-- **Android SDK** via SDK Manager: **Platform API 35**, **Build-Tools 35.x**, **Platform-Tools** (`adb`),
-  **Emulator** + a system image (e.g. API 35).
+- **Android SDK** via SDK Manager: **Platform API 36**, **Build-Tools 36.x**, **Platform-Tools** (`adb`),
+  **Emulator** + a system image (e.g. API 36).
 - A **test target**: an AVD emulator or a physical device with **USB debugging** enabled.
 - **Gradle**: not needed globally — use the project's `./gradlew` wrapper.
 - **For Play distribution (Phase 7)**: a **Google Play Console** account, an **upload keystore**
