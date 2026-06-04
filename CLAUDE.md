@@ -81,6 +81,38 @@ Everything lives in `legacy/SnakeGame/SnakeForm.cs` (single `SnakeForm` class): 
 - **Assets**: new graphic/audio/font/shader assets must be free with a compatible license (MIT/CC0/CC-BY). Record source and license in `docs/CREDITS.md` in the same change.
 - **Secrets**: never commit keystores or signing material (`*.jks`, `*.keystore`, `keystore.properties` are git-ignored). `local.properties` is machine-specific and git-ignored.
 
+## Documentation files — what goes where
+
+Two files track the project's progress and health. **Write to both when completing a step.**
+
+### `ROADMAP.md` — forward-looking plan (stable, curated)
+
+`ROADMAP.md` is the authoritative source of truth for *where the project is going*.
+Keep it clean and factual; do not clutter it with implementation notes or ephemeral tasks.
+
+Update `ROADMAP.md` when:
+- Ticking a step as done (`[ ]` → `[x]`) after it is fully implemented and verified.
+- A phase definition changes (scope, ordering, or new steps inserted).
+- A milestone target or "Definition of Done" criterion changes.
+
+Do **not** add to `ROADMAP.md`:
+- Session notes, observations, or "what I tried" prose.
+- Short-term TODOs that are not formal roadmap steps.
+- Bug reports or temporary workarounds.
+
+### `DEVLOG.md` — running log (append-only, informal)
+
+`DEVLOG.md` is the working notebook: what was done, what was noticed, what still needs doing.
+New entries go **at the top of the Log section** (newest first).
+
+Update `DEVLOG.md` when:
+- **Completing a step or phase**: add a dated log entry summarising what was implemented and any notable decisions made.
+- **Discovering a bug**: add an entry under **Known Bugs** with reproduction steps; remove it once fixed (reference the fix commit).
+- **Recording a short-term TODO**: add a checkbox under **TODOs** for tasks that are not yet a formal roadmap step (e.g. "write unit test for edge-case X", "verify on API 24").
+- **Noting an architectural constraint**: add a bullet under **Notes** for decisions that future contributors (or future Claude sessions) must not accidentally undo.
+
+---
+
 ## Key files
 
 | Path | Role |
@@ -93,5 +125,6 @@ Everything lives in `legacy/SnakeGame/SnakeForm.cs` (single `SnakeForm` class): 
 | `docs/CREDITS.md` | Asset sources & licenses |
 | `README.md` | User documentation (English) |
 | `ROADMAP.md` | Step-by-step plan to a Play-Store release |
+| `DEVLOG.md` | Development log, TODOs, known bugs, notes |
 | `legacy/SnakeGame/SnakeForm.cs` | Frozen v1.0.0 reference (game model) |
 | `.github/copilot-instructions.md` | Copilot instructions (aligned with this file) |
