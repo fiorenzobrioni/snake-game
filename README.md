@@ -13,9 +13,11 @@ polished, **Google-Play-publishable** title with animation, particles, shaders, 
 Gameplay is drawn on a Compose `Canvas` — the natural evolution of the immediate-mode rendering this project
 started with. The step-by-step plan lives in [`ROADMAP.md`](ROADMAP.md).
 
-> 🧱 **Current status:** Phase 1 (core gameplay) — a fully playable Snake at feature parity with the frozen
-> v1.0.0: 5 difficulty levels, 5 board sizes, 7 food types, swipe + D-pad controls, score HUD and
-> pause/restart. Visual polish, audio and shaders arrive in later phases.
+> 🧱 **Current status:** Phase 2 (visual polish) **+ Phase 2.5 (gameplay enrichment)** complete — a
+> fully playable, polished Snake with smooth motion, particles and a richer food system: two food
+> **categories** (grow / shrink), magnitude tiers, **maxi** sizes, a **mystery "?"** piece, a
+> **time-gated** progression that ramps mid-session, and a **combo** score multiplier. Pro UI/menus,
+> audio and shaders arrive in later phases.
 
 ---
 
@@ -23,25 +25,29 @@ started with. The step-by-step plan lives in [`ROADMAP.md`](ROADMAP.md).
 
 The classic Snake mechanics, extended with configurable features so every run feels different:
 
-- 🍎 **Multiple food types** — different foods grant different growth and score; rarer foods are worth more.
+- 🍽️ **Two food categories** — **grow** food makes the snake longer; **shrink** food trims it back.
+- 🔠 **Magnitude tiers + maxi sizes** — each category comes in several strengths, and a 2×2 **maxi**
+  variant that amplifies the effect.
+- ❓ **Mystery pieces** — a "?" food per category with a random amount.
+- ⏳ **Time-gated progression** — early on you only see growing food; shrink, maxi and mystery pieces
+  unlock as the session goes on (sooner on harder levels), so a run ramps up in difficulty.
+- ✖️ **Combo multiplier** — eating in quick succession multiplies your score (up to ×5).
 - 🚧 **Obstacles** — scattered blocks that raise the difficulty.
 - 🎚️ **Difficulty levels** — 5 levels (*Beginner* → *Legend*) tuning speed and obstacle count.
-- 📐 **Board sizes** — 5 presets, from *Pocket* (30×20) to *Infinite* (120×80).
-- ⏸️ **Pause, menus, highscores, audio, effects** — added progressively (see the roadmap).
+- 📐 **Board sizes** — 5 portrait presets, from *Pocket* to *Infinite*.
+- ⏸️ **Menus, highscores, audio, special power-ups** — added progressively (see the roadmap).
 
-### 🍽️ Food types at a glance
+### 🍽️ Food system at a glance
 
-| Food          | Spawn chance | Growth | Notes                          |
-|---------------|--------------|--------|--------------------------------|
-| 🟢 Green      | ~25 %        | +2     | Common baseline                |
-| 🔴 Red        | ~25 %        | +4     | Better bite                    |
-| 🟡 Gold       | ~15 %        | +6     | Rare and tasty                 |
-| 🔷 Blue ⭐    | ~10 %        | +2…+24 | Random jackpot                 |
-| 🟢🟢 Mega Green | ~10 %      | +8     | 2×2 cells                      |
-| 🔴🔴 Mega Red   | ~7 %       | +16    | 2×2 cells                      |
-| 🟡🟡 Mega Gold  | ~3 %       | +24    | 2×2 cells, the big one         |
+| Category | Tiers (standard growth/shrink) | Maxi (2×2) | Mystery "?" | Score |
+|----------|-------------------------------|------------|-------------|-------|
+| 🟢 **Grow**   | +2 / +4 / +6 / +8 | doubles the amount | random +2…+24 | `+10 × growth × combo` |
+| 🟠 **Shrink** | −2 / −3 / −5      | doubles the amount | random −2…−14 | small symbolic bonus (5 / 10 maxi) |
 
-The score reward scales with the growth amount (`+10 points` per unit of growth).
+The snake never shrinks below **3 segments**. Grow food drives the score (scaled by the combo
+multiplier); shrink food is a tactical tool — it gives only token points but lets you cut your length
+to manoeuvre. The big, rarer **special power-ups and hazards** (earthquake, explosion, speed, ghost,
+freeze, jackpot) are planned for a later phase — see the [roadmap](ROADMAP.md).
 
 ### ⚔️ Difficulty levels
 
@@ -57,11 +63,13 @@ The score reward scales with the growth amount (`+10 points` per unit of growth)
 
 | Preset    | Cells     |
 |-----------|-----------|
-| Pocket    | 30 × 20   |
-| Classic   | 45 × 30   |
-| Grand     | 60 × 40   |
-| Colossal  | 75 × 50   |
-| Infinite  | 120 × 80  |
+| Pocket    | 14 × 20   |
+| Classic   | 18 × 26   |
+| Grand     | 22 × 32   |
+| Colossal  | 27 × 38   |
+| Infinite  | 32 × 46   |
+
+> Presets are **portrait** (~7:10) so the board fills a phone screen; the app is portrait-locked by design.
 
 ---
 
@@ -102,11 +110,17 @@ The project targets `minSdk 24` (Android 7.0) and `compileSdk`/`targetSdk 35` (A
 Guide the snake around the board, eat food to grow and score, and avoid the walls, the obstacles and your
 own body.
 
-**Controls (touch):** swipe to change direction, or use the on-screen D-pad. 180° reversals are blocked, so
-you can't instantly fold back into your own body. Pick a level and board size on the start screen; pause and
-restart from the in-game controls.
+**Food:** green = grow, warm/orange = shrink, "?" = a mystery amount. Bigger (2×2 maxi) pieces and the
+mystery and shrink foods only start appearing as the session runs on — so each run gets more eventful.
+Chain bites together to build a **combo** and multiply your score, and use shrink food to cut your length
+when the board gets tight (you never drop below 3 segments).
 
-> Richer menus, persistent high scores and the polished HUD come online during Phases 2–3 of the
+**Controls (touch):** swipe to change direction, or use the on-screen D-pad — swipe is the smoothest and
+will be the default once the Settings screen lands. 180° reversals are blocked, so you can't instantly
+fold back into your own body. Pick a level and board size on the start screen; pause and restart from the
+in-game controls.
+
+> Richer menus, persistent high scores, audio and the special power-ups come online in later phases of the
 > [roadmap](ROADMAP.md).
 
 ---
