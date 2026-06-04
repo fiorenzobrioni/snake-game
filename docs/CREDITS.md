@@ -6,9 +6,11 @@ source, author and license **in the same change that adds it**. CC-BY assets
 must keep the required attribution.
 
 > The launcher icon and all in-game art are original vectors drawn in-repo. The
-> only bundled third-party asset so far is the Orbitron display font (Phase 3,
-> see Fonts below). Audio and shaders arrive from Phase 4 onward (see
-> [`ROADMAP.md`](../ROADMAP.md)).
+> music and sound effects (Phase 4) are likewise **original works synthesized
+> in-repo** by [`tools/audio/generate_audio.py`](../tools/audio/generate_audio.py)
+> and dedicated to the public domain (CC0). The only bundled third-party asset is
+> the Orbitron display font (Phase 3, see Fonts below). The AGSL shaders (Phase 5)
+> are also original, hand-written in-repo (see Shaders below).
 
 ## Sprites
 
@@ -18,9 +20,14 @@ must keep the required attribution.
 
 ## Audio (music & SFX)
 
+All clips are original works generated procedurally (no samples, no third-party
+audio) by [`tools/audio/generate_audio.py`](../tools/audio/generate_audio.py) and
+released under **CC0 1.0** (public domain). Re-run the script to reproduce them.
+
 | Asset | Source | Author | License |
 |-------|--------|--------|---------|
-| _none yet_ | | | |
+| `music_menu` / `music_game` — looping background music | original (`tools/audio/generate_audio.py`) | Snake Game project | CC0 1.0 |
+| `sfx_eat` / `sfx_shrink` / `sfx_mystery` / `sfx_game_over` / `sfx_click` / `sfx_pause` — sound effects | original (`tools/audio/generate_audio.py`) | Snake Game project | CC0 1.0 |
 
 ## Fonts
 
@@ -30,6 +37,10 @@ must keep the required attribution.
 
 ## Shaders
 
+All AGSL `RuntimeShader`s are original code written in-repo
+([`ui/game/Shaders.kt`](../app/src/main/kotlin/com/brioni/snake/ui/game/Shaders.kt)), covered by the
+repository's MIT license.
+
 | Asset | Source | Author | License |
 |-------|--------|--------|---------|
-| _none yet_ | | | |
+| Head glow / food halo / animated background / CRT filter (AGSL) | original (`ui/game/Shaders.kt`) | Snake Game project | MIT |

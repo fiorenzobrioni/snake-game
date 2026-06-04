@@ -1,5 +1,8 @@
 package com.brioni.snake.ui.game
 
+import android.graphics.RenderEffect
+import android.graphics.RuntimeShader
+import android.os.Build
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateDpAsState
@@ -23,6 +26,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -30,6 +35,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.brioni.snake.R
+import com.brioni.snake.audio.GameAudio
 import com.brioni.snake.game.ControlScheme
 import com.brioni.snake.game.DEFAULT_ASPECT
 import com.brioni.snake.game.GameStatus
@@ -48,6 +54,7 @@ import kotlin.math.sin
 @Composable
 fun GameScreen(
     viewModel: GameViewModel,
+    audio: GameAudio,
     onExitToMenu: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -84,7 +91,7 @@ fun GameScreen(
                 levelLabel = state.level.displayName,
                 boardLabel = "${viewModel.scale.displayName} · ${state.board.width}×${state.board.height}",
                 showPause = state.status == GameStatus.Running,
-                onPause = viewModel::togglePause,
+                onPause = { audio.playPause(); viewModel.togglePause() },
             )
 
             BoxWithConstraints(
@@ -99,9 +106,29 @@ fun GameScreen(
                 val aspect = if (maxHeight > 0.dp) maxWidth / maxHeight else DEFAULT_ASPECT
                 LaunchedEffect(aspect) { viewModel.onPlayAreaMeasured(aspect) }
 
-                var boardModifier: Modifier = Modifier
-                    .fillMaxSize()
-                    .offset { IntOffset(shakeX.roundToInt(), shakeY.roundToInt()) }
+                // Optional CRT post-filter (step 5.4): an AGSL RenderEffect over
+                // the whole board layer, on API 33+ when enabled in Settings.
+                val crtEffect = if (
+                    viewModel.crtEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                ) {
+                    remember(constraints.maxWidth, constraints.maxHeight) {
+                        val shader = RuntimeShader(Shaders.CRT)
+                        shader.setFloatUniform(
+                            "resolution",
+                            constraints.maxWidth.toFloat(),
+                            constraints.maxHeight.toFloat(),
+                        )
+                        RenderEffect.createRuntimeShaderEffect(shader, "content").asComposeRenderEffect()
+                    }
+                } else {
+                    null
+                }
+
+                var boardModifier: Modifier = Modifier.fillMaxSize()
+                if (crtEffect != null) {
+                    boardModifier = boardModifier.graphicsLayer { renderEffect = crtEffect }
+                }
+                boardModifier = boardModifier.offset { IntOffset(shakeX.roundToInt(), shakeY.roundToInt()) }
                 if (state.status == GameStatus.Running && viewModel.controlScheme == ControlScheme.Swipe) {
                     boardModifier = boardModifier.swipeToSteer(onSwipe = viewModel::setDirection)
                 }
@@ -133,22 +160,22 @@ fun GameScreen(
             GameStatus.Ready -> ReadyOverlay(
                 selectedLevel = viewModel.level,
                 selectedScale = viewModel.scale,
-                onLevelSelected = viewModel::selectLevel,
-                onScaleSelected = viewModel::selectScale,
-                onPlay = viewModel::start,
+                onLevelSelected = { audio.playUiClick(); viewModel.selectLevel(it) },
+                onScaleSelected = { audio.playUiClick(); viewModel.selectScale(it) },
+                onPlay = { audio.playUiClick(); viewModel.start() },
             )
 
             GameStatus.Paused -> PausedOverlay(
-                onResume = viewModel::togglePause,
-                onMenu = { viewModel.toMenu(); onExitToMenu() },
+                onResume = { audio.playPause(); viewModel.togglePause() },
+                onMenu = { audio.playUiClick(); viewModel.toMenu(); onExitToMenu() },
             )
 
             GameStatus.GameOver -> GameOverOverlay(
                 score = state.score,
                 bestScore = viewModel.bestScore,
                 isNewBest = viewModel.isNewBest,
-                onPlayAgain = viewModel::playAgain,
-                onMenu = { viewModel.toMenu(); onExitToMenu() },
+                onPlayAgain = { audio.playUiClick(); viewModel.playAgain() },
+                onMenu = { audio.playUiClick(); viewModel.toMenu(); onExitToMenu() },
             )
 
             GameStatus.Running -> Unit

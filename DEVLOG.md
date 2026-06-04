@@ -14,7 +14,7 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 - [ ] Verify smooth-motion interpolation on low-end devices (API 24/25)
 - [ ] Verify the mystery "?" glyph renders crisply on small cells (dense boards) and on API 24
 - [ ] Re-tune the food spawn weights / time gates after playtesting on a device
-- [ ] Consider per-tier / per-category eat SFX cues when audio lands (Phase 4)
+- [ ] Replace synthesized audio with richer CC0/commissioned tracks before Play release (optional polish)
 
 ---
 
@@ -47,12 +47,88 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
   as the default; it was flipped to swipe per the original request.
 - The food spawn table is **time- and level-aware** (`FoodTable.roll(random, elapsedTicks, level)`);
   early game is intentionally simple (grow only) and ramps up — keep this progression intact.
+- **Audio assets are generated, not committed by hand**: `tools/audio/generate_audio.py`
+  (stdlib only, no deps) synthesizes every clip in `app/src/main/res/raw/` as original CC0 16-bit
+  mono WAV. Music loops are rendered to an exact bar count with zero-amplitude note ends so they
+  loop seamlessly under `MediaPlayer`. Re-run the script to regenerate; don't edit the WAVs directly.
+- **No encoder in CI**: there's no `ffmpeg`/`oggenc` available, so music ships as WAV (~0.6–0.8 MB
+  each). If an OGG/Opus encoder becomes available, encode the music to shrink the APK before release.
+- **Audio is decoupled from the model**: the pure `game/` package emits no audio. `GameViewModel`
+  depends only on the `audio/GameSfx` interface (default `GameSfx.None`), so it stays unit-testable.
+  The Android audio engines (`SoundManager`/`MusicManager`) live behind the `audio/GameAudio` facade,
+  which is created once in `ui/App.kt` and released on the host's `onDispose`.
+- **Music backend is framework `MediaPlayer`** (two instances for the crossfade), chosen over
+  ExoPlayer to keep the binary lean. `MusicManager` requests audio focus and ducks/pauses on loss.
+- **AGSL shaders require API 33+ and must stay optional**: `ui/game/Shaders.kt` holds the sources and
+  the `BoardShaders` holder (annotated `@RequiresApi(33)`). Construction and every `setFloatUniform`/
+  `setColorUniform` call must sit behind an explicit `Build.VERSION.SDK_INT >= TIRAMISU` check — lint
+  does **not** treat a `shaders != null` null-check as an API guard. Below 33 the holder is `null`
+  and the renderer uses the Canvas fallbacks. Keep both paths in sync when changing visuals.
+- **Shaders return premultiplied alpha** (Skia convention): the glow/halo shaders output `rgb * a`.
+- **The CRT filter is a `RenderEffect`** applied to the board's `graphicsLayer` (API 33+), gated by a
+  persisted `crtEnabled` setting that is only surfaced in Settings when `Shaders.supported`.
 
 ---
 
 ## Log
 
 > Newest entries at the top. One entry per completed phase/step or significant change.
+
+---
+
+### 2026-06-04 — Phase 5 complete: Shaders & FX (AGSL)
+
+Added GPU shader effects via AGSL `RuntimeShader`, completing milestone **M3 ("Alive")**.
+
+**What was done:**
+- **5.1** Pulsing, gently rotating glow on the snake's head.
+- **5.2** Pulsing outline + halo on rare foods — mapped to the current model (**maxi / mystery /
+  huge**), since v1.0.0's Gold/Mega types no longer exist.
+- **5.3** Animated board background: the Phase 2 gradient with two drifting glows and a vignette.
+- **5.4** Optional retro **CRT filter** (scanlines + vignette) as a `RenderEffect` over the board
+  layer, toggled by a new persisted `crtEnabled` setting (shown only where AGSL is supported).
+
+**Architecture:** `ui/game/Shaders.kt` holds the four AGSL sources and the `BoardShaders` holder
+(`@RequiresApi(33)`) with live `RuntimeShader`s + `ShaderBrush`es; `GameBoard` mutates uniforms per
+frame and draws with them. Everything is **API 33+ only** and falls back cleanly to the existing
+Canvas rendering below it (`BoardShaders` is `null`, guarded by explicit `SDK_INT` checks).
+
+**Default tweak (same change):** music volume now defaults to **0%** and SFX to **80%** per request.
+
+**Verification:** `:app:assembleDebug` and `:app:lintDebug` both green (no new lint errors after
+adding the `SDK_INT` guards lint requires). AGSL programs compile at runtime, so an on-device check on
+an API 33+ device is still pending (no emulator in this environment); the pre-33 Canvas path is
+unaffected.
+
+---
+
+### 2026-06-04 — Phase 4 complete: Audio
+
+Added music and sound effects, reaching milestone **M3 ("Alive")** alongside the upcoming shaders.
+
+**What was done:**
+- **4.1** Looping background music via the framework `MediaPlayer` (two instances). Two original
+  tracks: a calm menu loop and a driving gameplay loop.
+- **4.2** SFX via `SoundPool`: eat, shrink, mystery, game over, UI click, pause. Eat pitch
+  (playback rate) rises with food tier and combo for reward feel — no extra clips needed.
+- **4.3** Master / Music / SFX volume sliders in Settings (persisted via DataStore, live preview
+  while dragging). Lifecycle-aware: music pauses on `ON_STOP`, resumes on `ON_START`, and yields to
+  other apps via audio focus (ducks on transient loss).
+- **4.4** Menu ↔ gameplay music crossfades (~600 ms volume ramp) driven by the active screen.
+
+**Architecture:** new `audio/` package — `GameAudio` facade (owns `SoundManager` + `MusicManager`),
+`Sfx`/`MusicTrack` enums, and the `GameSfx` interface the ViewModel depends on (`GameSfx.None`
+default keeps `game/` pure and the VM testable). Created once in `ui/App.kt`, released on dispose.
+
+**Assets:** all clips are **original, procedurally synthesized** by `tools/audio/generate_audio.py`
+(Python stdlib only) and dedicated to the public domain (CC0) — recorded in `docs/CREDITS.md`.
+Music loops are sample-joined (0→0 boundaries) for click-free looping. Shipped as WAV (no encoder
+available in this environment).
+
+**Verification:** `:app:testDebugUnitTest` green (22 tests; `game/` untouched, audio additive);
+`:app:assembleDebug` builds the debug APK with all 8 raw clips packaged. On-device audio smoke test
+still pending (no emulator in this environment). Build used the system Gradle 8.14.3 because the
+pinned wrapper distribution (8.9) could not be downloaded here; the wrapper remains pinned to 8.9.
 
 ---
 

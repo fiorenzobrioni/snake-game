@@ -191,19 +191,31 @@ snake-game/
 - [x] **Step 3.6** — Animated, rolling HUD score counter.
 - [x] **Step 3.7** — Fade scene transitions (`Crossfade`).
 
-### Phase 4 — Audio
+### Phase 4 — Audio ✅ (implemented)
 
-- [ ] **Step 4.1** — Looping background music (CC0) via `MediaPlayer`/`ExoPlayer`.
-- [ ] **Step 4.2** — SFX via `SoundPool`: eat (per food type), game over, UI click, pause.
-- [ ] **Step 4.3** — Master / Music / SFX volumes in Settings; **lifecycle-aware** pause/mute.
-- [ ] **Step 4.4** — Menu ↔ gameplay music crossfade.
+> Audio assets are **original works synthesized in-repo** (CC0) by
+> `tools/audio/generate_audio.py` — no third-party samples. Background music uses
+> the framework `MediaPlayer` (two instances for a volume crossfade) rather than
+> ExoPlayer, keeping the binary lean per the chosen-stack rationale. SFX use
+> `SoundPool`, with playback-rate variation by food tier / combo. All audio is
+> owned by a single `audio/GameAudio` facade created in `ui/App.kt`.
 
-### Phase 5 — Shaders & FX (AGSL)
+- [x] **Step 4.1** — Looping background music (CC0) via `MediaPlayer`.
+- [x] **Step 4.2** — SFX via `SoundPool`: eat (per food tier/combo), shrink, mystery, game over, UI click, pause.
+- [x] **Step 4.3** — Master / Music / SFX volumes in Settings; **lifecycle-aware** pause/resume + audio focus.
+- [x] **Step 4.4** — Menu ↔ gameplay music crossfade.
 
-- [ ] **Step 5.1** — `RuntimeShader` glow on the snake's head (API 33+), graceful fallback below.
-- [ ] **Step 5.2** — Pulsing shader outline on rare foods (Gold / Mega).
-- [ ] **Step 5.3** — Animated background shader (gradient / stars / caustics).
-- [ ] **Step 5.4** — (Optional) CRT / scanline filter, toggleable in Settings.
+### Phase 5 — Shaders & FX (AGSL) ✅ (implemented)
+
+> All effects are original AGSL `RuntimeShader`s (`ui/game/Shaders.kt`), live only on **API 33+**
+> and **degrade gracefully** to the existing Canvas rendering below it (the `BoardShaders` holder is
+> `null` pre-33). "Rare foods" maps onto the current food model — **maxi / mystery / huge** pieces —
+> since the v1.0.0 Gold/Mega types were replaced by the Phase 2.5 category/tier system.
+
+- [x] **Step 5.1** — `RuntimeShader` glow on the snake's head (API 33+), graceful fallback below.
+- [x] **Step 5.2** — Pulsing shader outline + halo on rare foods (maxi / mystery / huge).
+- [x] **Step 5.3** — Animated background shader (drifting glows + vignette over the gradient).
+- [x] **Step 5.4** — CRT / scanline filter, toggleable in Settings (API 33+).
 
 ### Phase 6 — Content & replayability
 
