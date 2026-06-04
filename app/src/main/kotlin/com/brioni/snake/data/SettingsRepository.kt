@@ -27,8 +27,8 @@ data class Settings(
 
 /** Default audio levels (also used as the in-memory fallback before load). */
 const val DEFAULT_MASTER_VOLUME = 1f
-const val DEFAULT_MUSIC_VOLUME = 0.6f
-const val DEFAULT_SFX_VOLUME = 0.9f
+const val DEFAULT_MUSIC_VOLUME = 0f
+const val DEFAULT_SFX_VOLUME = 0.8f
 
 /** Process-wide DataStore, created once for the app's [Context]. */
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "snake_prefs")
