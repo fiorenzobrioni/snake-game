@@ -5,8 +5,17 @@
     <!-- Menu / titles -->
     <string name="game_title">SNAKE</string>
     <string name="menu_level">Level</string>
-    <string name="menu_board_size">Board size</string>
+    <string name="menu_board_scale">Board scale</string>
+    <string name="menu_play">Play</string>
+    <!-- Note: action_play is retained for the in-game Ready overlay Play button. -->
+    <string name="menu_settings">Settings</string>
     <string name="action_play">Play</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_control_scheme">Controls</string>
+    <string name="settings_level">Level</string>
+    <string name="settings_board_scale">Board scale</string>
 
     <!-- HUD -->
     <string name="hud_score">Score: %1$d</string>
@@ -22,10 +31,14 @@
     <string name="game_over_title">Game Over</string>
     <string name="game_over_score">Final score: %1$d</string>
     <string name="action_play_again">Play again</string>
+    <string name="highscore_label">Best: %1$d</string>
+    <string name="new_highscore">New best!</string>
 
     <!-- Direction controls (content descriptions) -->
     <string name="dir_up">Move up</string>
     <string name="dir_down">Move down</string>
     <string name="dir_left">Move left</string>
     <string name="dir_right">Move right</string>
+    <string name="turn_left">Turn left</string>
+    <string name="turn_right">Turn right</string>
 </resources>

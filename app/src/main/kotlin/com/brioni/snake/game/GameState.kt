@@ -35,7 +35,7 @@ enum class GameStatus {
  *                         of the logical state — cleared/replaced every tick.
  */
 data class GameState(
-    val board: BoardSize,
+    val board: BoardDimensions,
     val level: Level,
     val snake: List<Position>,
     val direction: Direction,

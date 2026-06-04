@@ -150,7 +150,7 @@ snake-game/
 
 ### Phase 2.5 — Gameplay enrichment (food system) ✅ (implemented)
 
-> Inserted before Phase 3 to make a session less "static": the v1.0.0 model only had foods that
+> A pre-Phase-3 gameplay layer to make a session less "static": the v1.0.0 model only had foods that
 > grow the snake. This step adds two food **categories**, magnitude **tiers**, **maxi** sizes, a
 > **mystery** piece per category and a **time-gated** progression, plus combo scoring — all in the
 > pure-Kotlin model. The flashier **special power-ups / hazards** (earthquake, explosion, …) are
@@ -170,17 +170,26 @@ snake-game/
       halo, a "?" glyph for mystery (Canvas `TextMeasurer`), a shrink "implosion" particle burst and a
       combo readout in the HUD.
 
-### Phase 3 — Pro UI / UX
+### Phase 3 — Pro UI / UX ✅ (implemented)
 
-- [ ] **Step 3.1** — Custom arcade font + a reusable Material 3 type scale.
-- [ ] **Step 3.2** — Main menu (animated title, Play / Settings / Quit) with Compose Navigation.
-- [ ] **Step 3.3** — Settings screen (level, board size, volumes, **control scheme**) persisted via
-      **DataStore**. The control scheme **defaults to Swipe** and offers Swipe / D-Pad / Both (swipe
-      was found to be the most comfortable, so it is the default).
-- [ ] **Step 3.4** — Pause overlay with a **blur** (`Modifier.blur` / `RenderEffect`) over the frozen board.
-- [ ] **Step 3.5** — Game-over screen + persistent **highscores per (level, size)**.
-- [ ] **Step 3.6** — Animated, rolling HUD score counter.
-- [ ] **Step 3.7** — Fade scene transitions.
+> Alongside Phase 3 the gameplay was tuned: a **two-button relative** control scheme (turn
+> left/right relative to heading) is now the default, with classic swipe and the 4-button D-pad
+> kept as selectable schemes; the board is now **responsive** — its rows×columns are computed from
+> the device's play-area aspect ratio for a chosen granularity (`BoardScale`: Cozy/Classic/Epic) so
+> it fills the screen with square cells (the old fixed `BoardSize` presets were dropped); obstacles
+> are laid out with **4-fold symmetry** (clear border margin + clear spawn zone); and per-level
+> speed was eased ~25% slower for comfortable touch play. The launcher icon was redrawn to resemble
+> the in-game snake. Navigation uses a lightweight **state-based screen switch + `Crossfade`** rather
+> than `navigation-compose` (single Activity, three destinations) — an intentional, justified
+> deviation that keeps the binary lean and still delivers the fade transitions.
+
+- [x] **Step 3.1** — Orbitron (OFL) display font + a reusable Material 3 type scale.
+- [x] **Step 3.2** — Main menu (animated title, Play / Settings) with state-based navigation.
+- [x] **Step 3.3** — Settings screen (level, board scale, control scheme) persisted via **DataStore**.
+- [x] **Step 3.4** — Pause overlay with a **blur** (`Modifier.blur`) over the frozen board (API 31+, scrim fallback).
+- [x] **Step 3.5** — Game-over screen + persistent **highscores per (level, scale)**.
+- [x] **Step 3.6** — Animated, rolling HUD score counter.
+- [x] **Step 3.7** — Fade scene transitions (`Crossfade`).
 
 ### Phase 4 — Audio
 
