@@ -1,5 +1,8 @@
 package com.brioni.snake.ui.game
 
+import android.graphics.RenderEffect
+import android.graphics.RuntimeShader
+import android.os.Build
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateDpAsState
@@ -23,6 +26,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -101,9 +106,29 @@ fun GameScreen(
                 val aspect = if (maxHeight > 0.dp) maxWidth / maxHeight else DEFAULT_ASPECT
                 LaunchedEffect(aspect) { viewModel.onPlayAreaMeasured(aspect) }
 
-                var boardModifier: Modifier = Modifier
-                    .fillMaxSize()
-                    .offset { IntOffset(shakeX.roundToInt(), shakeY.roundToInt()) }
+                // Optional CRT post-filter (step 5.4): an AGSL RenderEffect over
+                // the whole board layer, on API 33+ when enabled in Settings.
+                val crtEffect = if (
+                    viewModel.crtEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                ) {
+                    remember(constraints.maxWidth, constraints.maxHeight) {
+                        val shader = RuntimeShader(Shaders.CRT)
+                        shader.setFloatUniform(
+                            "resolution",
+                            constraints.maxWidth.toFloat(),
+                            constraints.maxHeight.toFloat(),
+                        )
+                        RenderEffect.createRuntimeShaderEffect(shader, "content").asComposeRenderEffect()
+                    }
+                } else {
+                    null
+                }
+
+                var boardModifier: Modifier = Modifier.fillMaxSize()
+                if (crtEffect != null) {
+                    boardModifier = boardModifier.graphicsLayer { renderEffect = crtEffect }
+                }
+                boardModifier = boardModifier.offset { IntOffset(shakeX.roundToInt(), shakeY.roundToInt()) }
                 if (state.status == GameStatus.Running && viewModel.controlScheme == ControlScheme.Swipe) {
                     boardModifier = boardModifier.swipeToSteer(onSwipe = viewModel::setDirection)
                 }

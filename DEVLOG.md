@@ -59,12 +59,46 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
   which is created once in `ui/App.kt` and released on the host's `onDispose`.
 - **Music backend is framework `MediaPlayer`** (two instances for the crossfade), chosen over
   ExoPlayer to keep the binary lean. `MusicManager` requests audio focus and ducks/pauses on loss.
+- **AGSL shaders require API 33+ and must stay optional**: `ui/game/Shaders.kt` holds the sources and
+  the `BoardShaders` holder (annotated `@RequiresApi(33)`). Construction and every `setFloatUniform`/
+  `setColorUniform` call must sit behind an explicit `Build.VERSION.SDK_INT >= TIRAMISU` check — lint
+  does **not** treat a `shaders != null` null-check as an API guard. Below 33 the holder is `null`
+  and the renderer uses the Canvas fallbacks. Keep both paths in sync when changing visuals.
+- **Shaders return premultiplied alpha** (Skia convention): the glow/halo shaders output `rgb * a`.
+- **The CRT filter is a `RenderEffect`** applied to the board's `graphicsLayer` (API 33+), gated by a
+  persisted `crtEnabled` setting that is only surfaced in Settings when `Shaders.supported`.
 
 ---
 
 ## Log
 
 > Newest entries at the top. One entry per completed phase/step or significant change.
+
+---
+
+### 2026-06-04 — Phase 5 complete: Shaders & FX (AGSL)
+
+Added GPU shader effects via AGSL `RuntimeShader`, completing milestone **M3 ("Alive")**.
+
+**What was done:**
+- **5.1** Pulsing, gently rotating glow on the snake's head.
+- **5.2** Pulsing outline + halo on rare foods — mapped to the current model (**maxi / mystery /
+  huge**), since v1.0.0's Gold/Mega types no longer exist.
+- **5.3** Animated board background: the Phase 2 gradient with two drifting glows and a vignette.
+- **5.4** Optional retro **CRT filter** (scanlines + vignette) as a `RenderEffect` over the board
+  layer, toggled by a new persisted `crtEnabled` setting (shown only where AGSL is supported).
+
+**Architecture:** `ui/game/Shaders.kt` holds the four AGSL sources and the `BoardShaders` holder
+(`@RequiresApi(33)`) with live `RuntimeShader`s + `ShaderBrush`es; `GameBoard` mutates uniforms per
+frame and draws with them. Everything is **API 33+ only** and falls back cleanly to the existing
+Canvas rendering below it (`BoardShaders` is `null`, guarded by explicit `SDK_INT` checks).
+
+**Default tweak (same change):** music volume now defaults to **0%** and SFX to **80%** per request.
+
+**Verification:** `:app:assembleDebug` and `:app:lintDebug` both green (no new lint errors after
+adding the `SDK_INT` guards lint requires). AGSL programs compile at runtime, so an on-device check on
+an API 33+ device is still pending (no emulator in this environment); the pre-33 Canvas path is
+unaffected.
 
 ---
 

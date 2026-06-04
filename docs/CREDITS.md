@@ -9,8 +9,8 @@ must keep the required attribution.
 > music and sound effects (Phase 4) are likewise **original works synthesized
 > in-repo** by [`tools/audio/generate_audio.py`](../tools/audio/generate_audio.py)
 > and dedicated to the public domain (CC0). The only bundled third-party asset is
-> the Orbitron display font (Phase 3, see Fonts below). Shaders arrive from
-> Phase 5 onward (see [`ROADMAP.md`](../ROADMAP.md)).
+> the Orbitron display font (Phase 3, see Fonts below). The AGSL shaders (Phase 5)
+> are also original, hand-written in-repo (see Shaders below).
 
 ## Sprites
 
@@ -37,6 +37,10 @@ released under **CC0 1.0** (public domain). Re-run the script to reproduce them.
 
 ## Shaders
 
+All AGSL `RuntimeShader`s are original code written in-repo
+([`ui/game/Shaders.kt`](../app/src/main/kotlin/com/brioni/snake/ui/game/Shaders.kt)), covered by the
+repository's MIT license.
+
 | Asset | Source | Author | License |
 |-------|--------|--------|---------|
-| _none yet_ | | | |
+| Head glow / food halo / animated background / CRT filter (AGSL) | original (`ui/game/Shaders.kt`) | Snake Game project | MIT |

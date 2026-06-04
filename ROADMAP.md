@@ -205,12 +205,17 @@ snake-game/
 - [x] **Step 4.3** — Master / Music / SFX volumes in Settings; **lifecycle-aware** pause/resume + audio focus.
 - [x] **Step 4.4** — Menu ↔ gameplay music crossfade.
 
-### Phase 5 — Shaders & FX (AGSL)
+### Phase 5 — Shaders & FX (AGSL) ✅ (implemented)
 
-- [ ] **Step 5.1** — `RuntimeShader` glow on the snake's head (API 33+), graceful fallback below.
-- [ ] **Step 5.2** — Pulsing shader outline on rare foods (Gold / Mega).
-- [ ] **Step 5.3** — Animated background shader (gradient / stars / caustics).
-- [ ] **Step 5.4** — (Optional) CRT / scanline filter, toggleable in Settings.
+> All effects are original AGSL `RuntimeShader`s (`ui/game/Shaders.kt`), live only on **API 33+**
+> and **degrade gracefully** to the existing Canvas rendering below it (the `BoardShaders` holder is
+> `null` pre-33). "Rare foods" maps onto the current food model — **maxi / mystery / huge** pieces —
+> since the v1.0.0 Gold/Mega types were replaced by the Phase 2.5 category/tier system.
+
+- [x] **Step 5.1** — `RuntimeShader` glow on the snake's head (API 33+), graceful fallback below.
+- [x] **Step 5.2** — Pulsing shader outline + halo on rare foods (maxi / mystery / huge).
+- [x] **Step 5.3** — Animated background shader (drifting glows + vignette over the gradient).
+- [x] **Step 5.4** — CRT / scanline filter, toggleable in Settings (API 33+).
 
 ### Phase 6 — Content & replayability
 

@@ -3,6 +3,7 @@ package com.brioni.snake.data
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
@@ -23,6 +24,7 @@ data class Settings(
     val masterVolume: Float = DEFAULT_MASTER_VOLUME,
     val musicVolume: Float = DEFAULT_MUSIC_VOLUME,
     val sfxVolume: Float = DEFAULT_SFX_VOLUME,
+    val crtEnabled: Boolean = false,
 )
 
 /** Default audio levels (also used as the in-memory fallback before load). */
@@ -48,6 +50,7 @@ class SettingsRepository(private val context: Context) {
             masterVolume = prefs[MASTER_VOLUME] ?: DEFAULT_MASTER_VOLUME,
             musicVolume = prefs[MUSIC_VOLUME] ?: DEFAULT_MUSIC_VOLUME,
             sfxVolume = prefs[SFX_VOLUME] ?: DEFAULT_SFX_VOLUME,
+            crtEnabled = prefs[CRT_ENABLED] ?: false,
         )
     }
 
@@ -68,6 +71,9 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setSfxVolume(volume: Float) =
         edit { it[SFX_VOLUME] = volume.coerceIn(0f, 1f) }
+
+    suspend fun setCrtEnabled(enabled: Boolean) =
+        edit { it[CRT_ENABLED] = enabled }
 
     /** The stored best for a [level]×[scale] pairing (0 if none yet). */
     fun highScore(level: Level, scale: BoardScale): Flow<Int> =
@@ -104,5 +110,6 @@ class SettingsRepository(private val context: Context) {
         val MASTER_VOLUME = floatPreferencesKey("master_volume")
         val MUSIC_VOLUME = floatPreferencesKey("music_volume")
         val SFX_VOLUME = floatPreferencesKey("sfx_volume")
+        val CRT_ENABLED = booleanPreferencesKey("crt_enabled")
     }
 }

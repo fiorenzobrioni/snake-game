@@ -13,6 +13,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,6 +35,7 @@ import com.brioni.snake.data.SettingsRepository
 import com.brioni.snake.game.BoardScale
 import com.brioni.snake.game.ControlScheme
 import com.brioni.snake.game.Level
+import com.brioni.snake.ui.game.Shaders
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -115,6 +117,15 @@ fun SettingsScreen(
             onCommit = { scope.launch { repo.setSfxVolume(it) } },
         )
 
+        // The CRT post-filter is an AGSL effect; only offer it where supported.
+        if (Shaders.supported) {
+            ToggleSection(
+                title = stringResource(R.string.settings_crt_filter),
+                checked = settings.crtEnabled,
+                onCheckedChange = { enabled -> scope.launch { repo.setCrtEnabled(enabled) } },
+            )
+        }
+
         Button(
             onClick = onBack,
             modifier = Modifier.padding(top = 32.dp).widthIn(min = 200.dp),
@@ -151,6 +162,27 @@ private fun <T> ChoiceSection(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun ToggleSection(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.weight(1f),
+        )
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
 

@@ -59,6 +59,10 @@ class GameViewModel(
     var controlScheme by mutableStateOf(DEFAULT_CONTROL)
         private set
 
+    /** Whether the retro CRT post-filter is enabled (loaded from settings). */
+    var crtEnabled by mutableStateOf(false)
+        private set
+
     var state by mutableStateOf(engine.setup(DEFAULT_LEVEL, boardFor(DEFAULT_SCALE, DEFAULT_ASPECT)))
         private set
 
@@ -106,6 +110,7 @@ class GameViewModel(
         viewModelScope.launch {
             repo.settings.collect { settings ->
                 controlScheme = settings.controlScheme
+                crtEnabled = settings.crtEnabled
                 if (state.status == GameStatus.Ready) {
                     val levelChanged = settings.level != state.level
                     scale = settings.scale
