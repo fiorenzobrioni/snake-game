@@ -12,37 +12,46 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.brioni.snake.R
+import com.brioni.snake.audio.GameAudio
 import com.brioni.snake.data.Settings
 import com.brioni.snake.data.SettingsRepository
 import com.brioni.snake.game.BoardScale
 import com.brioni.snake.game.ControlScheme
 import com.brioni.snake.game.Level
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 /**
- * Settings screen: control scheme, difficulty level and board scale, all
- * persisted via [repo]'s DataStore. Reads the live settings flow and writes
- * each change back immediately.
+ * Settings screen: control scheme, difficulty level, board scale and the three
+ * audio volumes (master / music / SFX), all persisted via [repo]'s DataStore.
+ * Volume changes preview live through [audio] while dragging and persist when
+ * the gesture ends.
  */
 @Composable
 fun SettingsScreen(
     repo: SettingsRepository,
+    audio: GameAudio,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val settings by repo.settings.collectAsState(
-        initial = Settings(Level.Beginner, BoardScale.Classic, ControlScheme.TwoButton),
+        initial = Settings(Level.Beginner, BoardScale.Classic, ControlScheme.Swipe),
     )
     val scope = rememberCoroutineScope()
 
@@ -85,6 +94,27 @@ fun SettingsScreen(
             onSelected = { scale -> scope.launch { repo.setScale(scale) } },
         )
 
+        VolumeSection(
+            title = stringResource(R.string.settings_master_volume),
+            value = settings.masterVolume,
+            onPreview = { audio.previewVolumes(it, settings.musicVolume, settings.sfxVolume) },
+            onCommit = { scope.launch { repo.setMasterVolume(it) } },
+        )
+
+        VolumeSection(
+            title = stringResource(R.string.settings_music_volume),
+            value = settings.musicVolume,
+            onPreview = { audio.previewVolumes(settings.masterVolume, it, settings.sfxVolume) },
+            onCommit = { scope.launch { repo.setMusicVolume(it) } },
+        )
+
+        VolumeSection(
+            title = stringResource(R.string.settings_sfx_volume),
+            value = settings.sfxVolume,
+            onPreview = { audio.previewVolumes(settings.masterVolume, settings.musicVolume, it) },
+            onCommit = { scope.launch { repo.setSfxVolume(it) } },
+        )
+
         Button(
             onClick = onBack,
             modifier = Modifier.padding(top = 32.dp).widthIn(min = 200.dp),
@@ -121,5 +151,44 @@ private fun <T> ChoiceSection(
                 )
             }
         }
+    }
+}
+
+/**
+ * A 0–100% volume slider. Local state tracks the drag for instant feedback
+ * ([onPreview]); the change is persisted only when the gesture ends ([onCommit])
+ * to avoid a DataStore write per pixel. Re-syncs if the stored [value] changes
+ * externally.
+ */
+@Composable
+private fun VolumeSection(
+    title: String,
+    value: Float,
+    onPreview: (Float) -> Unit,
+    onCommit: (Float) -> Unit,
+) {
+    var sliderValue by remember { mutableFloatStateOf(value) }
+    LaunchedEffect(value) { sliderValue = value }
+
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = stringResource(R.string.settings_volume_label, title, (sliderValue * 100).roundToInt()),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(bottom = 4.dp),
+        )
+        Slider(
+            value = sliderValue,
+            onValueChange = {
+                sliderValue = it
+                onPreview(it)
+            },
+            onValueChangeFinished = { onCommit(sliderValue) },
+            valueRange = 0f..1f,
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }

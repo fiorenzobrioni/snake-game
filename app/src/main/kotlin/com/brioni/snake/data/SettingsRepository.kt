@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -19,7 +20,15 @@ data class Settings(
     val level: Level,
     val scale: BoardScale,
     val controlScheme: ControlScheme,
+    val masterVolume: Float = DEFAULT_MASTER_VOLUME,
+    val musicVolume: Float = DEFAULT_MUSIC_VOLUME,
+    val sfxVolume: Float = DEFAULT_SFX_VOLUME,
 )
+
+/** Default audio levels (also used as the in-memory fallback before load). */
+const val DEFAULT_MASTER_VOLUME = 1f
+const val DEFAULT_MUSIC_VOLUME = 0.6f
+const val DEFAULT_SFX_VOLUME = 0.9f
 
 /** Process-wide DataStore, created once for the app's [Context]. */
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "snake_prefs")
@@ -36,6 +45,9 @@ class SettingsRepository(private val context: Context) {
             level = prefs[LEVEL].toEnum(Level::valueOf) ?: Level.Beginner,
             scale = prefs[SCALE].toEnum(BoardScale::valueOf) ?: BoardScale.Classic,
             controlScheme = prefs[CONTROL].toEnum(ControlScheme::valueOf) ?: ControlScheme.Swipe,
+            masterVolume = prefs[MASTER_VOLUME] ?: DEFAULT_MASTER_VOLUME,
+            musicVolume = prefs[MUSIC_VOLUME] ?: DEFAULT_MUSIC_VOLUME,
+            sfxVolume = prefs[SFX_VOLUME] ?: DEFAULT_SFX_VOLUME,
         )
     }
 
@@ -47,6 +59,15 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setControlScheme(scheme: ControlScheme) =
         edit { it[CONTROL] = scheme.name }
+
+    suspend fun setMasterVolume(volume: Float) =
+        edit { it[MASTER_VOLUME] = volume.coerceIn(0f, 1f) }
+
+    suspend fun setMusicVolume(volume: Float) =
+        edit { it[MUSIC_VOLUME] = volume.coerceIn(0f, 1f) }
+
+    suspend fun setSfxVolume(volume: Float) =
+        edit { it[SFX_VOLUME] = volume.coerceIn(0f, 1f) }
 
     /** The stored best for a [level]×[scale] pairing (0 if none yet). */
     fun highScore(level: Level, scale: BoardScale): Flow<Int> =
@@ -80,5 +101,8 @@ class SettingsRepository(private val context: Context) {
         val LEVEL = stringPreferencesKey("level")
         val SCALE = stringPreferencesKey("board_scale")
         val CONTROL = stringPreferencesKey("control_scheme")
+        val MASTER_VOLUME = floatPreferencesKey("master_volume")
+        val MUSIC_VOLUME = floatPreferencesKey("music_volume")
+        val SFX_VOLUME = floatPreferencesKey("sfx_volume")
     }
 }

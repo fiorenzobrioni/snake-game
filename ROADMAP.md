@@ -191,12 +191,19 @@ snake-game/
 - [x] **Step 3.6** — Animated, rolling HUD score counter.
 - [x] **Step 3.7** — Fade scene transitions (`Crossfade`).
 
-### Phase 4 — Audio
+### Phase 4 — Audio ✅ (implemented)
 
-- [ ] **Step 4.1** — Looping background music (CC0) via `MediaPlayer`/`ExoPlayer`.
-- [ ] **Step 4.2** — SFX via `SoundPool`: eat (per food type), game over, UI click, pause.
-- [ ] **Step 4.3** — Master / Music / SFX volumes in Settings; **lifecycle-aware** pause/mute.
-- [ ] **Step 4.4** — Menu ↔ gameplay music crossfade.
+> Audio assets are **original works synthesized in-repo** (CC0) by
+> `tools/audio/generate_audio.py` — no third-party samples. Background music uses
+> the framework `MediaPlayer` (two instances for a volume crossfade) rather than
+> ExoPlayer, keeping the binary lean per the chosen-stack rationale. SFX use
+> `SoundPool`, with playback-rate variation by food tier / combo. All audio is
+> owned by a single `audio/GameAudio` facade created in `ui/App.kt`.
+
+- [x] **Step 4.1** — Looping background music (CC0) via `MediaPlayer`.
+- [x] **Step 4.2** — SFX via `SoundPool`: eat (per food tier/combo), shrink, mystery, game over, UI click, pause.
+- [x] **Step 4.3** — Master / Music / SFX volumes in Settings; **lifecycle-aware** pause/resume + audio focus.
+- [x] **Step 4.4** — Menu ↔ gameplay music crossfade.
 
 ### Phase 5 — Shaders & FX (AGSL)
 

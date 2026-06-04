@@ -10,6 +10,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.brioni.snake.audio.GameSfx
 import com.brioni.snake.data.SettingsRepository
 import com.brioni.snake.game.BoardDimensions
 import com.brioni.snake.game.BoardScale
@@ -43,7 +44,10 @@ data class EatEvent(val cell: Position, val span: Int, val color: Color, val imp
  * read from and written back to [repo]; the board's concrete dimensions are
  * computed from the selected [scale] and the measured play-area aspect ratio.
  */
-class GameViewModel(private val repo: SettingsRepository) : ViewModel() {
+class GameViewModel(
+    private val repo: SettingsRepository,
+    private val sfx: GameSfx = GameSfx.None,
+) : ViewModel() {
 
     private val engine = GameEngine()
 
@@ -210,13 +214,16 @@ class GameViewModel(private val repo: SettingsRepository) : ViewModel() {
                 is GameEvent.Ate -> {
                     eatEvent = EatEvent(event.food.position, event.food.span, GameColors.foodColor(event.food), implode = false)
                     eatEventId++
+                    sfx.ate(event.food, event.combo)
                 }
                 is GameEvent.Shrunk -> {
                     eatEvent = EatEvent(event.food.position, event.food.span, GameColors.foodColor(event.food), implode = true)
                     eatEventId++
+                    sfx.shrunk(event.food)
                 }
                 GameEvent.Died -> {
                     deathEventId++
+                    sfx.died()
                     onGameOver(after.score)
                 }
             }
@@ -258,8 +265,8 @@ class GameViewModel(private val repo: SettingsRepository) : ViewModel() {
         private val DEFAULT_SCALE = BoardScale.Classic
         private val DEFAULT_CONTROL = ControlScheme.Swipe
 
-        fun factory(repo: SettingsRepository) = viewModelFactory {
-            initializer { GameViewModel(repo) }
+        fun factory(repo: SettingsRepository, sfx: GameSfx = GameSfx.None) = viewModelFactory {
+            initializer { GameViewModel(repo, sfx) }
         }
     }
 }

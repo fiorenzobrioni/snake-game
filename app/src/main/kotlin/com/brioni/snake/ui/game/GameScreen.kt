@@ -30,6 +30,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.brioni.snake.R
+import com.brioni.snake.audio.GameAudio
 import com.brioni.snake.game.ControlScheme
 import com.brioni.snake.game.DEFAULT_ASPECT
 import com.brioni.snake.game.GameStatus
@@ -48,6 +49,7 @@ import kotlin.math.sin
 @Composable
 fun GameScreen(
     viewModel: GameViewModel,
+    audio: GameAudio,
     onExitToMenu: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -84,7 +86,7 @@ fun GameScreen(
                 levelLabel = state.level.displayName,
                 boardLabel = "${viewModel.scale.displayName} · ${state.board.width}×${state.board.height}",
                 showPause = state.status == GameStatus.Running,
-                onPause = viewModel::togglePause,
+                onPause = { audio.playPause(); viewModel.togglePause() },
             )
 
             BoxWithConstraints(
@@ -133,22 +135,22 @@ fun GameScreen(
             GameStatus.Ready -> ReadyOverlay(
                 selectedLevel = viewModel.level,
                 selectedScale = viewModel.scale,
-                onLevelSelected = viewModel::selectLevel,
-                onScaleSelected = viewModel::selectScale,
-                onPlay = viewModel::start,
+                onLevelSelected = { audio.playUiClick(); viewModel.selectLevel(it) },
+                onScaleSelected = { audio.playUiClick(); viewModel.selectScale(it) },
+                onPlay = { audio.playUiClick(); viewModel.start() },
             )
 
             GameStatus.Paused -> PausedOverlay(
-                onResume = viewModel::togglePause,
-                onMenu = { viewModel.toMenu(); onExitToMenu() },
+                onResume = { audio.playPause(); viewModel.togglePause() },
+                onMenu = { audio.playUiClick(); viewModel.toMenu(); onExitToMenu() },
             )
 
             GameStatus.GameOver -> GameOverOverlay(
                 score = state.score,
                 bestScore = viewModel.bestScore,
                 isNewBest = viewModel.isNewBest,
-                onPlayAgain = viewModel::playAgain,
-                onMenu = { viewModel.toMenu(); onExitToMenu() },
+                onPlayAgain = { audio.playUiClick(); viewModel.playAgain() },
+                onMenu = { audio.playUiClick(); viewModel.toMenu(); onExitToMenu() },
             )
 
             GameStatus.Running -> Unit
