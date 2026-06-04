@@ -75,7 +75,7 @@ snake-game/
 ├── docs/CREDITS.md               # asset credits (CC0/CC-BY/MIT)
 ├── legacy/SnakeGame/             # frozen C#/.NET 10 GDI+ v1.0.0 (learning)
 ├── .github/workflows/            # release CI (Phase 7)
-├── CLAUDE.md  README.md  ROADMAP.md  LICENSE
+├── CLAUDE.md  README.md  ROADMAP.md  DEVLOG.md  LICENSE
 ```
 
 ---
