@@ -13,9 +13,10 @@ polished, **Google-Play-publishable** title with animation, particles, shaders, 
 Gameplay is drawn on a Compose `Canvas` — the natural evolution of the immediate-mode rendering this project
 started with. The step-by-step plan lives in [`ROADMAP.md`](ROADMAP.md).
 
-> 🧱 **Current status:** Phase 1 (core gameplay) — a fully playable Snake at feature parity with the frozen
-> v1.0.0: 5 difficulty levels, 5 board sizes, 7 food types, swipe + D-pad controls, score HUD and
-> pause/restart. Visual polish, audio and shaders arrive in later phases.
+> 🧱 **Current status:** Phase 3 (pro UI/UX) — a polished, playable Snake: animated main menu and
+> settings, persistent highscores, a responsive full-screen board, two-button relative controls
+> (plus swipe and D-pad), smooth interpolated motion, particles, screen shake and a pause blur.
+> Audio and AGSL shaders arrive in later phases.
 
 ---
 
@@ -26,7 +27,9 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - 🍎 **Multiple food types** — different foods grant different growth and score; rarer foods are worth more.
 - 🚧 **Obstacles** — scattered blocks that raise the difficulty.
 - 🎚️ **Difficulty levels** — 5 levels (*Beginner* → *Legend*) tuning speed and obstacle count.
-- 📐 **Board sizes** — 5 presets, from *Pocket* (30×20) to *Infinite* (120×80).
+- 📐 **Responsive board** — pick a granularity (*Cozy* / *Classic* / *Epic*); the board's rows and
+  columns are computed from your device's screen so it fills the display with square cells.
+- 🎮 **Control schemes** — two-button *relative* steering by default, or classic swipe / D-pad.
 - ⏸️ **Pause, menus, highscores, audio, effects** — added progressively (see the roadmap).
 
 ### 🍽️ Food types at a glance
@@ -47,21 +50,25 @@ The score reward scales with the growth amount (`+10 points` per unit of growth)
 
 | Level | Name        | Obstacles | Tick (ms) |
 |-------|-------------|-----------|-----------|
-| 1     | Beginner    | 0         | 140       |
-| 2     | Adventurer  | 8         | 120       |
-| 3     | Warrior     | 15        | 100       |
-| 4     | Champion    | 25        | 80        |
-| 5     | Legend      | 40        | 60        |
+| 1     | Beginner    | 0         | 175       |
+| 2     | Adventurer  | 8         | 150       |
+| 3     | Warrior     | 15        | 125       |
+| 4     | Champion    | 25        | 100       |
+| 5     | Legend      | 40        | 75        |
 
-### 📐 Board sizes
+Obstacles are laid out with **4-fold symmetry** (mirrored left/right and top/bottom), with a clear
+margin next to every wall and a clear zone around the snake's spawn.
 
-| Preset    | Cells     |
-|-----------|-----------|
-| Pocket    | 30 × 20   |
-| Classic   | 45 × 30   |
-| Grand     | 60 × 40   |
-| Colossal  | 75 × 50   |
-| Infinite  | 120 × 80  |
+### 📐 Board scale
+
+The board is **responsive**: pick a granularity and the rows×columns are computed from your device's
+play-area aspect ratio so the board fills the screen with square cells.
+
+| Scale   | Cell size | Columns (target) |
+|---------|-----------|------------------|
+| Cozy    | larger    | 12               |
+| Classic | medium    | 18               |
+| Epic    | smaller   | 26               |
 
 ---
 
@@ -102,12 +109,11 @@ The project targets `minSdk 24` (Android 7.0) and `compileSdk`/`targetSdk 35` (A
 Guide the snake around the board, eat food to grow and score, and avoid the walls, the obstacles and your
 own body.
 
-**Controls (touch):** swipe to change direction, or use the on-screen D-pad. 180° reversals are blocked, so
-you can't instantly fold back into your own body. Pick a level and board size on the start screen; pause and
-restart from the in-game controls.
-
-> Richer menus, persistent high scores and the polished HUD come online during Phases 2–3 of the
-> [roadmap](ROADMAP.md).
+**Controls (touch):** by default, two large buttons fill the bottom of the screen and turn the snake
+**left / right relative to its heading**. Prefer something else? Switch to **swipe** or the classic
+**D-pad** in **Settings** — your choice is saved. 180° reversals are blocked, so you can't instantly
+fold back into your own body. Pick a level and board scale on the start screen; pause and restart from
+the in-game controls. Your best score is kept per (level, scale).
 
 ---
 

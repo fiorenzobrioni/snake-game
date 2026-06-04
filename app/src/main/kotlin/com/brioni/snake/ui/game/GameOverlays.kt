@@ -24,7 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.brioni.snake.R
-import com.brioni.snake.game.BoardSize
+import com.brioni.snake.game.BoardScale
 import com.brioni.snake.game.Level
 
 /** Translucent full-screen scrim shared by every overlay. */
@@ -45,13 +45,13 @@ private fun OverlayScrim(
     }
 }
 
-/** Pre-game menu: title, level + board-size selection, and Play. */
+/** Pre-game menu: title, level + board-scale selection, and Play. */
 @Composable
 fun ReadyOverlay(
     selectedLevel: Level,
-    selectedBoard: BoardSize,
+    selectedScale: BoardScale,
     onLevelSelected: (Level) -> Unit,
-    onBoardSelected: (BoardSize) -> Unit,
+    onScaleSelected: (BoardScale) -> Unit,
     onPlay: () -> Unit,
 ) {
     OverlayScrim(alpha = 0.55f) {
@@ -72,12 +72,12 @@ fun ReadyOverlay(
             }
         }
 
-        ChipSection(title = stringResource(R.string.menu_board_size)) {
-            BoardSize.entries.forEach { size ->
+        ChipSection(title = stringResource(R.string.menu_board_scale)) {
+            BoardScale.entries.forEach { scale ->
                 FilterChip(
-                    selected = size == selectedBoard,
-                    onClick = { onBoardSelected(size) },
-                    label = { Text(size.label) },
+                    selected = scale == selectedScale,
+                    onClick = { onScaleSelected(scale) },
+                    label = { Text(scale.label) },
                 )
             }
         }
@@ -143,9 +143,15 @@ fun PausedOverlay(onResume: () -> Unit, onMenu: () -> Unit) {
     }
 }
 
-/** Final screen: score, replay, or return to the menu. */
+/** Final screen: score, best, replay, or return to the menu. */
 @Composable
-fun GameOverOverlay(score: Int, onPlayAgain: () -> Unit, onMenu: () -> Unit) {
+fun GameOverOverlay(
+    score: Int,
+    bestScore: Int,
+    isNewBest: Boolean,
+    onPlayAgain: () -> Unit,
+    onMenu: () -> Unit,
+) {
     OverlayScrim {
         Text(
             text = stringResource(R.string.game_over_title),
@@ -159,6 +165,18 @@ fun GameOverOverlay(score: Int, onPlayAgain: () -> Unit, onMenu: () -> Unit) {
             style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(top = 12.dp),
+        )
+        Text(
+            text = if (isNewBest) {
+                stringResource(R.string.new_highscore)
+            } else {
+                stringResource(R.string.highscore_label, bestScore)
+            },
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = if (isNewBest) FontWeight.Bold else FontWeight.Normal,
+            color = if (isNewBest) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+            modifier = Modifier.padding(top = 6.dp),
         )
         Button(
             onClick = onPlayAgain,

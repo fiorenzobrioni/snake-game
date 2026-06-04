@@ -23,7 +23,7 @@ class GameEngineTest {
         obstacles: Set<Position> = emptySet(),
         pendingGrowth: Int = 0,
     ) = GameState(
-        board = BoardSize.Classic,
+        board = BoardDimensions(18, 26),
         level = Level.Beginner,
         snake = listOf(Position(5, 5), Position(4, 5), Position(3, 5)),
         direction = direction,
@@ -37,7 +37,7 @@ class GameEngineTest {
 
     @Test
     fun setupPlacesThreeSegmentSnakeHeadingUp() {
-        val state = engine.setup(Level.Beginner, BoardSize.Classic)
+        val state = engine.setup(Level.Beginner, BoardDimensions(18, 26))
         assertEquals(3, state.snake.size)
         assertEquals(Direction.Up, state.direction)
         assertEquals(GameStatus.Ready, state.status)
@@ -46,7 +46,7 @@ class GameEngineTest {
 
     @Test
     fun startSpawnsExpectedFoodCountAndRuns() {
-        val state = engine.newGame(Level.Beginner, BoardSize.Classic)
+        val state = engine.newGame(Level.Beginner, BoardDimensions(18, 26))
         assertEquals(GameStatus.Running, state.status)
         assertEquals(GameEngine.FOOD_COUNT, state.foods.size)
     }
@@ -86,7 +86,7 @@ class GameEngineTest {
     @Test
     fun hittingWallEndsGame() {
         val state = GameState(
-            board = BoardSize.Classic,
+            board = BoardDimensions(18, 26),
             level = Level.Beginner,
             snake = listOf(Position(0, 5), Position(1, 5), Position(2, 5)),
             direction = Direction.Left,
@@ -111,7 +111,7 @@ class GameEngineTest {
         // Coiled snake; turning Right drives the head onto the tail cell (6,5).
         // pendingGrowth keeps the tail in place so the collision stands.
         val state = GameState(
-            board = BoardSize.Classic,
+            board = BoardDimensions(18, 26),
             level = Level.Beginner,
             snake = listOf(
                 Position(5, 5), Position(5, 6), Position(6, 6), Position(6, 5),
@@ -157,7 +157,7 @@ class GameEngineTest {
 
     @Test
     fun foodNeverSpawnsOnBorderOrOccupiedCells() {
-        val state = engine.newGame(Level.Legend, BoardSize.Pocket)
+        val state = engine.newGame(Level.Legend, BoardDimensions(14, 20))
         val snake = state.snake.toSet()
         state.foods.forEach { food ->
             food.cells().forEach { cell ->
@@ -180,7 +180,7 @@ class GameEngineTest {
 
     @Test
     fun tickIsNoOpWhenNotRunning() {
-        val ready = engine.setup(Level.Beginner, BoardSize.Classic)
+        val ready = engine.setup(Level.Beginner, BoardDimensions(18, 26))
         assertEquals(ready, engine.tick(ready))
         val paused = ready.copy(status = GameStatus.Paused)
         assertEquals(paused, engine.tick(paused))

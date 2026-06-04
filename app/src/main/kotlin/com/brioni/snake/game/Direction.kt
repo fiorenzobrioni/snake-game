@@ -23,4 +23,29 @@ enum class Direction(val dx: Int, val dy: Int) {
 
     /** True when [other] is the direct reversal of this direction. */
     fun isOpposite(other: Direction): Boolean = other == opposite
+
+    /**
+     * A 90° counter-clockwise turn on screen (y grows downward):
+     * Up → Left → Down → Right → Up. Used by the relative two-button controls;
+     * being a quarter-turn it can never produce a reversal.
+     */
+    val turnedLeft: Direction
+        get() = when (this) {
+            Up -> Left
+            Left -> Down
+            Down -> Right
+            Right -> Up
+        }
+
+    /**
+     * A 90° clockwise turn on screen: Up → Right → Down → Left → Up. The mirror
+     * of [turnedLeft]; likewise never a reversal.
+     */
+    val turnedRight: Direction
+        get() = when (this) {
+            Up -> Right
+            Right -> Down
+            Down -> Left
+            Left -> Up
+        }
 }

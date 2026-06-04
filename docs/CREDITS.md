@@ -5,9 +5,10 @@ All third-party assets bundled in the app must be **free** and carry a
 source, author and license **in the same change that adds it**. CC-BY assets
 must keep the required attribution.
 
-> No external assets are bundled yet — the Phase 0 placeholder icon is an
-> original vector drawn in-repo. Real sprites, audio, fonts and shaders arrive
-> from Phase 2 onward (see [`ROADMAP.md`](../ROADMAP.md)).
+> The launcher icon and all in-game art are original vectors drawn in-repo. The
+> only bundled third-party asset so far is the Orbitron display font (Phase 3,
+> see Fonts below). Audio and shaders arrive from Phase 4 onward (see
+> [`ROADMAP.md`](../ROADMAP.md)).
 
 ## Sprites
 
@@ -25,7 +26,7 @@ must keep the required attribution.
 
 | Asset | Source | Author | License |
 |-------|--------|--------|---------|
-| _none yet_ | | | |
+| Orbitron (Regular, Bold) — titles & HUD | [Google Fonts](https://fonts.google.com/specimen/Orbitron) · [The League of Moveable Type](https://github.com/theleagueof/orbitron) | The Orbitron Project Authors (designed by Matt McInerney) | [SIL OFL 1.1](licenses/Orbitron-OFL.txt) |
 
 ## Shaders
 
