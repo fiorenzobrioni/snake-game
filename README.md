@@ -5,7 +5,7 @@
 [![Android](https://img.shields.io/badge/platform-Android-3DDC84?logo=android&logoColor=white)](https://www.android.com/)
 [![minSdk](https://img.shields.io/badge/minSdk-24-blue)](https://developer.android.com/)
 [![targetSdk](https://img.shields.io/badge/targetSdk-36-blue)](https://developer.android.com/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: GPL v3](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 A classic **Snake**, rebuilt as a **native Android game** in **Kotlin + Jetpack Compose**, on the way to a
 polished, **Google-Play-publishable** title with animation, particles, shaders, audio and menus.
@@ -202,4 +202,11 @@ project's active direction.
 
 ## 📄 License
 
-Distributed under the **MIT** license — clone it, study it, modify it. See [LICENSE](LICENSE) for details.
+Copyright (C) 2026 Fiorenzo Brioni
+
+This project is free software: you can redistribute it and/or modify it under the terms of the
+**GNU General Public License v3.0** as published by the Free Software Foundation.
+
+Distributed in the hope that it will be useful, but **without any warranty**; without even the
+implied warranty of merchantability or fitness for a particular purpose.
+See the [LICENSE](LICENSE) file for the full terms.
