@@ -77,6 +77,17 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
+### 2026-06-05 — Feedback round 4: first-run board overflow (root cause)
+
+- The board ran under the navigation bar on the **first** game only (snake's bottom row half off-screen;
+  worse with denser scales, barely with Cozy) and corrected from the second game. Root cause: the
+  safe-area inset padding (`safeDrawingPadding`) was applied **inside** the `Crossfade`, so the first
+  `GameScreen` created a fresh padding node that briefly saw 0 insets — the play area was measured at
+  full window height (under the nav bar) and the board dimensions were locked to it.
+- Fix: apply `safeDrawingPadding` once in `MainActivity`, **outside** the Crossfade (a stable,
+  persistent node), so the play area is always inset-correct when GameScreen first appears. Belt-and-
+  suspenders: `GameViewModel.start()` re-fits the board to the latest measured area before locking it.
+
 ### 2026-06-05 — Feedback round 3
 
 - **Board border clipping (first game)**: `GameBoard` now reserves a margin that's *border-aware*

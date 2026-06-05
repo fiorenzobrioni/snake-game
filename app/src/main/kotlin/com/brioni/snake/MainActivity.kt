@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.MaterialTheme
@@ -56,13 +57,17 @@ private fun SnakeApp(repo: SettingsRepository) {
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background,
     ) {
-        // safeDrawingPadding keeps content clear of system bars / cutouts while
-        // the background still draws edge-to-edge behind them.
-        App(
-            repo = repo,
+        // Apply safe-area insets here, OUTSIDE the App's Crossfade, so the padding
+        // node is created once and stays stable. Padding inside the Crossfade was
+        // recreated per screen, and the first GameScreen layout could see 0 insets
+        // for a frame — locking the board to a too-tall area that then ran under
+        // the navigation bar until the next game.
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .safeDrawingPadding(),
-        )
+        ) {
+            App(repo = repo, modifier = Modifier.fillMaxSize())
+        }
     }
 }

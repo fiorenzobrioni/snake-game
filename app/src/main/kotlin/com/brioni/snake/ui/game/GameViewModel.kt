@@ -208,6 +208,9 @@ class GameViewModel(
     }
 
     fun start() {
+        // Re-fit the board to the latest measured play area before locking it in,
+        // so the very first run can't start from a stale/too-tall measurement.
+        reconfigureBoard()
         resetTo(engine.start(state))
         isNewBest = false
         beginRun()
