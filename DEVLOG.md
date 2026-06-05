@@ -48,6 +48,11 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
   as the default; it was flipped to swipe per the original request.
 - The food spawn table is **time- and level-aware** (`FoodTable.roll(random, elapsedTicks, level)`);
   early game is intentionally simple (grow only) and ramps up — keep this progression intact.
+- **Special spawn frequency** is a setting (`SpecialFrequency`) that scales both the special
+  branch weight and its unlock gate in `FoodTable.roll`; it is independent of level and board size.
+- **Regular food auto-vanishes** after `GameEngine.VANISH_FOOD_MS` (~7 s at the level's base pace),
+  stamped via `Food.spawnTick` and removed one-per-tick in `tick`; **specials never vanish**. `tick`
+  now refills on any drop below `FOOD_COUNT` (eat *or* vanish) and still stays seed-deterministic.
 - **Audio assets are generated, not committed by hand**: `tools/audio/generate_audio.py`
   (stdlib only, no deps) synthesizes every clip in `app/src/main/res/raw/` as original CC0 16-bit
   mono WAV. Music loops are rendered to an exact bar count with zero-amplitude note ends so they
@@ -74,6 +79,33 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 ## Log
 
 > Newest entries at the top. One entry per completed phase/step or significant change.
+
+---
+
+### 2026-06-05 — Special-block frequency setting + auto-vanishing food
+
+Two gameplay-dynamism enhancements (post-Phase 6 polish; not formal roadmap steps).
+
+- **Special frequency setting** (`SpecialFrequency`: Standard/Frequent/Frenzy). New
+  enum in `game/`, threaded through `FoodTable.roll` → `GameEngine.tick/refill/spawnFood`,
+  persisted in `SettingsRepository` (`special_frequency` key) and exposed as a
+  `ChoiceSection` right after the Hazards toggle in `SettingsScreen`. Each tier raises
+  the special spawn weight (8 → 18 → 32) **and** pulls the unlock gate earlier
+  (`gateFactor` 1.0 → 0.5 → 0.25), so higher tiers feel different from early game. Wired
+  live into `GameViewModel` (applies without a board reset, like `hazardsEnabled`).
+- **Auto-vanishing food** (always on, ~7 s): an ignored **regular** food times out and is
+  replaced elsewhere, to punish aimless looping. Implemented with a per-food `spawnTick`
+  stamp (set in `spawnFood`) and `GameEngine.VANISH_FOOD_MS`; `tick` vanishes the single
+  oldest stale regular food per tick (staggered bursts), emits `GameEvent.FoodVanished`,
+  then tops the board back up. Specials are excluded. New `emitVanishBurst` (a soft upward
+  fade) in `GameEffects`; `EatEvent.implode: Boolean` was generalised to a `BurstStyle`
+  enum (Eat/Implode/Vanish) dispatched in `GameBoard`. No new audio asset (silent).
+- The refill restructure means `tick` now tops up on a vanish (not only on an eat); the
+  old eat-only refill is subsumed. `tick` still consumes refill randomness only — fully
+  seed-deterministic. Threshold uses `level.tickMillis` (≈7 s at the level's base pace).
+- Tests added in `SpecialFoodTest` (frequency raises special rate; Frenzy unlocks earlier)
+  and `GameEngineTest` (regular food vanishes & is replaced; fresh food doesn't; specials
+  never vanish). Full `./gradlew test` + `lint assembleDebug` green.
 
 ---
 

@@ -35,6 +35,8 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - ❓ **Mystery pieces** — a "?" food per category with a random amount.
 - ⏳ **Time-gated progression** — early on you only see growing food; shrink, maxi and mystery pieces
   unlock as the session goes on (sooner on harder levels), so a run ramps up in difficulty.
+- 💨 **Fresh board** — a regular food you ignore for too long fades away (with a little vanish burst)
+  and reappears elsewhere, so looping around without eating won't stall the run. Specials stay put.
 - ✖️ **Combo multiplier** — eating in quick succession multiplies your score (up to ×5).
 - 🚧 **Obstacles** — scattered blocks that raise the difficulty.
 - 🎚️ **Difficulty levels** — 5 levels (*Beginner* → *Legend*) tuning speed and obstacle count.
@@ -53,7 +55,9 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - ⚡ **Power-ups & hazards** — rare maxi pieces that appear later in a run: **Lightning** (speed up),
   **Snail** (slow down), **Star** (invincible pass-through), **Freeze**, **Jackpot** (big bonus),
   plus the hazards **Earthquake** (bites your tail) and **Explosion** (splits the snake, leaving lethal
-  debris). Active effects show countdown chips; toggle **Hazards** off in Settings for a calmer run.
+  debris). Active effects show countdown chips; toggle **Hazards** off in Settings for a calmer run, or
+  dial how often specials appear with the **Special blocks** setting (*Standard / Frequent / Frenzy*) —
+  the higher tiers also bring specials online earlier in a run.
 - 🏆 **Records screen** — a best-score table per difficulty × board scale (and per mode), reachable
   from the main menu.
 - 🎖️ **Achievements** — local milestones (combos, scores, surviving, using power-ups…) that unlock as

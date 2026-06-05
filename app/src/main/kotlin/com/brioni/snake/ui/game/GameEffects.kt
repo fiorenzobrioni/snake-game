@@ -97,6 +97,42 @@ fun emitImplodeBurst(
 }
 
 /**
+ * Spawns a soft "vanish" burst for an ignored food that timed out: a sparse
+ * spray of particles drifting *upward* and fading quickly, reading as the food
+ * dissolving rather than being eaten. Gravity still applies, but the upward
+ * launch keeps them rising for most of their short life.
+ */
+fun emitVanishBurst(
+    target: MutableList<Particle>,
+    centerX: Float,
+    centerY: Float,
+    color: Color,
+    span: Int,
+    random: Random = Random.Default,
+) {
+    val count = if (span >= 2) 14 else 9
+    val faded = color.copy(alpha = 0.7f)
+    repeat(count) {
+        // Mostly upward, with a little horizontal scatter.
+        val spread = (random.nextFloat() - 0.5f) * 3.2f
+        val rise = 3.5f + random.nextFloat() * 2.5f
+        val life = 0.35f + random.nextFloat() * 0.25f
+        target.add(
+            Particle(
+                x = centerX + (random.nextFloat() - 0.5f) * span,
+                y = centerY + (random.nextFloat() - 0.5f) * span,
+                vx = spread,
+                vy = -rise,
+                life = life,
+                maxLife = life,
+                color = faded,
+                radiusCells = 0.06f + random.nextFloat() * 0.07f,
+            ),
+        )
+    }
+}
+
+/**
  * Advances every particle by [dt] seconds and removes the dead ones. Mutates
  * [particles] in place; the caller forces a redraw each frame.
  */

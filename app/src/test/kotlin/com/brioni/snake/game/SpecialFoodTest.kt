@@ -234,4 +234,34 @@ class SpecialFoodTest {
         assertTrue(state.effectTimers.isEmpty())
         assertNull(state.foods.firstOrNull { it.category == FoodCategory.Special })
     }
+
+    // --- Special frequency setting ---------------------------------------
+
+    private fun specialCount(frequency: SpecialFrequency, elapsedTicks: Int): Int =
+        (0 until 6000).count {
+            FoodTable.roll(Random(it.toLong()), elapsedTicks, Level.Beginner, specialFrequency = frequency)
+                .category == FoodCategory.Special
+        }
+
+    @Test
+    fun higherFrequencyYieldsMoreSpecials() {
+        // Past every gate, the weight bump must show through over many rolls.
+        val standard = specialCount(SpecialFrequency.Standard, elapsedTicks = 2000)
+        val frequent = specialCount(SpecialFrequency.Frequent, elapsedTicks = 2000)
+        val frenzy = specialCount(SpecialFrequency.Frenzy, elapsedTicks = 2000)
+        assertTrue("frequent > standard", frequent > standard)
+        assertTrue("frenzy > frequent", frenzy > frequent)
+    }
+
+    @Test
+    fun frenzyUnlocksSpecialsEarlierThanStandard() {
+        // At a tick where the standard gate hasn't opened yet, Frenzy's lower
+        // gate factor already lets specials through.
+        // Beginner tickMillis = 175; gate (Standard) = 60_000 ms ≈ 343 ticks.
+        val earlyTicks = 150
+        val standardEarly = specialCount(SpecialFrequency.Standard, earlyTicks)
+        val frenzyEarly = specialCount(SpecialFrequency.Frenzy, earlyTicks)
+        assertEquals("standard still gated this early", 0, standardEarly)
+        assertTrue("frenzy already unlocked", frenzyEarly > 0)
+    }
 }

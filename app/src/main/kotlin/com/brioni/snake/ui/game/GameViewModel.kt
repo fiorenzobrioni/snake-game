@@ -28,6 +28,7 @@ import com.brioni.snake.game.Level
 import com.brioni.snake.game.Position
 import com.brioni.snake.game.RunStats
 import com.brioni.snake.game.Skin
+import com.brioni.snake.game.SpecialFrequency
 import com.brioni.snake.game.boardFor
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -35,11 +36,23 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.math.max
 
+/** Which particle burst the renderer should spawn for an [EatEvent]. */
+enum class BurstStyle {
+    /** Outward explosion — growing food, jackpot, explosion. */
+    Eat,
+
+    /** Inward implosion — shrinking food, earthquake. */
+    Implode,
+
+    /** Gentle upward fade — an ignored food that timed out and vanished. */
+    Vanish,
+}
+
 /**
- * A food-eaten event, surfaced to the renderer to spawn a particle burst.
- * [implode] selects the inward (shrink) burst over the outward (grow) one.
+ * A board event, surfaced to the renderer to spawn a particle burst. [style]
+ * selects which burst to play at [cell].
  */
-data class EatEvent(val cell: Position, val span: Int, val color: Color, val implode: Boolean)
+data class EatEvent(val cell: Position, val span: Int, val color: Color, val style: BurstStyle)
 
 /**
  * Holds the [GameState] and drives the tick loop. All game rules live in
@@ -76,6 +89,10 @@ class GameViewModel(
 
     /** Whether harmful specials (earthquake/explosion/snail) may spawn (setting). */
     var hazardsEnabled by mutableStateOf(true)
+        private set
+
+    /** How often specials (power-ups / hazards) spawn (setting). */
+    var specialFrequency by mutableStateOf(SpecialFrequency.Standard)
         private set
 
     /** Active play mode; highscores are tracked per (mode, level, scale). */
@@ -151,6 +168,7 @@ class GameViewModel(
                 crtEnabled = settings.crtEnabled
                 skin = settings.skin
                 hazardsEnabled = settings.hazardsEnabled
+                specialFrequency = settings.specialFrequency
                 if (state.status == GameStatus.Ready) {
                     val levelChanged = settings.level != state.level
                     val modeChanged = settings.mode != mode
@@ -280,19 +298,19 @@ class GameViewModel(
     /** One simulation step, reacting to the events the engine emitted. */
     private fun advance() {
         val before = state
-        val after = engine.tick(before, hazardsEnabled)
+        val after = engine.tick(before, hazardsEnabled, specialFrequency)
 
         after.lastEvents.forEach { event ->
             when (event) {
                 is GameEvent.Ate -> {
-                    eatEvent = EatEvent(event.food.position, event.food.span, palette.foodColor(event.food), implode = false)
+                    eatEvent = EatEvent(event.food.position, event.food.span, palette.foodColor(event.food), BurstStyle.Eat)
                     eatEventId++
                     sfx.ate(event.food, event.combo)
                     runFoodsEaten++
                     runMaxCombo = max(runMaxCombo, event.combo)
                 }
                 is GameEvent.Shrunk -> {
-                    eatEvent = EatEvent(event.food.position, event.food.span, palette.foodColor(event.food), implode = true)
+                    eatEvent = EatEvent(event.food.position, event.food.span, palette.foodColor(event.food), BurstStyle.Implode)
                     eatEventId++
                     sfx.shrunk(event.food)
                 }
@@ -303,25 +321,30 @@ class GameViewModel(
                 }
                 is GameEvent.Quaked -> {
                     // Earthquake: implode burst at the head + a board shake.
-                    eatEvent = EatEvent(after.head, 1, palette.foodColor(event.food), implode = true)
+                    eatEvent = EatEvent(after.head, 1, palette.foodColor(event.food), BurstStyle.Implode)
                     eatEventId++
                     shakeEventId++
                     sfx.special(event.food)
                 }
                 is GameEvent.Exploded -> {
                     // Explosion: outward burst at the blast + a board shake.
-                    eatEvent = EatEvent(event.food.position, event.food.span, palette.special, implode = false)
+                    eatEvent = EatEvent(event.food.position, event.food.span, palette.special, BurstStyle.Eat)
                     eatEventId++
                     shakeEventId++
                     sfx.special(event.food)
                     runUsedExplosion = true
                 }
                 is GameEvent.JackpotHit -> {
-                    eatEvent = EatEvent(event.food.position, event.food.span, palette.foodColor(event.food), implode = false)
+                    eatEvent = EatEvent(event.food.position, event.food.span, palette.foodColor(event.food), BurstStyle.Eat)
                     eatEventId++
                     sfx.special(event.food)
                     runUsedJackpot = true
                     runFoodsEaten++
+                }
+                is GameEvent.FoodVanished -> {
+                    // An ignored food timed out: a quiet upward fade, no sound.
+                    eatEvent = EatEvent(event.food.position, event.food.span, palette.foodColor(event.food), BurstStyle.Vanish)
+                    eatEventId++
                 }
                 is GameEvent.EffectStarted -> {
                     sfx.special(event.food)

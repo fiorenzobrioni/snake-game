@@ -98,8 +98,13 @@ class GameEngine(private val random: Random = Random.Default) {
      * [GameState.lastEvents].
      *
      * @param hazardsEnabled gates whether harmful specials can spawn (a setting).
+     * @param specialFrequency how often specials appear (a setting).
      */
-    fun tick(state: GameState, hazardsEnabled: Boolean = true): GameState {
+    fun tick(
+        state: GameState,
+        hazardsEnabled: Boolean = true,
+        specialFrequency: SpecialFrequency = SpecialFrequency.Standard,
+    ): GameState {
         if (state.status != GameStatus.Running) return state
 
         val elapsedTicks = state.elapsedTicks + 1
@@ -203,17 +208,35 @@ class GameEngine(private val random: Random = Random.Default) {
                     events.add(GameEvent.JackpotHit(eaten, effect.bonus, effect.growth))
                 }
             }
+        } else if (pendingGrowth > 0) {
+            pendingGrowth--
+        } else {
+            body.removeAt(body.lastIndex) // keep length: drop the tail
+        }
+
+        // Vanish the single oldest regular food that has sat uneaten too long, so
+        // looping without eating keeps the board fresh. Specials never vanish.
+        // One per tick keeps the bursts staggered and avoids both foods popping
+        // at once when they were seeded on the same tick.
+        val vanishTicks = (VANISH_FOOD_MS / state.level.tickMillis).toInt().coerceAtLeast(1)
+        val stale = foods
+            .filter { it.category != FoodCategory.Special && elapsedTicks - it.spawnTick >= vanishTicks }
+            .maxByOrNull { elapsedTicks - it.spawnTick }
+        if (stale != null) {
+            foods = foods - stale
+            events.add(GameEvent.FoodVanished(stale))
+        }
+
+        // Top the board back up — covers both an eaten food and a vanished one.
+        if (foods.size < FOOD_COUNT) {
             val freezeActive = effectTimers.any { it.kind == EffectKind.Freeze }
             val specialOnBoard = foods.any { it.category == FoodCategory.Special }
             foods = refill(
                 board, body, state.obstacles, foods, elapsedTicks, state.level,
                 hazardsEnabled = hazardsEnabled,
                 specialAllowed = !specialOnBoard && !freezeActive,
+                specialFrequency = specialFrequency,
             )
-        } else if (pendingGrowth > 0) {
-            pendingGrowth--
-        } else {
-            body.removeAt(body.lastIndex) // keep length: drop the tail
         }
 
         // Time Attack ends when the clock runs out, regardless of collisions.
@@ -331,12 +354,13 @@ class GameEngine(private val random: Random = Random.Default) {
         level: Level,
         hazardsEnabled: Boolean = true,
         specialAllowed: Boolean = true,
+        specialFrequency: SpecialFrequency = SpecialFrequency.Standard,
     ): List<Food> {
         var foods = existing
         while (foods.size < FOOD_COUNT) {
             // A special is allowed only if one isn't already on the board.
             val allowSpecial = specialAllowed && foods.none { it.category == FoodCategory.Special }
-            val food = spawnFood(board, snake, obstacles, foods, elapsedTicks, level, hazardsEnabled, allowSpecial) ?: break
+            val food = spawnFood(board, snake, obstacles, foods, elapsedTicks, level, hazardsEnabled, allowSpecial, specialFrequency) ?: break
             foods = foods + food
         }
         return foods
@@ -356,8 +380,9 @@ class GameEngine(private val random: Random = Random.Default) {
         level: Level,
         hazardsEnabled: Boolean,
         specialAllowed: Boolean,
+        specialFrequency: SpecialFrequency,
     ): Food? {
-        val spec = FoodTable.roll(random, elapsedTicks, level, hazardsEnabled, specialAllowed)
+        val spec = FoodTable.roll(random, elapsedTicks, level, hazardsEnabled, specialAllowed, specialFrequency)
         val span = spec.size.cellSpan
         // Top-left cell range that keeps the whole square off the border.
         val maxX = board.width - span
@@ -370,7 +395,7 @@ class GameEngine(private val random: Random = Random.Default) {
         existing.forEach { occupied.addAll(it.cells()) }
 
         fun candidateAt(x: Int, y: Int): Food? {
-            val food = Food(Position(x, y), spec.category, spec.tier, spec.size, spec.effect)
+            val food = Food(Position(x, y), spec.category, spec.tier, spec.size, spec.effect, spawnTick = elapsedTicks)
             return if (food.cells().none { it in occupied }) food else null
         }
 
@@ -401,6 +426,13 @@ class GameEngine(private val random: Random = Random.Default) {
         /** Symbolic points for eating a shrinking food (standard / maxi). */
         const val SHRINK_POINTS = 5
         const val SHRINK_POINTS_MAXI = 10
+
+        /**
+         * How long an uneaten *regular* food survives before it vanishes and is
+         * replaced elsewhere. Measured at the level's base pace (converted to
+         * ticks per level), so it stays ~7 s regardless of board size.
+         */
+        const val VANISH_FOOD_MS = 7_000L
 
         private const val MAX_SPAWN_ATTEMPTS = 200
 

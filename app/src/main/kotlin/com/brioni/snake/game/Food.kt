@@ -72,6 +72,8 @@ val FoodEffect.isHazard: Boolean
  * @param size     standard (1×1) or maxi (2×2); maxi amplifies the effect.
  * @param effect   the already-resolved consequence (mystery amounts are rolled
  *                 at spawn, so the model stays deterministic at eat time).
+ * @param spawnTick the tick this food was placed on the board; drives the
+ *                 auto-vanish of ignored regular food (see [GameEngine.tick]).
  */
 data class Food(
     val position: Position,
@@ -79,6 +81,7 @@ data class Food(
     val tier: FoodTier,
     val size: FoodSize,
     val effect: FoodEffect,
+    val spawnTick: Int = 0,
 ) {
     val span: Int get() = size.cellSpan
 
@@ -150,6 +153,8 @@ object FoodTable {
      *        Snail) are never produced — only beneficial power-ups can appear.
      * @param specialAllowed when false (a special is already on the board, or a
      *        Freeze is active), the special branch is suppressed entirely.
+     * @param specialFrequency scales the special spawn weight and unlock gate so
+     *        the player can dial how often power-ups / hazards appear.
      */
     fun roll(
         random: Random,
@@ -157,13 +162,14 @@ object FoodTable {
         level: Level,
         hazardsEnabled: Boolean = true,
         specialAllowed: Boolean = true,
+        specialFrequency: SpecialFrequency = SpecialFrequency.Standard,
     ): FoodSpec {
         val elapsedMs = elapsedTicks.toLong() * level.tickMillis
         val factor = levelGateFactor(level)
         val shrinkUnlocked = elapsedMs >= (GATE_SHRINK_MS * factor)
         val maxiUnlocked = elapsedMs >= (GATE_MAXI_MS * factor)
         val mysteryUnlocked = elapsedMs >= (GATE_MYSTERY_MS * factor)
-        val specialUnlocked = elapsedMs >= (GATE_SPECIAL_MS * factor)
+        val specialUnlocked = elapsedMs >= (GATE_SPECIAL_MS * factor * specialFrequency.gateFactor)
 
         val entries = buildList {
             add(Weighted(40) { growSpec(random, maxiUnlocked) })
@@ -173,7 +179,7 @@ object FoodTable {
                 add(Weighted(6) { mysterySpec(random, FoodCategory.Shrink, maxiUnlocked) })
             }
             if (specialUnlocked && specialAllowed) {
-                add(Weighted(8) { specialSpec(random, hazardsEnabled) })
+                add(Weighted(specialFrequency.spawnWeight) { specialSpec(random, hazardsEnabled) })
             }
         }
         return pick(entries, random)

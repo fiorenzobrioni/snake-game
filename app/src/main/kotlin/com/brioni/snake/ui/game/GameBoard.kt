@@ -101,10 +101,10 @@ fun GameBoard(
         if (eatEventId > 0 && event != null) {
             val cx = event.cell.x + event.span / 2f
             val cy = event.cell.y + event.span / 2f
-            if (event.implode) {
-                emitImplodeBurst(particles, cx, cy, event.color, event.span)
-            } else {
-                emitEatBurst(particles, cx, cy, event.color, event.span)
+            when (event.style) {
+                BurstStyle.Eat -> emitEatBurst(particles, cx, cy, event.color, event.span)
+                BurstStyle.Implode -> emitImplodeBurst(particles, cx, cy, event.color, event.span)
+                BurstStyle.Vanish -> emitVanishBurst(particles, cx, cy, event.color, event.span)
             }
         }
     }

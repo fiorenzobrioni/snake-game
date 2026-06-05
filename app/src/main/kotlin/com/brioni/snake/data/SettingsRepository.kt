@@ -16,6 +16,7 @@ import com.brioni.snake.game.GameMode
 import com.brioni.snake.game.Level
 import com.brioni.snake.game.ScoreKey
 import com.brioni.snake.game.Skin
+import com.brioni.snake.game.SpecialFrequency
 import com.brioni.snake.game.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -32,6 +33,7 @@ data class Settings(
     val crtEnabled: Boolean = false,
     val skin: Skin = Skin.Classic,
     val hazardsEnabled: Boolean = true,
+    val specialFrequency: SpecialFrequency = SpecialFrequency.Standard,
     val mode: GameMode = GameMode.Classic,
     val themeMode: ThemeMode = ThemeMode.System,
 )
@@ -62,6 +64,7 @@ class SettingsRepository(private val context: Context) {
             crtEnabled = prefs[CRT_ENABLED] ?: false,
             skin = prefs[SKIN].toEnum(Skin::valueOf) ?: Skin.Classic,
             hazardsEnabled = prefs[HAZARDS_ENABLED] ?: true,
+            specialFrequency = prefs[SPECIAL_FREQUENCY].toEnum(SpecialFrequency::valueOf) ?: SpecialFrequency.Standard,
             mode = prefs[MODE].toEnum(GameMode::valueOf) ?: GameMode.Classic,
             themeMode = prefs[THEME_MODE].toEnum(ThemeMode::valueOf) ?: ThemeMode.System,
         )
@@ -93,6 +96,9 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setHazardsEnabled(enabled: Boolean) =
         edit { it[HAZARDS_ENABLED] = enabled }
+
+    suspend fun setSpecialFrequency(value: SpecialFrequency) =
+        edit { it[SPECIAL_FREQUENCY] = value.name }
 
     suspend fun setGameMode(mode: GameMode) =
         edit { it[MODE] = mode.name }
@@ -156,6 +162,7 @@ class SettingsRepository(private val context: Context) {
         val CRT_ENABLED = booleanPreferencesKey("crt_enabled")
         val SKIN = stringPreferencesKey("skin")
         val HAZARDS_ENABLED = booleanPreferencesKey("hazards_enabled")
+        val SPECIAL_FREQUENCY = stringPreferencesKey("special_frequency")
         val MODE = stringPreferencesKey("game_mode")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val UNLOCKED_ACHIEVEMENTS = stringSetPreferencesKey("unlocked_achievements")

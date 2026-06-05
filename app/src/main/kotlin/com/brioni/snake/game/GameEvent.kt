@@ -37,4 +37,11 @@ sealed interface GameEvent {
 
     /** Jackpot eaten: awarded [points] and grew the snake by [growth]. */
     data class JackpotHit(val food: Food, val points: Int, val growth: Int) : GameEvent
+
+    /**
+     * An uneaten regular food timed out and was removed (a fresh one is spawned
+     * elsewhere in the same tick). Specials never vanish. Drives the "vanish"
+     * particle burst.
+     */
+    data class FoodVanished(val food: Food) : GameEvent
 }

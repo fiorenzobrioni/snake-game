@@ -33,6 +33,7 @@
     <string name="settings_skin">Skin</string>
     <string name="settings_theme">Theme</string>
     <string name="settings_hazards">Hazards (earthquake, explosion, snail)</string>
+    <string name="settings_special_frequency">Special blocks</string>
 
     <!-- HUD -->
     <string name="hud_score">Score: %1$d</string>
