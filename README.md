@@ -12,7 +12,7 @@ polished, **Google-Play-publishable** title with animation, particles, shaders, 
 
 ---
 
-## 🎯 What it will be
+## 🎯 Features
 
 The classic Snake mechanics, extended with configurable features so every run feels different:
 
@@ -52,7 +52,7 @@ The classic Snake mechanics, extended with configurable features so every run fe
   you play, with a dedicated screen and an unlock banner on the game-over screen.
 - 🕹️ **Game modes** — **Classic**, **Endless** (speed ramps up the longer you survive) and
   **Time Attack** (score as much as you can in 120s), selectable on the start screen.
-- ⏸️ **Pause, menus, highscores** — added progressively (see the roadmap).
+- ⏸️ **Pause & menus** — pause overlay with a blur effect; restart or return to the main menu at any time. Highscores are kept per (mode, level, board scale).
 
 ### 🍽️ Food system at a glance
 
@@ -63,8 +63,7 @@ The classic Snake mechanics, extended with configurable features so every run fe
 
 The snake never shrinks below **3 segments**. Grow food drives the score (scaled by the combo
 multiplier); shrink food is a tactical tool — it gives only token points but lets you cut your length
-to manoeuvre. The big, rarer **special power-ups and hazards** (earthquake, explosion, speed, ghost,
-freeze, jackpot) are planned for a later phase — see the [roadmap](ROADMAP.md).
+to manoeuvre.
 
 ### ⚔️ Difficulty levels
 
@@ -144,9 +143,6 @@ restart from the in-game controls. Your best score is kept per (level, scale).
 sound effects for eating, shrinking, mystery pieces, game over and button taps. Tune the **master**,
 **music** and **SFX** volumes independently in **Settings** (set any to zero to mute); the music
 automatically pauses when you leave the app and yields to other apps' audio.
-
-> The special power-ups (earthquake, explosion, speed, ghost, freeze, jackpot) come online in later
-> phases of the [roadmap](ROADMAP.md).
 
 ---
 
