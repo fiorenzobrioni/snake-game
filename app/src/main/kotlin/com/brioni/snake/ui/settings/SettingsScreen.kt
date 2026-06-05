@@ -46,6 +46,7 @@ import com.brioni.snake.game.BoardScale
 import com.brioni.snake.game.ControlScheme
 import com.brioni.snake.game.Level
 import com.brioni.snake.game.Skin
+import com.brioni.snake.game.SpecialFrequency
 import com.brioni.snake.game.ThemeMode
 import com.brioni.snake.ui.game.Shaders
 import com.brioni.snake.ui.game.paletteFor
@@ -126,6 +127,14 @@ fun SettingsScreen(
             title = stringResource(R.string.settings_hazards),
             checked = settings.hazardsEnabled,
             onCheckedChange = { enabled -> scope.launch { repo.setHazardsEnabled(enabled) } },
+        )
+
+        ChoiceSection(
+            title = stringResource(R.string.settings_special_frequency),
+            options = SpecialFrequency.entries,
+            selected = settings.specialFrequency,
+            label = { it.displayName },
+            onSelected = { value -> scope.launch { repo.setSpecialFrequency(value) } },
         )
 
         VolumeSection(

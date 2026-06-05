@@ -299,4 +299,46 @@ class GameEngineTest {
         val b = FoodTable.roll(Random(7), elapsedTicks = 2000, level = Level.Beginner)
         assertEquals(a, b)
     }
+
+    // --- Auto-vanishing food ---------------------------------------------
+
+    /** Beginner pace: 7000 ms / 175 ms ≈ 40 ticks before a regular food times out. */
+    private val vanishTicks = (GameEngine.VANISH_FOOD_MS / Level.Beginner.tickMillis).toInt()
+
+    @Test
+    fun ignoredRegularFoodVanishesAndIsReplaced() {
+        // A regular food well clear of the snake's path, stamped at tick 0.
+        val stale = Food(Position(10, 10), FoodCategory.Grow, FoodTier.Small, FoodSize.Standard, FoodEffect.Grow(2), spawnTick = 0)
+        val state = runningState(foods = listOf(stale)).copy(elapsedTicks = vanishTicks - 1)
+
+        val next = engine.tick(state)
+
+        val vanished = next.lastEvents.filterIsInstance<GameEvent.FoodVanished>().singleOrNull()
+        assertTrue("the stale food was the one that vanished", vanished?.food == stale)
+        // The fresh roll is stamped this tick, so it can't immediately vanish again.
+        assertTrue("replacement is freshly stamped", next.foods.all { it.spawnTick == next.elapsedTicks })
+        assertEquals("board topped back up", GameEngine.FOOD_COUNT, next.foods.size)
+    }
+
+    @Test
+    fun freshRegularFoodDoesNotVanish() {
+        val fresh = Food(Position(10, 10), FoodCategory.Grow, FoodTier.Small, FoodSize.Standard, FoodEffect.Grow(2), spawnTick = 0)
+        val state = runningState(foods = listOf(fresh)).copy(elapsedTicks = vanishTicks - 5)
+
+        val next = engine.tick(state)
+
+        assertFalse("no premature vanish", next.lastEvents.any { it is GameEvent.FoodVanished })
+        assertTrue("the food is still there", next.foods.any { it.position == Position(10, 10) })
+    }
+
+    @Test
+    fun specialsNeverVanish() {
+        val special = Food(Position(10, 10), FoodCategory.Special, FoodTier.Huge, FoodSize.Maxi, FoodEffect.Haste(6_000), spawnTick = 0)
+        val state = runningState(foods = listOf(special)).copy(elapsedTicks = vanishTicks * 3)
+
+        val next = engine.tick(state)
+
+        assertFalse("specials are immune to the timeout", next.lastEvents.any { it is GameEvent.FoodVanished })
+        assertTrue("the special is still on the board", next.foods.any { it.position == Position(10, 10) && it.category == FoodCategory.Special })
+    }
 }

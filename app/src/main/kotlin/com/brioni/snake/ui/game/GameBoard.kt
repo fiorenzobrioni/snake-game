@@ -54,6 +54,10 @@ import kotlin.math.sin
  *
  * The board is scaled to fit and centred while keeping its cell aspect ratio.
  */
+
+/** Final window of a Ghost (Star) effect over which the warning blink ramps up. */
+private const val GHOST_WARN_MS = 2_000f
+
 @Composable
 fun GameBoard(
     state: GameState,
@@ -101,10 +105,10 @@ fun GameBoard(
         if (eatEventId > 0 && event != null) {
             val cx = event.cell.x + event.span / 2f
             val cy = event.cell.y + event.span / 2f
-            if (event.implode) {
-                emitImplodeBurst(particles, cx, cy, event.color, event.span)
-            } else {
-                emitEatBurst(particles, cx, cy, event.color, event.span)
+            when (event.style) {
+                BurstStyle.Eat -> emitEatBurst(particles, cx, cy, event.color, event.span)
+                BurstStyle.Implode -> emitImplodeBurst(particles, cx, cy, event.color, event.span)
+                BurstStyle.Vanish -> emitVanishBurst(particles, cx, cy, event.color, event.span)
             }
         }
     }
@@ -156,8 +160,19 @@ fun GameBoard(
             state.foods.forEach { food ->
                 drawFood(food, cell, originX, originY, pulse, textMeasurer, palette, shaders, time)
             }
-            val ghost = state.hasEffect(EffectKind.Ghost)
-            val snakeAlpha = if (ghost) 0.45f + 0.15f * (sin(seconds * 9.0).toFloat() * 0.5f + 0.5f) else 1f
+            // Ghost (Star): the snake shimmers while invincible, then blinks
+            // faster and deeper over the final GHOST_WARN_MS so the player gets a
+            // clear "about to expire" warning and can steer somewhere safe.
+            val ghostEffect = state.effectTimers.firstOrNull { it.kind == EffectKind.Ghost }
+            val snakeAlpha = if (ghostEffect != null) {
+                val warnT = (1f - ghostEffect.remainingMs.toFloat() / GHOST_WARN_MS).coerceIn(0f, 1f)
+                val hz = 9f + warnT * 26f
+                val amp = 0.15f + warnT * 0.45f
+                val base = 0.5f - warnT * 0.30f
+                (base + amp * (sin(seconds * hz).toFloat() * 0.5f + 0.5f)).coerceIn(0.1f, 1f)
+            } else {
+                1f
+            }
             val snake = state.snake
             for (k in snake.indices.reversed()) {
                 val to = snake[k]
