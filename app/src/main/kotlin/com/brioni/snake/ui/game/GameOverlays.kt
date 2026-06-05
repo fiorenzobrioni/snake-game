@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.brioni.snake.R
 import com.brioni.snake.game.BoardScale
+import com.brioni.snake.game.GameMode
 import com.brioni.snake.game.Level
 
 /** Translucent full-screen scrim shared by every overlay. */
@@ -49,8 +50,10 @@ private fun OverlayScrim(
 /** Pre-game menu: title, level + board-scale selection, and Play. */
 @Composable
 fun ReadyOverlay(
+    selectedMode: GameMode,
     selectedLevel: Level,
     selectedScale: BoardScale,
+    onModeSelected: (GameMode) -> Unit,
     onLevelSelected: (Level) -> Unit,
     onScaleSelected: (BoardScale) -> Unit,
     onPlay: () -> Unit,
@@ -62,6 +65,16 @@ fun ReadyOverlay(
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
         )
+
+        ChipSection(title = stringResource(R.string.menu_mode)) {
+            GameMode.entries.forEach { gameMode ->
+                FilterChip(
+                    selected = gameMode == selectedMode,
+                    onClick = { onModeSelected(gameMode) },
+                    label = { Text(gameMode.displayName) },
+                )
+            }
+        }
 
         ChipSection(title = stringResource(R.string.menu_level)) {
             Level.entries.forEach { level ->

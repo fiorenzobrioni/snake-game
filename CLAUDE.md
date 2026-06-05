@@ -29,7 +29,10 @@ The project started as a learning exercise in **C# / .NET 10 / Windows Forms (GD
   - Phase 1 done: full gameplay at parity with v1.0.0 — pure-Kotlin `game/` model + `GameEngine`, Compose `Canvas` renderer, coroutine loop in `GameViewModel`, swipe + D-pad input, 5 levels, 5 board sizes, 7 food types, score HUD, pause/restart; unit-tested. See `ROADMAP.md`
   - Phase 2 done: visual polish — **portrait** board, smooth interpolated motion, gradient background, animated/haloed food, bevelled obstacles, glowing eyed snake head, eat particles and a game-over screen shake (`GameBoard`/`GameEffects`). See `ROADMAP.md`
   - Phase 3 done: pro UI/UX — Orbitron type scale, state-based menu/settings navigation (`ui/App.kt`) with `Crossfade` fades, **DataStore** settings + per-(level, scale) highscores (`data/SettingsRepository`), pause blur, rolling HUD score. Plus gameplay changes: **two-button relative** controls (default) with swipe/D-pad still selectable; a **responsive** board (`BoardScale` granularity → `BoardDimensions` computed from the device aspect via `boardFor`, replacing the old fixed `BoardSize` presets); **4-fold symmetric** obstacles; ~25% slower per-level speed; a redrawn snake launcher icon. See `ROADMAP.md`
-  - Phase 4+ (audio, shaders, content, distribution) still ahead — see `ROADMAP.md`
+  - Phase 4 done: audio — looping music (`MediaPlayer` crossfade), SFX (`SoundPool`), volume controls; all CC0, synthesized in-repo (`audio/`). See `ROADMAP.md`
+  - Phase 5 done: AGSL shaders (API 33+, Canvas fallback) — head glow, food halos, animated background, optional CRT filter (`ui/game/Shaders.kt`). See `ROADMAP.md`
+  - Phase 6 done: content & replayability — 4 **skins** (`SkinPalette`), **special power-ups / hazards** (`FoodCategory.Special`, `Debris`, `effectTimers`, variable `tickIntervalMillis`), a **Records** screen, local **achievements** (`game/Achievement`), and extra **modes** (Endless, Time Attack — `game/GameMode`). See `ROADMAP.md`
+  - Phase 7 (Play Store distribution & cleanup) still ahead — see `ROADMAP.md`
 - **Frozen (legacy)**: `legacy/SnakeGame/` — C#/.NET 10 WinForms v1.0.0
   - Windows only, target `net10.0-windows`; all logic + UI + rendering in `SnakeForm.cs`
   - Solution file `legacy/snake-game.slnx`; build notes in `legacy/README.md`

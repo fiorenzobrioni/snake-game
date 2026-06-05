@@ -77,6 +77,18 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
+### 2026-06-05 — Step 6.5: Endless & Time Attack modes
+
+- `GameState` gains `mode` + `playedMs`; `tickIntervalMillis` now ramps for **Endless** (gentle →
+  fast over ticks, clamped to a floor) and the engine accumulates `playedMs`, ending **Time Attack**
+  when the 120s budget runs out (HUD shows a mm:ss countdown). `GameEngine.setup`/`newGame` take a mode.
+- Mode persisted in `SettingsRepository`; `GameViewModel.selectMode` + settings collection reset the
+  board on change. Mode selector added to the Ready overlay; the HUD label shows the mode for
+  Endless/Time Attack. Records + achievements were already mode-aware (6.3/6.4), so Speed Runner is now
+  reachable.
+- Tests: `GameModeTest` (endless ramp + floor, time-attack expiry, played-time accrual, mode in setup).
+- **Phase 6 complete (M4 — Deep):** skins, power-ups/hazards, records, achievements and extra modes.
+
 ### 2026-06-05 — Step 6.4: Local achievements
 
 - Added a pure `game/Achievement` enum (9 achievements) judged by a pure `test` over a `RunStats`

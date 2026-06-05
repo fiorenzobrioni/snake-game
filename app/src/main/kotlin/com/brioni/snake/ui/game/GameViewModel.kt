@@ -153,9 +153,11 @@ class GameViewModel(
                 hazardsEnabled = settings.hazardsEnabled
                 if (state.status == GameStatus.Ready) {
                     val levelChanged = settings.level != state.level
+                    val modeChanged = settings.mode != mode
+                    mode = settings.mode
                     scale = settings.scale
-                    if (levelChanged) {
-                        resetTo(engine.setup(settings.level, boardFor(scale, lastAspect)))
+                    if (levelChanged || modeChanged) {
+                        resetTo(engine.setup(settings.level, boardFor(scale, lastAspect), mode))
                     } else {
                         reconfigureBoard()
                     }
@@ -168,7 +170,15 @@ class GameViewModel(
     fun selectLevel(level: Level) {
         if (state.status != GameStatus.Ready) return
         viewModelScope.launch { repo.setLevel(level) }
-        resetTo(engine.setup(level, state.board))
+        resetTo(engine.setup(level, state.board, mode))
+        refreshBest()
+    }
+
+    fun selectMode(newMode: GameMode) {
+        if (state.status != GameStatus.Ready) return
+        mode = newMode
+        viewModelScope.launch { repo.setGameMode(newMode) }
+        resetTo(engine.setup(state.level, state.board, newMode))
         refreshBest()
     }
 
@@ -194,7 +204,7 @@ class GameViewModel(
 
     private fun reconfigureBoard() {
         val dims = boardFor(scale, lastAspect)
-        if (dims != state.board) resetTo(engine.setup(state.level, dims))
+        if (dims != state.board) resetTo(engine.setup(state.level, dims, mode))
     }
 
     fun start() {
@@ -222,7 +232,7 @@ class GameViewModel(
     }
 
     fun playAgain() {
-        resetTo(engine.newGame(state.level, state.board))
+        resetTo(engine.newGame(state.level, state.board, mode))
         isNewBest = false
         beginRun()
         runLoop()
@@ -241,7 +251,7 @@ class GameViewModel(
 
     fun toMenu() {
         stopLoop()
-        resetTo(engine.setup(state.level, state.board))
+        resetTo(engine.setup(state.level, state.board, mode))
         refreshBest()
     }
 

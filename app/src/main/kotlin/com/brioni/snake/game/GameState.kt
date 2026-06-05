@@ -49,7 +49,9 @@ data class GameState(
     val score: Int,
     val pendingGrowth: Int,
     val status: GameStatus,
+    val mode: GameMode = GameMode.Classic,
     val elapsedTicks: Int = 0,
+    val playedMs: Long = 0,
     val combo: Int = 0,
     val comboDeadlineTick: Int = 0,
     val debris: List<Debris> = emptyList(),
@@ -71,12 +73,16 @@ data class GameState(
      */
     val tickIntervalMillis: Long
         get() {
-            var ms = level.tickMillis.toDouble()
+            // Endless overrides the level pace with a curve that quickens over time.
+            var ms = if (mode == GameMode.Endless) endlessBaseMs(elapsedTicks) else level.tickMillis.toDouble()
             if (hasEffect(EffectKind.Haste)) ms *= HASTE_FACTOR
             if (hasEffect(EffectKind.Slow)) ms *= SLOW_FACTOR
             if (hasEffect(EffectKind.Freeze)) ms *= FREEZE_FACTOR
             return ms.toLong().coerceIn(MIN_TICK_MS, MAX_TICK_MS)
         }
+
+    /** Time Attack only: milliseconds left in the run (0 once expired). */
+    val timeRemainingMs: Long get() = (TIME_ATTACK_MS - playedMs).coerceAtLeast(0)
 
     companion object {
         /** Tick-interval multipliers per speed effect (compounding if stacked). */
@@ -87,5 +93,16 @@ data class GameState(
         /** Clamp so stacked effects can't make the game unplayably fast/slow. */
         const val MIN_TICK_MS = 40L
         const val MAX_TICK_MS = 400L
+
+        /** Endless ramp: starts gentle and quickens to a floor as ticks accrue. */
+        const val ENDLESS_BASE_MS = 190.0
+        const val ENDLESS_FLOOR_MS = 70.0
+        private const val ENDLESS_RAMP_PER_TICK = 0.22
+
+        /** Time Attack run length. */
+        const val TIME_ATTACK_MS = 120_000L
+
+        private fun endlessBaseMs(elapsedTicks: Int): Double =
+            (ENDLESS_BASE_MS - elapsedTicks * ENDLESS_RAMP_PER_TICK).coerceAtLeast(ENDLESS_FLOOR_MS)
     }
 }

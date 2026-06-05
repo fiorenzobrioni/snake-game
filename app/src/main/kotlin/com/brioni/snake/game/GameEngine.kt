@@ -18,7 +18,7 @@ class GameEngine(private val random: Random = Random.Default) {
      * Builds a [GameStatus.Ready] state: snake centred, obstacles generated for
      * [level], no food yet. The menu is shown over this until [start].
      */
-    fun setup(level: Level, board: BoardDimensions): GameState {
+    fun setup(level: Level, board: BoardDimensions, mode: GameMode = GameMode.Classic): GameState {
         val cx = board.width / 2
         val cy = board.height / 2
         val snake = listOf(
@@ -37,6 +37,7 @@ class GameEngine(private val random: Random = Random.Default) {
             score = 0,
             pendingGrowth = 0,
             status = GameStatus.Ready,
+            mode = mode,
         )
     }
 
@@ -50,7 +51,8 @@ class GameEngine(private val random: Random = Random.Default) {
     }
 
     /** Convenience: a fresh, already-running game. */
-    fun newGame(level: Level, board: BoardDimensions): GameState = start(setup(level, board))
+    fun newGame(level: Level, board: BoardDimensions, mode: GameMode = GameMode.Classic): GameState =
+        start(setup(level, board, mode))
 
     /**
      * Buffers a direction change for the next tick. A 180° reversal of the
@@ -103,6 +105,7 @@ class GameEngine(private val random: Random = Random.Default) {
         val elapsedTicks = state.elapsedTicks + 1
         // The wall-clock that just elapsed = the interval the loop delayed by.
         val elapsedMs = state.tickIntervalMillis
+        val playedMs = state.playedMs + elapsedMs
         val direction = state.pendingDirection
         val events = ArrayList<GameEvent>(3)
 
@@ -213,12 +216,15 @@ class GameEngine(private val random: Random = Random.Default) {
             body.removeAt(body.lastIndex) // keep length: drop the tail
         }
 
-        val dead = !ghost && (
+        // Time Attack ends when the clock runs out, regardless of collisions.
+        val timeUp = state.mode == GameMode.TimeAttack && playedMs >= GameState.TIME_ATTACK_MS
+        val crashed = !ghost && (
             isOutOfBounds(newHead, board) ||
                 newHead in state.obstacles ||
                 collidesWithBody(newHead, body) ||
                 debris.any { it.cell == newHead }
             )
+        val dead = crashed || timeUp
         if (dead) events.add(GameEvent.Died)
 
         return state.copy(
@@ -228,6 +234,7 @@ class GameEngine(private val random: Random = Random.Default) {
             score = score,
             pendingGrowth = pendingGrowth,
             elapsedTicks = elapsedTicks,
+            playedMs = playedMs,
             combo = combo,
             comboDeadlineTick = comboDeadlineTick,
             debris = debris,

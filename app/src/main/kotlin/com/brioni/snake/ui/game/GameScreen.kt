@@ -45,6 +45,7 @@ import com.brioni.snake.R
 import com.brioni.snake.audio.GameAudio
 import com.brioni.snake.game.ControlScheme
 import com.brioni.snake.game.DEFAULT_ASPECT
+import com.brioni.snake.game.GameMode
 import com.brioni.snake.game.GameStatus
 import kotlin.math.cos
 import kotlin.math.roundToInt
@@ -105,11 +106,18 @@ fun GameScreen(
 
     Box(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize().blur(blurRadius)) {
+            val timeLabel = if (state.mode == GameMode.TimeAttack && playing) {
+                val secs = (state.timeRemainingMs / 1000).toInt()
+                "%d:%02d".format(secs / 60, secs % 60)
+            } else {
+                null
+            }
             Hud(
                 score = state.score,
                 combo = state.combo,
-                levelLabel = state.level.displayName,
+                levelLabel = if (state.mode == GameMode.Classic) state.level.displayName else state.mode.displayName,
                 boardLabel = "${viewModel.scale.displayName} · ${state.board.width}×${state.board.height}",
+                timeLabel = timeLabel,
                 showPause = state.status == GameStatus.Running,
                 onPause = { audio.playPause(); viewModel.togglePause() },
             )
@@ -181,8 +189,10 @@ fun GameScreen(
 
         when (state.status) {
             GameStatus.Ready -> ReadyOverlay(
+                selectedMode = viewModel.mode,
                 selectedLevel = viewModel.level,
                 selectedScale = viewModel.scale,
+                onModeSelected = { audio.playUiClick(); viewModel.selectMode(it) },
                 onLevelSelected = { audio.playUiClick(); viewModel.selectLevel(it) },
                 onScaleSelected = { audio.playUiClick(); viewModel.selectScale(it) },
                 onPlay = { audio.playUiClick(); viewModel.start() },
@@ -292,6 +302,7 @@ private fun Hud(
     combo: Int,
     levelLabel: String,
     boardLabel: String,
+    timeLabel: String?,
     showPause: Boolean,
     onPause: () -> Unit,
 ) {
@@ -314,6 +325,15 @@ private fun Hud(
                 text = "$levelLabel · $boardLabel",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+            )
+        }
+        if (timeLabel != null) {
+            Text(
+                text = timeLabel,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.padding(end = 12.dp),
             )
         }
         if (combo > 1) {

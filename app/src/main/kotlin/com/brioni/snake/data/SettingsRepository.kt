@@ -31,6 +31,7 @@ data class Settings(
     val crtEnabled: Boolean = false,
     val skin: Skin = Skin.Classic,
     val hazardsEnabled: Boolean = true,
+    val mode: GameMode = GameMode.Classic,
 )
 
 /** Default audio levels (also used as the in-memory fallback before load). */
@@ -59,6 +60,7 @@ class SettingsRepository(private val context: Context) {
             crtEnabled = prefs[CRT_ENABLED] ?: false,
             skin = prefs[SKIN].toEnum(Skin::valueOf) ?: Skin.Classic,
             hazardsEnabled = prefs[HAZARDS_ENABLED] ?: true,
+            mode = prefs[MODE].toEnum(GameMode::valueOf) ?: GameMode.Classic,
         )
     }
 
@@ -88,6 +90,9 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setHazardsEnabled(enabled: Boolean) =
         edit { it[HAZARDS_ENABLED] = enabled }
+
+    suspend fun setGameMode(mode: GameMode) =
+        edit { it[MODE] = mode.name }
 
     /** The stored best for a (mode × level × scale) slot (0 if none yet). */
     fun highScore(mode: GameMode, level: Level, scale: BoardScale): Flow<Int> =
@@ -145,6 +150,7 @@ class SettingsRepository(private val context: Context) {
         val CRT_ENABLED = booleanPreferencesKey("crt_enabled")
         val SKIN = stringPreferencesKey("skin")
         val HAZARDS_ENABLED = booleanPreferencesKey("hazards_enabled")
+        val MODE = stringPreferencesKey("game_mode")
         val UNLOCKED_ACHIEVEMENTS = stringSetPreferencesKey("unlocked_achievements")
     }
 }
