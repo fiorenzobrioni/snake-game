@@ -231,16 +231,25 @@ fun GameScreen(
     }
 }
 
+/**
+ * Fixed vertical slot for the effect-timer chips. The height is reserved
+ * unconditionally — even with no effects running — so the board below (which
+ * fills the remaining `weight(1f)` space) keeps a constant size. Otherwise the
+ * row would appear/disappear with each power-up and visibly resize the board,
+ * making the snake seem to jump.
+ */
+private val EffectTimersRowHeight = 34.dp
+
 /** A row of countdown chips for the timed effects currently running. */
 @Composable
 private fun EffectTimersRow(effects: List<com.brioni.snake.game.ActiveEffect>) {
-    if (effects.isEmpty()) return
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .padding(bottom = 2.dp),
+            .height(EffectTimersRowHeight)
+            .padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         effects.forEach { effect -> EffectChip(effect) }
     }
