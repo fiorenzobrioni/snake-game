@@ -31,6 +31,8 @@ import com.brioni.snake.R
 @Composable
 fun MainMenuScreen(
     onPlay: () -> Unit,
+    onRecords: () -> Unit,
+    onAchievements: () -> Unit,
     onSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -60,6 +62,18 @@ fun MainMenuScreen(
             modifier = Modifier.padding(top = 48.dp).widthIn(min = 220.dp),
         ) {
             Text(stringResource(R.string.menu_play), style = MaterialTheme.typography.titleMedium)
+        }
+        OutlinedButton(
+            onClick = onRecords,
+            modifier = Modifier.padding(top = 12.dp).widthIn(min = 220.dp),
+        ) {
+            Text(stringResource(R.string.menu_records))
+        }
+        OutlinedButton(
+            onClick = onAchievements,
+            modifier = Modifier.padding(top = 12.dp).widthIn(min = 220.dp),
+        ) {
+            Text(stringResource(R.string.menu_achievements))
         }
         OutlinedButton(
             onClick = onSettings,

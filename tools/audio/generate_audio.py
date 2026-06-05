@@ -213,6 +213,68 @@ def sfx_pause() -> None:
     write_wav("sfx_pause", buf)
 
 
+# --- SFX: Phase 6.2 special power-ups / hazards ---------------------------
+
+def sfx_lightning() -> None:
+    """Lightning (speed up): a fast, buzzy rising zap."""
+    buf = [0.0] * int(0.18 * SR)
+    tone(buf, 0, 500, 0.16, wave_kind="saw", vol=0.5, attack=0.01, release=0.3, glide_to=1900)
+    tone(buf, int(0.02 * SR), 1000, 0.10, wave_kind="square", vol=0.3, attack=0.01, release=0.4, glide_to=2400)
+    write_wav("sfx_lightning", buf)
+
+
+def sfx_snail() -> None:
+    """Snail (slow down): a sluggish descending tone."""
+    buf = [0.0] * int(0.32 * SR)
+    tone(buf, 0, 520, 0.30, wave_kind="triangle", vol=0.5, attack=0.05, release=0.5, glide_to=180)
+    write_wav("sfx_snail", buf)
+
+
+def sfx_star() -> None:
+    """Star (invincibility): a sparkling ascending arpeggio."""
+    buf = [0.0] * int(0.36 * SR)
+    step = int(0.06 * SR)
+    for i, f in enumerate((880, 1175, 1568, 1976, 2637)):
+        tone(buf, i * step, f, 0.12, wave_kind="sine", vol=0.4, attack=0.02, release=0.6)
+    write_wav("sfx_star", buf)
+
+
+def sfx_freeze() -> None:
+    """Freeze: a crystalline descending shimmer."""
+    buf = [0.0] * int(0.34 * SR)
+    step = int(0.07 * SR)
+    for i, f in enumerate((2300, 1800, 1500, 1150)):
+        tone(buf, i * step, f, 0.12, wave_kind="sine", vol=0.4, attack=0.02, release=0.6)
+    write_wav("sfx_freeze", buf)
+
+
+def sfx_jackpot() -> None:
+    """Jackpot: a triumphant ascending fanfare."""
+    buf = [0.0] * int(0.5 * SR)
+    notes = (NOTES["C5"], NOTES["E5"], NOTES["G5"], NOTES["A5"])
+    step = int(0.09 * SR)
+    for i, semis in enumerate(notes):
+        tone(buf, i * step, note_freq(semis), 0.14, wave_kind="square", vol=0.45, attack=0.02, release=0.4)
+    tone(buf, int(0.36 * SR), note_freq(NOTES["C5"] + 12), 0.14, wave_kind="square", vol=0.35, attack=0.02, release=0.5)
+    write_wav("sfx_jackpot", buf)
+
+
+def sfx_quake() -> None:
+    """Earthquake: a low rumble (two close low tones beat against each other)."""
+    buf = [0.0] * int(0.45 * SR)
+    tone(buf, 0, 70, 0.42, wave_kind="square", vol=0.5, attack=0.04, release=0.3)
+    tone(buf, 0, 96, 0.42, wave_kind="triangle", vol=0.3, attack=0.04, release=0.3)
+    write_wav("sfx_quake", buf)
+
+
+def sfx_explosion() -> None:
+    """Explosion: a low descending boom with a high crack at the front."""
+    buf = [0.0] * int(0.5 * SR)
+    tone(buf, 0, 240, 0.45, wave_kind="square", vol=0.55, attack=0.005, release=0.5, glide_to=50)
+    tone(buf, 0, 1400, 0.06, wave_kind="saw", vol=0.4, attack=0.005, release=0.6, glide_to=300)
+    write_wav("sfx_explosion", buf)
+
+
 def main() -> None:
     print(f"Generating audio into {RES_RAW}")
     menu_music()
@@ -223,6 +285,13 @@ def main() -> None:
     sfx_game_over()
     sfx_click()
     sfx_pause()
+    sfx_lightning()
+    sfx_snail()
+    sfx_star()
+    sfx_freeze()
+    sfx_jackpot()
+    sfx_quake()
+    sfx_explosion()
     print("Done.")
 
 

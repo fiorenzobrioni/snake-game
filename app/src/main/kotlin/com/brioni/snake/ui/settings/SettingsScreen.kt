@@ -1,16 +1,26 @@
 package com.brioni.snake.ui.settings
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -35,7 +45,10 @@ import com.brioni.snake.data.SettingsRepository
 import com.brioni.snake.game.BoardScale
 import com.brioni.snake.game.ControlScheme
 import com.brioni.snake.game.Level
+import com.brioni.snake.game.Skin
+import com.brioni.snake.game.ThemeMode
 import com.brioni.snake.ui.game.Shaders
+import com.brioni.snake.ui.game.paletteFor
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -96,6 +109,25 @@ fun SettingsScreen(
             onSelected = { scale -> scope.launch { repo.setScale(scale) } },
         )
 
+        SkinSection(
+            selected = settings.skin,
+            onSelected = { skin -> scope.launch { repo.setSkin(skin) } },
+        )
+
+        ChoiceSection(
+            title = stringResource(R.string.settings_theme),
+            options = ThemeMode.entries,
+            selected = settings.themeMode,
+            label = { it.displayName },
+            onSelected = { themeMode -> scope.launch { repo.setThemeMode(themeMode) } },
+        )
+
+        ToggleSection(
+            title = stringResource(R.string.settings_hazards),
+            checked = settings.hazardsEnabled,
+            onCheckedChange = { enabled -> scope.launch { repo.setHazardsEnabled(enabled) } },
+        )
+
         VolumeSection(
             title = stringResource(R.string.settings_master_volume),
             value = settings.masterVolume,
@@ -135,6 +167,7 @@ fun SettingsScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun <T> ChoiceSection(
     title: String,
@@ -153,7 +186,13 @@ private fun <T> ChoiceSection(
             color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(bottom = 8.dp),
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // FlowRow so a section with many chips (e.g. the 5 levels) wraps neatly
+        // and centred instead of overflowing the width or inflating the row.
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             options.forEach { option ->
                 FilterChip(
                     selected = option == selected,
@@ -163,6 +202,93 @@ private fun <T> ChoiceSection(
             }
         }
     }
+}
+
+/**
+ * Skin picker: a row of tappable preview cards, each showing the skin's snake +
+ * food swatches so the choice is visual rather than a bare label. The selected
+ * card is outlined in the theme's primary colour.
+ */
+@Composable
+private fun SkinSection(
+    selected: Skin,
+    onSelected: (Skin) -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = stringResource(R.string.settings_skin),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(bottom = 8.dp),
+        )
+        // Two cards per row, centred, so the fourth never gets squeezed.
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Skin.entries.chunked(2).forEach { rowSkins ->
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    rowSkins.forEach { skin ->
+                        SkinCard(
+                            skin = skin,
+                            selected = skin == selected,
+                            onClick = { onSelected(skin) },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SkinCard(skin: Skin, selected: Boolean, onClick: () -> Unit) {
+    val palette = remember(skin) { paletteFor(skin) }
+    val border = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .border(
+                width = if (selected) 2.dp else 1.dp,
+                color = border,
+                shape = RoundedCornerShape(12.dp),
+            )
+            .background(
+                Brush.verticalGradient(listOf(palette.boardTop, palette.boardBottom)),
+                RoundedCornerShape(12.dp),
+            )
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Swatch(palette.snakeHead)
+            Swatch(palette.snakeBody)
+            Swatch(palette.growMedium)
+            Swatch(palette.shrinkMedium)
+        }
+        Text(
+            text = skin.displayName,
+            style = MaterialTheme.typography.labelMedium,
+            // The card is always a dark gradient, so use a light caption in both
+            // themes (theme-driven onSurface would be black-on-dark in light mode).
+            color = if (selected) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.White,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+    }
+}
+
+@Composable
+private fun Swatch(color: androidx.compose.ui.graphics.Color) {
+    Box(
+        modifier = Modifier
+            .size(14.dp)
+            .clip(RoundedCornerShape(4.dp))
+            .background(color),
+    )
 }
 
 @Composable

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedButton
@@ -25,6 +26,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.brioni.snake.R
 import com.brioni.snake.game.BoardScale
+import com.brioni.snake.game.GameMode
 import com.brioni.snake.game.Level
 
 /** Translucent full-screen scrim shared by every overlay. */
@@ -48,8 +50,10 @@ private fun OverlayScrim(
 /** Pre-game menu: title, level + board-scale selection, and Play. */
 @Composable
 fun ReadyOverlay(
+    selectedMode: GameMode,
     selectedLevel: Level,
     selectedScale: BoardScale,
+    onModeSelected: (GameMode) -> Unit,
     onLevelSelected: (Level) -> Unit,
     onScaleSelected: (BoardScale) -> Unit,
     onPlay: () -> Unit,
@@ -61,6 +65,16 @@ fun ReadyOverlay(
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
         )
+
+        ChipSection(title = stringResource(R.string.menu_mode)) {
+            GameMode.entries.forEach { gameMode ->
+                FilterChip(
+                    selected = gameMode == selectedMode,
+                    onClick = { onModeSelected(gameMode) },
+                    label = { Text(gameMode.displayName) },
+                )
+            }
+        }
 
         ChipSection(title = stringResource(R.string.menu_level)) {
             Level.entries.forEach { level ->
@@ -149,6 +163,7 @@ fun GameOverOverlay(
     score: Int,
     bestScore: Int,
     isNewBest: Boolean,
+    unlocked: List<String>,
     onPlayAgain: () -> Unit,
     onMenu: () -> Unit,
 ) {
@@ -178,6 +193,35 @@ fun GameOverOverlay(
             else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
             modifier = Modifier.padding(top = 6.dp),
         )
+        if (unlocked.isNotEmpty()) {
+            Column(
+                modifier = Modifier
+                    .padding(top = 16.dp)
+                    .fillMaxWidth()
+                    .background(
+                        MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f),
+                        RoundedCornerShape(12.dp),
+                    )
+                    .padding(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = stringResource(R.string.achievement_unlocked),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.tertiary,
+                )
+                unlocked.forEach { title ->
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
+                }
+            }
+        }
         Button(
             onClick = onPlayAgain,
             modifier = Modifier.padding(top = 24.dp).widthIn(min = 200.dp),

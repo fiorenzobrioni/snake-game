@@ -17,6 +17,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
@@ -25,14 +27,19 @@ import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import com.brioni.snake.game.BoardDimensions
 import com.brioni.snake.game.Direction
+import com.brioni.snake.game.EffectKind
 import com.brioni.snake.game.Food
 import com.brioni.snake.game.FoodCategory
+import com.brioni.snake.game.FoodEffect
 import com.brioni.snake.game.FoodTier
 import com.brioni.snake.game.GameState
 import com.brioni.snake.game.Position
+import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
 
@@ -57,6 +64,7 @@ fun GameBoard(
     eatEvent: EatEvent?,
     eatEventId: Int,
     textMeasurer: TextMeasurer,
+    palette: SkinPalette,
     modifier: Modifier = Modifier,
 ) {
     val particles: SnapshotStateList<Particle> = remember { emptyList<Particle>().toMutableStateList() }
@@ -103,7 +111,19 @@ fun GameBoard(
 
     Canvas(modifier = modifier) {
         val board = state.board
-        val cell = min(size.width / board.width, size.height / board.height)
+        // Reserve a margin large enough that the framing border (a stroke centred
+        // on the board edge) is never clipped — otherwise its outer half can slip
+        // off-screen at the bottom when the board fills the play area. Two-pass:
+        // size with a base margin, then grow the margin to cover that border's
+        // half-width and re-fit.
+        fun fit(margin: Float): Float =
+            min((size.width - 2 * margin) / board.width, (size.height - 2 * margin) / board.height)
+
+        val baseMargin = 6.dp.toPx()
+        val probe = fit(baseMargin)
+        val borderHalf = (probe * 0.12f).coerceAtLeast(2f) / 2f
+        val margin = maxOf(baseMargin, borderHalf + 1f)
+        val cell = fit(margin)
         if (cell <= 0f) return@Canvas
 
         // Derive everything from the per-frame clock and the tick snapshot, so
@@ -122,17 +142,22 @@ fun GameBoard(
         val originX = (size.width - boardWidth) / 2f
         val originY = (size.height - boardHeight) / 2f
 
-        drawBoardBackground(board, cell, originX, originY, boardWidth, boardHeight, shaders, time)
+        drawBoardBackground(board, cell, originX, originY, boardWidth, boardHeight, palette, shaders, time)
 
         // Clip dynamic content to the board so the head can slide "into" a wall
         // on the fatal tick without painting over the HUD.
         clipRect(originX, originY, originX + boardWidth, originY + boardHeight) {
             state.obstacles.forEach { obstacle ->
-                drawObstacle(cell, originX + obstacle.x * cell, originY + obstacle.y * cell)
+                drawObstacle(cell, originX + obstacle.x * cell, originY + obstacle.y * cell, palette)
+            }
+            state.debris.forEach { d ->
+                drawDebris(cell, originX + d.cell.x * cell, originY + d.cell.y * cell, d.life)
             }
             state.foods.forEach { food ->
-                drawFood(food, cell, originX, originY, pulse, textMeasurer, shaders, time)
+                drawFood(food, cell, originX, originY, pulse, textMeasurer, palette, shaders, time)
             }
+            val ghost = state.hasEffect(EffectKind.Ghost)
+            val snakeAlpha = if (ghost) 0.45f + 0.15f * (sin(seconds * 9.0).toFloat() * 0.5f + 0.5f) else 1f
             val snake = state.snake
             for (k in snake.indices.reversed()) {
                 val to = snake[k]
@@ -149,6 +174,8 @@ fun GameBoard(
                     top = originY + cy * cell,
                     cell = cell,
                     direction = state.direction,
+                    palette = palette,
+                    alpha = if (k == 0) (snakeAlpha + 0.2f).coerceAtMost(1f) else snakeAlpha,
                     shaders = shaders,
                     time = time,
                 )
@@ -160,11 +187,23 @@ fun GameBoard(
                     center = Offset(originX + p.x * cell, originY + p.y * cell),
                 )
             }
+            // Freeze: a cool frost vignette over the board while the effect runs.
+            if (state.hasEffect(EffectKind.Freeze)) {
+                drawRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(Color.Transparent, SpecialVisuals.FreezeColor.copy(alpha = 0.18f)),
+                        center = Offset(originX + boardWidth / 2f, originY + boardHeight / 2f),
+                        radius = maxOf(boardWidth, boardHeight) * 0.72f,
+                    ),
+                    topLeft = Offset(originX, originY),
+                    size = Size(boardWidth, boardHeight),
+                )
+            }
         }
 
         // Framing border painted on top.
         drawRect(
-            color = GameColors.BoardBorder,
+            color = palette.boardBorder,
             topLeft = Offset(originX, originY),
             size = Size(boardWidth, boardHeight),
             style = Stroke(width = (cell * 0.12f).coerceAtLeast(2f)),
@@ -179,6 +218,7 @@ private fun DrawScope.drawBoardBackground(
     originY: Float,
     boardWidth: Float,
     boardHeight: Float,
+    palette: SkinPalette,
     shaders: BoardShaders?,
     time: Float,
 ) {
@@ -195,7 +235,7 @@ private fun DrawScope.drawBoardBackground(
     } else {
         drawRect(
             brush = Brush.verticalGradient(
-                colors = listOf(GameColors.BoardTop, GameColors.BoardBottom),
+                colors = listOf(palette.boardTop, palette.boardBottom),
                 startY = originY,
                 endY = originY + boardHeight,
             ),
@@ -207,33 +247,34 @@ private fun DrawScope.drawBoardBackground(
     if (cell < 10f) return // skip the grid on dense boards where it is just noise
     for (x in 0..board.width) {
         val lineX = originX + x * cell
-        drawLine(GameColors.GridLine, Offset(lineX, originY), Offset(lineX, originY + boardHeight), 1f)
+        drawLine(palette.gridLine, Offset(lineX, originY), Offset(lineX, originY + boardHeight), 1f)
     }
     for (y in 0..board.height) {
         val lineY = originY + y * cell
-        drawLine(GameColors.GridLine, Offset(originX, lineY), Offset(originX + boardWidth, lineY), 1f)
+        drawLine(palette.gridLine, Offset(originX, lineY), Offset(originX + boardWidth, lineY), 1f)
     }
 }
 
-private fun DrawScope.drawObstacle(cell: Float, left: Float, top: Float) {
+private fun DrawScope.drawObstacle(cell: Float, left: Float, top: Float, palette: SkinPalette) {
     val inset = cell * 0.08f
     val side = cell - 2 * inset
-    val radius = CornerRadius(cell * 0.2f, cell * 0.2f)
+    val corner = cell * palette.cornerFactor.coerceAtMost(0.4f)
+    val radius = CornerRadius(corner, corner)
     drawRoundRect(
-        color = GameColors.ObstacleShadow,
+        color = palette.obstacleShadow,
         topLeft = Offset(left + inset, top + inset + cell * 0.04f),
         size = Size(side, side),
         cornerRadius = radius,
     )
     drawRoundRect(
-        color = GameColors.Obstacle,
+        color = palette.obstacle,
         topLeft = Offset(left + inset, top + inset),
         size = Size(side, side),
         cornerRadius = radius,
     )
     // Top bevel highlight.
     drawRoundRect(
-        color = GameColors.ObstacleHighlight.copy(alpha = 0.6f),
+        color = palette.obstacleHighlight.copy(alpha = 0.6f),
         topLeft = Offset(left + inset + side * 0.18f, top + inset + side * 0.16f),
         size = Size(side * 0.64f, side * 0.22f),
         cornerRadius = CornerRadius(cell * 0.12f, cell * 0.12f),
@@ -247,17 +288,23 @@ private fun DrawScope.drawFood(
     originY: Float,
     pulse: Float,
     textMeasurer: TextMeasurer,
+    palette: SkinPalette,
     shaders: BoardShaders?,
     time: Float,
 ) {
-    val color = GameColors.foodColor(food)
+    if (food.category == FoodCategory.Special) {
+        drawSpecialFood(food, cell, originX, originY, pulse, textMeasurer)
+        return
+    }
+    val color = palette.foodColor(food)
     val extent = cell * food.span
     val centerX = originX + food.position.x * cell + extent / 2f
     val centerY = originY + food.position.y * cell + extent / 2f
     val radius = extent * 0.42f * pulse
 
     // "Rare" pieces (maxi / mystery / huge) get a halo; with AGSL it pulses.
-    val rare = food.span >= 2 || food.isMystery || food.tier == FoodTier.Huge
+    // Flat skins (useGlow == false) skip the halo for a crisp look.
+    val rare = palette.useGlow && (food.span >= 2 || food.isMystery || food.tier == FoodTier.Huge)
     val haloRadius = radius * 1.9f
     if (rare && shaders != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         shaders.foodHalo.setFloatUniform("center", centerX, centerY)
@@ -265,7 +312,7 @@ private fun DrawScope.drawFood(
         shaders.foodHalo.setFloatUniform("time", time)
         shaders.foodHalo.setColorUniform("ringColor", color.toArgb())
         drawCircle(brush = shaders.foodHaloBrush, radius = haloRadius, center = Offset(centerX, centerY))
-    } else if (food.span >= 2 || food.isMystery) {
+    } else if (palette.useGlow && (food.span >= 2 || food.isMystery)) {
         drawCircle(
             brush = Brush.radialGradient(
                 colors = listOf(color.copy(alpha = 0.35f), Color.Transparent),
@@ -276,7 +323,17 @@ private fun DrawScope.drawFood(
             center = Offset(centerX, centerY),
         )
     }
-    drawCircle(color = color, radius = radius, center = Offset(centerX, centerY))
+    // Pixel skin draws blocky square food; others keep the round drop.
+    if (palette.cornerFactor < 0.06f) {
+        drawRoundRect(
+            color = color,
+            topLeft = Offset(centerX - radius, centerY - radius),
+            size = Size(radius * 2f, radius * 2f),
+            cornerRadius = CornerRadius(radius * 0.16f, radius * 0.16f),
+        )
+    } else {
+        drawCircle(color = color, radius = radius, center = Offset(centerX, centerY))
+    }
 
     when {
         // Mystery pieces hide their amount behind a "?" in the snake's palette.
@@ -322,31 +379,206 @@ private fun DrawScope.drawGlyph(
     )
 }
 
+/**
+ * Draws a Phase 6.2 special: a maxi disc in the power-up's universal accent
+ * colour (so a colour always means the same effect across skins) with a halo and
+ * a distinctive symbol on top.
+ */
+private fun DrawScope.drawSpecialFood(
+    food: Food,
+    cell: Float,
+    originX: Float,
+    originY: Float,
+    pulse: Float,
+    textMeasurer: TextMeasurer,
+) {
+    val accent = SpecialVisuals.accent(food.effect)
+    val extent = cell * food.span
+    val centerX = originX + food.position.x * cell + extent / 2f
+    val centerY = originY + food.position.y * cell + extent / 2f
+    val radius = extent * 0.40f * pulse
+
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(accent.copy(alpha = 0.5f), Color.Transparent),
+            center = Offset(centerX, centerY),
+            radius = radius * 2.1f,
+        ),
+        radius = radius * 2.1f,
+        center = Offset(centerX, centerY),
+    )
+    drawCircle(color = accent, radius = radius, center = Offset(centerX, centerY))
+    drawCircle(
+        color = Color.Black.copy(alpha = 0.18f),
+        radius = radius,
+        center = Offset(centerX, centerY),
+        style = Stroke(width = radius * 0.12f),
+    )
+
+    val ink = Color(0xFF10151C)
+    drawSpecialSymbol(food.effect, centerX, centerY, radius * 0.92f, ink, textMeasurer)
+}
+
+/** Dispatches the on-disc icon for each special effect. */
+private fun DrawScope.drawSpecialSymbol(
+    effect: FoodEffect,
+    cx: Float,
+    cy: Float,
+    r: Float,
+    color: Color,
+    textMeasurer: TextMeasurer,
+) {
+    when (effect) {
+        is FoodEffect.Haste -> drawBolt(cx, cy, r, color)
+        is FoodEffect.Slow -> drawSpiral(cx, cy, r, color)
+        is FoodEffect.Ghost -> drawStarShape(cx, cy, r, points = 5, innerRatio = 0.45f, color = color)
+        is FoodEffect.Freeze -> drawSnowflake(cx, cy, r, color)
+        is FoodEffect.Jackpot -> drawGlyph(textMeasurer, "$", cx, cy, r * 1.7f, color)
+        is FoodEffect.Burst -> drawStarShape(cx, cy, r, points = 8, innerRatio = 0.42f, color = color)
+        is FoodEffect.Quake -> drawCrack(cx, cy, r, color)
+        else -> Unit
+    }
+}
+
+/** An n-pointed star (used for Star and the spiky Explosion burst). */
+private fun DrawScope.drawStarShape(cx: Float, cy: Float, r: Float, points: Int, innerRatio: Float, color: Color) {
+    val path = Path()
+    val verts = points * 2
+    for (i in 0 until verts) {
+        val rr = if (i % 2 == 0) r else r * innerRatio
+        val ang = -PI / 2 + i * PI / points
+        val x = cx + (cos(ang) * rr).toFloat()
+        val y = cy + (sin(ang) * rr).toFloat()
+        if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+    }
+    path.close()
+    drawPath(path, color)
+}
+
+private fun DrawScope.drawBolt(cx: Float, cy: Float, r: Float, color: Color) {
+    val pts = listOf(
+        -0.10f to -0.62f, 0.30f to -0.62f, 0.00f to -0.10f,
+        0.26f to -0.10f, -0.16f to 0.62f, -0.02f to 0.06f, -0.30f to 0.06f,
+    )
+    val path = Path()
+    pts.forEachIndexed { i, (px, py) ->
+        val x = cx + px * r
+        val y = cy + py * r
+        if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+    }
+    path.close()
+    drawPath(path, color)
+}
+
+private fun DrawScope.drawSnowflake(cx: Float, cy: Float, r: Float, color: Color) {
+    val stroke = r * 0.16f
+    for (k in 0 until 3) {
+        val ang = k * PI / 3
+        val dx = cos(ang).toFloat()
+        val dy = sin(ang).toFloat()
+        drawLine(
+            color,
+            Offset(cx - dx * r, cy - dy * r),
+            Offset(cx + dx * r, cy + dy * r),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round,
+        )
+        // Two small V-branches near each tip.
+        for (sign in intArrayOf(-1, 1)) {
+            val tipX = cx + dx * r * sign
+            val tipY = cy + dy * r * sign
+            val bAng = ang + sign * 0.9
+            val bx = cos(bAng).toFloat() * r * 0.32f
+            val by = sin(bAng).toFloat() * r * 0.32f
+            drawLine(color, Offset(tipX, tipY), Offset(tipX - bx, tipY - by), strokeWidth = stroke * 0.8f, cap = StrokeCap.Round)
+        }
+    }
+}
+
+private fun DrawScope.drawSpiral(cx: Float, cy: Float, r: Float, color: Color) {
+    val path = Path()
+    val steps = 64
+    val turns = 2.4
+    for (i in 0..steps) {
+        val t = i / steps.toFloat()
+        val ang = t * turns * 2 * PI
+        val rr = r * (0.92f - 0.78f * t)
+        val x = cx + (cos(ang) * rr).toFloat()
+        val y = cy + (sin(ang) * rr).toFloat()
+        if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+    }
+    drawPath(path, color, style = Stroke(width = r * 0.14f, cap = StrokeCap.Round))
+}
+
+private fun DrawScope.drawCrack(cx: Float, cy: Float, r: Float, color: Color) {
+    val pts = listOf(
+        -0.7f to -0.1f, -0.35f to 0.28f, -0.05f to -0.22f,
+        0.25f to 0.22f, 0.62f to -0.16f,
+    )
+    for (i in 0 until pts.size - 1) {
+        val (ax, ay) = pts[i]
+        val (bx, by) = pts[i + 1]
+        drawLine(
+            color,
+            Offset(cx + ax * r, cy + ay * r),
+            Offset(cx + bx * r, cy + by * r),
+            strokeWidth = r * 0.16f,
+            cap = StrokeCap.Round,
+        )
+    }
+}
+
+/** A lethal, time-limited explosion block; fades as its timer runs down. */
+private fun DrawScope.drawDebris(cell: Float, left: Float, top: Float, life: Float) {
+    val inset = cell * 0.08f
+    val side = cell - 2 * inset
+    val color = SpecialVisuals.ExplosionColor
+    val alpha = 0.35f + 0.55f * life
+    val radius = CornerRadius(cell * 0.18f, cell * 0.18f)
+    drawRoundRect(
+        color = color.copy(alpha = alpha),
+        topLeft = Offset(left + inset, top + inset),
+        size = Size(side, side),
+        cornerRadius = radius,
+    )
+    drawRoundRect(
+        color = Color.Black.copy(alpha = 0.35f * life),
+        topLeft = Offset(left + inset, top + inset),
+        size = Size(side, side),
+        cornerRadius = radius,
+        style = Stroke(width = cell * 0.05f),
+    )
+    // A small crack mark.
+    drawCrack(left + cell / 2f, top + cell / 2f, side * 0.32f, Color.Black.copy(alpha = 0.4f * life))
+}
+
 private fun DrawScope.drawSnakeSegment(
     isHead: Boolean,
     left: Float,
     top: Float,
     cell: Float,
     direction: Direction,
+    palette: SkinPalette,
+    alpha: Float,
     shaders: BoardShaders?,
     time: Float,
 ) {
     val centerX = left + cell / 2f
     val centerY = top + cell / 2f
 
-    if (isHead) {
+    if (isHead && palette.useGlow) {
         val glowRadius = cell * 1.1f
         if (shaders != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             // AGSL: a pulsing, gently rotating glow halo.
             shaders.glow.setFloatUniform("center", centerX, centerY)
             shaders.glow.setFloatUniform("radius", glowRadius)
             shaders.glow.setFloatUniform("time", time)
-            shaders.glow.setColorUniform("glowColor", GameColors.HeadGlow.toArgb())
+            shaders.glow.setColorUniform("glowColor", palette.headGlow.toArgb())
             drawCircle(brush = shaders.glowBrush, radius = glowRadius, center = Offset(centerX, centerY))
         } else {
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(GameColors.HeadGlow.copy(alpha = 0.45f), Color.Transparent),
+                    colors = listOf(palette.headGlow.copy(alpha = 0.45f), Color.Transparent),
                     center = Offset(centerX, centerY),
                     radius = glowRadius,
                 ),
@@ -359,25 +591,33 @@ private fun DrawScope.drawSnakeSegment(
     val inset = cell * 0.06f
     val side = cell - 2 * inset
     val topLeft = Offset(left + inset, top + inset)
-    val radius = CornerRadius(cell * 0.3f, cell * 0.3f)
+    val corner = cell * palette.cornerFactor
+    val radius = CornerRadius(corner, corner)
+    val fill = (if (isHead) palette.snakeHead else palette.snakeBody).copy(alpha = alpha)
     drawRoundRect(
-        color = if (isHead) GameColors.SnakeHead else GameColors.SnakeBody,
+        color = fill,
         topLeft = topLeft,
         size = Size(side, side),
         cornerRadius = radius,
     )
     drawRoundRect(
-        color = GameColors.SnakeOutline,
+        color = palette.snakeOutline.copy(alpha = alpha),
         topLeft = topLeft,
         size = Size(side, side),
         cornerRadius = radius,
         style = Stroke(width = cell * 0.06f),
     )
 
-    if (isHead) drawEyes(centerX, centerY, cell, direction)
+    if (isHead) drawEyes(centerX, centerY, cell, direction, palette)
 }
 
-private fun DrawScope.drawEyes(centerX: Float, centerY: Float, cell: Float, direction: Direction) {
+private fun DrawScope.drawEyes(
+    centerX: Float,
+    centerY: Float,
+    cell: Float,
+    direction: Direction,
+    palette: SkinPalette,
+) {
     val forwardX = direction.dx.toFloat()
     val forwardY = direction.dy.toFloat()
     // Perpendicular to travel, to seat the two eyes side by side.
@@ -393,7 +633,7 @@ private fun DrawScope.drawEyes(centerX: Float, centerY: Float, cell: Float, dire
         val ey = centerY + forwardY * forward + perpY * spread * sign
         drawCircle(Color.White, eyeRadius, Offset(ex, ey))
         drawCircle(
-            GameColors.SnakeEye,
+            palette.snakeEye,
             pupilRadius,
             Offset(ex + forwardX * cell * 0.03f, ey + forwardY * cell * 0.03f),
         )

@@ -37,10 +37,11 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 - `game/` package must remain free of Android/Compose imports — this is what makes it testable with plain JUnit.
 - **Mystery foods are resolved at spawn, not at eat**: `FoodTable.roll` rolls the concealed amount and
   stores the final `FoodEffect`, so `GameEngine.tick` consumes no randomness and stays deterministic.
-- **Special power-ups / hazards** (earthquake, explosion + lethal debris, lampo/lumaca, stella,
-  congelamento, jackpot) are deferred to **Phase 6.2** by decision — `FoodCategory.Special`,
-  extra `FoodEffect` cases and `GameState.debris`/`effectTimers` are the reserved hooks. Don't add them
-  before Phase 6.
+- **Special power-ups / hazards** shipped in **Phase 6.2** (earthquake, explosion + lethal debris,
+  Lightning/Snail, Star/ghost, Freeze, Jackpot) via `FoodCategory.Special`, the extra `FoodEffect`
+  cases and `GameState.debris`/`effectTimers`. Effect durations are stored in **ms** and aged by the
+  effective interval each tick; the loop reads `GameState.tickIntervalMillis` (never `level.tickMillis`)
+  so speed effects actually change the pace. Keep that invariant.
 - **Control scheme**: the default is **Swipe** (set in `GameViewModel.DEFAULT_CONTROL` and the
   persisted fallback in `SettingsRepository`); the two-button relative scheme and the D-pad remain
   selectable in Settings (choice persisted via DataStore). Phase 3 had originally shipped two-button
@@ -75,6 +76,140 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 > Newest entries at the top. One entry per completed phase/step or significant change.
 
 ---
+
+### 2026-06-05 — Feedback round 5: first-run board overflow — ACTUAL root cause
+
+- It was **not** an inset-timing issue (round 4 was a red herring, though the inset cleanup is kept).
+  The board-shake offset was non-zero **at rest**: `shakeY` used `cos(shakeT·…)·amp·damp`, and at idle
+  `shakeT=0` → `cos(0)=1`, `damp=1`, so the board sat ~`amplitude (10dp) + quakeAmplitude (7dp)` ≈ 17dp
+  **down** before any shake. Its bottom (and the snake) ran off-screen on the first game; the first
+  death animation drove `shakeT→1` (`damp=0`), removing the 10dp term so later games looked fine
+  (~7dp, absorbed by the board margin). Only the bottom was affected because X used `sin` (0 at rest)
+  while Y used `cos`; Cozy overflowed less because its shorter board leaves more bottom margin.
+- Fix: use `sin` on both axes so the offset is exactly 0 at rest (and still a proper damped wobble
+  during a shake). The stray 7dp came from the quake term added in Phase 6.
+
+### 2026-06-05 — Feedback round 4: first-run board overflow (inset cleanup)
+
+- The board ran under the navigation bar on the **first** game only (snake's bottom row half off-screen;
+  worse with denser scales, barely with Cozy) and corrected from the second game. Root cause: the
+  safe-area inset padding (`safeDrawingPadding`) was applied **inside** the `Crossfade`, so the first
+  `GameScreen` created a fresh padding node that briefly saw 0 insets — the play area was measured at
+  full window height (under the nav bar) and the board dimensions were locked to it.
+- Fix: apply `safeDrawingPadding` once in `MainActivity`, **outside** the Crossfade (a stable,
+  persistent node), so the play area is always inset-correct when GameScreen first appears. Belt-and-
+  suspenders: `GameViewModel.start()` re-fits the board to the latest measured area before locking it.
+
+### 2026-06-05 — Feedback round 3
+
+- **Board border clipping (first game)**: `GameBoard` now reserves a margin that's *border-aware*
+  (two-pass: probe the cell size, then grow the margin to cover the framing stroke's outer half), so the
+  bottom border can no longer be clipped even when the first run locks board dimensions from an
+  early/transient play-area measurement.
+- **Skin caption invisible in light theme**: the skin preview cards always use a dark gradient
+  background, but the unselected caption used the theme `onSurface` colour (black in light mode →
+  invisible). Captions now use a fixed light colour in both themes.
+- **Settings chip spacing**: `ChoiceSection` rows now use a centred `FlowRow` instead of a plain `Row`,
+  so a section with many chips (the 5 levels) wraps neatly instead of overflowing / inflating its
+  height — the gap between Level and Board Scale now matches the other sections.
+
+### 2026-06-05 — Feedback round 2
+
+- **Board fit**: the board filled the play area edge-to-edge, so the framing border (a stroke centred
+  on the board edge) was half-clipped and could slip off-screen at the bottom. `GameBoard` now reserves
+  a small `6.dp` margin when sizing the board, so the whole board + border always fits. Still fully
+  dynamic (cell size derived from the measured play area).
+- **Launcher icon**: reverted to the original **vector-only** setup (adaptive `mipmap-anydpi-v26` for
+  API 26+, vector `mipmap-anydpi` fallback for older) per preference — removed the PNG density buckets
+  and `tools/icon/generate_icon.py`. The icon stays crisp/scalable on every device; the earlier
+  "missing shortcut" report appears device/launcher-specific (config is identical to the working
+  pre-Phase-6 builds).
+
+### 2026-06-05 — Post-Phase-6 fixes (feedback)
+
+- **Launcher icon**: added PNG density buckets (mdpi–xxxhdpi, square + round) via
+  `tools/icon/generate_icon.py` and removed the bare `mipmap-anydpi` vector fallback. The icon now
+  resolves to the adaptive icon on API 26+ and a real bitmap on API 24–25, so it shows reliably across
+  launchers (the previous vector-only setup could fail to appear).
+- **Back gesture during play**: the edge-swipe / system Back now **pauses** a running game (instead of
+  navigating to the menu while the loop kept ticking). `GameScreen` owns a `BackHandler`; the app-level
+  one no longer fires on the Game screen, so leaving the game always stops the loop cleanly.
+- **Skin differentiation**: `SkinPalette.rounded` → `cornerFactor` (Neon bubbly 0.5, Classic 0.30, Retro
+  0.16, Pixel 0.0) shaping obstacles + snake; Pixel also draws blocky square food. Skins now differ in
+  form, not just hue.
+- **Settings skin picker**: cards laid out 2×2 (centred) so the fourth no longer wraps on narrow screens.
+- **Theme setting**: new `game/ThemeMode` (Light / Dark / System), persisted; `MainActivity` drives
+  `SnakeGameTheme(darkTheme=…)` from it (repo lifted to the activity and passed into `App`). Default
+  remains System.
+
+### 2026-06-05 — Step 6.5: Endless & Time Attack modes
+
+- `GameState` gains `mode` + `playedMs`; `tickIntervalMillis` now ramps for **Endless** (gentle →
+  fast over ticks, clamped to a floor) and the engine accumulates `playedMs`, ending **Time Attack**
+  when the 120s budget runs out (HUD shows a mm:ss countdown). `GameEngine.setup`/`newGame` take a mode.
+- Mode persisted in `SettingsRepository`; `GameViewModel.selectMode` + settings collection reset the
+  board on change. Mode selector added to the Ready overlay; the HUD label shows the mode for
+  Endless/Time Attack. Records + achievements were already mode-aware (6.3/6.4), so Speed Runner is now
+  reachable.
+- Tests: `GameModeTest` (endless ramp + floor, time-attack expiry, played-time accrual, mode in setup).
+- **Phase 6 complete (M4 — Deep):** skins, power-ups/hazards, records, achievements and extra modes.
+
+### 2026-06-05 — Step 6.4: Local achievements
+
+- Added a pure `game/Achievement` enum (9 achievements) judged by a pure `test` over a `RunStats`
+  snapshot, plus `Achievement.earnedBy(stats, already)`. Stable enum names are the persisted ids.
+- `SettingsRepository` stores the unlocked set (`unlockedAchievements()` / `addUnlockedAchievements()`).
+- `GameViewModel` accumulates per-run stats (foods, max combo, duration, used explosion/star/jackpot),
+  evaluates achievements at game over, persists new unlocks and exposes `newlyUnlocked` — surfaced as a
+  banner on the game-over overlay.
+- New `ui/achievements/AchievementsScreen` (locked/unlocked list + progress count), wired into `ui/App`
+  nav with a main-menu button.
+- Tests: `AchievementTest`.
+
+### 2026-06-05 — Step 6.3: Records screen
+
+- Added a pure, unit-tested `game/ScoreKey` (mode × level × scale) codec and `game/GameMode`
+  (Classic / Endless / Time Attack — gameplay rules land in 6.5). Highscore keys are now
+  `highscore_<mode>_<level>_<scale>`; `SettingsRepository.submitScore`/`highScore` take a mode and a
+  new `allHighScores()` bulk flow decodes every stored record.
+- New `ui/records/RecordsScreen`: a (level × scale) best-score table per mode, with the overall best
+  highlighted and dashes for unplayed slots. Wired a Records destination into `ui/App` and a button on
+  the main menu. `GameViewModel` carries a `mode` (Classic for now) used when reading/writing scores.
+- Tests: `ScoreKeyTest` (round-trip, format, stale-key rejection).
+
+### 2026-06-05 — Step 6.2: Special foods (power-ups & hazards)
+
+- **Model (6.2a)**: extended the reserved hooks — `FoodEffect` gains Quake / Burst / Haste / Slow /
+  Ghost / Freeze / Jackpot (+ `isHazard`); new `Debris` and `ActiveEffect`/`EffectKind` types;
+  `GameState` carries `debris` + `effectTimers` and exposes `tickIntervalMillis` (speed effects scale
+  the pace, timers age by the same wall-clock interval) and `hasEffect()`. `GameEngine.tick` ages
+  timers/debris, wraps the head under Ghost, applies each special, splits the snake on Burst into lethal
+  auto-clearing debris, and treats debris as fatal (except under Ghost). `FoodTable` rolls time-gated
+  specials (`GATE_SPECIAL_MS`, 60s) honouring the hazards toggle + one-special/freeze gating. New
+  `GameEvent`s: Quaked / Exploded / EffectStarted / EffectExpired / JackpotHit. Tests: `SpecialFoodTest`
+  (17 cases).
+- **UX (6.2b)**: the loop now delays by `tickIntervalMillis`; `GameViewModel` passes `hazardsEnabled`
+  to `tick`, fires the new events to SFX + particles + a mid-game board shake (`shakeEventId`).
+  `GameBoard` draws each special as a maxi disc with a vivid, skin-independent accent and a vector
+  symbol (bolt / spiral / star / snowflake / `$` / spiky burst / crack), lethal fading debris, a
+  translucent shimmering snake under Ghost and a frost vignette under Freeze. HUD gains per-effect
+  countdown chips. Seven CC0 SFX added via `generate_audio.py`. A **Hazards** Settings toggle (default
+  on) disables the harmful specials.
+
+### 2026-06-05 — Step 6.1: Skin system
+
+- Added `game/Skin.kt` (Classic / Neon / Retro / Pixel) — a pure-model identifier; the
+  rules never depend on it.
+- Refactored the renderer's fixed `GameColors` object into a `ui/game/SkinPalette` data
+  class (every colour + the `rounded` / `useGlow` style flags) plus a `paletteFor(skin)`
+  lookup. `GameColors.kt` removed. **Classic reproduces the previous look exactly** (no
+  visual regression).
+- Threaded the active palette from `GameViewModel` (`skin` collected from settings →
+  `palette`) into `GameBoard`; Pixel draws square, glow-free cells; Neon boosts glow;
+  Retro is a flat phosphor palette that pairs with the CRT filter.
+- Persisted `skin` in `SettingsRepository`; added a visual skin picker (preview swatch
+  cards) to the Settings screen.
+- Tests: `SkinTest` (entry count, unique labels). `assembleDebug` + unit tests green.
 
 ### 2026-06-04 — Toolchain: bump to API 36 (Android 16)
 

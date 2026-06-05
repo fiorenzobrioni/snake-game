@@ -22,11 +22,13 @@ import com.brioni.snake.audio.MusicTrack
 import com.brioni.snake.data.SettingsRepository
 import com.brioni.snake.ui.game.GameScreen
 import com.brioni.snake.ui.game.GameViewModel
+import com.brioni.snake.ui.achievements.AchievementsScreen
 import com.brioni.snake.ui.menu.MainMenuScreen
+import com.brioni.snake.ui.records.RecordsScreen
 import com.brioni.snake.ui.settings.SettingsScreen
 
-/** The three top-level destinations. */
-private enum class Screen { Menu, Game, Settings }
+/** The top-level destinations. */
+private enum class Screen { Menu, Game, Settings, Records, Achievements }
 
 /**
  * Root of the UI. Hosts a lightweight, state-based navigation between the main
@@ -39,9 +41,8 @@ private enum class Screen { Menu, Game, Settings }
  * actions and (via the ViewModel) gameplay events.
  */
 @Composable
-fun App(modifier: Modifier = Modifier) {
+fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    val repo = remember(context) { SettingsRepository(context.applicationContext) }
     val audio = remember(context) { GameAudio(context.applicationContext, repo) }
     val gameViewModel: GameViewModel = viewModel(factory = GameViewModel.factory(repo, audio))
 
@@ -71,12 +72,18 @@ fun App(modifier: Modifier = Modifier) {
         }
     }
 
-    BackHandler(enabled = screen != Screen.Menu) { audio.playUiClick(); navigate(Screen.Menu) }
+    // The Game screen owns its own back behaviour (pause vs. exit); the app-level
+    // handler only covers the other secondary screens.
+    BackHandler(enabled = screen != Screen.Menu && screen != Screen.Game) {
+        audio.playUiClick(); navigate(Screen.Menu)
+    }
 
     Crossfade(targetState = screen, animationSpec = tween(300), label = "screen") { current ->
         when (current) {
             Screen.Menu -> MainMenuScreen(
                 onPlay = { audio.playUiClick(); navigate(Screen.Game) },
+                onRecords = { audio.playUiClick(); navigate(Screen.Records) },
+                onAchievements = { audio.playUiClick(); navigate(Screen.Achievements) },
                 onSettings = { audio.playUiClick(); navigate(Screen.Settings) },
                 modifier = modifier,
             )
@@ -91,6 +98,18 @@ fun App(modifier: Modifier = Modifier) {
             Screen.Settings -> SettingsScreen(
                 repo = repo,
                 audio = audio,
+                onBack = { audio.playUiClick(); navigate(Screen.Menu) },
+                modifier = modifier,
+            )
+
+            Screen.Records -> RecordsScreen(
+                repo = repo,
+                onBack = { audio.playUiClick(); navigate(Screen.Menu) },
+                modifier = modifier,
+            )
+
+            Screen.Achievements -> AchievementsScreen(
+                repo = repo,
                 onBack = { audio.playUiClick(); navigate(Screen.Menu) },
                 modifier = modifier,
             )

@@ -18,10 +18,14 @@ interface GameSfx {
     /** The snake died. */
     fun died()
 
+    /** A special power-up / hazard was eaten; the clip is chosen from its effect. */
+    fun special(food: Food)
+
     /** No-op sink — the ViewModel's default, so it runs and tests without audio. */
     object None : GameSfx {
         override fun ate(food: Food, combo: Int) {}
         override fun shrunk(food: Food) {}
         override fun died() {}
+        override fun special(food: Food) {}
     }
 }

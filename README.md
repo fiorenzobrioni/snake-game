@@ -41,13 +41,26 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - 📐 **Responsive board** — pick a granularity (*Cozy* / *Classic* / *Epic*); the board's rows and
   columns are computed from your device's screen so it fills the display with square cells.
 - 🎮 **Control schemes** — **swipe** by default, or a two-button *relative* steering / classic D-pad.
+- 🎨 **Skins** — four selectable looks (**Classic / Neon / Retro / Pixel**), each its own palette and
+  cell shape (Pixel is flat & square, Neon bubbly), all available immediately in Settings.
+- 🌗 **Theme** — choose **Light**, **Dark** or **System** (follows the device) in Settings.
 - 🔊 **Music & sound effects** — looping background music that crossfades between the menu and
   gameplay, plus SFX for eating, shrinking, mystery pieces, game over and UI. Independent
   **master / music / SFX** volume sliders in Settings; audio pauses when the app is backgrounded.
 - ✨ **GPU shader effects (Android 13+)** — an animated background, a glowing snake head and pulsing
   halos on rare foods, all via **AGSL** `RuntimeShader`s, plus an optional **retro CRT filter**
   toggle in Settings. Devices below Android 13 fall back to the polished Canvas rendering.
-- ⏸️ **Pause, menus, highscores, special power-ups** — added progressively (see the roadmap).
+- ⚡ **Power-ups & hazards** — rare maxi pieces that appear later in a run: **Lightning** (speed up),
+  **Snail** (slow down), **Star** (invincible pass-through), **Freeze**, **Jackpot** (big bonus),
+  plus the hazards **Earthquake** (bites your tail) and **Explosion** (splits the snake, leaving lethal
+  debris). Active effects show countdown chips; toggle **Hazards** off in Settings for a calmer run.
+- 🏆 **Records screen** — a best-score table per difficulty × board scale (and per mode), reachable
+  from the main menu.
+- 🎖️ **Achievements** — local milestones (combos, scores, surviving, using power-ups…) that unlock as
+  you play, with a dedicated screen and an unlock banner on the game-over screen.
+- 🕹️ **Game modes** — **Classic**, **Endless** (speed ramps up the longer you survive) and
+  **Time Attack** (score as much as you can in 120s), selectable on the start screen.
+- ⏸️ **Pause, menus, highscores** — added progressively (see the roadmap).
 
 ### 🍽️ Food system at a glance
 
