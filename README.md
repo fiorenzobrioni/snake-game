@@ -10,22 +10,9 @@
 A classic **Snake**, rebuilt as a **native Android game** in **Kotlin + Jetpack Compose**, on the way to a
 polished, **Google-Play-publishable** title with animation, particles, shaders, audio and menus.
 
-Gameplay is drawn on a Compose `Canvas` — the natural evolution of the immediate-mode rendering this project
-started with. The step-by-step plan lives in [`ROADMAP.md`](ROADMAP.md).
-
-> 🧱 **Current status:** Phase 5 (AGSL shaders & FX) complete, on top of Phase 4 (audio), Phase 3
-> (pro UI/UX) and the **Phase 2.5 food system** — a polished, playable Snake with an animated main
-> menu and settings, persistent highscores, a responsive full-screen board, control schemes (swipe by
-> default, plus two-button relative and D-pad), smooth interpolated motion, particles, screen shake, a
-> pause blur, **music + sound effects** with master/music/SFX volume controls, and **GPU shader
-> effects** (animated background, glowing snake head, pulsing halos on rare foods, optional CRT
-> filter) on Android 13+. The food layer adds two **categories** (grow / shrink) with magnitude tiers,
-> **maxi** sizes, a **mystery "?"** piece, a **time-gated** progression that ramps mid-session, and a
-> **combo** score multiplier.
-
 ---
 
-## 🎯 What it will be
+## 🎯 Features
 
 The classic Snake mechanics, extended with configurable features so every run feels different:
 
@@ -65,7 +52,7 @@ The classic Snake mechanics, extended with configurable features so every run fe
   you play, with a dedicated screen and an unlock banner on the game-over screen.
 - 🕹️ **Game modes** — **Classic**, **Endless** (speed ramps up the longer you survive) and
   **Time Attack** (score as much as you can in 120s), selectable on the start screen.
-- ⏸️ **Pause, menus, highscores** — added progressively (see the roadmap).
+- ⏸️ **Pause & menus** — pause overlay with a blur effect; restart or return to the main menu at any time. Highscores are kept per (mode, level, board scale).
 
 ### 🍽️ Food system at a glance
 
@@ -76,8 +63,7 @@ The classic Snake mechanics, extended with configurable features so every run fe
 
 The snake never shrinks below **3 segments**. Grow food drives the score (scaled by the combo
 multiplier); shrink food is a tactical tool — it gives only token points but lets you cut your length
-to manoeuvre. The big, rarer **special power-ups and hazards** (earthquake, explosion, speed, ghost,
-freeze, jackpot) are planned for a later phase — see the [roadmap](ROADMAP.md).
+to manoeuvre.
 
 ### ⚔️ Difficulty levels
 
@@ -158,8 +144,23 @@ sound effects for eating, shrinking, mystery pieces, game over and button taps. 
 **music** and **SFX** volumes independently in **Settings** (set any to zero to mute); the music
 automatically pauses when you leave the app and yields to other apps' audio.
 
-> The special power-ups (earthquake, explosion, speed, ghost, freeze, jackpot) come online in later
-> phases of the [roadmap](ROADMAP.md).
+**Game modes:** choose your mode on the start screen — **Classic** (survive as long as you can),
+**Endless** (the snake keeps accelerating the longer you survive) or **Time Attack** (score as much
+as possible in 120 seconds). Your best score is tracked per mode, level and board scale; check the
+**Records** screen from the main menu.
+
+**Power-ups & hazards:** as a run progresses, rare special pieces start appearing on the board.
+Power-ups help: **Lightning** speeds the snake up, **Snail** slows it down, **Star** grants brief
+invincibility (you can pass through walls, obstacles and your own body — the snake blinks as the
+effect fades), **Freeze** pauses further specials for a strategic breather, and **Jackpot** grants a
+large score bonus. Hazards hinder: **Earthquake** bites a chunk off your tail; **Explosion** splits
+the snake in two — the detached segment turns into lethal debris until it auto-clears. Active effects
+show a countdown chip in the HUD. Toggle **Hazards** off in **Settings** for a calmer run, or raise
+**Special blocks** to *Frenzy* for constant chaos.
+
+**Achievements:** milestones unlock automatically as you play — high combos, long runs, using
+power-ups, and more. A banner appears on the game-over screen when one unlocks; browse the full list
+from the main menu.
 
 ---
 
