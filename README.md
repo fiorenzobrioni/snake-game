@@ -144,6 +144,24 @@ sound effects for eating, shrinking, mystery pieces, game over and button taps. 
 **music** and **SFX** volumes independently in **Settings** (set any to zero to mute); the music
 automatically pauses when you leave the app and yields to other apps' audio.
 
+**Game modes:** choose your mode on the start screen — **Classic** (survive as long as you can),
+**Endless** (the snake keeps accelerating the longer you survive) or **Time Attack** (score as much
+as possible in 120 seconds). Your best score is tracked per mode, level and board scale; check the
+**Records** screen from the main menu.
+
+**Power-ups & hazards:** as a run progresses, rare special pieces start appearing on the board.
+Power-ups help: **Lightning** speeds the snake up, **Snail** slows it down, **Star** grants brief
+invincibility (you can pass through walls, obstacles and your own body — the snake blinks as the
+effect fades), **Freeze** pauses further specials for a strategic breather, and **Jackpot** grants a
+large score bonus. Hazards hinder: **Earthquake** bites a chunk off your tail; **Explosion** splits
+the snake in two — the detached segment turns into lethal debris until it auto-clears. Active effects
+show a countdown chip in the HUD. Toggle **Hazards** off in **Settings** for a calmer run, or raise
+**Special blocks** to *Frenzy* for constant chaos.
+
+**Achievements:** milestones unlock automatically as you play — high combos, long runs, using
+power-ups, and more. A banner appears on the game-over screen when one unlocks; browse the full list
+from the main menu.
+
 ---
 
 ## 👨‍💻 Code layout
