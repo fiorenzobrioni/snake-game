@@ -27,7 +27,7 @@ released under **CC0 1.0** (public domain). Re-run the script to reproduce them.
 | Asset | Source | Author | License |
 |-------|--------|--------|---------|
 | `music_menu` / `music_game` — looping background music | original (`tools/audio/generate_audio.py`) | Snake Game project | CC0 1.0 |
-| `sfx_eat` / `sfx_shrink` / `sfx_mystery` / `sfx_game_over` / `sfx_click` / `sfx_pause` — sound effects | original (`tools/audio/generate_audio.py`) | Snake Game project | CC0 1.0 |
+| `sfx_eat` / `sfx_shrink` / `sfx_mystery` / `sfx_game_over` / `sfx_pause` — sound effects | original (`tools/audio/generate_audio.py`) | Snake Game project | CC0 1.0 |
 | `sfx_lightning` / `sfx_snail` / `sfx_star` / `sfx_freeze` / `sfx_jackpot` / `sfx_quake` / `sfx_explosion` — power-up / hazard SFX (Phase 6.2) | original (`tools/audio/generate_audio.py`) | Snake Game project | CC0 1.0 |
 
 ## Fonts

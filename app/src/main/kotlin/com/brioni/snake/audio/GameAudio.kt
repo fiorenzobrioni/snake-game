@@ -62,8 +62,6 @@ class GameAudio(context: Context, repo: SettingsRepository) : GameSfx {
 
     // --- UI sound effects ------------------------------------------------
 
-    fun playUiClick() = sound.play(Sfx.Click)
-
     fun playPause() = sound.play(Sfx.Pause)
 
     // --- Music -----------------------------------------------------------

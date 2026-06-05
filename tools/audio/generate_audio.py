@@ -204,12 +204,6 @@ def sfx_game_over() -> None:
     write_wav("sfx_game_over", buf)
 
 
-def sfx_click() -> None:
-    buf = [0.0] * int(0.04 * SR)
-    tone(buf, 0, 1300, 0.03, wave_kind="square", vol=0.4, attack=0.05, release=0.6)
-    write_wav("sfx_click", buf)
-
-
 def sfx_pause() -> None:
     buf = [0.0] * int(0.2 * SR)
     tone(buf, 0, 720, 0.09, wave_kind="sine", vol=0.45, attack=0.05, release=0.4)
@@ -290,7 +284,6 @@ def main() -> None:
     sfx_shrink()
     sfx_mystery()
     sfx_game_over()
-    sfx_click()
     sfx_pause()
     sfx_lightning()
     sfx_snail()
