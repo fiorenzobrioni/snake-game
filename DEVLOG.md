@@ -86,6 +86,9 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 - **Skin caption invisible in light theme**: the skin preview cards always use a dark gradient
   background, but the unselected caption used the theme `onSurface` colour (black in light mode →
   invisible). Captions now use a fixed light colour in both themes.
+- **Settings chip spacing**: `ChoiceSection` rows now use a centred `FlowRow` instead of a plain `Row`,
+  so a section with many chips (the 5 levels) wraps neatly instead of overflowing / inflating its
+  height — the gap between Level and Board Scale now matches the other sections.
 
 ### 2026-06-05 — Feedback round 2
 
