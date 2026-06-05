@@ -77,6 +77,16 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
+### 2026-06-05 — Feedback round 3
+
+- **Board border clipping (first game)**: `GameBoard` now reserves a margin that's *border-aware*
+  (two-pass: probe the cell size, then grow the margin to cover the framing stroke's outer half), so the
+  bottom border can no longer be clipped even when the first run locks board dimensions from an
+  early/transient play-area measurement.
+- **Skin caption invisible in light theme**: the skin preview cards always use a dark gradient
+  background, but the unselected caption used the theme `onSurface` colour (black in light mode →
+  invisible). Captions now use a fixed light colour in both themes.
+
 ### 2026-06-05 — Feedback round 2
 
 - **Board fit**: the board filled the play area edge-to-edge, so the framing border (a stroke centred

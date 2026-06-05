@@ -111,13 +111,19 @@ fun GameBoard(
 
     Canvas(modifier = modifier) {
         val board = state.board
-        // Reserve a small margin so the framing border (a stroke centred on the
-        // board edge) is never clipped — otherwise the bottom/edge borders can
-        // slip off-screen when the board fills the play area exactly.
-        val margin = 6.dp.toPx()
-        val availWidth = (size.width - 2 * margin).coerceAtLeast(1f)
-        val availHeight = (size.height - 2 * margin).coerceAtLeast(1f)
-        val cell = min(availWidth / board.width, availHeight / board.height)
+        // Reserve a margin large enough that the framing border (a stroke centred
+        // on the board edge) is never clipped — otherwise its outer half can slip
+        // off-screen at the bottom when the board fills the play area. Two-pass:
+        // size with a base margin, then grow the margin to cover that border's
+        // half-width and re-fit.
+        fun fit(margin: Float): Float =
+            min((size.width - 2 * margin) / board.width, (size.height - 2 * margin) / board.height)
+
+        val baseMargin = 6.dp.toPx()
+        val probe = fit(baseMargin)
+        val borderHalf = (probe * 0.12f).coerceAtLeast(2f) / 2f
+        val margin = maxOf(baseMargin, borderHalf + 1f)
+        val cell = fit(margin)
         if (cell <= 0f) return@Canvas
 
         // Derive everything from the per-frame clock and the tick snapshot, so

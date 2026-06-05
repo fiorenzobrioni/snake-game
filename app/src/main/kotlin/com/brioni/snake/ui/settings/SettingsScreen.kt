@@ -264,7 +264,9 @@ private fun SkinCard(skin: Skin, selected: Boolean, onClick: () -> Unit) {
         Text(
             text = skin.displayName,
             style = MaterialTheme.typography.labelMedium,
-            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+            // The card is always a dark gradient, so use a light caption in both
+            // themes (theme-driven onSurface would be black-on-dark in light mode).
+            color = if (selected) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.White,
             modifier = Modifier.padding(top = 8.dp),
         )
     }
