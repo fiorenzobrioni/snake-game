@@ -57,6 +57,7 @@ fun GameBoard(
     eatEvent: EatEvent?,
     eatEventId: Int,
     textMeasurer: TextMeasurer,
+    palette: SkinPalette,
     modifier: Modifier = Modifier,
 ) {
     val particles: SnapshotStateList<Particle> = remember { emptyList<Particle>().toMutableStateList() }
@@ -122,16 +123,16 @@ fun GameBoard(
         val originX = (size.width - boardWidth) / 2f
         val originY = (size.height - boardHeight) / 2f
 
-        drawBoardBackground(board, cell, originX, originY, boardWidth, boardHeight, shaders, time)
+        drawBoardBackground(board, cell, originX, originY, boardWidth, boardHeight, palette, shaders, time)
 
         // Clip dynamic content to the board so the head can slide "into" a wall
         // on the fatal tick without painting over the HUD.
         clipRect(originX, originY, originX + boardWidth, originY + boardHeight) {
             state.obstacles.forEach { obstacle ->
-                drawObstacle(cell, originX + obstacle.x * cell, originY + obstacle.y * cell)
+                drawObstacle(cell, originX + obstacle.x * cell, originY + obstacle.y * cell, palette)
             }
             state.foods.forEach { food ->
-                drawFood(food, cell, originX, originY, pulse, textMeasurer, shaders, time)
+                drawFood(food, cell, originX, originY, pulse, textMeasurer, palette, shaders, time)
             }
             val snake = state.snake
             for (k in snake.indices.reversed()) {
@@ -149,6 +150,7 @@ fun GameBoard(
                     top = originY + cy * cell,
                     cell = cell,
                     direction = state.direction,
+                    palette = palette,
                     shaders = shaders,
                     time = time,
                 )
@@ -164,7 +166,7 @@ fun GameBoard(
 
         // Framing border painted on top.
         drawRect(
-            color = GameColors.BoardBorder,
+            color = palette.boardBorder,
             topLeft = Offset(originX, originY),
             size = Size(boardWidth, boardHeight),
             style = Stroke(width = (cell * 0.12f).coerceAtLeast(2f)),
@@ -179,6 +181,7 @@ private fun DrawScope.drawBoardBackground(
     originY: Float,
     boardWidth: Float,
     boardHeight: Float,
+    palette: SkinPalette,
     shaders: BoardShaders?,
     time: Float,
 ) {
@@ -195,7 +198,7 @@ private fun DrawScope.drawBoardBackground(
     } else {
         drawRect(
             brush = Brush.verticalGradient(
-                colors = listOf(GameColors.BoardTop, GameColors.BoardBottom),
+                colors = listOf(palette.boardTop, palette.boardBottom),
                 startY = originY,
                 endY = originY + boardHeight,
             ),
@@ -207,33 +210,34 @@ private fun DrawScope.drawBoardBackground(
     if (cell < 10f) return // skip the grid on dense boards where it is just noise
     for (x in 0..board.width) {
         val lineX = originX + x * cell
-        drawLine(GameColors.GridLine, Offset(lineX, originY), Offset(lineX, originY + boardHeight), 1f)
+        drawLine(palette.gridLine, Offset(lineX, originY), Offset(lineX, originY + boardHeight), 1f)
     }
     for (y in 0..board.height) {
         val lineY = originY + y * cell
-        drawLine(GameColors.GridLine, Offset(originX, lineY), Offset(originX + boardWidth, lineY), 1f)
+        drawLine(palette.gridLine, Offset(originX, lineY), Offset(originX + boardWidth, lineY), 1f)
     }
 }
 
-private fun DrawScope.drawObstacle(cell: Float, left: Float, top: Float) {
+private fun DrawScope.drawObstacle(cell: Float, left: Float, top: Float, palette: SkinPalette) {
     val inset = cell * 0.08f
     val side = cell - 2 * inset
-    val radius = CornerRadius(cell * 0.2f, cell * 0.2f)
+    val corner = if (palette.rounded) cell * 0.2f else 0f
+    val radius = CornerRadius(corner, corner)
     drawRoundRect(
-        color = GameColors.ObstacleShadow,
+        color = palette.obstacleShadow,
         topLeft = Offset(left + inset, top + inset + cell * 0.04f),
         size = Size(side, side),
         cornerRadius = radius,
     )
     drawRoundRect(
-        color = GameColors.Obstacle,
+        color = palette.obstacle,
         topLeft = Offset(left + inset, top + inset),
         size = Size(side, side),
         cornerRadius = radius,
     )
     // Top bevel highlight.
     drawRoundRect(
-        color = GameColors.ObstacleHighlight.copy(alpha = 0.6f),
+        color = palette.obstacleHighlight.copy(alpha = 0.6f),
         topLeft = Offset(left + inset + side * 0.18f, top + inset + side * 0.16f),
         size = Size(side * 0.64f, side * 0.22f),
         cornerRadius = CornerRadius(cell * 0.12f, cell * 0.12f),
@@ -247,17 +251,19 @@ private fun DrawScope.drawFood(
     originY: Float,
     pulse: Float,
     textMeasurer: TextMeasurer,
+    palette: SkinPalette,
     shaders: BoardShaders?,
     time: Float,
 ) {
-    val color = GameColors.foodColor(food)
+    val color = palette.foodColor(food)
     val extent = cell * food.span
     val centerX = originX + food.position.x * cell + extent / 2f
     val centerY = originY + food.position.y * cell + extent / 2f
     val radius = extent * 0.42f * pulse
 
     // "Rare" pieces (maxi / mystery / huge) get a halo; with AGSL it pulses.
-    val rare = food.span >= 2 || food.isMystery || food.tier == FoodTier.Huge
+    // Flat skins (useGlow == false) skip the halo for a crisp look.
+    val rare = palette.useGlow && (food.span >= 2 || food.isMystery || food.tier == FoodTier.Huge)
     val haloRadius = radius * 1.9f
     if (rare && shaders != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         shaders.foodHalo.setFloatUniform("center", centerX, centerY)
@@ -265,7 +271,7 @@ private fun DrawScope.drawFood(
         shaders.foodHalo.setFloatUniform("time", time)
         shaders.foodHalo.setColorUniform("ringColor", color.toArgb())
         drawCircle(brush = shaders.foodHaloBrush, radius = haloRadius, center = Offset(centerX, centerY))
-    } else if (food.span >= 2 || food.isMystery) {
+    } else if (palette.useGlow && (food.span >= 2 || food.isMystery)) {
         drawCircle(
             brush = Brush.radialGradient(
                 colors = listOf(color.copy(alpha = 0.35f), Color.Transparent),
@@ -328,25 +334,26 @@ private fun DrawScope.drawSnakeSegment(
     top: Float,
     cell: Float,
     direction: Direction,
+    palette: SkinPalette,
     shaders: BoardShaders?,
     time: Float,
 ) {
     val centerX = left + cell / 2f
     val centerY = top + cell / 2f
 
-    if (isHead) {
+    if (isHead && palette.useGlow) {
         val glowRadius = cell * 1.1f
         if (shaders != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             // AGSL: a pulsing, gently rotating glow halo.
             shaders.glow.setFloatUniform("center", centerX, centerY)
             shaders.glow.setFloatUniform("radius", glowRadius)
             shaders.glow.setFloatUniform("time", time)
-            shaders.glow.setColorUniform("glowColor", GameColors.HeadGlow.toArgb())
+            shaders.glow.setColorUniform("glowColor", palette.headGlow.toArgb())
             drawCircle(brush = shaders.glowBrush, radius = glowRadius, center = Offset(centerX, centerY))
         } else {
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(GameColors.HeadGlow.copy(alpha = 0.45f), Color.Transparent),
+                    colors = listOf(palette.headGlow.copy(alpha = 0.45f), Color.Transparent),
                     center = Offset(centerX, centerY),
                     radius = glowRadius,
                 ),
@@ -359,25 +366,32 @@ private fun DrawScope.drawSnakeSegment(
     val inset = cell * 0.06f
     val side = cell - 2 * inset
     val topLeft = Offset(left + inset, top + inset)
-    val radius = CornerRadius(cell * 0.3f, cell * 0.3f)
+    val corner = if (palette.rounded) cell * 0.3f else 0f
+    val radius = CornerRadius(corner, corner)
     drawRoundRect(
-        color = if (isHead) GameColors.SnakeHead else GameColors.SnakeBody,
+        color = if (isHead) palette.snakeHead else palette.snakeBody,
         topLeft = topLeft,
         size = Size(side, side),
         cornerRadius = radius,
     )
     drawRoundRect(
-        color = GameColors.SnakeOutline,
+        color = palette.snakeOutline,
         topLeft = topLeft,
         size = Size(side, side),
         cornerRadius = radius,
         style = Stroke(width = cell * 0.06f),
     )
 
-    if (isHead) drawEyes(centerX, centerY, cell, direction)
+    if (isHead) drawEyes(centerX, centerY, cell, direction, palette)
 }
 
-private fun DrawScope.drawEyes(centerX: Float, centerY: Float, cell: Float, direction: Direction) {
+private fun DrawScope.drawEyes(
+    centerX: Float,
+    centerY: Float,
+    cell: Float,
+    direction: Direction,
+    palette: SkinPalette,
+) {
     val forwardX = direction.dx.toFloat()
     val forwardY = direction.dy.toFloat()
     // Perpendicular to travel, to seat the two eyes side by side.
@@ -393,7 +407,7 @@ private fun DrawScope.drawEyes(centerX: Float, centerY: Float, cell: Float, dire
         val ey = centerY + forwardY * forward + perpY * spread * sign
         drawCircle(Color.White, eyeRadius, Offset(ex, ey))
         drawCircle(
-            GameColors.SnakeEye,
+            palette.snakeEye,
             pupilRadius,
             Offset(ex + forwardX * cell * 0.03f, ey + forwardY * cell * 0.03f),
         )

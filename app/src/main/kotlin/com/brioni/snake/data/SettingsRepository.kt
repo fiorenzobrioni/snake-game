@@ -12,6 +12,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.brioni.snake.game.BoardScale
 import com.brioni.snake.game.ControlScheme
 import com.brioni.snake.game.Level
+import com.brioni.snake.game.Skin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlin.math.max
@@ -25,6 +26,7 @@ data class Settings(
     val musicVolume: Float = DEFAULT_MUSIC_VOLUME,
     val sfxVolume: Float = DEFAULT_SFX_VOLUME,
     val crtEnabled: Boolean = false,
+    val skin: Skin = Skin.Classic,
 )
 
 /** Default audio levels (also used as the in-memory fallback before load). */
@@ -51,6 +53,7 @@ class SettingsRepository(private val context: Context) {
             musicVolume = prefs[MUSIC_VOLUME] ?: DEFAULT_MUSIC_VOLUME,
             sfxVolume = prefs[SFX_VOLUME] ?: DEFAULT_SFX_VOLUME,
             crtEnabled = prefs[CRT_ENABLED] ?: false,
+            skin = prefs[SKIN].toEnum(Skin::valueOf) ?: Skin.Classic,
         )
     }
 
@@ -74,6 +77,9 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setCrtEnabled(enabled: Boolean) =
         edit { it[CRT_ENABLED] = enabled }
+
+    suspend fun setSkin(skin: Skin) =
+        edit { it[SKIN] = skin.name }
 
     /** The stored best for a [level]×[scale] pairing (0 if none yet). */
     fun highScore(level: Level, scale: BoardScale): Flow<Int> =
@@ -111,5 +117,6 @@ class SettingsRepository(private val context: Context) {
         val MUSIC_VOLUME = floatPreferencesKey("music_volume")
         val SFX_VOLUME = floatPreferencesKey("sfx_volume")
         val CRT_ENABLED = booleanPreferencesKey("crt_enabled")
+        val SKIN = stringPreferencesKey("skin")
     }
 }

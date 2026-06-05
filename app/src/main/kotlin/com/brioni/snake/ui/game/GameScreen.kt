@@ -141,6 +141,7 @@ fun GameScreen(
                     eatEvent = viewModel.eatEvent,
                     eatEventId = viewModel.eatEventId,
                     textMeasurer = textMeasurer,
+                    palette = viewModel.palette,
                     modifier = boardModifier,
                 )
             }

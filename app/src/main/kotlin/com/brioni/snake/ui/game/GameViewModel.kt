@@ -23,6 +23,7 @@ import com.brioni.snake.game.GameState
 import com.brioni.snake.game.GameStatus
 import com.brioni.snake.game.Level
 import com.brioni.snake.game.Position
+import com.brioni.snake.game.Skin
 import com.brioni.snake.game.boardFor
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -62,6 +63,13 @@ class GameViewModel(
     /** Whether the retro CRT post-filter is enabled (loaded from settings). */
     var crtEnabled by mutableStateOf(false)
         private set
+
+    /** Active visual skin (loaded from settings); drives the renderer [palette]. */
+    var skin by mutableStateOf(Skin.Classic)
+        private set
+
+    /** The colour palette + style flags for the active [skin]. */
+    val palette: SkinPalette get() = paletteFor(skin)
 
     var state by mutableStateOf(engine.setup(DEFAULT_LEVEL, boardFor(DEFAULT_SCALE, DEFAULT_ASPECT)))
         private set
@@ -111,6 +119,7 @@ class GameViewModel(
             repo.settings.collect { settings ->
                 controlScheme = settings.controlScheme
                 crtEnabled = settings.crtEnabled
+                skin = settings.skin
                 if (state.status == GameStatus.Ready) {
                     val levelChanged = settings.level != state.level
                     scale = settings.scale
@@ -217,12 +226,12 @@ class GameViewModel(
         after.lastEvents.forEach { event ->
             when (event) {
                 is GameEvent.Ate -> {
-                    eatEvent = EatEvent(event.food.position, event.food.span, GameColors.foodColor(event.food), implode = false)
+                    eatEvent = EatEvent(event.food.position, event.food.span, palette.foodColor(event.food), implode = false)
                     eatEventId++
                     sfx.ate(event.food, event.combo)
                 }
                 is GameEvent.Shrunk -> {
-                    eatEvent = EatEvent(event.food.position, event.food.span, GameColors.foodColor(event.food), implode = true)
+                    eatEvent = EatEvent(event.food.position, event.food.span, palette.foodColor(event.food), implode = true)
                     eatEventId++
                     sfx.shrunk(event.food)
                 }

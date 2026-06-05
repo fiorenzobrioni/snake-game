@@ -41,6 +41,8 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - 📐 **Responsive board** — pick a granularity (*Cozy* / *Classic* / *Epic*); the board's rows and
   columns are computed from your device's screen so it fills the display with square cells.
 - 🎮 **Control schemes** — **swipe** by default, or a two-button *relative* steering / classic D-pad.
+- 🎨 **Skins** — four selectable looks (**Classic / Neon / Retro / Pixel**), each its own palette and
+  render style (Pixel is flat & square; Neon glows), all available immediately in Settings.
 - 🔊 **Music & sound effects** — looping background music that crossfades between the menu and
   gameplay, plus SFX for eating, shrinking, mystery pieces, game over and UI. Independent
   **master / music / SFX** volume sliders in Settings; audio pauses when the app is backgrounded.

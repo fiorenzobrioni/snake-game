@@ -219,7 +219,7 @@ snake-game/
 
 ### Phase 6 — Content & replayability
 
-- [ ] **Step 6.1** — Skin system (Classic / Neon / Retro / Pixel = palette + sprite set + optional shader).
+- [x] **Step 6.1** — Skin system (Classic / Neon / Retro / Pixel = palette + render style + optional shader).
 - [ ] **Step 6.2** — **Special food pieces / power-ups & hazards** (extends the Phase 2.5 food system).
       All are **maxi-sized** with a distinctive shape/symbol, **time-gated** (appear later in a session)
       and surfaced through the existing `GameEvent` channel + HUD timers. They add `FoodCategory.Special`,

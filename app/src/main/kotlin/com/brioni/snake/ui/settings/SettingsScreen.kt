@@ -1,16 +1,24 @@
 package com.brioni.snake.ui.settings
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -35,7 +43,9 @@ import com.brioni.snake.data.SettingsRepository
 import com.brioni.snake.game.BoardScale
 import com.brioni.snake.game.ControlScheme
 import com.brioni.snake.game.Level
+import com.brioni.snake.game.Skin
 import com.brioni.snake.ui.game.Shaders
+import com.brioni.snake.ui.game.paletteFor
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -94,6 +104,11 @@ fun SettingsScreen(
             selected = settings.scale,
             label = { it.label },
             onSelected = { scale -> scope.launch { repo.setScale(scale) } },
+        )
+
+        SkinSection(
+            selected = settings.skin,
+            onSelected = { skin -> scope.launch { repo.setSkin(skin) } },
         )
 
         VolumeSection(
@@ -163,6 +178,83 @@ private fun <T> ChoiceSection(
             }
         }
     }
+}
+
+/**
+ * Skin picker: a row of tappable preview cards, each showing the skin's snake +
+ * food swatches so the choice is visual rather than a bare label. The selected
+ * card is outlined in the theme's primary colour.
+ */
+@Composable
+private fun SkinSection(
+    selected: Skin,
+    onSelected: (Skin) -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = stringResource(R.string.settings_skin),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(bottom = 8.dp),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Skin.entries.forEach { skin ->
+                SkinCard(
+                    skin = skin,
+                    selected = skin == selected,
+                    onClick = { onSelected(skin) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SkinCard(skin: Skin, selected: Boolean, onClick: () -> Unit) {
+    val palette = remember(skin) { paletteFor(skin) }
+    val border = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .border(
+                width = if (selected) 2.dp else 1.dp,
+                color = border,
+                shape = RoundedCornerShape(12.dp),
+            )
+            .background(
+                Brush.verticalGradient(listOf(palette.boardTop, palette.boardBottom)),
+                RoundedCornerShape(12.dp),
+            )
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Swatch(palette.snakeHead)
+            Swatch(palette.snakeBody)
+            Swatch(palette.growMedium)
+            Swatch(palette.shrinkMedium)
+        }
+        Text(
+            text = skin.displayName,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+    }
+}
+
+@Composable
+private fun Swatch(color: androidx.compose.ui.graphics.Color) {
+    Box(
+        modifier = Modifier
+            .size(14.dp)
+            .clip(RoundedCornerShape(4.dp))
+            .background(color),
+    )
 }
 
 @Composable

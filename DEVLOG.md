@@ -76,6 +76,21 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
+### 2026-06-05 — Step 6.1: Skin system
+
+- Added `game/Skin.kt` (Classic / Neon / Retro / Pixel) — a pure-model identifier; the
+  rules never depend on it.
+- Refactored the renderer's fixed `GameColors` object into a `ui/game/SkinPalette` data
+  class (every colour + the `rounded` / `useGlow` style flags) plus a `paletteFor(skin)`
+  lookup. `GameColors.kt` removed. **Classic reproduces the previous look exactly** (no
+  visual regression).
+- Threaded the active palette from `GameViewModel` (`skin` collected from settings →
+  `palette`) into `GameBoard`; Pixel draws square, glow-free cells; Neon boosts glow;
+  Retro is a flat phosphor palette that pairs with the CRT filter.
+- Persisted `skin` in `SettingsRepository`; added a visual skin picker (preview swatch
+  cards) to the Settings screen.
+- Tests: `SkinTest` (entry count, unique labels). `assembleDebug` + unit tests green.
+
 ### 2026-06-04 — Toolchain: bump to API 36 (Android 16)
 
 - Raised `compileSdk`/`targetSdk` from **35 → 36** (Android 16) in `app/build.gradle.kts`;
