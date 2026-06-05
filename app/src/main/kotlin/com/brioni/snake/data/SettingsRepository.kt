@@ -11,7 +11,9 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.brioni.snake.game.BoardScale
 import com.brioni.snake.game.ControlScheme
+import com.brioni.snake.game.GameMode
 import com.brioni.snake.game.Level
+import com.brioni.snake.game.ScoreKey
 import com.brioni.snake.game.Skin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -86,16 +88,16 @@ class SettingsRepository(private val context: Context) {
     suspend fun setHazardsEnabled(enabled: Boolean) =
         edit { it[HAZARDS_ENABLED] = enabled }
 
-    /** The stored best for a [level]×[scale] pairing (0 if none yet). */
-    fun highScore(level: Level, scale: BoardScale): Flow<Int> =
-        context.dataStore.data.map { it[highScoreKey(level, scale)] ?: 0 }
+    /** The stored best for a (mode × level × scale) slot (0 if none yet). */
+    fun highScore(mode: GameMode, level: Level, scale: BoardScale): Flow<Int> =
+        context.dataStore.data.map { it[highScoreKey(mode, level, scale)] ?: 0 }
 
     /**
-     * Records [score] for the pairing iff it beats the stored best; returns the
+     * Records [score] for the slot iff it beats the stored best; returns the
      * resulting best either way.
      */
-    suspend fun submitScore(level: Level, scale: BoardScale, score: Int): Int {
-        val key = highScoreKey(level, scale)
+    suspend fun submitScore(mode: GameMode, level: Level, scale: BoardScale, score: Int): Int {
+        val key = highScoreKey(mode, level, scale)
         var best = score
         context.dataStore.edit { prefs ->
             best = max(prefs[key] ?: 0, score)
@@ -104,6 +106,16 @@ class SettingsRepository(private val context: Context) {
         return best
     }
 
+    /** Every recorded highscore, decoded into its [ScoreKey], for the Records screen. */
+    fun allHighScores(): Flow<Map<ScoreKey, Int>> =
+        context.dataStore.data.map { prefs ->
+            buildMap {
+                prefs.asMap().forEach { (key, value) ->
+                    if (value is Int) ScoreKey.parse(key.name)?.let { put(it, value) }
+                }
+            }
+        }
+
     private suspend fun edit(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
         context.dataStore.edit(block)
     }
@@ -111,8 +123,8 @@ class SettingsRepository(private val context: Context) {
     private inline fun <T> String?.toEnum(parse: (String) -> T): T? =
         this?.let { runCatching { parse(it) }.getOrNull() }
 
-    private fun highScoreKey(level: Level, scale: BoardScale) =
-        intPreferencesKey("highscore_${level.name}_${scale.name}")
+    private fun highScoreKey(mode: GameMode, level: Level, scale: BoardScale) =
+        intPreferencesKey(ScoreKey(mode, level, scale).storageName())
 
     private companion object {
         val LEVEL = stringPreferencesKey("level")

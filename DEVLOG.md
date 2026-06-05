@@ -77,6 +77,17 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
+### 2026-06-05 — Step 6.3: Records screen
+
+- Added a pure, unit-tested `game/ScoreKey` (mode × level × scale) codec and `game/GameMode`
+  (Classic / Endless / Time Attack — gameplay rules land in 6.5). Highscore keys are now
+  `highscore_<mode>_<level>_<scale>`; `SettingsRepository.submitScore`/`highScore` take a mode and a
+  new `allHighScores()` bulk flow decodes every stored record.
+- New `ui/records/RecordsScreen`: a (level × scale) best-score table per mode, with the overall best
+  highlighted and dashes for unplayed slots. Wired a Records destination into `ui/App` and a button on
+  the main menu. `GameViewModel` carries a `mode` (Classic for now) used when reading/writing scores.
+- Tests: `ScoreKeyTest` (round-trip, format, stale-key rejection).
+
 ### 2026-06-05 — Step 6.2: Special foods (power-ups & hazards)
 
 - **Model (6.2a)**: extended the reserved hooks — `FoodEffect` gains Quake / Burst / Haste / Slow /

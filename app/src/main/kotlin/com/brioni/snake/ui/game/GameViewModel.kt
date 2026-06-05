@@ -19,6 +19,7 @@ import com.brioni.snake.game.DEFAULT_ASPECT
 import com.brioni.snake.game.Direction
 import com.brioni.snake.game.GameEngine
 import com.brioni.snake.game.GameEvent
+import com.brioni.snake.game.GameMode
 import com.brioni.snake.game.GameState
 import com.brioni.snake.game.GameStatus
 import com.brioni.snake.game.Level
@@ -70,6 +71,10 @@ class GameViewModel(
 
     /** Whether harmful specials (earthquake/explosion/snail) may spawn (setting). */
     var hazardsEnabled by mutableStateOf(true)
+        private set
+
+    /** Active play mode; highscores are tracked per (mode, level, scale). */
+    var mode by mutableStateOf(GameMode.Classic)
         private set
 
     /** The colour palette + style flags for the active [skin]. */
@@ -284,7 +289,7 @@ class GameViewModel(
     private fun onGameOver(score: Int) {
         isNewBest = score > bestScore
         // Persist; the bestJob collector reflects the new value back into state.
-        viewModelScope.launch { repo.submitScore(state.level, scale, score) }
+        viewModelScope.launch { repo.submitScore(mode, state.level, scale, score) }
     }
 
     /** Tracks the best score for the current (level, scale) via a single collector. */
@@ -292,8 +297,9 @@ class GameViewModel(
         bestJob?.cancel()
         val level = state.level
         val currentScale = scale
+        val currentMode = mode
         bestJob = viewModelScope.launch {
-            repo.highScore(level, currentScale).collect { bestScore = it }
+            repo.highScore(currentMode, level, currentScale).collect { bestScore = it }
         }
     }
 

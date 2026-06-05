@@ -23,10 +23,11 @@ import com.brioni.snake.data.SettingsRepository
 import com.brioni.snake.ui.game.GameScreen
 import com.brioni.snake.ui.game.GameViewModel
 import com.brioni.snake.ui.menu.MainMenuScreen
+import com.brioni.snake.ui.records.RecordsScreen
 import com.brioni.snake.ui.settings.SettingsScreen
 
-/** The three top-level destinations. */
-private enum class Screen { Menu, Game, Settings }
+/** The top-level destinations. */
+private enum class Screen { Menu, Game, Settings, Records }
 
 /**
  * Root of the UI. Hosts a lightweight, state-based navigation between the main
@@ -77,6 +78,7 @@ fun App(modifier: Modifier = Modifier) {
         when (current) {
             Screen.Menu -> MainMenuScreen(
                 onPlay = { audio.playUiClick(); navigate(Screen.Game) },
+                onRecords = { audio.playUiClick(); navigate(Screen.Records) },
                 onSettings = { audio.playUiClick(); navigate(Screen.Settings) },
                 modifier = modifier,
             )
@@ -91,6 +93,12 @@ fun App(modifier: Modifier = Modifier) {
             Screen.Settings -> SettingsScreen(
                 repo = repo,
                 audio = audio,
+                onBack = { audio.playUiClick(); navigate(Screen.Menu) },
+                modifier = modifier,
+            )
+
+            Screen.Records -> RecordsScreen(
+                repo = repo,
                 onBack = { audio.playUiClick(); navigate(Screen.Menu) },
                 modifier = modifier,
             )

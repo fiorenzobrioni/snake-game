@@ -232,7 +232,7 @@ snake-game/
   - [x] **Star** — brief invincibility / ghost (pass through walls, obstacles and self) with a HUD timer.
   - [x] **Freeze** — temporarily freezes special spawns / slows time — a strategic breather.
   - [x] **Jackpot** — rare piece granting a large score bonus (and a random growth).
-- [ ] **Step 6.3** — Highscore tables per (level × size) in a "Records" screen.
+- [x] **Step 6.3** — Highscore tables per (level × size), per mode, in a "Records" screen.
 - [ ] **Step 6.4** — Local achievements.
 - [ ] **Step 6.5** — Extra modes: Endless, Time Attack.
 

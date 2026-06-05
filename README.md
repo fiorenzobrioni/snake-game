@@ -53,6 +53,8 @@ The classic Snake mechanics, extended with configurable features so every run fe
   **Snail** (slow down), **Star** (invincible pass-through), **Freeze**, **Jackpot** (big bonus),
   plus the hazards **Earthquake** (bites your tail) and **Explosion** (splits the snake, leaving lethal
   debris). Active effects show countdown chips; toggle **Hazards** off in Settings for a calmer run.
+- 🏆 **Records screen** — a best-score table per difficulty × board scale (and per mode), reachable
+  from the main menu.
 - ⏸️ **Pause, menus, highscores** — added progressively (see the roadmap).
 
 ### 🍽️ Food system at a glance
