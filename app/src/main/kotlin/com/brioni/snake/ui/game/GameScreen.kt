@@ -48,7 +48,6 @@ import com.brioni.snake.game.ControlScheme
 import com.brioni.snake.game.DEFAULT_ASPECT
 import com.brioni.snake.game.GameMode
 import com.brioni.snake.game.GameStatus
-import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
@@ -104,10 +103,13 @@ fun GameScreen(
     val damp = 1f - shakeT
     val quakeT = quake.value
     val quakeDamp = 1f - quakeT
+    // Use sin on both axes so the offset is exactly 0 at rest (cos(0)=1 left the
+    // board shifted ~17dp down when idle, pushing its bottom off-screen on the
+    // first game until a death animation drove the damping term to zero).
     val shakeX = sin(shakeT * Math.PI * 10).toFloat() * amplitudePx * damp +
         sin(quakeT * Math.PI * 14).toFloat() * quakeAmpPx * quakeDamp
-    val shakeY = cos(shakeT * Math.PI * 9).toFloat() * amplitudePx * damp +
-        cos(quakeT * Math.PI * 13).toFloat() * quakeAmpPx * quakeDamp
+    val shakeY = sin(shakeT * Math.PI * 9).toFloat() * amplitudePx * damp +
+        sin(quakeT * Math.PI * 13).toFloat() * quakeAmpPx * quakeDamp
 
     // Pause blur (step 3.4): API 31+ blurs the frozen board; below it no-ops and
     // the overlay scrim still distinguishes the paused state.

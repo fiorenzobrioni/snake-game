@@ -77,7 +77,19 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
-### 2026-06-05 — Feedback round 4: first-run board overflow (root cause)
+### 2026-06-05 — Feedback round 5: first-run board overflow — ACTUAL root cause
+
+- It was **not** an inset-timing issue (round 4 was a red herring, though the inset cleanup is kept).
+  The board-shake offset was non-zero **at rest**: `shakeY` used `cos(shakeT·…)·amp·damp`, and at idle
+  `shakeT=0` → `cos(0)=1`, `damp=1`, so the board sat ~`amplitude (10dp) + quakeAmplitude (7dp)` ≈ 17dp
+  **down** before any shake. Its bottom (and the snake) ran off-screen on the first game; the first
+  death animation drove `shakeT→1` (`damp=0`), removing the 10dp term so later games looked fine
+  (~7dp, absorbed by the board margin). Only the bottom was affected because X used `sin` (0 at rest)
+  while Y used `cos`; Cozy overflowed less because its shorter board leaves more bottom margin.
+- Fix: use `sin` on both axes so the offset is exactly 0 at rest (and still a proper damped wobble
+  during a shake). The stray 7dp came from the quake term added in Phase 6.
+
+### 2026-06-05 — Feedback round 4: first-run board overflow (inset cleanup)
 
 - The board ran under the navigation bar on the **first** game only (snake's bottom row half off-screen;
   worse with denser scales, barely with Cozy) and corrected from the second game. Root cause: the
