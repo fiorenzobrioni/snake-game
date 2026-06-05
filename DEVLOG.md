@@ -82,6 +82,21 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
+### 2026-06-05 — Stable effect-timer slot + longer effect durations
+
+- **Bug fix — board no longer resizes when effects appear/expire.** The
+  `EffectTimersRow` in `GameScreen` used to return early when empty (zero height)
+  and grow when a power-up/hazard chip appeared. Because the board fills the
+  remaining `weight(1f)` space, that growth shrank the board (and the reverse on
+  expiry), making the snake appear to jump. The row now reserves a constant
+  `EffectTimersRowHeight` (34.dp) slot whether or not any effect is running, so
+  the board keeps a fixed size; chips are centred within the slot.
+- **Effect durations bumped** (`Food.kt`) so the player can actually enjoy each
+  power-up: Haste `6 s → 9 s`, Slow `6 s → 8 s`, Freeze `5 s → 8 s`, Star/Ghost
+  `8 s → 9 s`. Debris lifetime (`BURST_DEBRIS_MS`) unchanged.
+
+---
+
 ### 2026-06-05 — Star (Ghost) tuning: longer duration + expiry warning blink
 
 - `GHOST_MS` raised **5 s → 8 s** (`Food.kt`) so the invincibility power is long

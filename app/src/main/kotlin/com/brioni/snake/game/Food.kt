@@ -137,11 +137,13 @@ object FoodTable {
 
     // Durations / magnitudes for the specials, resolved here so the engine stays
     // deterministic at eat time.
-    private const val HASTE_MS = 6_000L
-    private const val SLOW_MS = 6_000L
+    // Timed effects last long enough for the player to actually feel and play
+    // them out (a few seconds felt too fleeting to enjoy).
+    private const val HASTE_MS = 9_000L
+    private const val SLOW_MS = 8_000L
     // Star is the "save me" power: long enough to actually escape a tight spot.
-    private const val GHOST_MS = 8_000L
-    private const val FREEZE_MS = 5_000L
+    private const val GHOST_MS = 9_000L
+    private const val FREEZE_MS = 8_000L
     private const val BURST_DEBRIS_MS = 4_000L
 
     /** Harder levels shrink the gates so hazards arrive earlier. */
