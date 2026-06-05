@@ -3,6 +3,7 @@ package com.brioni.snake.ui.game
 import android.graphics.RenderEffect
 import android.graphics.RuntimeShader
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateDpAsState
@@ -69,6 +70,17 @@ fun GameScreen(
     val state = viewModel.state
     val playing = state.status == GameStatus.Running || state.status == GameStatus.Paused
     val textMeasurer = rememberTextMeasurer()
+
+    // Back (incl. accidental edge-swipe gestures during play) pauses a running
+    // game instead of dropping to the menu with the loop still ticking; from any
+    // other state it returns to the menu, stopping the loop cleanly.
+    BackHandler {
+        if (state.status == GameStatus.Running) {
+            audio.playPause(); viewModel.togglePause()
+        } else {
+            audio.playUiClick(); viewModel.toMenu(); onExitToMenu()
+        }
+    }
 
     // Screen shake on death (step 2.7): a single 0→1 ramp drives a damped wobble.
     val shake = remember { Animatable(0f) }

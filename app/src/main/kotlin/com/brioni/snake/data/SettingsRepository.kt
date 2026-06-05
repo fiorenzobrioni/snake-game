@@ -16,6 +16,7 @@ import com.brioni.snake.game.GameMode
 import com.brioni.snake.game.Level
 import com.brioni.snake.game.ScoreKey
 import com.brioni.snake.game.Skin
+import com.brioni.snake.game.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlin.math.max
@@ -32,6 +33,7 @@ data class Settings(
     val skin: Skin = Skin.Classic,
     val hazardsEnabled: Boolean = true,
     val mode: GameMode = GameMode.Classic,
+    val themeMode: ThemeMode = ThemeMode.System,
 )
 
 /** Default audio levels (also used as the in-memory fallback before load). */
@@ -61,6 +63,7 @@ class SettingsRepository(private val context: Context) {
             skin = prefs[SKIN].toEnum(Skin::valueOf) ?: Skin.Classic,
             hazardsEnabled = prefs[HAZARDS_ENABLED] ?: true,
             mode = prefs[MODE].toEnum(GameMode::valueOf) ?: GameMode.Classic,
+            themeMode = prefs[THEME_MODE].toEnum(ThemeMode::valueOf) ?: ThemeMode.System,
         )
     }
 
@@ -93,6 +96,9 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setGameMode(mode: GameMode) =
         edit { it[MODE] = mode.name }
+
+    suspend fun setThemeMode(themeMode: ThemeMode) =
+        edit { it[THEME_MODE] = themeMode.name }
 
     /** The stored best for a (mode × level × scale) slot (0 if none yet). */
     fun highScore(mode: GameMode, level: Level, scale: BoardScale): Flow<Int> =
@@ -151,6 +157,7 @@ class SettingsRepository(private val context: Context) {
         val SKIN = stringPreferencesKey("skin")
         val HAZARDS_ENABLED = booleanPreferencesKey("hazards_enabled")
         val MODE = stringPreferencesKey("game_mode")
+        val THEME_MODE = stringPreferencesKey("theme_mode")
         val UNLOCKED_ACHIEVEMENTS = stringSetPreferencesKey("unlocked_achievements")
     }
 }

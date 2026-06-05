@@ -13,8 +13,10 @@ import com.brioni.snake.game.Skin
  * skin switch a single data lookup ([paletteFor]) instead of branches scattered
  * through the drawing code.
  *
- * @param rounded  cells drawn with rounded corners (false → crisp pixel squares).
- * @param useGlow  emit the radial head glow / food halos (false → flat styling).
+ * @param cornerFactor corner radius as a fraction of a cell (0 → crisp pixel
+ *                     squares, ~0.5 → bubbly rounded). Shapes obstacles, snake
+ *                     and (regular) food, so skins differ in form, not just hue.
+ * @param useGlow      emit the radial head glow / food halos (false → flat styling).
  */
 data class SkinPalette(
     // Board background — a vertical gradient with a framed border.
@@ -46,7 +48,7 @@ data class SkinPalette(
     // Special power-up / hazard pieces (Phase 6.2).
     val special: Color,
     // Style flags.
-    val rounded: Boolean,
+    val cornerFactor: Float,
     val useGlow: Boolean,
 ) {
     /** Colour identity of a food, from its category and magnitude tier. */
@@ -100,7 +102,7 @@ private val ClassicPalette = SkinPalette(
     shrinkLarge = Color(0xFFE53935),
     shrinkMystery = Color(0xFFFF5252),
     special = Color(0xFFB388FF),
-    rounded = true,
+    cornerFactor = 0.30f,
     useGlow = true,
 )
 
@@ -128,7 +130,7 @@ private val NeonPalette = SkinPalette(
     shrinkLarge = Color(0xFFFF1744),
     shrinkMystery = Color(0xFFFF5CA2),
     special = Color(0xFFFFEA00),
-    rounded = true,
+    cornerFactor = 0.50f,
     useGlow = true,
 )
 
@@ -156,7 +158,7 @@ private val RetroPalette = SkinPalette(
     shrinkLarge = Color(0xFFE0531E),
     shrinkMystery = Color(0xFFFF7A45),
     special = Color(0xFFFFD166),
-    rounded = true,
+    cornerFactor = 0.16f,
     useGlow = false,
 )
 
@@ -184,6 +186,6 @@ private val PixelPalette = SkinPalette(
     shrinkLarge = Color(0xFFE53935),
     shrinkMystery = Color(0xFFEF5350),
     special = Color(0xFFB388FF),
-    rounded = false,
+    cornerFactor = 0.0f,
     useGlow = false,
 )

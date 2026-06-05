@@ -77,6 +77,23 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
+### 2026-06-05 — Post-Phase-6 fixes (feedback)
+
+- **Launcher icon**: added PNG density buckets (mdpi–xxxhdpi, square + round) via
+  `tools/icon/generate_icon.py` and removed the bare `mipmap-anydpi` vector fallback. The icon now
+  resolves to the adaptive icon on API 26+ and a real bitmap on API 24–25, so it shows reliably across
+  launchers (the previous vector-only setup could fail to appear).
+- **Back gesture during play**: the edge-swipe / system Back now **pauses** a running game (instead of
+  navigating to the menu while the loop kept ticking). `GameScreen` owns a `BackHandler`; the app-level
+  one no longer fires on the Game screen, so leaving the game always stops the loop cleanly.
+- **Skin differentiation**: `SkinPalette.rounded` → `cornerFactor` (Neon bubbly 0.5, Classic 0.30, Retro
+  0.16, Pixel 0.0) shaping obstacles + snake; Pixel also draws blocky square food. Skins now differ in
+  form, not just hue.
+- **Settings skin picker**: cards laid out 2×2 (centred) so the fourth no longer wraps on narrow screens.
+- **Theme setting**: new `game/ThemeMode` (Light / Dark / System), persisted; `MainActivity` drives
+  `SnakeGameTheme(darkTheme=…)` from it (repo lifted to the activity and passed into `App`). Default
+  remains System.
+
 ### 2026-06-05 — Step 6.5: Endless & Time Attack modes
 
 - `GameState` gains `mode` + `playedMs`; `tickIntervalMillis` now ramps for **Endless** (gentle →

@@ -41,9 +41,8 @@ private enum class Screen { Menu, Game, Settings, Records, Achievements }
  * actions and (via the ViewModel) gameplay events.
  */
 @Composable
-fun App(modifier: Modifier = Modifier) {
+fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    val repo = remember(context) { SettingsRepository(context.applicationContext) }
     val audio = remember(context) { GameAudio(context.applicationContext, repo) }
     val gameViewModel: GameViewModel = viewModel(factory = GameViewModel.factory(repo, audio))
 
@@ -73,7 +72,11 @@ fun App(modifier: Modifier = Modifier) {
         }
     }
 
-    BackHandler(enabled = screen != Screen.Menu) { audio.playUiClick(); navigate(Screen.Menu) }
+    // The Game screen owns its own back behaviour (pause vs. exit); the app-level
+    // handler only covers the other secondary screens.
+    BackHandler(enabled = screen != Screen.Menu && screen != Screen.Game) {
+        audio.playUiClick(); navigate(Screen.Menu)
+    }
 
     Crossfade(targetState = screen, animationSpec = tween(300), label = "screen") { current ->
         when (current) {

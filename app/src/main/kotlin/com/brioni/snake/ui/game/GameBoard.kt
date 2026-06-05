@@ -245,7 +245,7 @@ private fun DrawScope.drawBoardBackground(
 private fun DrawScope.drawObstacle(cell: Float, left: Float, top: Float, palette: SkinPalette) {
     val inset = cell * 0.08f
     val side = cell - 2 * inset
-    val corner = if (palette.rounded) cell * 0.2f else 0f
+    val corner = cell * palette.cornerFactor.coerceAtMost(0.4f)
     val radius = CornerRadius(corner, corner)
     drawRoundRect(
         color = palette.obstacleShadow,
@@ -310,7 +310,17 @@ private fun DrawScope.drawFood(
             center = Offset(centerX, centerY),
         )
     }
-    drawCircle(color = color, radius = radius, center = Offset(centerX, centerY))
+    // Pixel skin draws blocky square food; others keep the round drop.
+    if (palette.cornerFactor < 0.06f) {
+        drawRoundRect(
+            color = color,
+            topLeft = Offset(centerX - radius, centerY - radius),
+            size = Size(radius * 2f, radius * 2f),
+            cornerRadius = CornerRadius(radius * 0.16f, radius * 0.16f),
+        )
+    } else {
+        drawCircle(color = color, radius = radius, center = Offset(centerX, centerY))
+    }
 
     when {
         // Mystery pieces hide their amount behind a "?" in the snake's palette.
@@ -568,7 +578,7 @@ private fun DrawScope.drawSnakeSegment(
     val inset = cell * 0.06f
     val side = cell - 2 * inset
     val topLeft = Offset(left + inset, top + inset)
-    val corner = if (palette.rounded) cell * 0.3f else 0f
+    val corner = cell * palette.cornerFactor
     val radius = CornerRadius(corner, corner)
     val fill = (if (isHead) palette.snakeHead else palette.snakeBody).copy(alpha = alpha)
     drawRoundRect(

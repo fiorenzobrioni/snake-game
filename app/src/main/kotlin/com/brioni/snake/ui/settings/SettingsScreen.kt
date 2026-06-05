@@ -44,6 +44,7 @@ import com.brioni.snake.game.BoardScale
 import com.brioni.snake.game.ControlScheme
 import com.brioni.snake.game.Level
 import com.brioni.snake.game.Skin
+import com.brioni.snake.game.ThemeMode
 import com.brioni.snake.ui.game.Shaders
 import com.brioni.snake.ui.game.paletteFor
 import kotlinx.coroutines.launch
@@ -109,6 +110,14 @@ fun SettingsScreen(
         SkinSection(
             selected = settings.skin,
             onSelected = { skin -> scope.launch { repo.setSkin(skin) } },
+        )
+
+        ChoiceSection(
+            title = stringResource(R.string.settings_theme),
+            options = ThemeMode.entries,
+            selected = settings.themeMode,
+            label = { it.displayName },
+            onSelected = { themeMode -> scope.launch { repo.setThemeMode(themeMode) } },
         )
 
         ToggleSection(
@@ -206,13 +215,21 @@ private fun SkinSection(
             color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(bottom = 8.dp),
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Skin.entries.forEach { skin ->
-                SkinCard(
-                    skin = skin,
-                    selected = skin == selected,
-                    onClick = { onSelected(skin) },
-                )
+        // Two cards per row, centred, so the fourth never gets squeezed.
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Skin.entries.chunked(2).forEach { rowSkins ->
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    rowSkins.forEach { skin ->
+                        SkinCard(
+                            skin = skin,
+                            selected = skin == selected,
+                            onClick = { onSelected(skin) },
+                        )
+                    }
+                }
             }
         }
     }
