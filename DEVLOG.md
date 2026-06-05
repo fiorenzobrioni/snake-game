@@ -82,6 +82,18 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
+### 2026-06-05 — Star (Ghost) tuning: longer duration + expiry warning blink
+
+- `GHOST_MS` raised **5 s → 8 s** (`Food.kt`) so the invincibility power is long
+  enough to actually escape a tight spot. Fixed ms, independent of level/board.
+- Added an **accelerating warning blink**: over the final `GHOST_WARN_MS` (2 s) the
+  snake's shimmer ramps up in frequency and swing depth (driven by the live
+  `effectTimers` Ghost `remainingMs`), so the player sees the effect ending and can
+  steer to safety. Purely a renderer change in `GameBoard` (the model already aged
+  the timer); the HUD countdown bar is unchanged.
+
+---
+
 ### 2026-06-05 — Special-block frequency setting + auto-vanishing food
 
 Two gameplay-dynamism enhancements (post-Phase 6 polish; not formal roadmap steps).

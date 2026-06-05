@@ -139,7 +139,8 @@ object FoodTable {
     // deterministic at eat time.
     private const val HASTE_MS = 6_000L
     private const val SLOW_MS = 6_000L
-    private const val GHOST_MS = 5_000L
+    // Star is the "save me" power: long enough to actually escape a tight spot.
+    private const val GHOST_MS = 8_000L
     private const val FREEZE_MS = 5_000L
     private const val BURST_DEBRIS_MS = 4_000L
 
