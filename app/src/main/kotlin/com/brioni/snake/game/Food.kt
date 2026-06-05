@@ -31,7 +31,37 @@ sealed interface FoodEffect {
 
     /** Removes up to [segments] tail cells, never below the length floor. */
     data class Shrink(val segments: Int) : FoodEffect
+
+    // --- Phase 6.2 specials. Beneficial unless noted as a hazard. ---
+
+    /** Earthquake (hazard): bites [segments] off the tail and shakes the screen. */
+    data class Quake(val segments: Int) : FoodEffect
+
+    /**
+     * Explosion (hazard): splits the snake, leaving the detached tail on the
+     * board as lethal debris for [debrisMs] before it auto-clears.
+     */
+    data class Burst(val debrisMs: Long) : FoodEffect
+
+    /** Lightning: speeds the snake up for [durationMs]. */
+    data class Haste(val durationMs: Long) : FoodEffect
+
+    /** Snail (hazard): slows the snake down for [durationMs]. */
+    data class Slow(val durationMs: Long) : FoodEffect
+
+    /** Star: invincible pass-through for [durationMs]. */
+    data class Ghost(val durationMs: Long) : FoodEffect
+
+    /** Freeze: slows time and suspends special spawns for [durationMs]. */
+    data class Freeze(val durationMs: Long) : FoodEffect
+
+    /** Jackpot: a large score [bonus] plus a [growth] of segments. */
+    data class Jackpot(val bonus: Int, val growth: Int) : FoodEffect
 }
+
+/** True for the [FoodEffect]s that make the game harder (gated by the hazards toggle). */
+val FoodEffect.isHazard: Boolean
+    get() = this is FoodEffect.Quake || this is FoodEffect.Burst || this is FoodEffect.Slow
 
 /**
  * A food item on the board.
@@ -99,15 +129,41 @@ object FoodTable {
     const val GATE_MAXI_MS = 30_000L
     const val GATE_MYSTERY_MS = 45_000L
 
+    /** Specials (power-ups / hazards) unlock last; they are rare, maxi "events". */
+    const val GATE_SPECIAL_MS = 60_000L
+
+    // Durations / magnitudes for the specials, resolved here so the engine stays
+    // deterministic at eat time.
+    private const val HASTE_MS = 6_000L
+    private const val SLOW_MS = 6_000L
+    private const val GHOST_MS = 5_000L
+    private const val FREEZE_MS = 5_000L
+    private const val BURST_DEBRIS_MS = 4_000L
+
     /** Harder levels shrink the gates so hazards arrive earlier. */
     private fun levelGateFactor(level: Level): Double = 1.0 - level.ordinal * 0.1
 
-    fun roll(random: Random, elapsedTicks: Int, level: Level): FoodSpec {
+    /**
+     * Rolls the next food to spawn.
+     *
+     * @param hazardsEnabled when false, harmful specials (Earthquake / Explosion /
+     *        Snail) are never produced — only beneficial power-ups can appear.
+     * @param specialAllowed when false (a special is already on the board, or a
+     *        Freeze is active), the special branch is suppressed entirely.
+     */
+    fun roll(
+        random: Random,
+        elapsedTicks: Int,
+        level: Level,
+        hazardsEnabled: Boolean = true,
+        specialAllowed: Boolean = true,
+    ): FoodSpec {
         val elapsedMs = elapsedTicks.toLong() * level.tickMillis
         val factor = levelGateFactor(level)
         val shrinkUnlocked = elapsedMs >= (GATE_SHRINK_MS * factor)
         val maxiUnlocked = elapsedMs >= (GATE_MAXI_MS * factor)
         val mysteryUnlocked = elapsedMs >= (GATE_MYSTERY_MS * factor)
+        val specialUnlocked = elapsedMs >= (GATE_SPECIAL_MS * factor)
 
         val entries = buildList {
             add(Weighted(40) { growSpec(random, maxiUnlocked) })
@@ -116,8 +172,30 @@ object FoodTable {
                 add(Weighted(9) { mysterySpec(random, FoodCategory.Grow, maxiUnlocked) })
                 add(Weighted(6) { mysterySpec(random, FoodCategory.Shrink, maxiUnlocked) })
             }
+            if (specialUnlocked && specialAllowed) {
+                add(Weighted(8) { specialSpec(random, hazardsEnabled) })
+            }
         }
         return pick(entries, random)
+    }
+
+    /** Builds a maxi special, choosing a kind weighted by benefit and the toggle. */
+    private fun specialSpec(random: Random, hazardsEnabled: Boolean): FoodSpec {
+        val choices = buildList<Weighted<FoodEffect>> {
+            // Beneficial — always available.
+            add(Weighted(20) { FoodEffect.Haste(HASTE_MS) })
+            add(Weighted(14) { FoodEffect.Ghost(GHOST_MS) })
+            add(Weighted(14) { FoodEffect.Freeze(FREEZE_MS) })
+            add(Weighted(10) { FoodEffect.Jackpot(bonus = random.nextInt(150, 401), growth = random.nextInt(2, 6)) })
+            // Harmful — only when hazards are enabled.
+            if (hazardsEnabled) {
+                add(Weighted(16) { FoodEffect.Quake(random.nextInt(3, 7)) })
+                add(Weighted(12) { FoodEffect.Burst(BURST_DEBRIS_MS) })
+                add(Weighted(14) { FoodEffect.Slow(SLOW_MS) })
+            }
+        }
+        val effect = pick(choices, random)
+        return FoodSpec(FoodCategory.Special, FoodTier.Huge, FoodSize.Maxi, effect)
     }
 
     private fun growSpec(random: Random, maxiUnlocked: Boolean): FoodSpec {
@@ -194,9 +272,9 @@ object FoodTable {
         return weights.last().first
     }
 
-    private class Weighted(val weight: Int, val build: () -> FoodSpec)
+    private class Weighted<T>(val weight: Int, val build: () -> T)
 
-    private fun pick(entries: List<Weighted>, random: Random): FoodSpec {
+    private fun <T> pick(entries: List<Weighted<T>>, random: Random): T {
         val total = entries.sumOf { it.weight }
         var r = random.nextInt(total)
         for (e in entries) {

@@ -30,6 +30,10 @@ enum class GameStatus {
  *                         score multiplier), reset when a streak lapses.
  * @param comboDeadlineTick the streak survives only if the next food is eaten
  *                         on or before this tick.
+ * @param debris           lethal, time-limited blocks (from Explosion); crashing
+ *                         into one kills unless a Ghost effect is active.
+ * @param effectTimers     the timed power-ups currently running (Haste/Slow/
+ *                         Ghost/Freeze), each aged down per tick.
  * @param lastEvents       what happened on the most recent tick, for the UI to
  *                         react to (particle bursts, future effects). Not part
  *                         of the logical state — cleared/replaced every tick.
@@ -48,9 +52,40 @@ data class GameState(
     val elapsedTicks: Int = 0,
     val combo: Int = 0,
     val comboDeadlineTick: Int = 0,
+    val debris: List<Debris> = emptyList(),
+    val effectTimers: List<ActiveEffect> = emptyList(),
     val lastEvents: List<GameEvent> = emptyList(),
 ) {
     val head: Position get() = snake.first()
 
     val isPlayable: Boolean get() = status == GameStatus.Running
+
+    /** True while a timed [kind] effect is running. */
+    fun hasEffect(kind: EffectKind): Boolean = effectTimers.any { it.kind == kind }
+
+    /**
+     * The wall-clock delay until the next tick, after applying speed effects.
+     * The game loop reads this instead of [Level.tickMillis] so Lightning/Snail/
+     * Freeze actually change the pace; effect timers are aged by the same value,
+     * keeping every power-up's real duration stable.
+     */
+    val tickIntervalMillis: Long
+        get() {
+            var ms = level.tickMillis.toDouble()
+            if (hasEffect(EffectKind.Haste)) ms *= HASTE_FACTOR
+            if (hasEffect(EffectKind.Slow)) ms *= SLOW_FACTOR
+            if (hasEffect(EffectKind.Freeze)) ms *= FREEZE_FACTOR
+            return ms.toLong().coerceIn(MIN_TICK_MS, MAX_TICK_MS)
+        }
+
+    companion object {
+        /** Tick-interval multipliers per speed effect (compounding if stacked). */
+        const val HASTE_FACTOR = 0.6
+        const val SLOW_FACTOR = 1.6
+        const val FREEZE_FACTOR = 1.4
+
+        /** Clamp so stacked effects can't make the game unplayably fast/slow. */
+        const val MIN_TICK_MS = 40L
+        const val MAX_TICK_MS = 400L
+    }
 }

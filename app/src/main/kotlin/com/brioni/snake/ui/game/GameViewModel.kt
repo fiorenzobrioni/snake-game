@@ -240,6 +240,13 @@ class GameViewModel(
                     sfx.died()
                     onGameOver(after.score)
                 }
+                // Special power-ups / hazards: visuals + audio wired in step 6.2b.
+                is GameEvent.Quaked,
+                is GameEvent.Exploded,
+                is GameEvent.EffectStarted,
+                is GameEvent.EffectExpired,
+                is GameEvent.JackpotHit,
+                -> Unit
             }
         }
 

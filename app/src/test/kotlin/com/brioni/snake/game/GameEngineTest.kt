@@ -291,6 +291,7 @@ class GameEngineTest {
             when (val e = spec.effect) {
                 is FoodEffect.Grow -> assertTrue(e.segments in 2..24)
                 is FoodEffect.Shrink -> assertTrue(e.segments in 2..14)
+                else -> Unit // mystery foods are only ever Grow/Shrink
             }
         }
         // Same seed + inputs → identical spec (resolved deterministically at spawn).
