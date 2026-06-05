@@ -10,19 +10,6 @@
 A classic **Snake**, rebuilt as a **native Android game** in **Kotlin + Jetpack Compose**, on the way to a
 polished, **Google-Play-publishable** title with animation, particles, shaders, audio and menus.
 
-Gameplay is drawn on a Compose `Canvas` — the natural evolution of the immediate-mode rendering this project
-started with. The step-by-step plan lives in [`ROADMAP.md`](ROADMAP.md).
-
-> 🧱 **Current status:** Phase 5 (AGSL shaders & FX) complete, on top of Phase 4 (audio), Phase 3
-> (pro UI/UX) and the **Phase 2.5 food system** — a polished, playable Snake with an animated main
-> menu and settings, persistent highscores, a responsive full-screen board, control schemes (swipe by
-> default, plus two-button relative and D-pad), smooth interpolated motion, particles, screen shake, a
-> pause blur, **music + sound effects** with master/music/SFX volume controls, and **GPU shader
-> effects** (animated background, glowing snake head, pulsing halos on rare foods, optional CRT
-> filter) on Android 13+. The food layer adds two **categories** (grow / shrink) with magnitude tiers,
-> **maxi** sizes, a **mystery "?"** piece, a **time-gated** progression that ramps mid-session, and a
-> **combo** score multiplier.
-
 ---
 
 ## 🎯 What it will be
