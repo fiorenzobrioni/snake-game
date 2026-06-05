@@ -32,6 +32,7 @@ import com.brioni.snake.R
 fun MainMenuScreen(
     onPlay: () -> Unit,
     onRecords: () -> Unit,
+    onAchievements: () -> Unit,
     onSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -67,6 +68,12 @@ fun MainMenuScreen(
             modifier = Modifier.padding(top = 12.dp).widthIn(min = 220.dp),
         ) {
             Text(stringResource(R.string.menu_records))
+        }
+        OutlinedButton(
+            onClick = onAchievements,
+            modifier = Modifier.padding(top = 12.dp).widthIn(min = 220.dp),
+        ) {
+            Text(stringResource(R.string.menu_achievements))
         }
         OutlinedButton(
             onClick = onSettings,

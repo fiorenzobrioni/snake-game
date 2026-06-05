@@ -12,9 +12,11 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.brioni.snake.audio.GameSfx
 import com.brioni.snake.data.SettingsRepository
+import com.brioni.snake.game.Achievement
 import com.brioni.snake.game.BoardDimensions
 import com.brioni.snake.game.BoardScale
 import com.brioni.snake.game.ControlScheme
+import com.brioni.snake.game.EffectKind
 import com.brioni.snake.game.DEFAULT_ASPECT
 import com.brioni.snake.game.Direction
 import com.brioni.snake.game.GameEngine
@@ -24,11 +26,14 @@ import com.brioni.snake.game.GameState
 import com.brioni.snake.game.GameStatus
 import com.brioni.snake.game.Level
 import com.brioni.snake.game.Position
+import com.brioni.snake.game.RunStats
 import com.brioni.snake.game.Skin
 import com.brioni.snake.game.boardFor
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlin.math.max
 
 /**
  * A food-eaten event, surfaced to the renderer to spawn a particle burst.
@@ -115,6 +120,18 @@ class GameViewModel(
     var isNewBest by mutableStateOf(false)
         private set
 
+    /** Achievements unlocked by the most recent run (for the game-over banner). */
+    var newlyUnlocked by mutableStateOf<List<Achievement>>(emptyList())
+        private set
+
+    // Per-run accumulators feeding the achievement check at game over.
+    private var runFoodsEaten = 0
+    private var runMaxCombo = 0
+    private var runUsedExplosion = false
+    private var runUsedStar = false
+    private var runUsedJackpot = false
+    private var runStartMs = 0L
+
     private var loop: Job? = null
     private var bestJob: Job? = null
     private var lastAspect = DEFAULT_ASPECT
@@ -183,6 +200,7 @@ class GameViewModel(
     fun start() {
         resetTo(engine.start(state))
         isNewBest = false
+        beginRun()
         runLoop()
     }
 
@@ -206,7 +224,19 @@ class GameViewModel(
     fun playAgain() {
         resetTo(engine.newGame(state.level, state.board))
         isNewBest = false
+        beginRun()
         runLoop()
+    }
+
+    /** Resets the per-run achievement accumulators at the start of a run. */
+    private fun beginRun() {
+        runFoodsEaten = 0
+        runMaxCombo = 0
+        runUsedExplosion = false
+        runUsedStar = false
+        runUsedJackpot = false
+        runStartMs = System.currentTimeMillis()
+        newlyUnlocked = emptyList()
     }
 
     fun toMenu() {
@@ -245,6 +275,8 @@ class GameViewModel(
                     eatEvent = EatEvent(event.food.position, event.food.span, palette.foodColor(event.food), implode = false)
                     eatEventId++
                     sfx.ate(event.food, event.combo)
+                    runFoodsEaten++
+                    runMaxCombo = max(runMaxCombo, event.combo)
                 }
                 is GameEvent.Shrunk -> {
                     eatEvent = EatEvent(event.food.position, event.food.span, palette.foodColor(event.food), implode = true)
@@ -269,13 +301,19 @@ class GameViewModel(
                     eatEventId++
                     shakeEventId++
                     sfx.special(event.food)
+                    runUsedExplosion = true
                 }
                 is GameEvent.JackpotHit -> {
                     eatEvent = EatEvent(event.food.position, event.food.span, palette.foodColor(event.food), implode = false)
                     eatEventId++
                     sfx.special(event.food)
+                    runUsedJackpot = true
+                    runFoodsEaten++
                 }
-                is GameEvent.EffectStarted -> sfx.special(event.food)
+                is GameEvent.EffectStarted -> {
+                    sfx.special(event.food)
+                    if (event.kind == EffectKind.Ghost) runUsedStar = true
+                }
                 is GameEvent.EffectExpired -> Unit
             }
         }
@@ -288,8 +326,27 @@ class GameViewModel(
 
     private fun onGameOver(score: Int) {
         isNewBest = score > bestScore
+        val stats = RunStats(
+            mode = mode,
+            score = score,
+            maxCombo = runMaxCombo,
+            durationMs = System.currentTimeMillis() - runStartMs,
+            foodsEaten = runFoodsEaten,
+            usedExplosion = runUsedExplosion,
+            usedStar = runUsedStar,
+            usedJackpot = runUsedJackpot,
+        )
         // Persist; the bestJob collector reflects the new value back into state.
         viewModelScope.launch { repo.submitScore(mode, state.level, scale, score) }
+        // Evaluate achievements against the run and surface any new unlocks.
+        viewModelScope.launch {
+            val already = repo.unlockedAchievements().first()
+            val earned = Achievement.earnedBy(stats, already)
+            if (earned.isNotEmpty()) {
+                repo.addUnlockedAchievements(earned.map { it.name })
+                newlyUnlocked = earned
+            }
+        }
     }
 
     /** Tracks the best score for the current (level, scale) via a single collector. */

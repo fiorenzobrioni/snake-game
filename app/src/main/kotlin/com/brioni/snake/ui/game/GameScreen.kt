@@ -197,6 +197,7 @@ fun GameScreen(
                 score = state.score,
                 bestScore = viewModel.bestScore,
                 isNewBest = viewModel.isNewBest,
+                unlocked = viewModel.newlyUnlocked.map { it.title },
                 onPlayAgain = { audio.playUiClick(); viewModel.playAgain() },
                 onMenu = { audio.playUiClick(); viewModel.toMenu(); onExitToMenu() },
             )

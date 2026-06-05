@@ -9,6 +9,11 @@
     <string name="menu_play">Play</string>
     <string name="menu_records">Records</string>
     <string name="records_title">Records</string>
+    <string name="menu_achievements">Achievements</string>
+    <string name="achievements_title">Achievements</string>
+    <!-- "<unlocked> / <total> unlocked" -->
+    <string name="achievements_progress">%1$d / %2$d unlocked</string>
+    <string name="achievement_unlocked">Achievement unlocked!</string>
     <!-- Note: action_play is retained for the in-game Ready overlay Play button. -->
     <string name="menu_settings">Settings</string>
     <string name="action_play">Play</string>

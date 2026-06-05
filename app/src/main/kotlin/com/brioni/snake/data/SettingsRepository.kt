@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.brioni.snake.game.BoardScale
 import com.brioni.snake.game.ControlScheme
@@ -116,6 +117,14 @@ class SettingsRepository(private val context: Context) {
             }
         }
 
+    /** The set of unlocked achievement ids (enum names). */
+    fun unlockedAchievements(): Flow<Set<String>> =
+        context.dataStore.data.map { it[UNLOCKED_ACHIEVEMENTS] ?: emptySet() }
+
+    /** Adds [ids] to the unlocked set (idempotent). */
+    suspend fun addUnlockedAchievements(ids: Collection<String>) =
+        edit { it[UNLOCKED_ACHIEVEMENTS] = (it[UNLOCKED_ACHIEVEMENTS] ?: emptySet()) + ids }
+
     private suspend fun edit(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
         context.dataStore.edit(block)
     }
@@ -136,5 +145,6 @@ class SettingsRepository(private val context: Context) {
         val CRT_ENABLED = booleanPreferencesKey("crt_enabled")
         val SKIN = stringPreferencesKey("skin")
         val HAZARDS_ENABLED = booleanPreferencesKey("hazards_enabled")
+        val UNLOCKED_ACHIEVEMENTS = stringSetPreferencesKey("unlocked_achievements")
     }
 }

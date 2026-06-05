@@ -77,6 +77,18 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
+### 2026-06-05 — Step 6.4: Local achievements
+
+- Added a pure `game/Achievement` enum (9 achievements) judged by a pure `test` over a `RunStats`
+  snapshot, plus `Achievement.earnedBy(stats, already)`. Stable enum names are the persisted ids.
+- `SettingsRepository` stores the unlocked set (`unlockedAchievements()` / `addUnlockedAchievements()`).
+- `GameViewModel` accumulates per-run stats (foods, max combo, duration, used explosion/star/jackpot),
+  evaluates achievements at game over, persists new unlocks and exposes `newlyUnlocked` — surfaced as a
+  banner on the game-over overlay.
+- New `ui/achievements/AchievementsScreen` (locked/unlocked list + progress count), wired into `ui/App`
+  nav with a main-menu button.
+- Tests: `AchievementTest`.
+
 ### 2026-06-05 — Step 6.3: Records screen
 
 - Added a pure, unit-tested `game/ScoreKey` (mode × level × scale) codec and `game/GameMode`
