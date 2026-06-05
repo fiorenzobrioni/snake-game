@@ -77,6 +77,18 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
+### 2026-06-05 — Feedback round 2
+
+- **Board fit**: the board filled the play area edge-to-edge, so the framing border (a stroke centred
+  on the board edge) was half-clipped and could slip off-screen at the bottom. `GameBoard` now reserves
+  a small `6.dp` margin when sizing the board, so the whole board + border always fits. Still fully
+  dynamic (cell size derived from the measured play area).
+- **Launcher icon**: reverted to the original **vector-only** setup (adaptive `mipmap-anydpi-v26` for
+  API 26+, vector `mipmap-anydpi` fallback for older) per preference — removed the PNG density buckets
+  and `tools/icon/generate_icon.py`. The icon stays crisp/scalable on every device; the earlier
+  "missing shortcut" report appears device/launcher-specific (config is identical to the working
+  pre-Phase-6 builds).
+
 ### 2026-06-05 — Post-Phase-6 fixes (feedback)
 
 - **Launcher icon**: added PNG density buckets (mdpi–xxxhdpi, square + round) via

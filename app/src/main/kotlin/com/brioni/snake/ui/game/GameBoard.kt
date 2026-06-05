@@ -27,6 +27,7 @@ import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import com.brioni.snake.game.BoardDimensions
 import com.brioni.snake.game.Direction
@@ -110,7 +111,13 @@ fun GameBoard(
 
     Canvas(modifier = modifier) {
         val board = state.board
-        val cell = min(size.width / board.width, size.height / board.height)
+        // Reserve a small margin so the framing border (a stroke centred on the
+        // board edge) is never clipped — otherwise the bottom/edge borders can
+        // slip off-screen when the board fills the play area exactly.
+        val margin = 6.dp.toPx()
+        val availWidth = (size.width - 2 * margin).coerceAtLeast(1f)
+        val availHeight = (size.height - 2 * margin).coerceAtLeast(1f)
+        val cell = min(availWidth / board.width, availHeight / board.height)
         if (cell <= 0f) return@Canvas
 
         // Derive everything from the per-frame clock and the tick snapshot, so
