@@ -8,7 +8,6 @@ enum class Sfx(val resId: Int) {
     Shrink(R.raw.sfx_shrink),
     Mystery(R.raw.sfx_mystery),
     GameOver(R.raw.sfx_game_over),
-    Click(R.raw.sfx_click),
     Pause(R.raw.sfx_pause),
 
     // Phase 6.2 specials.

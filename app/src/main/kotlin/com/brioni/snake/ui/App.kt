@@ -75,16 +75,16 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
     // The Game screen owns its own back behaviour (pause vs. exit); the app-level
     // handler only covers the other secondary screens.
     BackHandler(enabled = screen != Screen.Menu && screen != Screen.Game) {
-        audio.playUiClick(); navigate(Screen.Menu)
+        navigate(Screen.Menu)
     }
 
     Crossfade(targetState = screen, animationSpec = tween(300), label = "screen") { current ->
         when (current) {
             Screen.Menu -> MainMenuScreen(
-                onPlay = { audio.playUiClick(); navigate(Screen.Game) },
-                onRecords = { audio.playUiClick(); navigate(Screen.Records) },
-                onAchievements = { audio.playUiClick(); navigate(Screen.Achievements) },
-                onSettings = { audio.playUiClick(); navigate(Screen.Settings) },
+                onPlay = { navigate(Screen.Game) },
+                onRecords = { navigate(Screen.Records) },
+                onAchievements = { navigate(Screen.Achievements) },
+                onSettings = { navigate(Screen.Settings) },
                 modifier = modifier,
             )
 
@@ -98,19 +98,19 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
             Screen.Settings -> SettingsScreen(
                 repo = repo,
                 audio = audio,
-                onBack = { audio.playUiClick(); navigate(Screen.Menu) },
+                onBack = { navigate(Screen.Menu) },
                 modifier = modifier,
             )
 
             Screen.Records -> RecordsScreen(
                 repo = repo,
-                onBack = { audio.playUiClick(); navigate(Screen.Menu) },
+                onBack = { navigate(Screen.Menu) },
                 modifier = modifier,
             )
 
             Screen.Achievements -> AchievementsScreen(
                 repo = repo,
-                onBack = { audio.playUiClick(); navigate(Screen.Menu) },
+                onBack = { navigate(Screen.Menu) },
                 modifier = modifier,
             )
         }

@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import math
 import os
+import random
 import struct
 import wave
 
@@ -48,11 +49,13 @@ def _osc(phase: float, wave_kind: str) -> float:
         return 1.0 if t < 0.5 else -1.0
     if wave_kind == "saw":
         return 2.0 * t - 1.0
+    if wave_kind == "noise":
+        return random.uniform(-1.0, 1.0)
     raise ValueError(f"unknown wave: {wave_kind}")
 
 
 def _env(i: int, n: int, attack: float, release: float) -> float:
-    """Linear attack/release envelope (fractions of the note) → [0, 1].
+    """Curved attack/release envelope (fractions of the note) → [0, 1].
 
     Both ends reach exactly zero so concatenated notes never click.
     """
@@ -61,7 +64,7 @@ def _env(i: int, n: int, attack: float, release: float) -> float:
     if i < a:
         return i / a
     if i > n - r:
-        return max(0.0, (n - i) / r)
+        return (max(0.0, (n - i) / r)) ** 2.5
     return 1.0
 
 
@@ -172,8 +175,9 @@ def game_music() -> None:
 # --- SFX ------------------------------------------------------------------
 
 def sfx_eat() -> None:
-    buf = [0.0] * int(0.13 * SR)
-    tone(buf, 0, 620, 0.12, wave_kind="square", vol=0.55, attack=0.02, release=0.4, glide_to=1180)
+    buf = [0.0] * int(0.15 * SR)
+    tone(buf, 0, 300, 0.12, wave_kind="square", vol=0.4, attack=0.02, release=0.3, glide_to=600)
+    tone(buf, 0, 100, 0.05, wave_kind="noise", vol=0.15, attack=0.01, release=0.9)
     write_wav("sfx_eat", buf)
 
 
@@ -198,12 +202,6 @@ def sfx_game_over() -> None:
                            note_freq(NOTES["D4"]), note_freq(NOTES["A2"] + 12))):
         tone(buf, i * step, f, 0.22, wave_kind="square", vol=0.5, attack=0.02, release=0.45)
     write_wav("sfx_game_over", buf)
-
-
-def sfx_click() -> None:
-    buf = [0.0] * int(0.04 * SR)
-    tone(buf, 0, 1300, 0.03, wave_kind="square", vol=0.4, attack=0.05, release=0.6)
-    write_wav("sfx_click", buf)
 
 
 def sfx_pause() -> None:
@@ -260,22 +258,25 @@ def sfx_jackpot() -> None:
 
 
 def sfx_quake() -> None:
-    """Earthquake: a low rumble (two close low tones beat against each other)."""
-    buf = [0.0] * int(0.45 * SR)
-    tone(buf, 0, 70, 0.42, wave_kind="square", vol=0.5, attack=0.04, release=0.3)
-    tone(buf, 0, 96, 0.42, wave_kind="triangle", vol=0.3, attack=0.04, release=0.3)
+    """Earthquake: modulated white noise evoking crumbling rocks over a deep sine."""
+    buf = [0.0] * int(0.6 * SR)
+    tone(buf, 0, 50, 0.6, wave_kind="noise", vol=0.5, attack=0.2, release=0.5)
+    tone(buf, 0, 45, 0.6, wave_kind="sine", vol=0.4, attack=0.1, release=0.4)
     write_wav("sfx_quake", buf)
 
 
 def sfx_explosion() -> None:
-    """Explosion: a low descending boom with a high crack at the front."""
+    """Explosion: white noise with a fast envelope backed by a deep falling bass."""
     buf = [0.0] * int(0.5 * SR)
-    tone(buf, 0, 240, 0.45, wave_kind="square", vol=0.55, attack=0.005, release=0.5, glide_to=50)
-    tone(buf, 0, 1400, 0.06, wave_kind="saw", vol=0.4, attack=0.005, release=0.6, glide_to=300)
+    tone(buf, 0, 100, 0.5, wave_kind="noise", vol=0.6, attack=0.01, release=0.8)
+    tone(buf, 0, 120, 0.4, wave_kind="triangle", vol=0.5, attack=0.01, release=0.6, glide_to=40)
     write_wav("sfx_explosion", buf)
 
 
 def main() -> None:
+    # Seed the RNG so the noise-based SFX are deterministic, keeping the
+    # generated assets reproducible across runs (as the module docstring states).
+    random.seed(0x5EED)
     print(f"Generating audio into {RES_RAW}")
     menu_music()
     game_music()
@@ -283,7 +284,6 @@ def main() -> None:
     sfx_shrink()
     sfx_mystery()
     sfx_game_over()
-    sfx_click()
     sfx_pause()
     sfx_lightning()
     sfx_snail()

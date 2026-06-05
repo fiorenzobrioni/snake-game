@@ -77,7 +77,7 @@ fun GameScreen(
         if (state.status == GameStatus.Running) {
             audio.playPause(); viewModel.togglePause()
         } else {
-            audio.playUiClick(); viewModel.toMenu(); onExitToMenu()
+            viewModel.toMenu(); onExitToMenu()
         }
     }
 
@@ -206,15 +206,15 @@ fun GameScreen(
                 selectedMode = viewModel.mode,
                 selectedLevel = viewModel.level,
                 selectedScale = viewModel.scale,
-                onModeSelected = { audio.playUiClick(); viewModel.selectMode(it) },
-                onLevelSelected = { audio.playUiClick(); viewModel.selectLevel(it) },
-                onScaleSelected = { audio.playUiClick(); viewModel.selectScale(it) },
-                onPlay = { audio.playUiClick(); viewModel.start() },
+                onModeSelected = { viewModel.selectMode(it) },
+                onLevelSelected = { viewModel.selectLevel(it) },
+                onScaleSelected = { viewModel.selectScale(it) },
+                onPlay = { viewModel.start() },
             )
 
             GameStatus.Paused -> PausedOverlay(
                 onResume = { audio.playPause(); viewModel.togglePause() },
-                onMenu = { audio.playUiClick(); viewModel.toMenu(); onExitToMenu() },
+                onMenu = { viewModel.toMenu(); onExitToMenu() },
             )
 
             GameStatus.GameOver -> GameOverOverlay(
@@ -222,8 +222,8 @@ fun GameScreen(
                 bestScore = viewModel.bestScore,
                 isNewBest = viewModel.isNewBest,
                 unlocked = viewModel.newlyUnlocked.map { it.title },
-                onPlayAgain = { audio.playUiClick(); viewModel.playAgain() },
-                onMenu = { audio.playUiClick(); viewModel.toMenu(); onExitToMenu() },
+                onPlayAgain = { viewModel.playAgain() },
+                onMenu = { viewModel.toMenu(); onExitToMenu() },
             )
 
             GameStatus.Running -> Unit

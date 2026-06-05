@@ -82,6 +82,18 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
+### 2026-06-05 — Audio refresh + removed the UI click
+
+- Regenerated all SFX/music with lower, punchier tones: new `noise` oscillator,
+  a curved (`^2.5`) note release, a lower noise-layered `sfx_eat`, and
+  noise-based `sfx_quake`/`sfx_explosion`. Seeded the generator's RNG
+  (`random.seed`) so the noise clips stay reproducible across runs.
+- **Removed the UI click sound** at every call site (menu navigation, back
+  handlers, Ready/Paused/GameOver overlay buttons). Dropped the now-dead
+  `GameAudio.playUiClick()`, the `Sfx.Click` enum case, the `sfx_click()`
+  generator function and the `sfx_click.wav` asset (also out of `CREDITS.md`).
+  Pause/resume still play `sfx_pause`; gameplay SFX unchanged.
+
 ### 2026-06-05 — Stable effect-timer slot + longer effect durations
 
 - **Bug fix — board no longer resizes when effects appear/expire.** The
