@@ -3,6 +3,7 @@ package com.brioni.snake.audio
 import android.content.Context
 import com.brioni.snake.data.SettingsRepository
 import com.brioni.snake.game.Food
+import com.brioni.snake.game.FoodEffect
 import com.brioni.snake.game.FoodTier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -44,6 +45,20 @@ class GameAudio(context: Context, repo: SettingsRepository) : GameSfx {
     override fun shrunk(food: Food) = sound.play(Sfx.Shrink)
 
     override fun died() = sound.play(Sfx.GameOver)
+
+    override fun special(food: Food) = sound.play(
+        when (food.effect) {
+            is FoodEffect.Haste -> Sfx.Lightning
+            is FoodEffect.Slow -> Sfx.Snail
+            is FoodEffect.Ghost -> Sfx.Star
+            is FoodEffect.Freeze -> Sfx.Freeze
+            is FoodEffect.Jackpot -> Sfx.Jackpot
+            is FoodEffect.Quake -> Sfx.Quake
+            is FoodEffect.Burst -> Sfx.Explosion
+            // Grow/Shrink never reach here (those route through ate/shrunk).
+            else -> Sfx.Eat
+        },
+    )
 
     // --- UI sound effects ------------------------------------------------
 

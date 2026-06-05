@@ -111,6 +111,12 @@ fun SettingsScreen(
             onSelected = { skin -> scope.launch { repo.setSkin(skin) } },
         )
 
+        ToggleSection(
+            title = stringResource(R.string.settings_hazards),
+            checked = settings.hazardsEnabled,
+            onCheckedChange = { enabled -> scope.launch { repo.setHazardsEnabled(enabled) } },
+        )
+
         VolumeSection(
             title = stringResource(R.string.settings_master_volume),
             value = settings.masterVolume,

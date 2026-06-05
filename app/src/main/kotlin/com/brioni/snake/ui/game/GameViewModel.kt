@@ -68,6 +68,10 @@ class GameViewModel(
     var skin by mutableStateOf(Skin.Classic)
         private set
 
+    /** Whether harmful specials (earthquake/explosion/snail) may spawn (setting). */
+    var hazardsEnabled by mutableStateOf(true)
+        private set
+
     /** The colour palette + style flags for the active [skin]. */
     val palette: SkinPalette get() = paletteFor(skin)
 
@@ -96,6 +100,10 @@ class GameViewModel(
     var deathEventId by mutableIntStateOf(0)
         private set
 
+    /** Bumped on earthquake/explosion so the UI can shake the board mid-game. */
+    var shakeEventId by mutableIntStateOf(0)
+        private set
+
     /** Best score for the current (level, scale), and whether the last run beat it. */
     var bestScore by mutableIntStateOf(0)
         private set
@@ -120,6 +128,7 @@ class GameViewModel(
                 controlScheme = settings.controlScheme
                 crtEnabled = settings.crtEnabled
                 skin = settings.skin
+                hazardsEnabled = settings.hazardsEnabled
                 if (state.status == GameStatus.Ready) {
                     val levelChanged = settings.level != state.level
                     scale = settings.scale
@@ -212,7 +221,9 @@ class GameViewModel(
         stopLoop()
         loop = viewModelScope.launch {
             while (state.status == GameStatus.Running) {
-                delay(state.level.tickMillis)
+                // Read the *effective* interval each iteration so Lightning/Snail/
+                // Freeze actually change the pace mid-run.
+                delay(state.tickIntervalMillis)
                 if (state.status == GameStatus.Running) advance()
             }
         }
@@ -221,7 +232,7 @@ class GameViewModel(
     /** One simulation step, reacting to the events the engine emitted. */
     private fun advance() {
         val before = state
-        val after = engine.tick(before)
+        val after = engine.tick(before, hazardsEnabled)
 
         after.lastEvents.forEach { event ->
             when (event) {
@@ -240,13 +251,27 @@ class GameViewModel(
                     sfx.died()
                     onGameOver(after.score)
                 }
-                // Special power-ups / hazards: visuals + audio wired in step 6.2b.
-                is GameEvent.Quaked,
-                is GameEvent.Exploded,
-                is GameEvent.EffectStarted,
-                is GameEvent.EffectExpired,
-                is GameEvent.JackpotHit,
-                -> Unit
+                is GameEvent.Quaked -> {
+                    // Earthquake: implode burst at the head + a board shake.
+                    eatEvent = EatEvent(after.head, 1, palette.foodColor(event.food), implode = true)
+                    eatEventId++
+                    shakeEventId++
+                    sfx.special(event.food)
+                }
+                is GameEvent.Exploded -> {
+                    // Explosion: outward burst at the blast + a board shake.
+                    eatEvent = EatEvent(event.food.position, event.food.span, palette.special, implode = false)
+                    eatEventId++
+                    shakeEventId++
+                    sfx.special(event.food)
+                }
+                is GameEvent.JackpotHit -> {
+                    eatEvent = EatEvent(event.food.position, event.food.span, palette.foodColor(event.food), implode = false)
+                    eatEventId++
+                    sfx.special(event.food)
+                }
+                is GameEvent.EffectStarted -> sfx.special(event.food)
+                is GameEvent.EffectExpired -> Unit
             }
         }
 

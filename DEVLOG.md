@@ -37,10 +37,11 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 - `game/` package must remain free of Android/Compose imports — this is what makes it testable with plain JUnit.
 - **Mystery foods are resolved at spawn, not at eat**: `FoodTable.roll` rolls the concealed amount and
   stores the final `FoodEffect`, so `GameEngine.tick` consumes no randomness and stays deterministic.
-- **Special power-ups / hazards** (earthquake, explosion + lethal debris, lampo/lumaca, stella,
-  congelamento, jackpot) are deferred to **Phase 6.2** by decision — `FoodCategory.Special`,
-  extra `FoodEffect` cases and `GameState.debris`/`effectTimers` are the reserved hooks. Don't add them
-  before Phase 6.
+- **Special power-ups / hazards** shipped in **Phase 6.2** (earthquake, explosion + lethal debris,
+  Lightning/Snail, Star/ghost, Freeze, Jackpot) via `FoodCategory.Special`, the extra `FoodEffect`
+  cases and `GameState.debris`/`effectTimers`. Effect durations are stored in **ms** and aged by the
+  effective interval each tick; the loop reads `GameState.tickIntervalMillis` (never `level.tickMillis`)
+  so speed effects actually change the pace. Keep that invariant.
 - **Control scheme**: the default is **Swipe** (set in `GameViewModel.DEFAULT_CONTROL` and the
   persisted fallback in `SettingsRepository`); the two-button relative scheme and the D-pad remain
   selectable in Settings (choice persisted via DataStore). Phase 3 had originally shipped two-button
@@ -75,6 +76,25 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 > Newest entries at the top. One entry per completed phase/step or significant change.
 
 ---
+
+### 2026-06-05 — Step 6.2: Special foods (power-ups & hazards)
+
+- **Model (6.2a)**: extended the reserved hooks — `FoodEffect` gains Quake / Burst / Haste / Slow /
+  Ghost / Freeze / Jackpot (+ `isHazard`); new `Debris` and `ActiveEffect`/`EffectKind` types;
+  `GameState` carries `debris` + `effectTimers` and exposes `tickIntervalMillis` (speed effects scale
+  the pace, timers age by the same wall-clock interval) and `hasEffect()`. `GameEngine.tick` ages
+  timers/debris, wraps the head under Ghost, applies each special, splits the snake on Burst into lethal
+  auto-clearing debris, and treats debris as fatal (except under Ghost). `FoodTable` rolls time-gated
+  specials (`GATE_SPECIAL_MS`, 60s) honouring the hazards toggle + one-special/freeze gating. New
+  `GameEvent`s: Quaked / Exploded / EffectStarted / EffectExpired / JackpotHit. Tests: `SpecialFoodTest`
+  (17 cases).
+- **UX (6.2b)**: the loop now delays by `tickIntervalMillis`; `GameViewModel` passes `hazardsEnabled`
+  to `tick`, fires the new events to SFX + particles + a mid-game board shake (`shakeEventId`).
+  `GameBoard` draws each special as a maxi disc with a vivid, skin-independent accent and a vector
+  symbol (bolt / spiral / star / snowflake / `$` / spiky burst / crack), lethal fading debris, a
+  translucent shimmering snake under Ghost and a frost vignette under Freeze. HUD gains per-effect
+  countdown chips. Seven CC0 SFX added via `generate_audio.py`. A **Hazards** Settings toggle (default
+  on) disables the harmful specials.
 
 ### 2026-06-05 — Step 6.1: Skin system
 

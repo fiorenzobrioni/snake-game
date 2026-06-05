@@ -17,6 +17,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
@@ -28,11 +30,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.util.lerp
 import com.brioni.snake.game.BoardDimensions
 import com.brioni.snake.game.Direction
+import com.brioni.snake.game.EffectKind
 import com.brioni.snake.game.Food
 import com.brioni.snake.game.FoodCategory
+import com.brioni.snake.game.FoodEffect
 import com.brioni.snake.game.FoodTier
 import com.brioni.snake.game.GameState
 import com.brioni.snake.game.Position
+import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
 
@@ -131,9 +137,14 @@ fun GameBoard(
             state.obstacles.forEach { obstacle ->
                 drawObstacle(cell, originX + obstacle.x * cell, originY + obstacle.y * cell, palette)
             }
+            state.debris.forEach { d ->
+                drawDebris(cell, originX + d.cell.x * cell, originY + d.cell.y * cell, d.life)
+            }
             state.foods.forEach { food ->
                 drawFood(food, cell, originX, originY, pulse, textMeasurer, palette, shaders, time)
             }
+            val ghost = state.hasEffect(EffectKind.Ghost)
+            val snakeAlpha = if (ghost) 0.45f + 0.15f * (sin(seconds * 9.0).toFloat() * 0.5f + 0.5f) else 1f
             val snake = state.snake
             for (k in snake.indices.reversed()) {
                 val to = snake[k]
@@ -151,6 +162,7 @@ fun GameBoard(
                     cell = cell,
                     direction = state.direction,
                     palette = palette,
+                    alpha = if (k == 0) (snakeAlpha + 0.2f).coerceAtMost(1f) else snakeAlpha,
                     shaders = shaders,
                     time = time,
                 )
@@ -160,6 +172,18 @@ fun GameBoard(
                     color = p.color.copy(alpha = 0.85f * p.fade),
                     radius = p.radiusCells * cell,
                     center = Offset(originX + p.x * cell, originY + p.y * cell),
+                )
+            }
+            // Freeze: a cool frost vignette over the board while the effect runs.
+            if (state.hasEffect(EffectKind.Freeze)) {
+                drawRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(Color.Transparent, SpecialVisuals.FreezeColor.copy(alpha = 0.18f)),
+                        center = Offset(originX + boardWidth / 2f, originY + boardHeight / 2f),
+                        radius = maxOf(boardWidth, boardHeight) * 0.72f,
+                    ),
+                    topLeft = Offset(originX, originY),
+                    size = Size(boardWidth, boardHeight),
                 )
             }
         }
@@ -255,6 +279,10 @@ private fun DrawScope.drawFood(
     shaders: BoardShaders?,
     time: Float,
 ) {
+    if (food.category == FoodCategory.Special) {
+        drawSpecialFood(food, cell, originX, originY, pulse, textMeasurer)
+        return
+    }
     val color = palette.foodColor(food)
     val extent = cell * food.span
     val centerX = originX + food.position.x * cell + extent / 2f
@@ -328,6 +356,179 @@ private fun DrawScope.drawGlyph(
     )
 }
 
+/**
+ * Draws a Phase 6.2 special: a maxi disc in the power-up's universal accent
+ * colour (so a colour always means the same effect across skins) with a halo and
+ * a distinctive symbol on top.
+ */
+private fun DrawScope.drawSpecialFood(
+    food: Food,
+    cell: Float,
+    originX: Float,
+    originY: Float,
+    pulse: Float,
+    textMeasurer: TextMeasurer,
+) {
+    val accent = SpecialVisuals.accent(food.effect)
+    val extent = cell * food.span
+    val centerX = originX + food.position.x * cell + extent / 2f
+    val centerY = originY + food.position.y * cell + extent / 2f
+    val radius = extent * 0.40f * pulse
+
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(accent.copy(alpha = 0.5f), Color.Transparent),
+            center = Offset(centerX, centerY),
+            radius = radius * 2.1f,
+        ),
+        radius = radius * 2.1f,
+        center = Offset(centerX, centerY),
+    )
+    drawCircle(color = accent, radius = radius, center = Offset(centerX, centerY))
+    drawCircle(
+        color = Color.Black.copy(alpha = 0.18f),
+        radius = radius,
+        center = Offset(centerX, centerY),
+        style = Stroke(width = radius * 0.12f),
+    )
+
+    val ink = Color(0xFF10151C)
+    drawSpecialSymbol(food.effect, centerX, centerY, radius * 0.92f, ink, textMeasurer)
+}
+
+/** Dispatches the on-disc icon for each special effect. */
+private fun DrawScope.drawSpecialSymbol(
+    effect: FoodEffect,
+    cx: Float,
+    cy: Float,
+    r: Float,
+    color: Color,
+    textMeasurer: TextMeasurer,
+) {
+    when (effect) {
+        is FoodEffect.Haste -> drawBolt(cx, cy, r, color)
+        is FoodEffect.Slow -> drawSpiral(cx, cy, r, color)
+        is FoodEffect.Ghost -> drawStarShape(cx, cy, r, points = 5, innerRatio = 0.45f, color = color)
+        is FoodEffect.Freeze -> drawSnowflake(cx, cy, r, color)
+        is FoodEffect.Jackpot -> drawGlyph(textMeasurer, "$", cx, cy, r * 1.7f, color)
+        is FoodEffect.Burst -> drawStarShape(cx, cy, r, points = 8, innerRatio = 0.42f, color = color)
+        is FoodEffect.Quake -> drawCrack(cx, cy, r, color)
+        else -> Unit
+    }
+}
+
+/** An n-pointed star (used for Star and the spiky Explosion burst). */
+private fun DrawScope.drawStarShape(cx: Float, cy: Float, r: Float, points: Int, innerRatio: Float, color: Color) {
+    val path = Path()
+    val verts = points * 2
+    for (i in 0 until verts) {
+        val rr = if (i % 2 == 0) r else r * innerRatio
+        val ang = -PI / 2 + i * PI / points
+        val x = cx + (cos(ang) * rr).toFloat()
+        val y = cy + (sin(ang) * rr).toFloat()
+        if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+    }
+    path.close()
+    drawPath(path, color)
+}
+
+private fun DrawScope.drawBolt(cx: Float, cy: Float, r: Float, color: Color) {
+    val pts = listOf(
+        -0.10f to -0.62f, 0.30f to -0.62f, 0.00f to -0.10f,
+        0.26f to -0.10f, -0.16f to 0.62f, -0.02f to 0.06f, -0.30f to 0.06f,
+    )
+    val path = Path()
+    pts.forEachIndexed { i, (px, py) ->
+        val x = cx + px * r
+        val y = cy + py * r
+        if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+    }
+    path.close()
+    drawPath(path, color)
+}
+
+private fun DrawScope.drawSnowflake(cx: Float, cy: Float, r: Float, color: Color) {
+    val stroke = r * 0.16f
+    for (k in 0 until 3) {
+        val ang = k * PI / 3
+        val dx = cos(ang).toFloat()
+        val dy = sin(ang).toFloat()
+        drawLine(
+            color,
+            Offset(cx - dx * r, cy - dy * r),
+            Offset(cx + dx * r, cy + dy * r),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round,
+        )
+        // Two small V-branches near each tip.
+        for (sign in intArrayOf(-1, 1)) {
+            val tipX = cx + dx * r * sign
+            val tipY = cy + dy * r * sign
+            val bAng = ang + sign * 0.9
+            val bx = cos(bAng).toFloat() * r * 0.32f
+            val by = sin(bAng).toFloat() * r * 0.32f
+            drawLine(color, Offset(tipX, tipY), Offset(tipX - bx, tipY - by), strokeWidth = stroke * 0.8f, cap = StrokeCap.Round)
+        }
+    }
+}
+
+private fun DrawScope.drawSpiral(cx: Float, cy: Float, r: Float, color: Color) {
+    val path = Path()
+    val steps = 64
+    val turns = 2.4
+    for (i in 0..steps) {
+        val t = i / steps.toFloat()
+        val ang = t * turns * 2 * PI
+        val rr = r * (0.92f - 0.78f * t)
+        val x = cx + (cos(ang) * rr).toFloat()
+        val y = cy + (sin(ang) * rr).toFloat()
+        if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+    }
+    drawPath(path, color, style = Stroke(width = r * 0.14f, cap = StrokeCap.Round))
+}
+
+private fun DrawScope.drawCrack(cx: Float, cy: Float, r: Float, color: Color) {
+    val pts = listOf(
+        -0.7f to -0.1f, -0.35f to 0.28f, -0.05f to -0.22f,
+        0.25f to 0.22f, 0.62f to -0.16f,
+    )
+    for (i in 0 until pts.size - 1) {
+        val (ax, ay) = pts[i]
+        val (bx, by) = pts[i + 1]
+        drawLine(
+            color,
+            Offset(cx + ax * r, cy + ay * r),
+            Offset(cx + bx * r, cy + by * r),
+            strokeWidth = r * 0.16f,
+            cap = StrokeCap.Round,
+        )
+    }
+}
+
+/** A lethal, time-limited explosion block; fades as its timer runs down. */
+private fun DrawScope.drawDebris(cell: Float, left: Float, top: Float, life: Float) {
+    val inset = cell * 0.08f
+    val side = cell - 2 * inset
+    val color = SpecialVisuals.ExplosionColor
+    val alpha = 0.35f + 0.55f * life
+    val radius = CornerRadius(cell * 0.18f, cell * 0.18f)
+    drawRoundRect(
+        color = color.copy(alpha = alpha),
+        topLeft = Offset(left + inset, top + inset),
+        size = Size(side, side),
+        cornerRadius = radius,
+    )
+    drawRoundRect(
+        color = Color.Black.copy(alpha = 0.35f * life),
+        topLeft = Offset(left + inset, top + inset),
+        size = Size(side, side),
+        cornerRadius = radius,
+        style = Stroke(width = cell * 0.05f),
+    )
+    // A small crack mark.
+    drawCrack(left + cell / 2f, top + cell / 2f, side * 0.32f, Color.Black.copy(alpha = 0.4f * life))
+}
+
 private fun DrawScope.drawSnakeSegment(
     isHead: Boolean,
     left: Float,
@@ -335,6 +536,7 @@ private fun DrawScope.drawSnakeSegment(
     cell: Float,
     direction: Direction,
     palette: SkinPalette,
+    alpha: Float,
     shaders: BoardShaders?,
     time: Float,
 ) {
@@ -368,14 +570,15 @@ private fun DrawScope.drawSnakeSegment(
     val topLeft = Offset(left + inset, top + inset)
     val corner = if (palette.rounded) cell * 0.3f else 0f
     val radius = CornerRadius(corner, corner)
+    val fill = (if (isHead) palette.snakeHead else palette.snakeBody).copy(alpha = alpha)
     drawRoundRect(
-        color = if (isHead) palette.snakeHead else palette.snakeBody,
+        color = fill,
         topLeft = topLeft,
         size = Size(side, side),
         cornerRadius = radius,
     )
     drawRoundRect(
-        color = palette.snakeOutline,
+        color = palette.snakeOutline.copy(alpha = alpha),
         topLeft = topLeft,
         size = Size(side, side),
         cornerRadius = radius,

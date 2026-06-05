@@ -49,7 +49,11 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - ✨ **GPU shader effects (Android 13+)** — an animated background, a glowing snake head and pulsing
   halos on rare foods, all via **AGSL** `RuntimeShader`s, plus an optional **retro CRT filter**
   toggle in Settings. Devices below Android 13 fall back to the polished Canvas rendering.
-- ⏸️ **Pause, menus, highscores, special power-ups** — added progressively (see the roadmap).
+- ⚡ **Power-ups & hazards** — rare maxi pieces that appear later in a run: **Lightning** (speed up),
+  **Snail** (slow down), **Star** (invincible pass-through), **Freeze**, **Jackpot** (big bonus),
+  plus the hazards **Earthquake** (bites your tail) and **Explosion** (splits the snake, leaving lethal
+  debris). Active effects show countdown chips; toggle **Hazards** off in Settings for a calmer run.
+- ⏸️ **Pause, menus, highscores** — added progressively (see the roadmap).
 
 ### 🍽️ Food system at a glance
 

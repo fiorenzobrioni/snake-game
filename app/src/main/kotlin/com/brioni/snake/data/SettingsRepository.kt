@@ -27,6 +27,7 @@ data class Settings(
     val sfxVolume: Float = DEFAULT_SFX_VOLUME,
     val crtEnabled: Boolean = false,
     val skin: Skin = Skin.Classic,
+    val hazardsEnabled: Boolean = true,
 )
 
 /** Default audio levels (also used as the in-memory fallback before load). */
@@ -54,6 +55,7 @@ class SettingsRepository(private val context: Context) {
             sfxVolume = prefs[SFX_VOLUME] ?: DEFAULT_SFX_VOLUME,
             crtEnabled = prefs[CRT_ENABLED] ?: false,
             skin = prefs[SKIN].toEnum(Skin::valueOf) ?: Skin.Classic,
+            hazardsEnabled = prefs[HAZARDS_ENABLED] ?: true,
         )
     }
 
@@ -80,6 +82,9 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setSkin(skin: Skin) =
         edit { it[SKIN] = skin.name }
+
+    suspend fun setHazardsEnabled(enabled: Boolean) =
+        edit { it[HAZARDS_ENABLED] = enabled }
 
     /** The stored best for a [level]×[scale] pairing (0 if none yet). */
     fun highScore(level: Level, scale: BoardScale): Flow<Int> =
@@ -118,5 +123,6 @@ class SettingsRepository(private val context: Context) {
         val SFX_VOLUME = floatPreferencesKey("sfx_volume")
         val CRT_ENABLED = booleanPreferencesKey("crt_enabled")
         val SKIN = stringPreferencesKey("skin")
+        val HAZARDS_ENABLED = booleanPreferencesKey("hazards_enabled")
     }
 }

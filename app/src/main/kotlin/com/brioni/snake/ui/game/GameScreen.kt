@@ -8,14 +8,20 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -26,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
@@ -70,11 +77,24 @@ fun GameScreen(
             shake.animateTo(1f, tween(durationMillis = 450, easing = LinearEasing))
         }
     }
+    // A lighter mid-game shake reused by earthquakes / explosions (step 6.2).
+    val quake = remember { Animatable(0f) }
+    LaunchedEffect(viewModel.shakeEventId) {
+        if (viewModel.shakeEventId > 0) {
+            quake.snapTo(0f)
+            quake.animateTo(1f, tween(durationMillis = 380, easing = LinearEasing))
+        }
+    }
     val amplitudePx = with(LocalDensity.current) { 10.dp.toPx() }
+    val quakeAmpPx = with(LocalDensity.current) { 7.dp.toPx() }
     val shakeT = shake.value
     val damp = 1f - shakeT
-    val shakeX = (sin(shakeT * Math.PI * 10).toFloat() * amplitudePx * damp)
-    val shakeY = (cos(shakeT * Math.PI * 9).toFloat() * amplitudePx * damp)
+    val quakeT = quake.value
+    val quakeDamp = 1f - quakeT
+    val shakeX = sin(shakeT * Math.PI * 10).toFloat() * amplitudePx * damp +
+        sin(quakeT * Math.PI * 14).toFloat() * quakeAmpPx * quakeDamp
+    val shakeY = cos(shakeT * Math.PI * 9).toFloat() * amplitudePx * damp +
+        cos(quakeT * Math.PI * 13).toFloat() * quakeAmpPx * quakeDamp
 
     // Pause blur (step 3.4): API 31+ blurs the frozen board; below it no-ops and
     // the overlay scrim still distinguishes the paused state.
@@ -93,6 +113,8 @@ fun GameScreen(
                 showPause = state.status == GameStatus.Running,
                 onPause = { audio.playPause(); viewModel.togglePause() },
             )
+
+            EffectTimersRow(effects = state.effectTimers)
 
             BoxWithConstraints(
                 modifier = Modifier
@@ -136,7 +158,7 @@ fun GameScreen(
                     state = state,
                     previousSnake = viewModel.previousSnake,
                     tickTimeNanos = viewModel.tickTimeNanos,
-                    tickMillis = state.level.tickMillis,
+                    tickMillis = state.tickIntervalMillis,
                     running = state.status == GameStatus.Running,
                     eatEvent = viewModel.eatEvent,
                     eatEventId = viewModel.eatEventId,
@@ -180,6 +202,61 @@ fun GameScreen(
             )
 
             GameStatus.Running -> Unit
+        }
+    }
+}
+
+/** A row of countdown chips for the timed effects currently running. */
+@Composable
+private fun EffectTimersRow(effects: List<com.brioni.snake.game.ActiveEffect>) {
+    if (effects.isEmpty()) return
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        effects.forEach { effect -> EffectChip(effect) }
+    }
+}
+
+@Composable
+private fun EffectChip(effect: com.brioni.snake.game.ActiveEffect) {
+    val color = SpecialVisuals.accent(effect.kind)
+    val label = when (effect.kind) {
+        com.brioni.snake.game.EffectKind.Haste -> stringResource(R.string.effect_lightning)
+        com.brioni.snake.game.EffectKind.Slow -> stringResource(R.string.effect_snail)
+        com.brioni.snake.game.EffectKind.Ghost -> stringResource(R.string.effect_star)
+        com.brioni.snake.game.EffectKind.Freeze -> stringResource(R.string.effect_freeze)
+    }
+    Column(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f))
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = color,
+        )
+        Box(
+            modifier = Modifier
+                .padding(top = 3.dp)
+                .height(3.dp)
+                .width(52.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(color.copy(alpha = 0.25f)),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(effect.fraction)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(color),
+            )
         }
     }
 }

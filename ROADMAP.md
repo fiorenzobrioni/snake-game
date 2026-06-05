@@ -220,17 +220,18 @@ snake-game/
 ### Phase 6 — Content & replayability
 
 - [x] **Step 6.1** — Skin system (Classic / Neon / Retro / Pixel = palette + render style + optional shader).
-- [ ] **Step 6.2** — **Special food pieces / power-ups & hazards** (extends the Phase 2.5 food system).
+- [x] **Step 6.2** — **Special food pieces / power-ups & hazards** (extends the Phase 2.5 food system).
       All are **maxi-sized** with a distinctive shape/symbol, **time-gated** (appear later in a session)
       and surfaced through the existing `GameEvent` channel + HUD timers. They add `FoodCategory.Special`,
-      new `FoodEffect` cases, and `GameState` fields `debris: List<Debris>` + `effectTimers`.
-  - [ ] **Earthquake** — eats a chunk of the snake's tail; reuses the death screen-shake.
-  - [ ] **Explosion** — splits the snake in two; the detached tail stays on the board as **lethal,
+      new `FoodEffect` cases, and `GameState` fields `debris: List<Debris>` + `effectTimers`. A Settings
+      toggle disables the harmful ones (Earthquake / Explosion / Snail) for a calmer run.
+  - [x] **Earthquake** — eats a chunk of the snake's tail; reuses the death screen-shake.
+  - [x] **Explosion** — splits the snake in two; the detached tail stays on the board as **lethal,
         time-limited debris** (crashing into it kills) that **auto-clears** after a timer.
-  - [ ] **Lampo / Lumaca** — temporary speed boost / slow-down (scales the tick interval) with a HUD timer.
-  - [ ] **Stella** — brief invincibility / ghost (pass through walls, obstacles and self) with a HUD timer.
-  - [ ] **Congelamento** — temporarily freezes hazard spawns / slows time — a strategic breather.
-  - [ ] **Jackpot** — rare piece granting a large score bonus (and a random growth).
+  - [x] **Lightning / Snail** — temporary speed boost / slow-down (scales the tick interval) with a HUD timer.
+  - [x] **Star** — brief invincibility / ghost (pass through walls, obstacles and self) with a HUD timer.
+  - [x] **Freeze** — temporarily freezes special spawns / slows time — a strategic breather.
+  - [x] **Jackpot** — rare piece granting a large score bonus (and a random growth).
 - [ ] **Step 6.3** — Highscore tables per (level × size) in a "Records" screen.
 - [ ] **Step 6.4** — Local achievements.
 - [ ] **Step 6.5** — Extra modes: Endless, Time Attack.
