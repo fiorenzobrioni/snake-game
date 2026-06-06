@@ -326,15 +326,30 @@ class SpecialFoodTest {
     }
 
     @Test
-    fun onlyOneSpecialIsKeptOnTheBoard() {
-        // Deep into a session the refill must never seat a second special.
+    fun atMostTwoSpecialsOnTheBoard() {
+        // Deep into a session the refill must never seat a third special.
         var state = engine.newGame(Level.Legend, board)
             .copy(elapsedTicks = 5000)
         repeat(300) {
-            state = engine.tick(state)
+            state = engine.tick(state, specialFrequency = SpecialFrequency.Frenzy)
             if (state.status != GameStatus.Running) state = state.copy(status = GameStatus.Running)
-            assertTrue(state.foods.count { it.category == FoodCategory.Special } <= 1)
+            assertTrue(state.foods.count { it.category == FoodCategory.Special } <= GameEngine.MAX_SPECIALS_ON_BOARD)
         }
+    }
+
+    @Test
+    fun twoSpecialsCanCoexist() {
+        // With the cap at two and a high spawn rate, a long run should at some
+        // point show both special slots filled at once.
+        var state = engine.newGame(Level.Legend, board)
+            .copy(elapsedTicks = 5000)
+        var sawTwo = false
+        repeat(600) {
+            state = engine.tick(state, specialFrequency = SpecialFrequency.Frenzy)
+            if (state.status != GameStatus.Running) state = state.copy(status = GameStatus.Running)
+            if (state.foods.count { it.category == FoodCategory.Special } == 2) sawTwo = true
+        }
+        assertTrue("two specials should be able to share the board", sawTwo)
     }
 
     @Test

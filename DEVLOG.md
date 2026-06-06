@@ -82,6 +82,22 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
+### 2026-06-06 — Two specials at once, higher frequency, grow/shrink amount popups (v0.2.1)
+
+- **Up to two specials on the board.** New `GameEngine.MAX_SPECIALS_ON_BOARD = 2`;
+  the refill gate (in `tick` and `refill`) now counts specials instead of allowing
+  only one. Raised `FOOD_COUNT 2 → 3` so a regular (growth) food is always present
+  even when both special slots are filled.
+- **Slightly higher spawn frequency** for every tier (`SpecialFrequency`): weights
+  `Standard 8→10`, `Frequent 18→22`, `Frenzy 32→40` (gate timing unchanged).
+- **Grow/shrink amount callout.** Eating a length-changing food now floats the
+  number of segments (`+N` / `-N`) at the food, reusing the `FloatingText` system
+  built for the time blocks (shown only when the amount is non-zero, so a shrink at
+  the length floor stays silent). Coloured with the food's own palette colour.
+- **Version bump** `versionCode 3 → 4`, `versionName "0.2.0" → "0.2.1"`. Tests:
+  `onlyOneSpecialIsKeptOnTheBoard` → `atMostTwoSpecialsOnTheBoard`, plus a new
+  `twoSpecialsCanCoexist`.
+
 ### 2026-06-06 — Time Attack clock blocks, earthquake rework, special timeout (v0.2.0)
 
 - **New Time Attack power-up / hazard.** Two new `FoodEffect`s — `TimeBonus`

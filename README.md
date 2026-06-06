@@ -45,10 +45,11 @@ The classic Snake mechanics, extended with configurable features so every run fe
   **Freeze**, **Jackpot** (big bonus),
   plus the hazards **Earthquake** (bites a chunk off your tail and scatters those segments across the
   board as lethal, fading debris) and **Explosion** (splits the snake, leaving lethal debris). Active
-  effects show countdown chips; toggle **Hazards** off in Settings for a calmer run, or dial how often
-  specials appear with the **Special blocks** setting (*Standard / Frequent / Frenzy*) — the higher
-  tiers also bring specials online earlier in a run. **Time Attack** adds two exclusive clock pieces:
-  a green **+5s** bonus and a red **−3s** penalty, each with a floating callout.
+  effects show countdown chips; up to **two specials** can share the board at once. Toggle **Hazards**
+  off in Settings for a calmer run, or dial how often specials appear with the **Special blocks**
+  setting (*Standard / Frequent / Frenzy*) — the higher tiers also bring specials online earlier in a
+  run. **Time Attack** adds two exclusive clock pieces: a green **+5s** bonus and a red **−3s**
+  penalty, each with a floating callout.
 - 🏆 **Records screen** — a best-score table per difficulty × board scale (and per mode), reachable
   from the main menu.
 - 🎖️ **Achievements** — local milestones (combos, scores, surviving, using power-ups…) that unlock as
@@ -66,7 +67,7 @@ The classic Snake mechanics, extended with configurable features so every run fe
 
 The snake never shrinks below **3 segments**. Grow food drives the score (scaled by the combo
 multiplier); shrink food is a tactical tool — it gives only token points but lets you cut your length
-to manoeuvre.
+to manoeuvre. Eating either floats the amount of segments gained or lost (**+N** / **−N**) at the food.
 
 ### ⚔️ Difficulty levels
 

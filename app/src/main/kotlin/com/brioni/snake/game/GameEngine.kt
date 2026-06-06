@@ -260,11 +260,11 @@ class GameEngine(private val random: Random = Random.Default) {
         // Top the board back up — covers both an eaten food and a vanished one.
         if (foods.size < FOOD_COUNT) {
             val freezeActive = effectTimers.any { it.kind == EffectKind.Freeze }
-            val specialOnBoard = foods.any { it.category == FoodCategory.Special }
+            val specialsOnBoard = foods.count { it.category == FoodCategory.Special }
             foods = refill(
                 board, body, state.obstacles, foods, elapsedTicks, state.level,
                 hazardsEnabled = hazardsEnabled,
-                specialAllowed = !specialOnBoard && !freezeActive,
+                specialAllowed = specialsOnBoard < MAX_SPECIALS_ON_BOARD && !freezeActive,
                 specialFrequency = specialFrequency,
                 mode = state.mode,
             )
@@ -393,8 +393,9 @@ class GameEngine(private val random: Random = Random.Default) {
     ): List<Food> {
         var foods = existing
         while (foods.size < FOOD_COUNT) {
-            // A special is allowed only if one isn't already on the board.
-            val allowSpecial = specialAllowed && foods.none { it.category == FoodCategory.Special }
+            // A special is allowed only while fewer than the cap are on the board.
+            val allowSpecial = specialAllowed &&
+                foods.count { it.category == FoodCategory.Special } < MAX_SPECIALS_ON_BOARD
             val food = spawnFood(board, snake, obstacles, foods, elapsedTicks, level, hazardsEnabled, allowSpecial, specialFrequency, mode) ?: break
             foods = foods + food
         }
@@ -486,8 +487,11 @@ class GameEngine(private val random: Random = Random.Default) {
     }
 
     companion object {
-        /** Foods kept on the board at once — two, as in v1.0.0. */
-        const val FOOD_COUNT = 2
+        /** Foods kept on the board at once. */
+        const val FOOD_COUNT = 3
+
+        /** At most this many specials (power-ups / hazards) may share the board. */
+        const val MAX_SPECIALS_ON_BOARD = 2
 
         /** The snake never shrinks below this many segments. */
         const val MIN_SNAKE_LENGTH = 3

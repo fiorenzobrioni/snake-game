@@ -19,6 +19,7 @@ import com.brioni.snake.game.ControlScheme
 import com.brioni.snake.game.EffectKind
 import com.brioni.snake.game.DEFAULT_ASPECT
 import com.brioni.snake.game.Direction
+import com.brioni.snake.game.FoodEffect
 import com.brioni.snake.game.GameEngine
 import com.brioni.snake.game.GameEvent
 import com.brioni.snake.game.GameMode
@@ -317,6 +318,11 @@ class GameViewModel(
                 is GameEvent.Ate -> {
                     eatEvent = EatEvent(event.food.position, event.food.span, palette.foodColor(event.food), BurstStyle.Eat)
                     eatEventId++
+                    val grown = (event.food.effect as? FoodEffect.Grow)?.segments ?: 0
+                    if (grown > 0) {
+                        floatingText = FloatingTextEvent(event.food.position, event.food.span, "+$grown", palette.foodColor(event.food))
+                        floatingTextId++
+                    }
                     sfx.ate(event.food, event.combo)
                     runFoodsEaten++
                     runMaxCombo = max(runMaxCombo, event.combo)
@@ -324,6 +330,10 @@ class GameViewModel(
                 is GameEvent.Shrunk -> {
                     eatEvent = EatEvent(event.food.position, event.food.span, palette.foodColor(event.food), BurstStyle.Implode)
                     eatEventId++
+                    if (event.removed > 0) {
+                        floatingText = FloatingTextEvent(event.food.position, event.food.span, "-${event.removed}", palette.foodColor(event.food))
+                        floatingTextId++
+                    }
                     sfx.shrunk(event.food)
                 }
                 GameEvent.Died -> {
