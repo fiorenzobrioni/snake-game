@@ -238,7 +238,7 @@ snake-game/
 
 ### Phase 7 — Play Store distribution & cleanup
 
-- [ ] **Step 7.1** — Final app icon / adaptive icon + branded **SplashScreen API**; set `versionCode`/`versionName`.
+- [x] **Step 7.1** — Final app icon / adaptive icon + branded **SplashScreen API**; set `versionCode`/`versionName`.
 - [ ] **Step 7.2** — Release hardening: **R8** + resource shrinking, verify the minified build runs.
 - [ ] **Step 7.3** — **Signing**: upload keystore wired via env/CI secrets (never committed) + **Play App Signing**.
 - [ ] **Step 7.4** — Build a signed **AAB**; **GitHub Actions** on `v*` tags → signed AAB artifact (optionally

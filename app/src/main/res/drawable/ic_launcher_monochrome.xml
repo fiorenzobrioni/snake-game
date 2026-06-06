@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Themed-icon (Android 13+) monochrome layer: a flat single-colour silhouette
+     of the snake + food. The launcher tints this with the user's theme, so the
+     fill colour itself is irrelevant — only the shapes matter. Scaled to ~0.86
+     around the centre to keep a small margin inside the safe zone, mirroring
+     ic_launcher_foreground.xml. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="0.86"
+        android:scaleY="0.86">
+
+        <!-- Body segments (tail → neck) -->
+        <path android:fillColor="#FFFFFF" android:pathData="M29,76 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z" />
+        <path android:fillColor="#FFFFFF" android:pathData="M43,74 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z" />
+        <path android:fillColor="#FFFFFF" android:pathData="M55,66 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z" />
+        <path android:fillColor="#FFFFFF" android:pathData="M57,52 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z" />
+        <path android:fillColor="#FFFFFF" android:pathData="M49,42 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z" />
+
+        <!-- Head -->
+        <path android:fillColor="#FFFFFF" android:pathData="M34,32 a12,12 0 1,0 24,0 a12,12 0 1,0 -24,0 Z" />
+
+        <!-- Food -->
+        <path android:fillColor="#FFFFFF" android:pathData="M67,40 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0 Z" />
+    </group>
+</vector>
