@@ -105,6 +105,9 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 - Follow-up polish: intro hold lengthened to 3.2s; the highlight now **sweeps back and forth**
   (infinite `RepeatMode.Reverse`) for the whole duration; and the splash **fades out** (whole-canvas
   `graphicsLayer` alpha over its last 500ms) before the menu, instead of cutting hard.
+- Filled out the intro scene so both halves carry artwork: the right half now has a **sleek glowing
+  modern snake**; the left half's retro art is bolder — a **sliced synthwave sun** + a stronger grid
+  with a bright horizon line. Launcher icon inset to ~0.86 so it no longer touches the safe-zone edge.
 
 ### 2026-06-06 — Two specials at once, higher frequency, grow/shrink amount popups (v0.2.1)
 

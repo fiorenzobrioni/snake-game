@@ -39,6 +39,7 @@ import com.brioni.snake.R
 import com.brioni.snake.ui.theme.Orbitron
 import kotlinx.coroutines.delay
 import kotlin.math.min
+import kotlin.math.sin
 
 // Visual interval the intro is on screen before it hands off to the menu. The
 // last EXIT_FADE_MS of it are a fade-out, so the wordmark settles for a beat
@@ -123,11 +124,18 @@ fun BrandIntroScreen(onFinished: () -> Unit, modifier: Modifier = Modifier) {
         val w = size.width
         val h = size.height
         val mid = w / 2f
+        val alpha = entrance.value
 
         drawBackdrops(mid)
+        // Left half (clip 0..mid): the 80s scene — synthwave sun, neon grid, scanlines.
         clipRect(right = mid) {
-            drawSynthwaveGrid(mid)
-            drawScanlines(mid)
+            drawSynthwaveSun(mid, alpha)
+            drawSynthwaveGrid(mid, alpha)
+            drawScanlines(mid, alpha)
+        }
+        // Right half (clip mid..w): the modern era — a sleek, glowing snake.
+        clipRect(left = mid) {
+            drawModernSnake(mid, alpha)
         }
 
         // Measure the wordmark once per style. The neon variant carries a cyan
@@ -159,7 +167,6 @@ fun BrandIntroScreen(onFinished: () -> Unit, modifier: Modifier = Modifier) {
         val tw = neon.size.width.toFloat()
         val th = neon.size.height.toFloat()
         val fit = min(1f, (w * 0.84f) / tw)
-        val alpha = entrance.value
         val s = fit * (0.88f + 0.12f * entrance.value) * pulse
         val left = (w - tw) / 2f
         val top = (h - th) / 2f - h * 0.03f
@@ -225,31 +232,122 @@ private fun DrawScope.drawBackdrops(mid: Float) {
     }
 }
 
-/** A faint synthwave grid receding to a vanishing point in the lower-left. */
-private fun DrawScope.drawSynthwaveGrid(mid: Float) {
+/** A bold synthwave grid receding to a vanishing point, with a bright horizon. */
+private fun DrawScope.drawSynthwaveGrid(mid: Float, alpha: Float) {
     val h = size.height
     val horizonY = h * 0.60f
     val vp = Offset(mid * 0.42f, horizonY)
-    val grid = GridAmber.copy(alpha = 0.18f)
+    val grid = GridAmber.copy(alpha = 0.34f * alpha)
 
     val verticals = 9
     for (k in 0..verticals) {
         val bx = (k / verticals.toFloat()) * (mid * 1.2f) - mid * 0.1f
-        drawLine(grid, vp, Offset(bx, h), strokeWidth = 1.2f)
+        drawLine(grid, vp, Offset(bx, h), strokeWidth = 2.2f)
     }
     val rows = 7
     for (r in 1..rows) {
         val t = r / rows.toFloat()
         val y = horizonY + (h - horizonY) * (t * t)
-        drawLine(grid, Offset(0f, y), Offset(mid, y), strokeWidth = 1.2f)
+        drawLine(grid, Offset(0f, y), Offset(mid, y), strokeWidth = 2.2f)
+    }
+    // A bright horizon line where the sun meets the grid.
+    drawLine(
+        GridAmber.copy(alpha = 0.75f * alpha),
+        Offset(0f, horizonY),
+        Offset(mid, horizonY),
+        strokeWidth = 3.5f,
+    )
+}
+
+/** A classic 80s "sliced" synthwave sun rising from the grid horizon. */
+private fun DrawScope.drawSynthwaveSun(mid: Float, alpha: Float) {
+    val w = size.width
+    val h = size.height
+    val center = Offset(mid * 0.5f, h * 0.685f)
+    val radius = w * 0.105f
+
+    // Soft outer glow.
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(Color(0x66FF4D8D), Color.Transparent),
+            center = center,
+            radius = radius * 1.9f,
+        ),
+        radius = radius * 1.9f,
+        center = center,
+        alpha = alpha,
+    )
+    // The disc: hot pink at the top melting into amber at the bottom.
+    drawCircle(
+        brush = Brush.verticalGradient(
+            colors = listOf(Color(0xFFFF4D8D), Color(0xFFFFC15A)),
+            startY = center.y - radius,
+            endY = center.y + radius,
+        ),
+        radius = radius,
+        center = center,
+        alpha = 0.95f * alpha,
+    )
+    // Horizontal slits in the lower half, cut with the backdrop colour and
+    // getting thicker toward the bottom.
+    val bars = 6
+    for (i in 0 until bars) {
+        val t = i / (bars - 1f)
+        val y = center.y + radius * (0.12f + 0.82f * t)
+        val thickness = radius * (0.05f + 0.11f * t)
+        drawRect(
+            color = RetroBottom,
+            topLeft = Offset(center.x - radius, y),
+            size = Size(radius * 2f, thickness),
+        )
     }
 }
 
-/** Low-alpha CRT scanlines across the 80s half. */
-private fun DrawScope.drawScanlines(mid: Float) {
+/** A sleek, glowing modern snake heading right — the game today. */
+private fun DrawScope.drawModernSnake(mid: Float, alpha: Float) {
+    val w = size.width
+    val h = size.height
+    val r = w * 0.034f
+    val seg = w * 0.052f
+    val baseX = mid + (w - mid) * 0.52f
+    val baseY = h * 0.70f
+    val amp = w * 0.035f
+    val n = 7
+
+    // Segment centres along a gentle S-curve (tail → head).
+    val pts = (0..n).map { i ->
+        Offset(baseX - (n / 2f - i) * seg, baseY + sin(i * 0.95f) * amp)
+    }
+    val head = pts.last()
+    val body = Color(0xFF3FA34D)
+
+    // Glow behind the head.
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(ModernLime.copy(alpha = 0.55f), Color.Transparent),
+            center = head,
+            radius = r * 3.2f,
+        ),
+        radius = r * 3.2f,
+        center = head,
+        alpha = alpha,
+    )
+    // Body segments, tapering toward the tail.
+    pts.dropLast(1).forEachIndexed { i, p ->
+        drawCircle(body, radius = r * (0.7f + 0.3f * (i / n.toFloat())), center = p, alpha = alpha)
+    }
+    // Head + eye + catchlight.
+    drawCircle(ModernLime, radius = r * 1.15f, center = head, alpha = alpha)
+    val eye = Offset(head.x + r * 0.45f, head.y - r * 0.35f)
+    drawCircle(Color(0xFF101418), radius = r * 0.32f, center = eye, alpha = alpha)
+    drawCircle(Color.White, radius = r * 0.12f, center = Offset(eye.x + r * 0.12f, eye.y - r * 0.12f), alpha = alpha)
+}
+
+/** CRT scanlines across the 80s half. */
+private fun DrawScope.drawScanlines(mid: Float, alpha: Float) {
     val h = size.height
     val gap = 5.dp.toPx()
-    val line = Scanline.copy(alpha = 0.13f)
+    val line = Scanline.copy(alpha = 0.16f * alpha)
     var y = 0f
     while (y < h) {
         drawRect(line, topLeft = Offset(0f, y), size = Size(mid, gap * 0.5f))
