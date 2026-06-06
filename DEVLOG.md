@@ -82,6 +82,27 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
+### 2026-06-06 — Step 7.1: branded launch — icon, splash & brand intro (v0.3.0)
+
+- **Two-stage branded launch.** The system `SplashScreen` API can only show a centred icon on a
+  background, so the rich "half 80s / half modern" concept lives in a Compose intro after it:
+  1. **System splash** — new `splash_icon_animated.xml` (an `animated-vector` over `splash_snake.xml`,
+     a copy of the snake wrapped in a named `icon` group) plays a short overshoot **pop-in**;
+     `themes.xml` points `windowSplashScreenAnimatedIcon` at it with a matching 500ms duration.
+     `MainActivity` fades the splash out (`setOnExitAnimationListener`) for a smooth handoff.
+  2. **`ui/intro/BrandIntroScreen`** — a Canvas-drawn, split **"SNAKE"** wordmark: left half 80s neon
+     (magenta→cyan gradient + glow, CRT scanlines, a synthwave grid) and right half clean modern flat
+     lime. A light sweep crosses on entrance; a small tagline sits underneath. Auto-advances after
+     2.6s, tap-to-skip, calls `onFinished` once. All procedural (no shaders) so it renders on every API.
+- **Navigation.** Added `Screen.Intro` as the first/default destination in `ui/App.kt`; it cross-fades
+  to the menu. `rememberSaveable` keeps it to fresh cold launches (no replay on return-from-background);
+  back on the intro skips to the menu. Menu music begins under the intro via the existing crossfade.
+- **Final icon polish.** Added a glossy head specular + food highlight to `ic_launcher_foreground` and
+  mirrored them into the API 24–25 bundled vectors. **Fixed the themed-icon layer**: the `<monochrome>`
+  slot now points at a dedicated single-fill silhouette (`ic_launcher_monochrome.xml`) instead of the
+  coloured foreground.
+- **Version** bumped to `versionCode 5` / `versionName "0.3.0"`.
+
 ### 2026-06-06 — Two specials at once, higher frequency, grow/shrink amount popups (v0.2.1)
 
 - **Up to two specials on the board.** New `GameEngine.MAX_SPECIALS_ON_BOARD = 2`;

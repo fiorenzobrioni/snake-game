@@ -23,12 +23,13 @@ import com.brioni.snake.data.SettingsRepository
 import com.brioni.snake.ui.game.GameScreen
 import com.brioni.snake.ui.game.GameViewModel
 import com.brioni.snake.ui.achievements.AchievementsScreen
+import com.brioni.snake.ui.intro.BrandIntroScreen
 import com.brioni.snake.ui.menu.MainMenuScreen
 import com.brioni.snake.ui.records.RecordsScreen
 import com.brioni.snake.ui.settings.SettingsScreen
 
-/** The top-level destinations. */
-private enum class Screen { Menu, Game, Settings, Records, Achievements }
+/** The top-level destinations. [Intro] is the cold-launch brand splash. */
+private enum class Screen { Intro, Menu, Game, Settings, Records, Achievements }
 
 /**
  * Root of the UI. Hosts a lightweight, state-based navigation between the main
@@ -46,7 +47,7 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
     val audio = remember(context) { GameAudio(context.applicationContext, repo) }
     val gameViewModel: GameViewModel = viewModel(factory = GameViewModel.factory(repo, audio))
 
-    var ordinal by rememberSaveable { mutableIntStateOf(Screen.Menu.ordinal) }
+    var ordinal by rememberSaveable { mutableIntStateOf(Screen.Intro.ordinal) }
     val screen = Screen.entries[ordinal]
     fun navigate(target: Screen) { ordinal = target.ordinal }
 
@@ -80,6 +81,11 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
 
     Crossfade(targetState = screen, animationSpec = tween(300), label = "screen") { current ->
         when (current) {
+            Screen.Intro -> BrandIntroScreen(
+                onFinished = { navigate(Screen.Menu) },
+                modifier = modifier,
+            )
+
             Screen.Menu -> MainMenuScreen(
                 onPlay = { navigate(Screen.Game) },
                 onRecords = { navigate(Screen.Records) },

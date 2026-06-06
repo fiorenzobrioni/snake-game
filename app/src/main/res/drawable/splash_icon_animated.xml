@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- System splash-screen icon animation: a short overshooting "pop-in" of the
+     snake as the app launches. Plays once; its duration is mirrored by
+     windowSplashScreenAnimationDuration in themes.xml. -->
+<animated-vector
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:drawable="@drawable/splash_snake">
+    <target android:name="icon">
+        <aapt:attr name="android:animation">
+            <set android:ordering="together">
+                <objectAnimator
+                    android:propertyName="scaleX"
+                    android:duration="500"
+                    android:valueFrom="0.5"
+                    android:valueTo="1.0"
+                    android:interpolator="@android:interpolator/overshoot" />
+                <objectAnimator
+                    android:propertyName="scaleY"
+                    android:duration="500"
+                    android:valueFrom="0.5"
+                    android:valueTo="1.0"
+                    android:interpolator="@android:interpolator/overshoot" />
+            </set>
+        </aapt:attr>
+    </target>
+</animated-vector>

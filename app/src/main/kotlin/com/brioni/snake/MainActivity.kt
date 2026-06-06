@@ -31,7 +31,15 @@ import com.brioni.snake.ui.theme.SnakeGameTheme
  */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
+        // Fade the system splash out so it hands off smoothly to the Compose
+        // brand-intro screen instead of cutting abruptly.
+        installSplashScreen().setOnExitAnimationListener { provider ->
+            provider.view.animate()
+                .alpha(0f)
+                .setDuration(250L)
+                .withEndAction { provider.remove() }
+                .start()
+        }
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         setContent {

@@ -16,10 +16,14 @@
     <path android:fillColor="#3FA34D" android:pathData="M57,52 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z" />
     <path android:fillColor="#3FA34D" android:pathData="M49,42 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z" />
 
-    <!-- Head + eye -->
+    <!-- Head + glossy specular highlight -->
     <path android:fillColor="#7CFC00" android:pathData="M34,32 a12,12 0 1,0 24,0 a12,12 0 1,0 -24,0 Z" />
+    <path android:fillColor="#B6FF5A" android:pathData="M38,39 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0 Z" />
+    <!-- Eye + catchlight -->
     <path android:fillColor="#101418" android:pathData="M47,29 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0 Z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M50.5,27.5 a1,1 0 1,0 2,0 a1,1 0 1,0 -2,0 Z" />
 
-    <!-- Food -->
+    <!-- Food + highlight -->
     <path android:fillColor="#FFC107" android:pathData="M67,40 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0 Z" />
+    <path android:fillColor="#FFE082" android:pathData="M69,36 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0 Z" />
 </vector>
