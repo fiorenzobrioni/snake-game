@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Legacy round launcher icon for API 24-25 (no adaptive-icon support). The
      dark background fills the canvas (masked to a circle by the launcher) with
-     the snake foreground on top, matching the adaptive icon used on API 26+. -->
+     the snake foreground on top, matching the adaptive icon used on API 26+
+     (snake scaled to ~0.86 around the centre so it keeps a small margin). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
@@ -9,21 +10,28 @@
     android:viewportHeight="108">
     <path android:fillColor="#101418" android:pathData="M0,0 h108 v108 h-108 z" />
 
-    <!-- Body segments (tail → neck) -->
-    <path android:fillColor="#3FA34D" android:pathData="M29,76 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z" />
-    <path android:fillColor="#3FA34D" android:pathData="M43,74 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z" />
-    <path android:fillColor="#3FA34D" android:pathData="M55,66 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z" />
-    <path android:fillColor="#3FA34D" android:pathData="M57,52 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z" />
-    <path android:fillColor="#3FA34D" android:pathData="M49,42 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z" />
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="0.86"
+        android:scaleY="0.86">
 
-    <!-- Head + glossy specular highlight -->
-    <path android:fillColor="#7CFC00" android:pathData="M34,32 a12,12 0 1,0 24,0 a12,12 0 1,0 -24,0 Z" />
-    <path android:fillColor="#B6FF5A" android:pathData="M38,39 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0 Z" />
-    <!-- Eye + catchlight -->
-    <path android:fillColor="#101418" android:pathData="M47,29 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0 Z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M50.5,27.5 a1,1 0 1,0 2,0 a1,1 0 1,0 -2,0 Z" />
+        <!-- Body segments (tail → neck) -->
+        <path android:fillColor="#3FA34D" android:pathData="M29,76 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z" />
+        <path android:fillColor="#3FA34D" android:pathData="M43,74 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z" />
+        <path android:fillColor="#3FA34D" android:pathData="M55,66 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z" />
+        <path android:fillColor="#3FA34D" android:pathData="M57,52 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z" />
+        <path android:fillColor="#3FA34D" android:pathData="M49,42 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z" />
 
-    <!-- Food + highlight -->
-    <path android:fillColor="#FFC107" android:pathData="M67,40 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0 Z" />
-    <path android:fillColor="#FFE082" android:pathData="M69,36 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0 Z" />
+        <!-- Head + glossy specular highlight -->
+        <path android:fillColor="#7CFC00" android:pathData="M34,32 a12,12 0 1,0 24,0 a12,12 0 1,0 -24,0 Z" />
+        <path android:fillColor="#B6FF5A" android:pathData="M38,39 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0 Z" />
+        <!-- Eye + catchlight -->
+        <path android:fillColor="#101418" android:pathData="M47,29 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0 Z" />
+        <path android:fillColor="#FFFFFF" android:pathData="M50.5,27.5 a1,1 0 1,0 2,0 a1,1 0 1,0 -2,0 Z" />
+
+        <!-- Food + highlight -->
+        <path android:fillColor="#FFC107" android:pathData="M67,40 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0 Z" />
+        <path android:fillColor="#FFE082" android:pathData="M69,36 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0 Z" />
+    </group>
 </vector>
