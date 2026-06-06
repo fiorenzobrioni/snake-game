@@ -40,7 +40,9 @@ import kotlinx.coroutines.delay
 import kotlin.math.min
 
 // Visual interval the intro is on screen before it auto-advances to the menu.
-private const val INTRO_DURATION_MS = 2600L
+// Tuned so the wordmark settles for a beat after the entrance sweep (~1.4s) and
+// holds before fading out, without overstaying its welcome (it's tap-to-skip).
+private const val INTRO_DURATION_MS = 3200L
 
 // 80s neon (left half) vs. modern flat (right half) — the dual aesthetic.
 private val NeonMagenta = Color(0xFFFF2D95)
