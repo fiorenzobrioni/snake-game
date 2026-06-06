@@ -125,7 +125,7 @@ private fun ChipSection(title: String, chips: @Composable () -> Unit) {
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState())
                 .padding(top = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         ) {
             chips()
         }
