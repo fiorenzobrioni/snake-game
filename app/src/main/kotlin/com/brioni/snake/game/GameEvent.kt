@@ -23,8 +23,11 @@ sealed interface GameEvent {
 
     // --- Phase 6.2 specials. ---
 
-    /** Earthquake eaten: [removed] tail cells were bitten off (drives the shake). */
-    data class Quaked(val food: Food, val removed: Int) : GameEvent
+    /**
+     * Earthquake eaten: [removed] tail cells were bitten off (drives the shake)
+     * and scattered onto the board as the lethal [debris] cells listed here.
+     */
+    data class Quaked(val food: Food, val removed: Int, val debris: List<Position>) : GameEvent
 
     /** Explosion eaten: the snake split, leaving [debris] lethal blocks behind. */
     data class Exploded(val food: Food, val debris: List<Position>) : GameEvent
@@ -37,6 +40,12 @@ sealed interface GameEvent {
 
     /** Jackpot eaten: awarded [points] and grew the snake by [growth]. */
     data class JackpotHit(val food: Food, val points: Int, val growth: Int) : GameEvent
+
+    /** Time Attack: a time-bonus block added [seconds] to the clock. */
+    data class TimeGained(val food: Food, val seconds: Int) : GameEvent
+
+    /** Time Attack: a time-penalty block removed [seconds] from the clock. */
+    data class TimeLost(val food: Food, val seconds: Int) : GameEvent
 
     /**
      * An uneaten regular food timed out and was removed (a fresh one is spawned

@@ -19,6 +19,7 @@ import com.brioni.snake.game.ControlScheme
 import com.brioni.snake.game.EffectKind
 import com.brioni.snake.game.DEFAULT_ASPECT
 import com.brioni.snake.game.Direction
+import com.brioni.snake.game.FoodEffect
 import com.brioni.snake.game.GameEngine
 import com.brioni.snake.game.GameEvent
 import com.brioni.snake.game.GameMode
@@ -53,6 +54,12 @@ enum class BurstStyle {
  * selects which burst to play at [cell].
  */
 data class EatEvent(val cell: Position, val span: Int, val color: Color, val style: BurstStyle)
+
+/**
+ * A short floating label to spawn on the board (e.g. "+5s" / "-3s" for the Time
+ * Attack clock blocks), placed at [cell] (its [span] centres the text).
+ */
+data class FloatingTextEvent(val cell: Position, val span: Int, val text: String, val color: Color)
 
 /**
  * Holds the [GameState] and drives the tick loop. All game rules live in
@@ -121,6 +128,12 @@ class GameViewModel(
     var eatEvent: EatEvent? = null
         private set
     var eatEventId by mutableIntStateOf(0)
+        private set
+
+    /** Latest floating-text event and a monotonic id so repeats are observable. */
+    var floatingText: FloatingTextEvent? = null
+        private set
+    var floatingTextId by mutableIntStateOf(0)
         private set
 
     /** Bumped when the snake dies, so the UI can trigger a screen shake. */
@@ -305,6 +318,11 @@ class GameViewModel(
                 is GameEvent.Ate -> {
                     eatEvent = EatEvent(event.food.position, event.food.span, palette.foodColor(event.food), BurstStyle.Eat)
                     eatEventId++
+                    val grown = (event.food.effect as? FoodEffect.Grow)?.segments ?: 0
+                    if (grown > 0) {
+                        floatingText = FloatingTextEvent(event.food.position, event.food.span, "+$grown", palette.foodColor(event.food))
+                        floatingTextId++
+                    }
                     sfx.ate(event.food, event.combo)
                     runFoodsEaten++
                     runMaxCombo = max(runMaxCombo, event.combo)
@@ -312,6 +330,10 @@ class GameViewModel(
                 is GameEvent.Shrunk -> {
                     eatEvent = EatEvent(event.food.position, event.food.span, palette.foodColor(event.food), BurstStyle.Implode)
                     eatEventId++
+                    if (event.removed > 0) {
+                        floatingText = FloatingTextEvent(event.food.position, event.food.span, "-${event.removed}", palette.foodColor(event.food))
+                        floatingTextId++
+                    }
                     sfx.shrunk(event.food)
                 }
                 GameEvent.Died -> {
@@ -340,6 +362,23 @@ class GameViewModel(
                     sfx.special(event.food)
                     runUsedJackpot = true
                     runFoodsEaten++
+                }
+                is GameEvent.TimeGained -> {
+                    // Time Attack: a green burst + a rising "+Ns" callout.
+                    eatEvent = EatEvent(event.food.position, event.food.span, SpecialVisuals.TimeBonusColor, BurstStyle.Eat)
+                    eatEventId++
+                    floatingText = FloatingTextEvent(event.food.position, event.food.span, "+${event.seconds}s", SpecialVisuals.TimeBonusColor)
+                    floatingTextId++
+                    sfx.special(event.food)
+                }
+                is GameEvent.TimeLost -> {
+                    // Time Attack: a red implosion + a "-Ns" callout + a sting shake.
+                    eatEvent = EatEvent(event.food.position, event.food.span, SpecialVisuals.TimePenaltyColor, BurstStyle.Implode)
+                    eatEventId++
+                    floatingText = FloatingTextEvent(event.food.position, event.food.span, "-${event.seconds}s", SpecialVisuals.TimePenaltyColor)
+                    floatingTextId++
+                    shakeEventId++
+                    sfx.special(event.food)
                 }
                 is GameEvent.FoodVanished -> {
                     // An ignored food timed out: a quiet upward fade, no sound.

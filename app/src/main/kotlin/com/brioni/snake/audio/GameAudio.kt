@@ -55,6 +55,8 @@ class GameAudio(context: Context, repo: SettingsRepository) : GameSfx {
             is FoodEffect.Jackpot -> Sfx.Jackpot
             is FoodEffect.Quake -> Sfx.Quake
             is FoodEffect.Burst -> Sfx.Explosion
+            is FoodEffect.TimeBonus -> Sfx.Jackpot // a rewarding chime
+            is FoodEffect.TimePenalty -> Sfx.Shrink // a deflating tone
             // Grow/Shrink never reach here (those route through ate/shrunk).
             else -> Sfx.Eat
         },

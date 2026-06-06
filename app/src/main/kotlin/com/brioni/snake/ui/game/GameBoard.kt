@@ -67,11 +67,14 @@ fun GameBoard(
     running: Boolean,
     eatEvent: EatEvent?,
     eatEventId: Int,
+    floatingText: FloatingTextEvent?,
+    floatingTextId: Int,
     textMeasurer: TextMeasurer,
     palette: SkinPalette,
     modifier: Modifier = Modifier,
 ) {
     val particles: SnapshotStateList<Particle> = remember { emptyList<Particle>().toMutableStateList() }
+    val floatingTexts: SnapshotStateList<FloatingText> = remember { emptyList<FloatingText>().toMutableStateList() }
     // AGSL effects on API 33+, created once; null below (Canvas-only fallback).
     val shaders = remember {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) BoardShaders() else null
@@ -87,6 +90,7 @@ fun GameBoard(
     LaunchedEffect(running) {
         if (!running) {
             particles.clear()
+            floatingTexts.clear()
             return@LaunchedEffect
         }
         var lastNanos = System.nanoTime()
@@ -96,6 +100,7 @@ fun GameBoard(
             val dt = ((now - lastNanos) / 1_000_000_000.0).toFloat()
             lastNanos = now
             updateParticles(particles, dt)
+            updateFloatingTexts(floatingTexts, dt)
             frameNanos = now
         }
     }
@@ -110,6 +115,19 @@ fun GameBoard(
                 BurstStyle.Implode -> emitImplodeBurst(particles, cx, cy, event.color, event.span)
                 BurstStyle.Vanish -> emitVanishBurst(particles, cx, cy, event.color, event.span)
             }
+        }
+    }
+
+    LaunchedEffect(floatingTextId) {
+        val event = floatingText
+        if (floatingTextId > 0 && event != null) {
+            emitFloatingText(
+                floatingTexts,
+                event.cell.x + event.span / 2f,
+                event.cell.y + event.span / 2f,
+                event.text,
+                event.color,
+            )
         }
     }
 
@@ -201,6 +219,33 @@ fun GameBoard(
                     radius = p.radiusCells * cell,
                     center = Offset(originX + p.x * cell, originY + p.y * cell),
                 )
+            }
+            floatingTexts.forEach { t ->
+                // Fade out and ease the rise; a dark outline keeps it readable on
+                // any skin. Drawn over everything inside the board clip.
+                val alpha = t.fade
+                val centerX = originX + t.x * cell
+                val centerY = originY + t.y * cell
+                val layout = textMeasurer.measure(
+                    text = t.text,
+                    style = TextStyle(
+                        color = t.color.copy(alpha = alpha),
+                        fontSize = (cell * 0.95f).toSp(),
+                        fontWeight = FontWeight.Black,
+                    ),
+                )
+                val shadow = textMeasurer.measure(
+                    text = t.text,
+                    style = TextStyle(
+                        color = Color.Black.copy(alpha = 0.45f * alpha),
+                        fontSize = (cell * 0.95f).toSp(),
+                        fontWeight = FontWeight.Black,
+                    ),
+                )
+                val left = centerX - layout.size.width / 2f
+                val top = centerY - layout.size.height / 2f
+                drawText(shadow, topLeft = Offset(left + cell * 0.04f, top + cell * 0.04f))
+                drawText(layout, topLeft = Offset(left, top))
             }
             // Freeze: a cool frost vignette over the board while the effect runs.
             if (state.hasEffect(EffectKind.Freeze)) {
@@ -451,8 +496,25 @@ private fun DrawScope.drawSpecialSymbol(
         is FoodEffect.Jackpot -> drawGlyph(textMeasurer, "$", cx, cy, r * 1.7f, color)
         is FoodEffect.Burst -> drawStarShape(cx, cy, r, points = 8, innerRatio = 0.42f, color = color)
         is FoodEffect.Quake -> drawCrack(cx, cy, r, color)
+        is FoodEffect.TimeBonus -> drawClock(cx, cy, r, color, plus = true)
+        is FoodEffect.TimePenalty -> drawClock(cx, cy, r, color, plus = false)
         else -> Unit
     }
+}
+
+/** A clock face with a small +/- badge — the Time Attack bonus / penalty blocks. */
+private fun DrawScope.drawClock(cx: Float, cy: Float, r: Float, color: Color, plus: Boolean) {
+    val ring = r * 0.74f
+    drawCircle(color, ring, Offset(cx, cy), style = Stroke(width = r * 0.16f))
+    // Hands: one up, one to the right.
+    drawLine(color, Offset(cx, cy), Offset(cx, cy - ring * 0.58f), strokeWidth = r * 0.15f, cap = StrokeCap.Round)
+    drawLine(color, Offset(cx, cy), Offset(cx + ring * 0.44f, cy), strokeWidth = r * 0.15f, cap = StrokeCap.Round)
+    // +/- badge at the bottom-right.
+    val bx = cx + r * 0.62f
+    val by = cy + r * 0.62f
+    val s = r * 0.32f
+    drawLine(color, Offset(bx - s, by), Offset(bx + s, by), strokeWidth = r * 0.17f, cap = StrokeCap.Round)
+    if (plus) drawLine(color, Offset(bx, by - s), Offset(bx, by + s), strokeWidth = r * 0.17f, cap = StrokeCap.Round)
 }
 
 /** An n-pointed star (used for Star and the spiky Explosion burst). */

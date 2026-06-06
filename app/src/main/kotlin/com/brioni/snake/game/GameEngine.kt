@@ -45,7 +45,10 @@ class GameEngine(private val random: Random = Random.Default) {
     fun start(state: GameState): GameState {
         if (state.status != GameStatus.Ready) return state
         return state.copy(
-            foods = refill(state.board, state.snake, state.obstacles, emptyList(), elapsedTicks = 0, level = state.level),
+            foods = refill(
+                state.board, state.snake, state.obstacles, emptyList(),
+                elapsedTicks = 0, level = state.level, mode = state.mode,
+            ),
             status = GameStatus.Running,
         )
     }
@@ -143,6 +146,7 @@ class GameEngine(private val random: Random = Random.Default) {
         var pendingGrowth = state.pendingGrowth
         var combo = state.combo
         var comboDeadlineTick = state.comboDeadlineTick
+        var timeAdjustMs = state.timeAdjustMs
 
         val eaten = foods.firstOrNull { it.occupies(newHead) }
         if (eaten != null) {
@@ -167,10 +171,20 @@ class GameEngine(private val random: Random = Random.Default) {
                     events.add(GameEvent.Shrunk(eaten, removed, points))
                 }
                 is FoodEffect.Quake -> {
-                    // Earthquake: bite a chunk off the tail and shake the screen.
+                    // Earthquake: bite a chunk off the tail, scatter the bitten
+                    // segments across the board as lethal debris, and shake the
+                    // screen. The snake's remaining tail keeps retracting normally.
                     pendingGrowth = 0
                     val removed = trimTail(body, effect.segments)
-                    events.add(GameEvent.Quaked(eaten, removed))
+                    val occupied = HashSet<Position>().apply {
+                        addAll(body)
+                        addAll(state.obstacles)
+                        foods.forEach { addAll(it.cells()) }
+                        debris.forEach { add(it.cell) }
+                    }
+                    val scattered = scatterCells(board, removed, occupied)
+                    debris = debris + scattered.map { Debris(it, QUAKE_DEBRIS_MS, QUAKE_DEBRIS_MS) }
+                    events.add(GameEvent.Quaked(eaten, removed, scattered))
                 }
                 is FoodEffect.Burst -> {
                     // Explosion: split the snake; the detached tail becomes lethal
@@ -207,6 +221,18 @@ class GameEngine(private val random: Random = Random.Default) {
                     pendingGrowth += effect.growth
                     events.add(GameEvent.JackpotHit(eaten, effect.bonus, effect.growth))
                 }
+                is FoodEffect.TimeBonus -> {
+                    // Time Attack: extend the clock. Pure effect — keep length.
+                    body.removeAt(body.lastIndex)
+                    timeAdjustMs += effect.seconds * 1000L
+                    events.add(GameEvent.TimeGained(eaten, effect.seconds))
+                }
+                is FoodEffect.TimePenalty -> {
+                    // Time Attack: shorten the clock. Pure effect — keep length.
+                    body.removeAt(body.lastIndex)
+                    timeAdjustMs -= effect.seconds * 1000L
+                    events.add(GameEvent.TimeLost(eaten, effect.seconds))
+                }
             }
         } else if (pendingGrowth > 0) {
             pendingGrowth--
@@ -214,13 +240,17 @@ class GameEngine(private val random: Random = Random.Default) {
             body.removeAt(body.lastIndex) // keep length: drop the tail
         }
 
-        // Vanish the single oldest regular food that has sat uneaten too long, so
-        // looping without eating keeps the board fresh. Specials never vanish.
-        // One per tick keeps the bursts staggered and avoids both foods popping
-        // at once when they were seeded on the same tick.
-        val vanishTicks = (VANISH_FOOD_MS / state.level.tickMillis).toInt().coerceAtLeast(1)
+        // Vanish the single oldest food that has sat uneaten too long, so looping
+        // without eating keeps the board fresh. Specials linger much longer than
+        // regular food (they are rare events worth waiting for) but no longer stay
+        // forever. One per tick keeps the bursts staggered and avoids both foods
+        // popping at once when they were seeded on the same tick.
+        val regularVanishTicks = (VANISH_FOOD_MS / state.level.tickMillis).toInt().coerceAtLeast(1)
+        val specialVanishTicks = (VANISH_SPECIAL_MS / state.level.tickMillis).toInt().coerceAtLeast(1)
+        fun vanishTicksFor(f: Food): Int =
+            if (f.category == FoodCategory.Special) specialVanishTicks else regularVanishTicks
         val stale = foods
-            .filter { it.category != FoodCategory.Special && elapsedTicks - it.spawnTick >= vanishTicks }
+            .filter { elapsedTicks - it.spawnTick >= vanishTicksFor(it) }
             .maxByOrNull { elapsedTicks - it.spawnTick }
         if (stale != null) {
             foods = foods - stale
@@ -230,17 +260,20 @@ class GameEngine(private val random: Random = Random.Default) {
         // Top the board back up — covers both an eaten food and a vanished one.
         if (foods.size < FOOD_COUNT) {
             val freezeActive = effectTimers.any { it.kind == EffectKind.Freeze }
-            val specialOnBoard = foods.any { it.category == FoodCategory.Special }
+            val specialsOnBoard = foods.count { it.category == FoodCategory.Special }
             foods = refill(
                 board, body, state.obstacles, foods, elapsedTicks, state.level,
                 hazardsEnabled = hazardsEnabled,
-                specialAllowed = !specialOnBoard && !freezeActive,
+                specialAllowed = specialsOnBoard < MAX_SPECIALS_ON_BOARD && !freezeActive,
                 specialFrequency = specialFrequency,
+                mode = state.mode,
             )
         }
 
         // Time Attack ends when the clock runs out, regardless of collisions.
-        val timeUp = state.mode == GameMode.TimeAttack && playedMs >= GameState.TIME_ATTACK_MS
+        // The budget shifts with time-bonus / time-penalty blocks (timeAdjustMs).
+        val timeUp = state.mode == GameMode.TimeAttack &&
+            (playedMs - timeAdjustMs) >= GameState.TIME_ATTACK_MS
         val crashed = !ghost && (
             isOutOfBounds(newHead, board) ||
                 newHead in state.obstacles ||
@@ -262,6 +295,7 @@ class GameEngine(private val random: Random = Random.Default) {
             comboDeadlineTick = comboDeadlineTick,
             debris = debris,
             effectTimers = effectTimers,
+            timeAdjustMs = timeAdjustMs,
             lastEvents = events,
             status = if (dead) GameStatus.GameOver else GameStatus.Running,
         )
@@ -355,12 +389,14 @@ class GameEngine(private val random: Random = Random.Default) {
         hazardsEnabled: Boolean = true,
         specialAllowed: Boolean = true,
         specialFrequency: SpecialFrequency = SpecialFrequency.Standard,
+        mode: GameMode = GameMode.Classic,
     ): List<Food> {
         var foods = existing
         while (foods.size < FOOD_COUNT) {
-            // A special is allowed only if one isn't already on the board.
-            val allowSpecial = specialAllowed && foods.none { it.category == FoodCategory.Special }
-            val food = spawnFood(board, snake, obstacles, foods, elapsedTicks, level, hazardsEnabled, allowSpecial, specialFrequency) ?: break
+            // A special is allowed only while fewer than the cap are on the board.
+            val allowSpecial = specialAllowed &&
+                foods.count { it.category == FoodCategory.Special } < MAX_SPECIALS_ON_BOARD
+            val food = spawnFood(board, snake, obstacles, foods, elapsedTicks, level, hazardsEnabled, allowSpecial, specialFrequency, mode) ?: break
             foods = foods + food
         }
         return foods
@@ -381,8 +417,9 @@ class GameEngine(private val random: Random = Random.Default) {
         hazardsEnabled: Boolean,
         specialAllowed: Boolean,
         specialFrequency: SpecialFrequency,
+        mode: GameMode,
     ): Food? {
-        val spec = FoodTable.roll(random, elapsedTicks, level, hazardsEnabled, specialAllowed, specialFrequency)
+        val spec = FoodTable.roll(random, elapsedTicks, level, hazardsEnabled, specialAllowed, specialFrequency, mode)
         val span = spec.size.cellSpan
         // Top-left cell range that keeps the whole square off the border.
         val maxX = board.width - span
@@ -410,9 +447,51 @@ class GameEngine(private val random: Random = Random.Default) {
         return null
     }
 
+    /**
+     * Finds up to [count] free single cells (never on the border) avoiding every
+     * cell already in [occupied], which is mutated to claim each chosen cell so
+     * the same square is never returned twice. Mirrors [spawnFood]'s strategy:
+     * random attempts first (for a natural scatter), then a deterministic scan so
+     * a packed board can't loop forever. Returns fewer than [count] only if the
+     * board genuinely has no more room.
+     */
+    private fun scatterCells(
+        board: BoardDimensions,
+        count: Int,
+        occupied: MutableSet<Position>,
+    ): List<Position> {
+        if (count <= 0) return emptyList()
+        val maxX = board.width - 1
+        val maxY = board.height - 1
+        if (maxX <= 1 || maxY <= 1) return emptyList()
+
+        val chosen = ArrayList<Position>(count)
+        fun claim(p: Position): Boolean {
+            if (p in occupied) return false
+            occupied.add(p)
+            chosen.add(p)
+            return true
+        }
+
+        repeat(MAX_SPAWN_ATTEMPTS) {
+            if (chosen.size >= count) return chosen
+            claim(Position(random.nextInt(1, maxX), random.nextInt(1, maxY)))
+        }
+        for (y in 1 until maxY) {
+            for (x in 1 until maxX) {
+                if (chosen.size >= count) return chosen
+                claim(Position(x, y))
+            }
+        }
+        return chosen
+    }
+
     companion object {
-        /** Foods kept on the board at once — two, as in v1.0.0. */
-        const val FOOD_COUNT = 2
+        /** Foods kept on the board at once. */
+        const val FOOD_COUNT = 3
+
+        /** At most this many specials (power-ups / hazards) may share the board. */
+        const val MAX_SPECIALS_ON_BOARD = 2
 
         /** The snake never shrinks below this many segments. */
         const val MIN_SNAKE_LENGTH = 3
@@ -433,6 +512,16 @@ class GameEngine(private val random: Random = Random.Default) {
          * ticks per level), so it stays ~7 s regardless of board size.
          */
         const val VANISH_FOOD_MS = 7_000L
+
+        /**
+         * How long an uneaten *special* (power-up / hazard) survives before it
+         * vanishes. Much longer than [VANISH_FOOD_MS] — specials are rare events
+         * the player should have a fair chance to reach — but no longer infinite.
+         */
+        const val VANISH_SPECIAL_MS = 14_000L
+
+        /** Lifetime of the lethal debris scattered by an earthquake. */
+        const val QUAKE_DEBRIS_MS = 5_000L
 
         private const val MAX_SPAWN_ATTEMPTS = 200
 

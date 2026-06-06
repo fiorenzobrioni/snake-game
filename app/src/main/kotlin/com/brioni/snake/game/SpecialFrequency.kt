@@ -17,7 +17,7 @@ enum class SpecialFrequency(
     /** Multiplies the special unlock gate; < 1 unlocks specials sooner. */
     val gateFactor: Double,
 ) {
-    Standard("Standard", 8, 1.0),
-    Frequent("Frequent", 18, 0.5),
-    Frenzy("Frenzy", 32, 0.25),
+    Standard("Standard", 10, 1.0),
+    Frequent("Frequent", 22, 0.5),
+    Frenzy("Frenzy", 40, 0.25),
 }
