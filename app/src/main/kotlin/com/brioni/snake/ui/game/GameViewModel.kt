@@ -55,6 +55,12 @@ enum class BurstStyle {
 data class EatEvent(val cell: Position, val span: Int, val color: Color, val style: BurstStyle)
 
 /**
+ * A short floating label to spawn on the board (e.g. "+5s" / "-3s" for the Time
+ * Attack clock blocks), placed at [cell] (its [span] centres the text).
+ */
+data class FloatingTextEvent(val cell: Position, val span: Int, val text: String, val color: Color)
+
+/**
  * Holds the [GameState] and drives the tick loop. All game rules live in
  * [GameEngine]; this class owns the timing coroutine, surfaces state to Compose
  * and publishes the data the renderer needs for inter-tick interpolation
@@ -121,6 +127,12 @@ class GameViewModel(
     var eatEvent: EatEvent? = null
         private set
     var eatEventId by mutableIntStateOf(0)
+        private set
+
+    /** Latest floating-text event and a monotonic id so repeats are observable. */
+    var floatingText: FloatingTextEvent? = null
+        private set
+    var floatingTextId by mutableIntStateOf(0)
         private set
 
     /** Bumped when the snake dies, so the UI can trigger a screen shake. */
@@ -340,6 +352,23 @@ class GameViewModel(
                     sfx.special(event.food)
                     runUsedJackpot = true
                     runFoodsEaten++
+                }
+                is GameEvent.TimeGained -> {
+                    // Time Attack: a green burst + a rising "+Ns" callout.
+                    eatEvent = EatEvent(event.food.position, event.food.span, SpecialVisuals.TimeBonusColor, BurstStyle.Eat)
+                    eatEventId++
+                    floatingText = FloatingTextEvent(event.food.position, event.food.span, "+${event.seconds}s", SpecialVisuals.TimeBonusColor)
+                    floatingTextId++
+                    sfx.special(event.food)
+                }
+                is GameEvent.TimeLost -> {
+                    // Time Attack: a red implosion + a "-Ns" callout + a sting shake.
+                    eatEvent = EatEvent(event.food.position, event.food.span, SpecialVisuals.TimePenaltyColor, BurstStyle.Implode)
+                    eatEventId++
+                    floatingText = FloatingTextEvent(event.food.position, event.food.span, "-${event.seconds}s", SpecialVisuals.TimePenaltyColor)
+                    floatingTextId++
+                    shakeEventId++
+                    sfx.special(event.food)
                 }
                 is GameEvent.FoodVanished -> {
                     // An ignored food timed out: a quiet upward fade, no sound.

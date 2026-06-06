@@ -34,6 +34,10 @@ enum class GameStatus {
  *                         into one kills unless a Ghost effect is active.
  * @param effectTimers     the timed power-ups currently running (Haste/Slow/
  *                         Ghost/Freeze), each aged down per tick.
+ * @param timeAdjustMs     Time Attack only: a signed shift of the run's budget
+ *                         from time-bonus / time-penalty blocks (positive adds
+ *                         time, negative removes it). Kept separate from
+ *                         [playedMs] so the elapsed clock stays truthful.
  * @param lastEvents       what happened on the most recent tick, for the UI to
  *                         react to (particle bursts, future effects). Not part
  *                         of the logical state — cleared/replaced every tick.
@@ -56,6 +60,7 @@ data class GameState(
     val comboDeadlineTick: Int = 0,
     val debris: List<Debris> = emptyList(),
     val effectTimers: List<ActiveEffect> = emptyList(),
+    val timeAdjustMs: Long = 0,
     val lastEvents: List<GameEvent> = emptyList(),
 ) {
     val head: Position get() = snake.first()
@@ -82,7 +87,7 @@ data class GameState(
         }
 
     /** Time Attack only: milliseconds left in the run (0 once expired). */
-    val timeRemainingMs: Long get() = (TIME_ATTACK_MS - playedMs).coerceAtLeast(0)
+    val timeRemainingMs: Long get() = (TIME_ATTACK_MS + timeAdjustMs - playedMs).coerceAtLeast(0)
 
     companion object {
         /** Tick-interval multipliers per speed effect (compounding if stacked). */

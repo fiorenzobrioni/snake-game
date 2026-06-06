@@ -331,14 +331,29 @@ class GameEngineTest {
         assertTrue("the food is still there", next.foods.any { it.position == Position(10, 10) })
     }
 
+    /** Beginner pace: 14000 ms / 175 ms = 80 ticks before a special times out. */
+    private val specialVanishTicks = (GameEngine.VANISH_SPECIAL_MS / Level.Beginner.tickMillis).toInt()
+
     @Test
-    fun specialsNeverVanish() {
+    fun specialsOutlastTheRegularTimeout() {
+        // Past the regular timeout but short of the (much longer) special one.
         val special = Food(Position(10, 10), FoodCategory.Special, FoodTier.Huge, FoodSize.Maxi, FoodEffect.Haste(6_000), spawnTick = 0)
-        val state = runningState(foods = listOf(special)).copy(elapsedTicks = vanishTicks * 3)
+        val state = runningState(foods = listOf(special)).copy(elapsedTicks = vanishTicks + 5)
 
         val next = engine.tick(state)
 
-        assertFalse("specials are immune to the timeout", next.lastEvents.any { it is GameEvent.FoodVanished })
+        assertFalse("special survives the regular timeout", next.lastEvents.any { it is GameEvent.FoodVanished })
         assertTrue("the special is still on the board", next.foods.any { it.position == Position(10, 10) && it.category == FoodCategory.Special })
+    }
+
+    @Test
+    fun specialsVanishAfterTheirLongTimeout() {
+        val special = Food(Position(10, 10), FoodCategory.Special, FoodTier.Huge, FoodSize.Maxi, FoodEffect.Haste(6_000), spawnTick = 0)
+        val state = runningState(foods = listOf(special)).copy(elapsedTicks = specialVanishTicks)
+
+        val next = engine.tick(state)
+
+        val vanished = next.lastEvents.filterIsInstance<GameEvent.FoodVanished>().singleOrNull()
+        assertTrue("the special eventually times out", vanished?.food == special)
     }
 }

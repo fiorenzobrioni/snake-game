@@ -57,11 +57,18 @@ sealed interface FoodEffect {
 
     /** Jackpot: a large score [bonus] plus a [growth] of segments. */
     data class Jackpot(val bonus: Int, val growth: Int) : FoodEffect
+
+    /** Time Attack only: adds [seconds] to the remaining clock. */
+    data class TimeBonus(val seconds: Int) : FoodEffect
+
+    /** Time Attack only (hazard): subtracts [seconds] from the remaining clock. */
+    data class TimePenalty(val seconds: Int) : FoodEffect
 }
 
 /** True for the [FoodEffect]s that make the game harder (gated by the hazards toggle). */
 val FoodEffect.isHazard: Boolean
-    get() = this is FoodEffect.Quake || this is FoodEffect.Burst || this is FoodEffect.Slow
+    get() = this is FoodEffect.Quake || this is FoodEffect.Burst ||
+        this is FoodEffect.Slow || this is FoodEffect.TimePenalty
 
 /**
  * A food item on the board.
@@ -146,6 +153,10 @@ object FoodTable {
     private const val FREEZE_MS = 8_000L
     private const val BURST_DEBRIS_MS = 4_000L
 
+    /** Seconds the Time Attack clock blocks add / remove (tuned for a 120 s run). */
+    const val TIME_BONUS_SECONDS = 5
+    const val TIME_PENALTY_SECONDS = 3
+
     /** Harder levels shrink the gates so hazards arrive earlier. */
     private fun levelGateFactor(level: Level): Double = 1.0 - level.ordinal * 0.1
 
@@ -158,6 +169,8 @@ object FoodTable {
      *        Freeze is active), the special branch is suppressed entirely.
      * @param specialFrequency scales the special spawn weight and unlock gate so
      *        the player can dial how often power-ups / hazards appear.
+     * @param mode the active [GameMode]; the time-bonus / time-penalty specials
+     *        are produced only in [GameMode.TimeAttack].
      */
     fun roll(
         random: Random,
@@ -166,6 +179,7 @@ object FoodTable {
         hazardsEnabled: Boolean = true,
         specialAllowed: Boolean = true,
         specialFrequency: SpecialFrequency = SpecialFrequency.Standard,
+        mode: GameMode = GameMode.Classic,
     ): FoodSpec {
         val elapsedMs = elapsedTicks.toLong() * level.tickMillis
         val factor = levelGateFactor(level)
@@ -182,14 +196,14 @@ object FoodTable {
                 add(Weighted(6) { mysterySpec(random, FoodCategory.Shrink, maxiUnlocked) })
             }
             if (specialUnlocked && specialAllowed) {
-                add(Weighted(specialFrequency.spawnWeight) { specialSpec(random, hazardsEnabled) })
+                add(Weighted(specialFrequency.spawnWeight) { specialSpec(random, hazardsEnabled, mode) })
             }
         }
         return pick(entries, random)
     }
 
-    /** Builds a maxi special, choosing a kind weighted by benefit and the toggle. */
-    private fun specialSpec(random: Random, hazardsEnabled: Boolean): FoodSpec {
+    /** Builds a maxi special, choosing a kind weighted by benefit, the toggle and the mode. */
+    private fun specialSpec(random: Random, hazardsEnabled: Boolean, mode: GameMode): FoodSpec {
         val choices = buildList<Weighted<FoodEffect>> {
             // Beneficial — always available.
             add(Weighted(20) { FoodEffect.Haste(HASTE_MS) })
@@ -201,6 +215,11 @@ object FoodTable {
                 add(Weighted(16) { FoodEffect.Quake(random.nextInt(3, 7)) })
                 add(Weighted(12) { FoodEffect.Burst(BURST_DEBRIS_MS) })
                 add(Weighted(14) { FoodEffect.Slow(SLOW_MS) })
+            }
+            // Time Attack only: the clock blocks. The penalty is a hazard.
+            if (mode == GameMode.TimeAttack) {
+                add(Weighted(14) { FoodEffect.TimeBonus(TIME_BONUS_SECONDS) })
+                if (hazardsEnabled) add(Weighted(12) { FoodEffect.TimePenalty(TIME_PENALTY_SECONDS) })
             }
         }
         val effect = pick(choices, random)

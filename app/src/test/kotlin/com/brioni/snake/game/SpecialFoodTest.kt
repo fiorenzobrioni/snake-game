@@ -25,6 +25,10 @@ class SpecialFoodTest {
         obstacles: Set<Position> = emptySet(),
         debris: List<Debris> = emptyList(),
         effectTimers: List<ActiveEffect> = emptyList(),
+        mode: GameMode = GameMode.Classic,
+        elapsedTicks: Int = 0,
+        playedMs: Long = 0,
+        timeAdjustMs: Long = 0,
     ) = GameState(
         board = board,
         level = Level.Beginner,
@@ -36,8 +40,12 @@ class SpecialFoodTest {
         score = 0,
         pendingGrowth = 0,
         status = GameStatus.Running,
+        mode = mode,
+        elapsedTicks = elapsedTicks,
+        playedMs = playedMs,
         debris = debris,
         effectTimers = effectTimers,
+        timeAdjustMs = timeAdjustMs,
     )
 
     private fun specialAt(cell: Position, effect: FoodEffect) = Food(
@@ -70,6 +78,31 @@ class SpecialFoodTest {
         val short = listOf(Position(5, 5), Position(4, 5), Position(3, 5))
         val next = engine.tick(runningState(snake = short, foods = listOf(specialAt(Position(6, 5), FoodEffect.Quake(9)))))
         assertEquals(GameEngine.MIN_SNAKE_LENGTH, next.snake.size)
+    }
+
+    @Test
+    fun quakeScattersBittenTailAsLethalDebris() {
+        val state = runningState(snake = longSnake, foods = listOf(specialAt(Position(6, 5), FoodEffect.Quake(3))))
+        val next = engine.tick(state)
+        // The 3 bitten cells reappear as the same number of debris blocks.
+        assertEquals(3, next.debris.size)
+        val quake = next.lastEvents.filterIsInstance<GameEvent.Quaked>().single()
+        assertEquals(3, quake.removed)
+        assertEquals(3, quake.debris.size)
+        // Every scattered cell lands on a free square (no snake / obstacle / food).
+        val blocked = next.snake.toSet() + next.obstacles + next.foods.flatMap { it.cells() }
+        assertTrue(next.debris.none { it.cell in blocked })
+        // And they are unique cells.
+        assertEquals(next.debris.size, next.debris.map { it.cell }.toSet().size)
+    }
+
+    @Test
+    fun quakeScatterCountMatchesActuallyRemoved() {
+        // A short snake can only shed one cell before the floor; scatter matches.
+        val short = listOf(Position(5, 5), Position(4, 5), Position(3, 5))
+        val next = engine.tick(runningState(snake = short, foods = listOf(specialAt(Position(6, 5), FoodEffect.Quake(9)))))
+        val quake = next.lastEvents.filterIsInstance<GameEvent.Quaked>().single()
+        assertEquals(quake.removed, next.debris.size)
     }
 
     // --- Explosion --------------------------------------------------------
@@ -168,6 +201,90 @@ class SpecialFoodTest {
         assertEquals(250, next.score)
         assertEquals(4, next.pendingGrowth)
         assertTrue(next.lastEvents.any { it is GameEvent.JackpotHit })
+    }
+
+    // --- Time Attack clock blocks -----------------------------------------
+
+    @Test
+    fun timeBonusExtendsTheClock() {
+        val state = runningState(
+            mode = GameMode.TimeAttack,
+            foods = listOf(specialAt(Position(6, 5), FoodEffect.TimeBonus(5))),
+        )
+        val next = engine.tick(state)
+        assertEquals(5_000L, next.timeAdjustMs)
+        assertTrue(next.timeRemainingMs > state.timeRemainingMs)
+        assertEquals(3, next.snake.size) // pure effect: no growth, no shrink
+        assertTrue(next.lastEvents.filterIsInstance<GameEvent.TimeGained>().single().seconds == 5)
+    }
+
+    @Test
+    fun timePenaltyShortensTheClock() {
+        val state = runningState(
+            mode = GameMode.TimeAttack,
+            foods = listOf(specialAt(Position(6, 5), FoodEffect.TimePenalty(3))),
+        )
+        val next = engine.tick(state)
+        assertEquals(-3_000L, next.timeAdjustMs)
+        assertTrue(next.timeRemainingMs < state.timeRemainingMs)
+        assertEquals(3, next.snake.size)
+        assertTrue(next.lastEvents.filterIsInstance<GameEvent.TimeLost>().single().seconds == 3)
+    }
+
+    @Test
+    fun timePenaltyCanEndTheRun() {
+        // Almost out of time; the penalty drains what is left and ends the game.
+        val state = runningState(
+            mode = GameMode.TimeAttack,
+            playedMs = GameState.TIME_ATTACK_MS - 100,
+            foods = listOf(specialAt(Position(6, 5), FoodEffect.TimePenalty(3))),
+        )
+        val next = engine.tick(state)
+        assertEquals(GameStatus.GameOver, next.status)
+        assertTrue(next.lastEvents.contains(GameEvent.Died))
+    }
+
+    @Test
+    fun timeBlocksOnlyRollInTimeAttack() {
+        fun rolls(mode: GameMode) = (0 until 6000).map {
+            FoodTable.roll(Random(it.toLong()), elapsedTicks = 2000, level = Level.Beginner, mode = mode)
+        }
+        val classic = rolls(GameMode.Classic)
+        assertTrue(classic.none { it.effect is FoodEffect.TimeBonus || it.effect is FoodEffect.TimePenalty })
+        val timeAttack = rolls(GameMode.TimeAttack)
+        assertTrue(timeAttack.any { it.effect is FoodEffect.TimeBonus })
+        assertTrue(timeAttack.any { it.effect is FoodEffect.TimePenalty })
+    }
+
+    // --- Special timeout --------------------------------------------------
+
+    @Test
+    fun specialsVanishAfterTheirLongTimeout() {
+        // Beginner tick = 175ms; special timeout = 14_000ms ≈ 80 ticks.
+        val state = runningState(
+            snake = listOf(Position(5, 5), Position(4, 5), Position(3, 5)),
+            direction = Direction.Up, // steer away from the special so it isn't eaten
+            foods = listOf(specialAt(Position(10, 10), FoodEffect.Haste(6_000))),
+            elapsedTicks = 80,
+        )
+        val next = engine.tick(state)
+        assertTrue(next.lastEvents.filterIsInstance<GameEvent.FoodVanished>().any {
+            it.food.category == FoodCategory.Special
+        })
+    }
+
+    @Test
+    fun specialsOutlastRegularFoodTimeout() {
+        // Aged past the regular 7s timeout but below the 14s special one: it stays.
+        val state = runningState(
+            snake = listOf(Position(5, 5), Position(4, 5), Position(3, 5)),
+            direction = Direction.Up,
+            foods = listOf(specialAt(Position(10, 10), FoodEffect.Haste(6_000))),
+            elapsedTicks = 50, // ~8.75s: past regular (40 ticks), short of special (80)
+        )
+        val next = engine.tick(state)
+        assertTrue(next.foods.any { it.category == FoodCategory.Special })
+        assertTrue(next.lastEvents.none { it is GameEvent.FoodVanished })
     }
 
     // --- Spawn gating -----------------------------------------------------

@@ -133,6 +133,60 @@ fun emitVanishBurst(
 }
 
 /**
+ * A short-lived piece of floating text that rises and fades — used to call out
+ * the seconds a Time Attack block adds or removes ("+5s" / "-3s"). Stored in
+ * **cell space** like [Particle] so the renderer maps it with the board scale.
+ */
+class FloatingText(
+    var x: Float,
+    var y: Float,
+    val vy: Float,
+    var life: Float,
+    val maxLife: Float,
+    val text: String,
+    val color: Color,
+) {
+    /** Remaining life as a 0..1 fraction, for fading. */
+    val fade: Float get() = (life / maxLife).coerceIn(0f, 1f)
+}
+
+/** Spawns a floating label at cell [centerX], [centerY] that drifts upward. */
+fun emitFloatingText(
+    target: MutableList<FloatingText>,
+    centerX: Float,
+    centerY: Float,
+    text: String,
+    color: Color,
+) {
+    target.add(
+        FloatingText(
+            x = centerX,
+            y = centerY,
+            vy = -2.2f, // cells/sec upward drift
+            life = 1.1f,
+            maxLife = 1.1f,
+            text = text,
+            color = color,
+        ),
+    )
+}
+
+/** Advances each floating label by [dt] seconds and removes the expired ones. */
+fun updateFloatingTexts(items: MutableList<FloatingText>, dt: Float) {
+    if (items.isEmpty()) return
+    val iterator = items.iterator()
+    while (iterator.hasNext()) {
+        val t = iterator.next()
+        t.life -= dt
+        if (t.life <= 0f) {
+            iterator.remove()
+            continue
+        }
+        t.y += t.vy * dt
+    }
+}
+
+/**
  * Advances every particle by [dt] seconds and removes the dead ones. Mutates
  * [particles] in place; the caller forces a redraw each frame.
  */

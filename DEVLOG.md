@@ -82,6 +82,30 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
+### 2026-06-06 — Time Attack clock blocks, earthquake rework, special timeout (v0.2.0)
+
+- **New Time Attack power-up / hazard.** Two new `FoodEffect`s — `TimeBonus`
+  (+5 s, beneficial) and `TimePenalty` (−3 s, hazard) — that roll **only** in
+  `GameMode.TimeAttack`. Implemented as a signed `GameState.timeAdjustMs` budget
+  shift (keeps `playedMs` truthful); `timeRemainingMs` and the time-up check read
+  it, so a penalty can end a run and a bonus extends it. Rendered as a clock disc
+  with a +/− badge (`drawClock`) in green/red, with a rising "+5s"/"-3s" floating
+  callout and a burst (and a sting shake on the penalty).
+- **Floating-text effect system** (`GameEffects.FloatingText` + `emitFloatingText`
+  / `updateFloatingTexts`), surfaced via `GameViewModel.floatingText`/`…Id` and
+  drawn in `GameBoard` with the existing per-frame loop + `textMeasurer`.
+- **Earthquake reworked.** Previously it only bit the tail + shook (felt inert).
+  It now also **scatters the bitten segments as lethal debris** on random free
+  cells (new `GameEngine.scatterCells`, avoiding snake/obstacles/food/debris),
+  lasting `QUAKE_DEBRIS_MS = 5 s`. `GameEvent.Quaked` now carries the debris cells.
+- **Specials no longer linger forever.** They now time out after
+  `VANISH_SPECIAL_MS = 14 s` (vs 7 s for regular food) with the existing vanish
+  burst. Vanish logic is now per-category. Replaced the old `specialsNeverVanish`
+  test accordingly.
+- **Audio:** `TimeBonus → Jackpot` chime, `TimePenalty → Shrink` tone.
+- **Version bump** `versionCode 2 → 3`, `versionName "0.1.1" → "0.2.0"` (prep for
+  a future GitHub release). New unit tests in `SpecialFoodTest`/`GameEngineTest`.
+
 ### 2026-06-05 — Audio refresh + removed the UI click
 
 - Regenerated all SFX/music with lower, punchier tones: new `noise` oscillator,

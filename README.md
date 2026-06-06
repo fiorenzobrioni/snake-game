@@ -23,7 +23,8 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - ⏳ **Time-gated progression** — early on you only see growing food; shrink, maxi and mystery pieces
   unlock as the session goes on (sooner on harder levels), so a run ramps up in difficulty.
 - 💨 **Fresh board** — a regular food you ignore for too long fades away (with a little vanish burst)
-  and reappears elsewhere, so looping around without eating won't stall the run. Specials stay put.
+  and reappears elsewhere, so looping around without eating won't stall the run. Special pieces stick
+  around much longer (they're rare events worth reaching) but eventually time out too.
 - ✖️ **Combo multiplier** — eating in quick succession multiplies your score (up to ×5).
 - 🚧 **Obstacles** — scattered blocks that raise the difficulty.
 - 🎚️ **Difficulty levels** — 5 levels (*Beginner* → *Legend*) tuning speed and obstacle count.
@@ -42,10 +43,12 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - ⚡ **Power-ups & hazards** — rare maxi pieces that appear later in a run: **Lightning** (speed up),
   **Snail** (slow down), **Star** (invincible pass-through; the snake blinks faster as it runs out),
   **Freeze**, **Jackpot** (big bonus),
-  plus the hazards **Earthquake** (bites your tail) and **Explosion** (splits the snake, leaving lethal
-  debris). Active effects show countdown chips; toggle **Hazards** off in Settings for a calmer run, or
-  dial how often specials appear with the **Special blocks** setting (*Standard / Frequent / Frenzy*) —
-  the higher tiers also bring specials online earlier in a run.
+  plus the hazards **Earthquake** (bites a chunk off your tail and scatters those segments across the
+  board as lethal, fading debris) and **Explosion** (splits the snake, leaving lethal debris). Active
+  effects show countdown chips; toggle **Hazards** off in Settings for a calmer run, or dial how often
+  specials appear with the **Special blocks** setting (*Standard / Frequent / Frenzy*) — the higher
+  tiers also bring specials online earlier in a run. **Time Attack** adds two exclusive clock pieces:
+  a green **+5s** bonus and a red **−3s** penalty, each with a floating callout.
 - 🏆 **Records screen** — a best-score table per difficulty × board scale (and per mode), reachable
   from the main menu.
 - 🎖️ **Achievements** — local milestones (combos, scores, surviving, using power-ups…) that unlock as
@@ -146,17 +149,20 @@ automatically pauses when you leave the app and yields to other apps' audio.
 
 **Game modes:** choose your mode on the start screen — **Classic** (survive as long as you can),
 **Endless** (the snake keeps accelerating the longer you survive) or **Time Attack** (score as much
-as possible in 120 seconds). Your best score is tracked per mode, level and board scale; check the
+as possible in 120 seconds — watch for the exclusive **+5s** / **−3s** clock pieces that stretch or
+shave your remaining time). Your best score is tracked per mode, level and board scale; check the
 **Records** screen from the main menu.
 
 **Power-ups & hazards:** as a run progresses, rare special pieces start appearing on the board.
 Power-ups help: **Lightning** speeds the snake up, **Snail** slows it down, **Star** grants brief
 invincibility (you can pass through walls, obstacles and your own body — the snake blinks as the
 effect fades), **Freeze** pauses further specials for a strategic breather, and **Jackpot** grants a
-large score bonus. Hazards hinder: **Earthquake** bites a chunk off your tail; **Explosion** splits
-the snake in two — the detached segment turns into lethal debris until it auto-clears. Active effects
-show a countdown chip in the HUD. Toggle **Hazards** off in **Settings** for a calmer run, or raise
-**Special blocks** to *Frenzy* for constant chaos.
+large score bonus. Hazards hinder: **Earthquake** bites a chunk off your tail and flings those
+segments across the board as lethal debris (it fades after a few seconds); **Explosion** splits the
+snake in two — the detached segment turns into lethal debris until it auto-clears. Active effects show
+a countdown chip in the HUD. **Time Attack** also has two clock-only pieces — a **+5s** bonus and a
+**−3s** penalty. Toggle **Hazards** off in **Settings** for a calmer run (this also hides the time
+penalty), or raise **Special blocks** to *Frenzy* for constant chaos.
 
 **Achievements:** milestones unlock automatically as you play — high combos, long runs, using
 power-ups, and more. A banner appears on the game-over screen when one unlocks; browse the full list

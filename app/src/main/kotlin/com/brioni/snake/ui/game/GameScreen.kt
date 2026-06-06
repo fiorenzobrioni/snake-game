@@ -184,6 +184,8 @@ fun GameScreen(
                     running = state.status == GameStatus.Running,
                     eatEvent = viewModel.eatEvent,
                     eatEventId = viewModel.eatEventId,
+                    floatingText = viewModel.floatingText,
+                    floatingTextId = viewModel.floatingTextId,
                     textMeasurer = textMeasurer,
                     palette = viewModel.palette,
                     modifier = boardModifier,
