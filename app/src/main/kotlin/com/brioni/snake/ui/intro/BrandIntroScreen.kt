@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -39,10 +40,11 @@ import com.brioni.snake.ui.theme.Orbitron
 import kotlinx.coroutines.delay
 import kotlin.math.min
 
-// Visual interval the intro is on screen before it auto-advances to the menu.
-// Tuned so the wordmark settles for a beat after the entrance sweep (~1.4s) and
-// holds before fading out, without overstaying its welcome (it's tap-to-skip).
+// Visual interval the intro is on screen before it hands off to the menu. The
+// last EXIT_FADE_MS of it are a fade-out, so the wordmark settles for a beat
+// after the sweep then dissolves gracefully (it's also tap-to-skip).
 private const val INTRO_DURATION_MS = 3200L
+private const val EXIT_FADE_MS = 500L
 
 // 80s neon (left half) vs. modern flat (right half) — the dual aesthetic.
 private val NeonMagenta = Color(0xFFFF2D95)
@@ -89,22 +91,33 @@ fun BrandIntroScreen(onFinished: () -> Unit, modifier: Modifier = Modifier) {
 
     // Entrance: the wordmark scales up and fades in.
     val entrance = remember { Animatable(0f) }
-    // Sweep: a highlight bar travels left→right across the wordmark once.
-    val sweep = remember { Animatable(-0.15f) }
-    // A gentle, never-ending breathing pulse to keep the logo alive.
-    val pulseTransition = rememberInfiniteTransition(label = "introPulse")
-    val pulse by pulseTransition.animateFloat(
+    // Exit: the whole splash fades out before handing off to the menu.
+    val exitAlpha = remember { Animatable(1f) }
+    // A gentle breathing pulse, plus a highlight that sweeps back and forth
+    // across the wordmark for the whole time the splash is on screen.
+    val transition = rememberInfiniteTransition(label = "intro")
+    val pulse by transition.animateFloat(
         initialValue = 0.99f,
         targetValue = 1.02f,
         animationSpec = infiniteRepeatable(tween(1600), RepeatMode.Reverse),
-        label = "introPulseScale",
+        label = "introPulse",
+    )
+    val sweep by transition.animateFloat(
+        initialValue = -0.1f,
+        targetValue = 1.1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1300, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "introSweep",
     )
 
-    LaunchedEffectsForIntro(entrance, sweep, finish)
+    IntroAnimations(entrance, exitAlpha, finish)
 
     Canvas(
         modifier = modifier
             .fillMaxSize()
+            .graphicsLayer { alpha = exitAlpha.value }
             .pointerInput(Unit) { detectTapGestures { finish() } },
     ) {
         val w = size.width
@@ -183,8 +196,8 @@ fun BrandIntroScreen(onFinished: () -> Unit, modifier: Modifier = Modifier) {
             size = Size(2f, h),
         )
 
-        // The entrance sweep, drawn over everything.
-        val sx = sweep.value * w
+        // The back-and-forth sweep, drawn over everything.
+        val sx = sweep * w
         if (sx in -w..(2f * w)) {
             val bw = w * 0.09f
             drawRect(
@@ -244,22 +257,19 @@ private fun DrawScope.drawScanlines(mid: Float) {
     }
 }
 
-/** Hosts the one-shot launch animations + the auto-advance timer. */
+/** Hosts the entrance animation and the timed fade-out → hand-off. */
 @Composable
-private fun LaunchedEffectsForIntro(
+private fun IntroAnimations(
     entrance: Animatable<Float, AnimationVector1D>,
-    sweep: Animatable<Float, AnimationVector1D>,
+    exitAlpha: Animatable<Float, AnimationVector1D>,
     finish: () -> Unit,
 ) {
     LaunchedEffect(Unit) {
         entrance.animateTo(1f, tween(durationMillis = 700, easing = FastOutSlowInEasing))
     }
     LaunchedEffect(Unit) {
-        delay(280)
-        sweep.animateTo(1.15f, tween(durationMillis = 1100, easing = FastOutSlowInEasing))
-    }
-    LaunchedEffect(Unit) {
-        delay(INTRO_DURATION_MS)
+        delay(INTRO_DURATION_MS - EXIT_FADE_MS)
+        exitAlpha.animateTo(0f, tween(durationMillis = EXIT_FADE_MS.toInt(), easing = FastOutSlowInEasing))
         finish()
     }
 }

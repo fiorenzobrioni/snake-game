@@ -102,6 +102,9 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
   slot now points at a dedicated single-fill silhouette (`ic_launcher_monochrome.xml`) instead of the
   coloured foreground.
 - **Version** bumped to `versionCode 5` / `versionName "0.3.0"`.
+- Follow-up polish: intro hold lengthened to 3.2s; the highlight now **sweeps back and forth**
+  (infinite `RepeatMode.Reverse`) for the whole duration; and the splash **fades out** (whole-canvas
+  `graphicsLayer` alpha over its last 500ms) before the menu, instead of cutting hard.
 
 ### 2026-06-06 — Two specials at once, higher frequency, grow/shrink amount popups (v0.2.1)
 
