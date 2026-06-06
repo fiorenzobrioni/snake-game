@@ -263,7 +263,9 @@ private fun DrawScope.drawSynthwaveGrid(mid: Float, alpha: Float) {
 private fun DrawScope.drawSynthwaveSun(mid: Float, alpha: Float) {
     val w = size.width
     val h = size.height
-    val center = Offset(mid * 0.5f, h * 0.685f)
+    // Sit on the grid's vanishing-point axis (vp.x = mid * 0.42f) so the sun is
+    // centred over the receding grid.
+    val center = Offset(mid * 0.42f, h * 0.685f)
     val radius = w * 0.105f
 
     // Soft outer glow.
