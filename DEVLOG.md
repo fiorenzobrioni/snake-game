@@ -83,21 +83,20 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
-### 2026-06-07 — Decorate the main menu (snake + staggered bursts)
+### 2026-06-07 — Decorate the main menu with a gliding snake
 
-- The main menu's empty space above the title and below the buttons now hosts **discreet,
-  looping decorations** that reuse the gameplay vocabulary: a stylised snake gliding across
-  the top (rounded-rect segments + glowing eyed head) and **two offset particle bursts** low
-  on the screen.
+- The main menu's empty space above the title now hosts a **discreet, looping decoration**
+  that reuses the gameplay vocabulary: a stylised snake gliding across the top (rounded-rect
+  segments + glowing eyed head). (An earlier version also drew two particle bursts low on the
+  screen; they were dropped as too distracting — the snake alone reads best.)
 - New `ui/menu/MenuDecorations.kt` draws everything with plain Canvas primitives (a
-  radial-gradient glow rather than the AGSL shader) so it stays self-contained and cheap. It
-  reuses `Particle` + `emitEatBurst` (`ui/game/GameEffects.kt`) for the bursts and mirrors the
-  snake style of `GameBoard.drawSnakeSegment`/`drawEyes`.
+  radial-gradient glow rather than the AGSL shader) so it stays self-contained and cheap, and
+  mirrors the snake style of `GameBoard.drawSnakeSegment`/`drawEyes`.
 - Colours follow the player's selected **skin** (`paletteFor`), so `MainMenuScreen` now takes
   the shared `SettingsRepository` and collects `skin` from it; `App` passes `repo` through.
-- A single `rememberInfiniteTransition` phase drives the snake slither, the head-glow pulse
-  and the looping bursts (offset in phase + position so they read as staggered). Everything is
-  kept low-opacity so the title and buttons stay perfectly legible, in both dark and light themes.
+- A single `rememberInfiniteTransition` phase drives the snake slither and the head-glow pulse.
+  Everything is kept low-opacity so the title and buttons stay perfectly legible, in both dark
+  and light themes.
 
 ### 2026-06-07 — Fix status-bar icons on cold start with Light theme (v0.7.6)
 

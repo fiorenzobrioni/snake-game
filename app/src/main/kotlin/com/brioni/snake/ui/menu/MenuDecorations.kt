@@ -9,7 +9,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -18,31 +17,25 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import com.brioni.snake.ui.game.Particle
 import com.brioni.snake.ui.game.SkinPalette
-import com.brioni.snake.ui.game.emitEatBurst
 import kotlin.math.PI
 import kotlin.math.sin
-import kotlin.random.Random
 
 /**
- * Discreet, looping decorations layered *behind* the main-menu content: a
- * stylised snake gliding through the empty space above the title, and two
- * offset particle bursts low on the screen, beneath the buttons.
+ * A discreet, looping decoration layered *behind* the main-menu content: a
+ * stylised snake gliding through the empty space above the title.
  *
  * The look reuses the gameplay vocabulary — rounded-rect snake segments with a
- * glowing eyed head ([com.brioni.snake.ui.game.GameBoard]) and the eat-burst
- * particle system ([emitEatBurst]) — recoloured from the selected [palette], so
- * the menu reflects the player's chosen skin. Everything is kept low-opacity so
- * the title and buttons stay perfectly legible, and is drawn with plain Canvas
- * primitives (a radial-gradient glow instead of the AGSL shader) so this file is
- * self-contained and cheap.
+ * glowing eyed head ([com.brioni.snake.ui.game.GameBoard]) — recoloured from the
+ * selected [palette], so the menu reflects the player's chosen skin. It is kept
+ * low-opacity so the title and buttons stay perfectly legible, and is drawn with
+ * plain Canvas primitives (a radial-gradient glow instead of the AGSL shader) so
+ * this file is self-contained and cheap.
  */
 @Composable
 fun MenuDecorations(palette: SkinPalette, modifier: Modifier = Modifier) {
     val transition = rememberInfiniteTransition(label = "menuDecorations")
-    // A single 0..1 phase drives the snake slither, the head-glow pulse and the
-    // looping bursts; offsetting it per element keeps them out of lockstep.
+    // A single 0..1 phase drives the snake slither and the head-glow pulse.
     val phase by transition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
@@ -50,20 +43,10 @@ fun MenuDecorations(palette: SkinPalette, modifier: Modifier = Modifier) {
         label = "phase",
     )
 
-    // The two bursts are generated once and replayed continuously from the phase.
-    val burstA = remember(palette) { decorBurst(palette.growMedium, seed = 1) }
-    val burstB = remember(palette) { decorBurst(palette.shrinkLarge, seed = 7) }
-
     Canvas(modifier = modifier) {
         drawDecorSnake(palette, phase)
-        // Offset the second burst's phase so the two read as staggered, not twinned.
-        drawDecorBurst(burstA, centerX = size.width * 0.30f, centerY = size.height * 0.86f, t = frac(phase))
-        drawDecorBurst(burstB, centerX = size.width * 0.70f, centerY = size.height * 0.90f, t = frac(phase + 0.5f))
     }
 }
-
-/** Fractional part, so a phase offset wraps cleanly into 0..1. */
-private fun frac(v: Float): Float = v - kotlin.math.floor(v)
 
 /**
  * Draws the decorative snake in the top region (~6%..20% of the height), as a
@@ -167,34 +150,6 @@ private fun DrawScope.drawDecorEyes(
             palette.snakeEye.copy(alpha = 0.9f),
             pupilRadius,
             Offset(ex + fx * cell * 0.03f, ey + fy * cell * 0.03f),
-        )
-    }
-}
-
-/** Generates a one-off radial burst (in cell space) to be replayed from a phase. */
-private fun decorBurst(color: Color, seed: Int): List<Particle> {
-    val particles = mutableListOf<Particle>()
-    emitEatBurst(particles, centerX = 0f, centerY = 0f, color = color, span = 1, random = Random(seed))
-    return particles
-}
-
-/**
- * Replays a pre-built [burst] centred at [centerX],[centerY] (pixels) for a
- * normalised time [t] in 0..1: particles fly out along their velocity and fade,
- * looping seamlessly. Kept low-opacity so it never competes with the buttons.
- */
-private fun DrawScope.drawDecorBurst(burst: List<Particle>, centerX: Float, centerY: Float, t: Float) {
-    // Map cell-space velocities to a tasteful pixel reach for the menu.
-    val reach = size.width * 0.018f
-    val alpha = (1f - t) * 0.5f
-    if (alpha <= 0.01f) return
-    burst.forEach { p ->
-        val px = centerX + p.vx * t * reach
-        val py = centerY + p.vy * t * reach
-        drawCircle(
-            color = p.color.copy(alpha = alpha),
-            radius = p.radiusCells * reach,
-            center = Offset(px, py),
         )
     }
 }
