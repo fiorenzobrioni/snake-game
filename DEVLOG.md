@@ -83,6 +83,59 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
+### 2026-06-07 — Fix status-bar icons on cold start with Light theme (v0.7.6)
+
+- v0.7.5 worked when toggling the theme at runtime but **not on a cold start** with the Light theme
+  already selected (status-bar icons stayed light/invisible until a manual theme toggle). Cause: the
+  splash screen (`core-splashscreen`) owns the system-bar appearance during startup, so the
+  `enableEdgeToEdge` calls run while the splash is up and get reset to the theme default
+  (`Theme.SnakeGame.Main` → light icons) when the splash is removed; no later theme change occurs, so
+  nothing re-applied the app-themed appearance.
+- `MainActivity` now re-applies the bar appearance **after the splash is removed** (in the splash
+  exit `withEndAction`) and imperatively on every theme change, via a small `applyBarAppearance()`
+  helper + a cached `appDarkTheme` flag (`WindowCompat.getInsetsController`).
+- `versionCode 18` / `versionName 0.7.6`.
+
+### 2026-06-07 — System-bar icons follow the app theme, take 2 (v0.7.5)
+
+- The v0.7.4 `SideEffect` that set `isAppearanceLightStatusBars` directly did not stick (status-bar
+  icons stayed light/invisible under a Light app theme on a dark-mode device — observed on a
+  Samsung Galaxy S24 Ultra / One UI).
+- Samsung One UI honours the standard appearance flags, so the failure was the direct flag not
+  surviving edge-to-edge's own setup. Replaced it with the supported hook: re-apply
+  `enableEdgeToEdge` from a `DisposableEffect(darkTheme)`
+  using `SystemBarStyle.auto(..., detectDarkMode = { darkTheme })` for both bars, so edge-to-edge's own
+  appearance logic uses the app theme instead of the system config. Re-runs on every theme change.
+- `versionCode 17` / `versionName 0.7.5`.
+
+### 2026-06-07 — System-bar icons follow the app theme (v0.7.4)
+
+- Follow-up to v0.7.3: with a **Light** app theme on a **dark-mode device**, the status-bar /
+  navigation-bar icons stayed light (edge-to-edge defaults their colour to the *system* dark mode),
+  so they were invisible on our light background.
+- `MainActivity` now drives `isAppearanceLightStatusBars` / `isAppearanceLightNavigationBars` from the
+  app's own `darkTheme` value via a `SideEffect` (`WindowCompat.getInsetsController`), re-applied on
+  every theme change so toggling the theme in Settings updates the bars immediately.
+- `versionCode 16` / `versionName 0.7.4`.
+
+### 2026-06-07 — Gameplay screen follows the selected theme (v0.7.3)
+
+- Reverses the v0.7.1/v0.7.2 approach (which *forced* the dark scheme on the gameplay screen).
+  Root cause of the light-mode complaint: with the dark scheme forced, the HUD used the dark accent
+  (`SnakeGreenBright`) on what the user expected to be a light surface, and the pre-Play / pause /
+  game-over overlays sat on a hardcoded black scrim. The board *interior* is dark by design and
+  stays that way; only the surrounding chrome needed to follow the theme.
+- `ui/App.kt`: the `Screen.Game` branch no longer wraps in `SnakeGameTheme(darkTheme = true)`; it
+  inherits the ambient theme, so the HUD (Score/Pause = `primary`, labels = `onBackground`) picks up
+  the light scheme automatically. The standard light-theme green (`SnakeGreen`) is sufficient — no
+  new color was introduced.
+- `ui/game/GameBoard.kt` + `GameScreen.kt`: the board frame is now theme-aware via a new
+  `borderColor` param — a branded green border (`primary`) on the light surround, the skin's subtle
+  `palette.boardBorder` in dark mode (detected with `background.luminance() > 0.5f`).
+- `ui/game/GameOverlays.kt`: `OverlayScrim` uses a near-opaque light panel under the light theme
+  instead of the black scrim, so the pre-Play setup / Pause / Game Over screens read correctly.
+- `versionCode 15` / `versionName 0.7.3`.
+
 ### 2026-06-07 — Light-theme HUD fix: dark gameplay background (v0.7.2)
 
 - Follow-up to v0.7.1: forcing the dark scheme made the HUD text light, but the HUD margins still

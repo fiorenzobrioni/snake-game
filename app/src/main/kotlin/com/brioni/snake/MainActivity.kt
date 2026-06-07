@@ -1,7 +1,9 @@
 package com.brioni.snake
 
+import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -11,11 +13,13 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.core.view.WindowCompat
 import com.brioni.snake.data.Settings
 import com.brioni.snake.data.SettingsRepository
 import com.brioni.snake.game.BoardScale
@@ -30,6 +34,23 @@ import com.brioni.snake.ui.theme.SnakeGameTheme
  * portrait, full-screen, with content kept clear of system bars / cutouts.
  */
 class MainActivity : ComponentActivity() {
+    // Latest resolved *app* dark-theme flag, kept by the composition so the splash
+    // exit can restore the right status-bar icon colour (see applyBarAppearance).
+    private var appDarkTheme: Boolean = false
+
+    /**
+     * Set the system-bar icon colour to match the app theme. The splash screen owns
+     * the bar appearance during a cold start, so our edge-to-edge calls run while it
+     * is up and get reset to the (light-icon) default once it is removed. We re-apply
+     * here after the splash is gone — and on every theme change — so a Light app theme
+     * on a dark-mode device gets dark, readable icons from the first frame.
+     */
+    private fun applyBarAppearance() {
+        val controller = WindowCompat.getInsetsController(window, window.decorView)
+        controller.isAppearanceLightStatusBars = !appDarkTheme
+        controller.isAppearanceLightNavigationBars = !appDarkTheme
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // Fade the system splash out so it hands off smoothly to the Compose
         // brand-intro screen instead of cutting abruptly.
@@ -37,7 +58,11 @@ class MainActivity : ComponentActivity() {
             provider.view.animate()
                 .alpha(0f)
                 .setDuration(250L)
-                .withEndAction { provider.remove() }
+                .withEndAction {
+                    provider.remove()
+                    // Restore the app-themed bar icons the splash left at its default.
+                    applyBarAppearance()
+                }
                 .start()
         }
         enableEdgeToEdge()
@@ -51,6 +76,29 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.Light -> false
                 ThemeMode.Dark -> true
                 ThemeMode.System -> isSystemInDarkTheme()
+            }
+            // Drive the system-bar icon colour from the *app* theme, not the system
+            // one: edge-to-edge detects dark mode from the system config by default,
+            // so a Light app theme on a dark-mode device would leave light (invisible)
+            // status-bar icons on our light background. Re-applying enableEdgeToEdge
+            // with a custom detectDarkMode that returns our own darkTheme is the
+            // supported hook, and it re-runs whenever the theme changes.
+            DisposableEffect(darkTheme) {
+                appDarkTheme = darkTheme
+                enableEdgeToEdge(
+                    statusBarStyle = SystemBarStyle.auto(
+                        Color.TRANSPARENT,
+                        Color.TRANSPARENT,
+                    ) { darkTheme },
+                    navigationBarStyle = SystemBarStyle.auto(
+                        Color.TRANSPARENT,
+                        Color.TRANSPARENT,
+                    ) { darkTheme },
+                )
+                // Also set it imperatively so post-splash theme changes take effect
+                // immediately (the splash is gone, so nothing resets it afterwards).
+                applyBarAppearance()
+                onDispose {}
             }
             SnakeGameTheme(darkTheme = darkTheme) {
                 SnakeApp(repo)
