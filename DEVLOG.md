@@ -82,6 +82,17 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
+### 2026-06-07 — Intro: bloom shader (API 33+) + higher-contrast grid (v0.3.2)
+
+- Added an optional **AGSL bloom** post-filter to the splash: a `RuntimeShader` (`BLOOM_AGSL`) applied
+  as a `RenderEffect` on the Canvas `graphicsLayer` (`CompositingStrategy.Offscreen`), sampling bright
+  neighbours above a luminance threshold and screen-adding them — a soft halo around the snake and the
+  glowing letters; the dark board stays untouched. **API 33+ only**, built with `runCatching` so a
+  compile failure degrades to null (no crash); below 33 the per-cell radial glows remain the fallback.
+- Bumped the splash grid contrast (`SplashGridLine = 0x33FFFFFF`, stroke 1.5) so the board's squares
+  read clearly — **splash-only**, the in-game Classic palette is untouched (applied via `.copy()`).
+- `versionCode 7` / `versionName 0.3.2`.
+
 ### 2026-06-07 — Brand intro redesign: "snake writes its name" (v0.3.1)
 
 - Replaced the split 80s/modern wordmark splash entirely with a gameplay-tied concept: the whole

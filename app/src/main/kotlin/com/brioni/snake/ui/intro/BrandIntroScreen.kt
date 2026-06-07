@@ -1,5 +1,7 @@
 package com.brioni.snake.ui.intro
 
+import android.graphics.RuntimeShader
+import android.os.Build
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -21,6 +23,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -92,6 +96,41 @@ private val FONT: Map<Char, List<String>> = mapOf(
 
 private data class Cell(val row: Int, val col: Int)
 
+// Splash-only grid colour — brighter than the in-game Classic palette so the
+// board's squares read clearly here (the game's palette is left untouched).
+private val SplashGridLine = Color(0x33FFFFFF)
+
+// Bloom post-filter (AGSL, API 33+). Samples bright neighbours of each pixel and
+// screen-adds them, so the snake and the glowing letters gain a soft halo. Dark
+// board pixels stay below the luminance threshold and are untouched, so the grid
+// keeps its crisp lines. Below API 33 this is skipped (the per-cell radial glows
+// are the graceful fallback).
+private const val BLOOM_AGSL = """
+uniform shader content;
+uniform float2 resolution;
+
+half4 main(float2 coord) {
+    half4 src = content.eval(coord);
+    float r = resolution.y * 0.008;
+    float3 glow = float3(0.0);
+    const int DIRS = 12;
+    for (int i = 0; i < DIRS; i++) {
+        float a = (float(i) / float(DIRS)) * 6.2831853;
+        float2 dir = float2(cos(a), sin(a));
+        half4 s1 = content.eval(coord + dir * r);
+        half4 s2 = content.eval(coord + dir * r * 2.0);
+        float l1 = float(max(max(s1.r, s1.g), s1.b));
+        float l2 = float(max(max(s2.r, s2.g), s2.b));
+        glow += float3(s1.rgb) * max(0.0, l1 - 0.45);
+        glow += float3(s2.rgb) * max(0.0, l2 - 0.45) * 0.6;
+    }
+    glow *= 0.18;
+    float3 base = float3(src.rgb);
+    float3 outc = base + glow * (float3(1.0) - base);
+    return half4(half3(outc), src.a);
+}
+"""
+
 /**
  * The first thing the player sees on a cold launch: the game board itself, drawn
  * exactly as in-game (square cells, gradient, grid, frame). A snake crawls in
@@ -106,7 +145,18 @@ private data class Cell(val row: Int, val col: Int)
  */
 @Composable
 fun BrandIntroScreen(onFinished: () -> Unit, modifier: Modifier = Modifier) {
-    val palette = remember { paletteFor(Skin.Classic) }
+    val palette = remember { paletteFor(Skin.Classic).copy(gridLine = SplashGridLine) }
+
+    // On Android 13+ a bloom RuntimeShader adds a soft glow around the bright
+    // snake/letters. Built defensively: any compile failure falls back to null
+    // (no bloom) rather than crashing the launch.
+    val bloomShader = remember {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            runCatching { RuntimeShader(BLOOM_AGSL) }.getOrNull()
+        } else {
+            null
+        }
+    }
 
     // Fire onFinished once, whether by tap or by the auto-advance timer.
     var done by remember { mutableStateOf(false) }
@@ -131,7 +181,17 @@ fun BrandIntroScreen(onFinished: () -> Unit, modifier: Modifier = Modifier) {
     Canvas(
         modifier = modifier
             .fillMaxSize()
-            .graphicsLayer { alpha = entrance.value * exitAlpha.value }
+            .graphicsLayer {
+                alpha = entrance.value * exitAlpha.value
+                // Apply the bloom as a render effect over the rasterised canvas.
+                if (bloomShader != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    bloomShader.setFloatUniform("resolution", size.width, size.height)
+                    renderEffect = android.graphics.RenderEffect
+                        .createRuntimeShaderEffect(bloomShader, "content")
+                        .asComposeRenderEffect()
+                    compositingStrategy = CompositingStrategy.Offscreen
+                }
+            }
             .pointerInput(Unit) { detectTapGestures { finish() } },
     ) {
         val cols = TARGET_COLS
@@ -224,13 +284,14 @@ private fun DrawScope.drawBoard(
         size = Size(boardW, boardH),
     )
     if (cell > 10f) {
+        val gridStroke = 1.5f
         for (x in 0..cols) {
             val lineX = originX + x * cell
-            drawLine(palette.gridLine, Offset(lineX, originY), Offset(lineX, originY + boardH), 1f)
+            drawLine(palette.gridLine, Offset(lineX, originY), Offset(lineX, originY + boardH), gridStroke)
         }
         for (y in 0..rows) {
             val lineY = originY + y * cell
-            drawLine(palette.gridLine, Offset(originX, lineY), Offset(originX + boardW, lineY), 1f)
+            drawLine(palette.gridLine, Offset(originX, lineY), Offset(originX + boardW, lineY), gridStroke)
         }
     }
     drawRect(
