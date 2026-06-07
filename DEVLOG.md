@@ -83,6 +83,16 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
+### 2026-06-07 — System-bar icons follow the app theme (v0.7.4)
+
+- Follow-up to v0.7.3: with a **Light** app theme on a **dark-mode device**, the status-bar /
+  navigation-bar icons stayed light (edge-to-edge defaults their colour to the *system* dark mode),
+  so they were invisible on our light background.
+- `MainActivity` now drives `isAppearanceLightStatusBars` / `isAppearanceLightNavigationBars` from the
+  app's own `darkTheme` value via a `SideEffect` (`WindowCompat.getInsetsController`), re-applied on
+  every theme change so toggling the theme in Settings updates the bars immediately.
+- `versionCode 16` / `versionName 0.7.4`.
+
 ### 2026-06-07 — Gameplay screen follows the selected theme (v0.7.3)
 
 - Reverses the v0.7.1/v0.7.2 approach (which *forced* the dark scheme on the gameplay screen).

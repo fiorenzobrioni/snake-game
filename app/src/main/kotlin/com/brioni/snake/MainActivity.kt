@@ -11,11 +11,13 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.core.view.WindowCompat
 import com.brioni.snake.data.Settings
 import com.brioni.snake.data.SettingsRepository
 import com.brioni.snake.game.BoardScale
@@ -51,6 +53,15 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.Light -> false
                 ThemeMode.Dark -> true
                 ThemeMode.System -> isSystemInDarkTheme()
+            }
+            // Drive the system-bar icon colour from the *app* theme, not the system
+            // one: edge-to-edge defaults to the system dark mode, so a Light app
+            // theme on a dark-mode device would leave light (invisible) status-bar
+            // icons on our light background. Re-applied on every theme change.
+            SideEffect {
+                val controller = WindowCompat.getInsetsController(window, window.decorView)
+                controller.isAppearanceLightStatusBars = !darkTheme
+                controller.isAppearanceLightNavigationBars = !darkTheme
             }
             SnakeGameTheme(darkTheme = darkTheme) {
                 SnakeApp(repo)
