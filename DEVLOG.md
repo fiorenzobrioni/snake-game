@@ -83,6 +83,25 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
+### 2026-06-07 — Predictive-back overhaul, light-theme fix, landscape board, scale rename (v0.7.0)
+
+- **Predictive back, properly**: during the gesture the current screen now lifts into a rounded,
+  shadowed card that shrinks (×0.65) and slides off toward the swipe edge, while the **destination
+  (Menu) is previewed behind it**, softly blurred and easing into focus. Release commits with an
+  **instant swap** (no Settings flash); cancel eases the card back. (`backInProgress`/`instantSwap`
+  state, `BlurEffect` preview, `EnterTransition.None` on commit.)
+- **Light theme fixed**: the always-dark AGSL menu backdrop was painting over the light surface, so
+  light-theme menus/settings looked dark with invisible captions. The backdrop is now drawn **only in
+  the dark theme** (`colorScheme.background.luminance() < 0.5`); light theme keeps its plain surface.
+- **Landscape board sizing**: `boardFor` now fixes the preset count on the **short side** and solves
+  the long side from the aspect ratio, so a tablet in landscape gets the same density as a phone in
+  portrait instead of collapsing (e.g. 18×10 → ~29×18). Phone portrait is unchanged. Renamed
+  `BoardScale.cellsOnShortSide`.
+- **Naming clash**: the board-scale **"Classic" is renamed "Standard"** (Cozy / Standard / Epic) so it
+  no longer collides with **Classic mode** — important since the HUD shows the board-scale label. Enum
+  constant kept (`BoardScale.Classic`) so saved settings / highscores are untouched.
+- `versionCode 12` / `versionName 0.7.0`.
+
 ### 2026-06-07 — Predictive-back "card", 5 more achievements (v0.6.1)
 
 - **Predictive back now reads clearly**: the menu screens are transparent over the shared backdrop, so a
