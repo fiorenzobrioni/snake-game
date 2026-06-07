@@ -60,7 +60,7 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - 🕹️ **Game modes** — **Classic**, **Endless** (speed ramps up the longer you survive) and
   **Time Attack** (score as much as you can in 120s), selectable on the start screen.
 - ⏸️ **Pause & menus** — pause overlay with a blur effect; restart or return to the main menu at any time. Highscores are kept per (mode, level, board scale).
-- 💎 **Polished navigation** — an **animated GPU background** behind the menu, **blur-dissolve** screen transitions, and the Android 13+ **predictive back** gesture (the screen eases back as you swipe).
+- 💎 **Polished navigation** — an **animated GPU background** behind the menus and **blur-dissolve** screen transitions.
 
 ### 🍽️ Food system at a glance
 

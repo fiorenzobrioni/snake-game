@@ -83,6 +83,19 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
+### 2026-06-07 — Remove predictive back, fix light-theme gameplay UI (v0.7.1)
+
+- **Removed the in-app predictive-back animation**: it looked janky (screens briefly overlapping), so
+  `App` reverts to a plain `BackHandler` → navigate to Menu. The blur-dissolve screen transitions and
+  the animated menu backdrop stay. (`enableOnBackInvokedCallback` is kept in the manifest — it only
+  drives the smooth *system* exit-to-home from the Menu, which is not janky.)
+- **Light-theme gameplay text fixed**: the pre-game (Ready) overlay — and the other in-game overlays /
+  HUD — sit on an always-black scrim but used `onBackground`, which is dark in the light theme, so the
+  section labels ("Mode / Level / Board scale") were invisible. The board is an always-dark arcade
+  surface, so the whole `GameScreen` is now wrapped in a forced **dark** scheme
+  (`SnakeGameTheme(darkTheme = true)`), keeping its light-on-dark text visible under any app theme.
+- `versionCode 13` / `versionName 0.7.1`.
+
 ### 2026-06-07 — Predictive-back overhaul, light-theme fix, landscape board, scale rename (v0.7.0)
 
 - **Predictive back, properly**: during the gesture the current screen now lifts into a rounded,
