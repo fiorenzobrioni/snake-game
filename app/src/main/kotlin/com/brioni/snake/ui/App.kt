@@ -120,6 +120,7 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
                     )
 
                     Screen.Menu -> MainMenuScreen(
+                        repo = repo,
                         onPlay = { navigate(Screen.Game) },
                         onRecords = { navigate(Screen.Records) },
                         onAchievements = { navigate(Screen.Achievements) },

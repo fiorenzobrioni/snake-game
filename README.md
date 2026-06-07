@@ -60,7 +60,7 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - 🕹️ **Game modes** — **Classic**, **Endless** (speed ramps up the longer you survive) and
   **Time Attack** (score as much as you can in 120s), selectable on the start screen.
 - ⏸️ **Pause & menus** — pause overlay with a blur effect; restart or return to the main menu at any time. Highscores are kept per (mode, level, board scale).
-- 💎 **Polished navigation** — an **animated GPU background** behind the menus and **blur-dissolve** screen transitions.
+- 💎 **Polished navigation** — an **animated GPU background** behind the menus, a **decorated main menu** (a gliding snake and staggered particle bursts that follow your selected skin), and **blur-dissolve** screen transitions.
 
 ### 🍽️ Food system at a glance
 
