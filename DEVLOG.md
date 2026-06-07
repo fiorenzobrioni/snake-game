@@ -82,6 +82,20 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
+### 2026-06-07 — Brand intro redesign: "snake writes its name" (v0.3.1)
+
+- Replaced the split 80s/modern wordmark splash entirely with a gameplay-tied concept: the whole
+  splash **is the game board** (drawn like in-game — Classic palette gradient, 1px grid, bordered
+  frame). A snake crawls in from the left along the mid row; a **reveal curtain** tied to the float
+  head column lights up the **SNAKE** pixel-art (a 4×5 cell font) column-by-column in its wake —
+  fresh cells glow `headGlow` lime then **cool to** `snakeBody` green (`lerp(snakeHead, snakeBody, t)`).
+  The snake exits right, the word holds, then the whole canvas fades to the menu.
+- Kept the existing scaffolding (`entrance`/`exitAlpha`/timer, tap-to-skip, fire-once `finish`);
+  added a `travel` Animatable (`LinearEasing`) for the crawl. Board/segment/eye/glow draw calls are
+  copied from `GameBoard.kt`; palette via `paletteFor(Skin.Classic)`. No shaders → all-API safe.
+- Removed the now-unused `intro_tagline` string and the retro/modern artwork. Bumped to
+  `versionCode 6` / `versionName 0.3.1`.
+
 ### 2026-06-06 — Step 7.1: branded launch — icon, splash & brand intro (v0.3.0)
 
 - **Two-stage branded launch.** The system `SplashScreen` API can only show a centred icon on a
