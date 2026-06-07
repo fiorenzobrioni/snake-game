@@ -34,10 +34,10 @@ import kotlin.math.ceil
 
 // Total time on screen before handing off to the menu; the last EXIT_FADE_MS are
 // a fade-out. It's also tap-to-skip.
-private const val INTRO_DURATION_MS = 3600L
+private const val INTRO_DURATION_MS = 4100L
 private const val EXIT_FADE_MS = 500L
 private const val TRAVEL_START_MS = 300L
-private const val TRAVEL_MS = 2200L
+private const val TRAVEL_MS = 2700L
 
 // Board grid: TARGET_COLS columns wide (square cells); the "SNAKE" pixel-art is
 // WORD_COLS wide, centred with a margin either side.
@@ -148,9 +148,11 @@ fun BrandIntroScreen(onFinished: () -> Unit, modifier: Modifier = Modifier) {
         val midRow = bandTop + 2
         val litCells = wordCells(wordStartCol, bandTop)
 
-        // Float head column drives both the snake and the reveal curtain.
+        // Float head column drives both the snake and the reveal curtain. The end
+        // is past the right edge by the snake's full length, so the whole tail
+        // clears the board before the word holds (no lingering segment on the E).
         val startCol = -SNAKE_LENGTH - 1f
-        val endCol = cols + 2f
+        val endCol = cols + SNAKE_LENGTH + 2f
         val headCol = startCol + (endCol - startCol) * travel.value
 
         // Letters: reveal each lit cell as the head passes its column.
