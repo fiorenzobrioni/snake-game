@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -35,10 +36,19 @@ private fun OverlayScrim(
     alpha: Float = 0.72f,
     content: @Composable () -> Unit,
 ) {
+    // The board behind is dark, so under the light theme we use a near-opaque
+    // light panel (instead of the dark translucent scrim) to keep the overlay
+    // text readable.
+    val isLightTheme = MaterialTheme.colorScheme.background.luminance() > 0.5f
+    val scrimColor = if (isLightTheme) {
+        MaterialTheme.colorScheme.background.copy(alpha = 0.92f)
+    } else {
+        Color.Black.copy(alpha = alpha)
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = alpha))
+            .background(scrimColor)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,

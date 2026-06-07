@@ -83,6 +83,24 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
+### 2026-06-07 — Gameplay screen follows the selected theme (v0.7.3)
+
+- Reverses the v0.7.1/v0.7.2 approach (which *forced* the dark scheme on the gameplay screen).
+  Root cause of the light-mode complaint: with the dark scheme forced, the HUD used the dark accent
+  (`SnakeGreenBright`) on what the user expected to be a light surface, and the pre-Play / pause /
+  game-over overlays sat on a hardcoded black scrim. The board *interior* is dark by design and
+  stays that way; only the surrounding chrome needed to follow the theme.
+- `ui/App.kt`: the `Screen.Game` branch no longer wraps in `SnakeGameTheme(darkTheme = true)`; it
+  inherits the ambient theme, so the HUD (Score/Pause = `primary`, labels = `onBackground`) picks up
+  the light scheme automatically. The standard light-theme green (`SnakeGreen`) is sufficient — no
+  new color was introduced.
+- `ui/game/GameBoard.kt` + `GameScreen.kt`: the board frame is now theme-aware via a new
+  `borderColor` param — a branded green border (`primary`) on the light surround, the skin's subtle
+  `palette.boardBorder` in dark mode (detected with `background.luminance() > 0.5f`).
+- `ui/game/GameOverlays.kt`: `OverlayScrim` uses a near-opaque light panel under the light theme
+  instead of the black scrim, so the pre-Play setup / Pause / Game Over screens read correctly.
+- `versionCode 15` / `versionName 0.7.3`.
+
 ### 2026-06-07 — Light-theme HUD fix: dark gameplay background (v0.7.2)
 
 - Follow-up to v0.7.1: forcing the dark scheme made the HUD text light, but the HUD margins still

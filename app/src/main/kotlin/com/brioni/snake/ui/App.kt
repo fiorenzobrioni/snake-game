@@ -39,7 +39,6 @@ import com.brioni.snake.ui.intro.BrandIntroScreen
 import com.brioni.snake.ui.menu.MainMenuScreen
 import com.brioni.snake.ui.records.RecordsScreen
 import com.brioni.snake.ui.settings.SettingsScreen
-import com.brioni.snake.ui.theme.SnakeGameTheme
 
 /** The top-level destinations. [Intro] is the cold-launch brand splash. */
 private enum class Screen { Intro, Menu, Game, Settings, Records, Achievements }
@@ -128,23 +127,21 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
                         modifier = Modifier.fillMaxSize(),
                     )
 
-                    // The board is an always-dark arcade surface, so the whole
-                    // gameplay screen is forced to the dark scheme *and* given a
-                    // dark background — its light-on-dark HUD/overlay text (and the
-                    // phosphor-green accents) stay readable even under the light theme.
-                    Screen.Game -> SnakeGameTheme(darkTheme = true) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.background),
-                        ) {
-                            GameScreen(
-                                viewModel = gameViewModel,
-                                audio = audio,
-                                onExitToMenu = { navigate(Screen.Menu) },
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        }
+                    // The board interior is an always-dark arcade surface, but the
+                    // surrounding chrome (HUD, board frame, overlays) follows the
+                    // selected theme so the gameplay screen reads correctly under the
+                    // light theme like every other screen.
+                    Screen.Game -> Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.background),
+                    ) {
+                        GameScreen(
+                            viewModel = gameViewModel,
+                            audio = audio,
+                            onExitToMenu = { navigate(Screen.Menu) },
+                            modifier = Modifier.fillMaxSize(),
+                        )
                     }
 
                     Screen.Settings -> SettingsScreen(

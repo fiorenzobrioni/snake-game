@@ -70,6 +70,7 @@ fun GameBoard(
     floatingTextId: Int,
     textMeasurer: TextMeasurer,
     palette: SkinPalette,
+    borderColor: Color = palette.boardBorder,
     modifier: Modifier = Modifier,
 ) {
     val particles: SnapshotStateList<Particle> = remember { emptyList<Particle>().toMutableStateList() }
@@ -260,7 +261,7 @@ fun GameBoard(
 
         // Framing border painted on top.
         drawRect(
-            color = palette.boardBorder,
+            color = borderColor,
             topLeft = Offset(originX, originY),
             size = Size(boardWidth, boardHeight),
             style = Stroke(width = (cell * 0.12f).coerceAtLeast(2f)),

@@ -35,6 +35,7 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -172,6 +173,15 @@ fun GameScreen(
                 if (state.status == GameStatus.Running && viewModel.controlScheme == ControlScheme.Swipe) {
                     boardModifier = boardModifier.swipeToSteer(onSwipe = viewModel::setDirection)
                 }
+                // The board interior stays dark, but its frame follows the theme:
+                // a branded green border on the light surround, the skin's subtle
+                // border in dark mode.
+                val isLightTheme = MaterialTheme.colorScheme.background.luminance() > 0.5f
+                val boardBorderColor = if (isLightTheme) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    viewModel.palette.boardBorder
+                }
                 GameBoard(
                     state = state,
                     previousSnake = viewModel.previousSnake,
@@ -184,6 +194,7 @@ fun GameScreen(
                     floatingTextId = viewModel.floatingTextId,
                     textMeasurer = textMeasurer,
                     palette = viewModel.palette,
+                    borderColor = boardBorderColor,
                     modifier = boardModifier,
                 )
             }
