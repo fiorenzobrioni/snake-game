@@ -19,7 +19,7 @@ The original **C# / .NET 10 / Windows Forms (GDI+)** version shipped as **v1.0.0
 ./gradlew lint              # Android lint
 ```
 
-- `minSdk 24`, `compileSdk`/`targetSdk 35`. Kotlin + Jetpack Compose.
+- `minSdk 33`, `compileSdk`/`targetSdk 36`. Kotlin + Jetpack Compose. AGSL shaders are always available (no fallbacks).
 - The SDK location comes from `local.properties` (`sdk.dir`) or `ANDROID_HOME` (both machine-specific / git-ignored).
 - Dependencies and versions live in the Gradle version catalog `gradle/libs.versions.toml`; reference them as `libs.*`. Always use the pinned `./gradlew` wrapper.
 

@@ -4,8 +4,6 @@
 
     <!-- Menu / titles -->
     <string name="game_title">SNAKE</string>
-    <!-- Brand intro splash: tagline under the split "SNAKE" wordmark -->
-    <string name="intro_tagline">ARCADE ROOTS · MODERN PLAY</string>
     <string name="menu_mode">Mode</string>
     <string name="menu_level">Level</string>
     <string name="menu_board_scale">Board scale</string>

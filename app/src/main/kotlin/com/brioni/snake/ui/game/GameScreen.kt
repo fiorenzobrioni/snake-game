@@ -2,7 +2,6 @@ package com.brioni.snake.ui.game
 
 import android.graphics.RenderEffect
 import android.graphics.RuntimeShader
-import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
@@ -111,8 +110,7 @@ fun GameScreen(
     val shakeY = sin(shakeT * Math.PI * 9).toFloat() * amplitudePx * damp +
         sin(quakeT * Math.PI * 13).toFloat() * quakeAmpPx * quakeDamp
 
-    // Pause blur (step 3.4): API 31+ blurs the frozen board; below it no-ops and
-    // the overlay scrim still distinguishes the paused state.
+    // Pause blur (step 3.4): blurs the frozen board behind the overlay scrim.
     val blurRadius by animateDpAsState(
         targetValue = if (state.status == GameStatus.Paused) 14.dp else 0.dp,
         label = "pauseBlur",
@@ -151,10 +149,8 @@ fun GameScreen(
                 LaunchedEffect(aspect) { viewModel.onPlayAreaMeasured(aspect) }
 
                 // Optional CRT post-filter (step 5.4): an AGSL RenderEffect over
-                // the whole board layer, on API 33+ when enabled in Settings.
-                val crtEffect = if (
-                    viewModel.crtEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
-                ) {
+                // the whole board layer, when enabled in Settings.
+                val crtEffect = if (viewModel.crtEnabled) {
                     remember(constraints.maxWidth, constraints.maxHeight) {
                         val shader = RuntimeShader(Shaders.CRT)
                         shader.setFloatUniform(

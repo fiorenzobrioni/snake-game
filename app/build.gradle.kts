@@ -10,10 +10,10 @@ android {
 
     defaultConfig {
         applicationId = "com.brioni.snake"
-        minSdk = 24
+        minSdk = 33
         targetSdk = 36
-        versionCode = 5
-        versionName = "0.3.0"
+        versionCode = 8
+        versionName = "0.4.0"
 
         vectorDrawables {
             useSupportLibrary = true

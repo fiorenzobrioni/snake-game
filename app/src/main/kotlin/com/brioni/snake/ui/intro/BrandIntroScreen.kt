@@ -1,12 +1,10 @@
 package com.brioni.snake.ui.intro
 
+import android.graphics.RuntimeShader
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -19,64 +17,175 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.clipRect
-import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.drawText
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.unit.dp
-import com.brioni.snake.R
-import com.brioni.snake.ui.theme.Orbitron
+import com.brioni.snake.game.Skin
+import com.brioni.snake.ui.game.SkinPalette
+import com.brioni.snake.ui.game.paletteFor
 import kotlinx.coroutines.delay
-import kotlin.math.min
-import kotlin.math.sin
+import kotlin.math.ceil
 
-// Visual interval the intro is on screen before it hands off to the menu. The
-// last EXIT_FADE_MS of it are a fade-out, so the wordmark settles for a beat
-// after the sweep then dissolves gracefully (it's also tap-to-skip).
-private const val INTRO_DURATION_MS = 3200L
+// Total time on screen before handing off to the menu; the last EXIT_FADE_MS are
+// a fade-out. It's also tap-to-skip.
+private const val INTRO_DURATION_MS = 4100L
 private const val EXIT_FADE_MS = 500L
+private const val TRAVEL_START_MS = 300L
+private const val TRAVEL_MS = 2700L
 
-// 80s neon (left half) vs. modern flat (right half) — the dual aesthetic.
-private val NeonMagenta = Color(0xFFFF2D95)
-private val NeonCyan = Color(0xFF00E5FF)
-private val ModernLime = Color(0xFF7CFC00)
+// Board grid: TARGET_COLS columns wide (square cells); the "SNAKE" pixel-art is
+// WORD_COLS wide, centred with a margin either side.
+private const val TARGET_COLS = 28
+private const val SNAKE_LENGTH = 6
+// How many columns the per-cell reveal takes to ramp from lime → green behind
+// the head, giving a soft "cooling trail" edge.
+private const val FADE_COLS = 1.6f
 
-// Left-half warm "phosphor" backdrop; right-half clean board gradient.
-private val RetroTop = Color(0xFF1E1407)
-private val RetroBottom = Color(0xFF0C0903)
-private val ModernTop = Color(0xFF141A20)
-private val ModernBottom = Color(0xFF0A0E13)
+// 4×5 pixel font for the five letters of SNAKE ('#' = lit cell).
+private val LETTER_WIDTH = 4
+private val LETTER_GAP = 1
+private val WORD = "SNAKE"
+private val WORD_COLS = WORD.length * LETTER_WIDTH + (WORD.length - 1) * LETTER_GAP // 24
+private val FONT: Map<Char, List<String>> = mapOf(
+    'S' to listOf(
+        "####",
+        "#...",
+        "####",
+        "...#",
+        "####",
+    ),
+    'N' to listOf(
+        "#..#",
+        "##.#",
+        "#.##",
+        "#..#",
+        "#..#",
+    ),
+    'A' to listOf(
+        ".##.",
+        "#..#",
+        "####",
+        "#..#",
+        "#..#",
+    ),
+    'K' to listOf(
+        "#..#",
+        "#.#.",
+        "##..",
+        "#.#.",
+        "#..#",
+    ),
+    'E' to listOf(
+        "####",
+        "#...",
+        "###.",
+        "#...",
+        "####",
+    ),
+)
 
-private val GridAmber = Color(0xFFFFB000)
-private val Scanline = Color(0xFF000000)
+private data class Cell(val row: Int, val col: Int)
+
+// Two "bonus" explosions detonate in the snake's wake — one above the word, one
+// below — to make the splash feel alive. Each is an AGSL shader: an expanding
+// shockwave ring + a bright core with radial spark streaks, fading as it grows.
+// progress 0→1 is one blast; the head's column drives it, so each pops once as
+// the snake sweeps past that part of the board.
+private const val EXPLOSION_AGSL = """
+uniform float2 center;
+uniform float maxRadius;
+uniform float progress;
+layout(color) uniform half4 color;
+
+half4 main(float2 fragCoord) {
+    float d = distance(fragCoord, center);
+    float radius = maxRadius * progress;
+    float ringWidth = maxRadius * (0.06 + 0.12 * progress);
+    float ring = smoothstep(ringWidth, 0.0, abs(d - radius));
+    float core = smoothstep(maxRadius * 0.45 * (1.0 - progress), 0.0, d);
+    float fade = (1.0 - progress) * (1.0 - progress);
+    float ang = atan(fragCoord.y - center.y, fragCoord.x - center.x);
+    float spark = 0.6 + 0.4 * sin(ang * 16.0);
+    float intensity = (ring * mix(1.0, spark, 0.5) + core * 0.7) * fade;
+    intensity = clamp(intensity, 0.0, 1.0);
+    return half4(color.rgb * half(intensity), half(intensity));
+}
+"""
+
+private val BlastColorTop = Color(0xFFFFC107)   // gold bonus
+private val BlastColorBottom = Color(0xFF00E5FF) // cyan bonus
+// How many columns of head travel one blast lasts (≈0.8s at the crawl speed).
+private const val BLAST_COLS = 13f
+
+// Splash-only grid colour — brighter than the in-game Classic palette so the
+// board's squares read clearly here (the game's palette is left untouched).
+private val SplashGridLine = Color(0x33FFFFFF)
+
+// Bloom post-filter (AGSL, API 33+). Samples bright neighbours of each pixel and
+// screen-adds them, so the snake and the glowing letters gain a soft halo. Dark
+// board pixels stay below the luminance threshold and are untouched, so the grid
+// keeps its crisp lines. Below API 33 this is skipped (the per-cell radial glows
+// are the graceful fallback).
+private const val BLOOM_AGSL = """
+uniform shader content;
+uniform float2 resolution;
+
+half4 main(float2 coord) {
+    half4 src = content.eval(coord);
+    float r = resolution.y * 0.008;
+    float3 glow = float3(0.0);
+    const int DIRS = 12;
+    for (int i = 0; i < DIRS; i++) {
+        float a = (float(i) / float(DIRS)) * 6.2831853;
+        float2 dir = float2(cos(a), sin(a));
+        half4 s1 = content.eval(coord + dir * r);
+        half4 s2 = content.eval(coord + dir * r * 2.0);
+        float l1 = float(max(max(s1.r, s1.g), s1.b));
+        float l2 = float(max(max(s2.r, s2.g), s2.b));
+        glow += float3(s1.rgb) * max(0.0, l1 - 0.45);
+        glow += float3(s2.rgb) * max(0.0, l2 - 0.45) * 0.6;
+    }
+    glow *= 0.18;
+    float3 base = float3(src.rgb);
+    float3 outc = base + glow * (float3(1.0) - base);
+    return half4(half3(outc), src.a);
+}
+"""
 
 /**
- * The first thing the player sees on a cold launch: a short, skippable brand
- * intro that splits the "SNAKE" wordmark down the middle — the **left half** in
- * an 80s arcade style (neon gradient, CRT scanlines, a synthwave grid) and the
- * **right half** in a clean modern flat style — to signal the game's roots.
+ * The first thing the player sees on a cold launch: the game board itself, drawn
+ * exactly as in-game (square cells, gradient, grid, frame). A snake crawls in
+ * from the left, and the word **SNAKE** forms in pixel-art cells in its wake —
+ * each column lighting up as the head passes, fresh cells glowing lime then
+ * cooling to the snake's green. The snake exits to the right, the word holds,
+ * then the whole splash fades to the menu.
  *
- * A light sweep crosses the wordmark on entrance. The screen auto-advances after
- * [INTRO_DURATION_MS] and a tap skips it immediately; either way it calls
- * [onFinished] exactly once. All effects are drawn procedurally on a [Canvas]
- * (no shaders), so it renders identically on every supported API level.
+ * Auto-advances after [INTRO_DURATION_MS]; a tap skips it. Either way it calls
+ * [onFinished] exactly once. Self-contained on a [Canvas] (no shaders), so it
+ * renders identically on every supported API level.
  */
 @Composable
 fun BrandIntroScreen(onFinished: () -> Unit, modifier: Modifier = Modifier) {
-    val measurer = rememberTextMeasurer()
-    val title = stringResource(R.string.game_title)
-    val tagline = stringResource(R.string.intro_tagline)
+    val palette = remember { paletteFor(Skin.Classic).copy(gridLine = SplashGridLine) }
+
+    // A bloom RuntimeShader adds a soft glow around the bright snake/letters, and
+    // a shared explosion shader paints the two bonus blasts. Built defensively:
+    // any compile failure falls back to null rather than crashing the launch.
+    val bloomShader = remember { runCatching { RuntimeShader(BLOOM_AGSL) }.getOrNull() }
+    val explosionShader = remember { runCatching { RuntimeShader(EXPLOSION_AGSL) }.getOrNull() }
+    val explosionBrush = remember(explosionShader) { explosionShader?.let { ShaderBrush(it) } }
 
     // Fire onFinished once, whether by tap or by the auto-advance timer.
     var done by remember { mutableStateOf(false) }
@@ -90,282 +199,263 @@ fun BrandIntroScreen(onFinished: () -> Unit, modifier: Modifier = Modifier) {
         }
     }
 
-    // Entrance: the wordmark scales up and fades in.
+    // entrance: the board fades in. travel: the snake crosses the board (0→1).
+    // exitAlpha: the whole splash fades out before the menu.
     val entrance = remember { Animatable(0f) }
-    // Exit: the whole splash fades out before handing off to the menu.
+    val travel = remember { Animatable(0f) }
     val exitAlpha = remember { Animatable(1f) }
-    // A gentle breathing pulse, plus a highlight that sweeps back and forth
-    // across the wordmark for the whole time the splash is on screen.
-    val transition = rememberInfiniteTransition(label = "intro")
-    val pulse by transition.animateFloat(
-        initialValue = 0.99f,
-        targetValue = 1.02f,
-        animationSpec = infiniteRepeatable(tween(1600), RepeatMode.Reverse),
-        label = "introPulse",
-    )
-    val sweep by transition.animateFloat(
-        initialValue = -0.1f,
-        targetValue = 1.1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1300, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "introSweep",
-    )
 
-    IntroAnimations(entrance, exitAlpha, finish)
+    IntroAnimations(entrance, travel, exitAlpha, finish)
 
     Canvas(
         modifier = modifier
             .fillMaxSize()
-            .graphicsLayer { alpha = exitAlpha.value }
+            .graphicsLayer {
+                alpha = entrance.value * exitAlpha.value
+                // Apply the bloom as a render effect over the rasterised canvas.
+                if (bloomShader != null) {
+                    bloomShader.setFloatUniform("resolution", size.width, size.height)
+                    renderEffect = android.graphics.RenderEffect
+                        .createRuntimeShaderEffect(bloomShader, "content")
+                        .asComposeRenderEffect()
+                    compositingStrategy = CompositingStrategy.Offscreen
+                }
+            }
             .pointerInput(Unit) { detectTapGestures { finish() } },
     ) {
-        val w = size.width
-        val h = size.height
-        val mid = w / 2f
-        val alpha = entrance.value
+        val cols = TARGET_COLS
+        val cell = size.width / cols
+        val rows = ceil(size.height / cell).toInt()
+        val originX = 0f
+        val originY = (size.height - rows * cell) / 2f
 
-        drawBackdrops(mid)
-        // Left half (clip 0..mid): the 80s scene — synthwave sun, neon grid, scanlines.
-        clipRect(right = mid) {
-            drawSynthwaveSun(mid, alpha)
-            drawSynthwaveGrid(mid, alpha)
-            drawScanlines(mid, alpha)
+        drawBoard(originX, originY, cell, cols, rows, palette)
+
+        // Word layout: centred horizontally, vertically on the board's mid band.
+        val wordStartCol = (cols - WORD_COLS) / 2
+        val bandTop = rows / 2 - 2
+        val midRow = bandTop + 2
+        val litCells = wordCells(wordStartCol, bandTop)
+
+        // Float head column drives both the snake and the reveal curtain. The end
+        // is past the right edge by the snake's full length, so the whole tail
+        // clears the board before the word holds (no lingering segment on the E).
+        val startCol = -SNAKE_LENGTH - 1f
+        val endCol = cols + SNAKE_LENGTH + 2f
+        val headCol = startCol + (endCol - startCol) * travel.value
+
+        // Letters: reveal each lit cell as the head passes its column.
+        for (c in litCells) {
+            val revealT = ((headCol - (c.col + 0.5f)) / FADE_COLS).coerceIn(0f, 1f)
+            if (revealT <= 0f) continue
+            val fill = lerp(palette.snakeHead, palette.snakeBody, revealT)
+            val cx = originX + (c.col + 0.5f) * cell
+            val cy = originY + (c.row + 0.5f) * cell
+            val glow = (1f - revealT) * 0.5f
+            if (glow > 0f && palette.useGlow) {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(palette.headGlow.copy(alpha = glow), Color.Transparent),
+                        center = Offset(cx, cy),
+                        radius = cell * 0.9f,
+                    ),
+                    radius = cell * 0.9f,
+                    center = Offset(cx, cy),
+                )
+            }
+            drawCellSquare(originX, originY, cell, c.col.toFloat(), c.row.toFloat(), fill, palette)
         }
-        // Right half (clip mid..w): the modern era — a sleek, glowing snake.
-        clipRect(left = mid) {
-            drawModernSnake(mid, alpha)
+
+        // Snake on top, crawling along the mid row toward the right.
+        for (i in 0 until SNAKE_LENGTH) {
+            val segCol = headCol - i
+            if (segCol < -1.2f || segCol > cols + 1.2f) continue
+            drawSegment(originX, originY, cell, segCol, midRow.toFloat(), isHead = i == 0, palette)
         }
 
-        // Measure the wordmark once per style. The neon variant carries a cyan
-        // glow; the modern variant a soft lime glow. Both share the same top-left
-        // so the two halves line up across the seam.
-        val base = w * 0.205f
-        val neon = measurer.measure(
-            text = title,
-            style = TextStyle(
-                fontFamily = Orbitron,
-                fontWeight = FontWeight.Bold,
-                fontSize = base.toSp(),
-                letterSpacing = (base * 0.04f).toSp(),
-                brush = Brush.horizontalGradient(listOf(NeonMagenta, NeonCyan)),
-                shadow = Shadow(NeonCyan, Offset.Zero, base * 0.22f),
-            ),
-        )
-        val modern = measurer.measure(
-            text = title,
-            style = TextStyle(
-                fontFamily = Orbitron,
-                fontWeight = FontWeight.Bold,
-                fontSize = base.toSp(),
-                letterSpacing = (base * 0.04f).toSp(),
-                color = ModernLime,
-                shadow = Shadow(ModernLime.copy(alpha = 0.45f), Offset.Zero, base * 0.10f),
-            ),
-        )
-        val tw = neon.size.width.toFloat()
-        val th = neon.size.height.toFloat()
-        val fit = min(1f, (w * 0.84f) / tw)
-        val s = fit * (0.88f + 0.12f * entrance.value) * pulse
-        val left = (w - tw) / 2f
-        val top = (h - th) / 2f - h * 0.03f
-
-        // Subtitle, centred under the wordmark in dim modern lettering.
-        val subSize = w * 0.034f
-        val sub = measurer.measure(
-            text = tagline,
-            style = TextStyle(
-                fontFamily = Orbitron,
-                fontWeight = FontWeight.Normal,
-                fontSize = subSize.toSp(),
-                letterSpacing = (subSize * 0.18f).toSp(),
-                color = Color(0xFFECEFF1),
-            ),
-        )
-
-        scale(s, s, pivot = Offset(w / 2f, h / 2f)) {
-            clipRect(right = mid) { drawText(neon, topLeft = Offset(left, top), alpha = alpha) }
-            clipRect(left = mid) { drawText(modern, topLeft = Offset(left, top), alpha = alpha) }
-            drawText(
-                textLayoutResult = sub,
-                topLeft = Offset((w - sub.size.width) / 2f, top + th + h * 0.012f),
-                alpha = alpha * 0.7f,
+        // Two bonus blasts pop in the snake's wake — above and below the word.
+        if (explosionBrush != null && explosionShader != null) {
+            val maxR = cell * 5.5f
+            // Above the word, fired as the head reaches the first letters.
+            drawBlast(
+                explosionShader, explosionBrush,
+                centerX = originX + (wordStartCol + 6f) * cell,
+                centerY = originY + (bandTop - 2.5f) * cell,
+                maxRadius = maxR,
+                progress = ((headCol - (wordStartCol + 4f)) / BLAST_COLS).coerceIn(0f, 1f),
+                color = BlastColorTop,
             )
-        }
-
-        // Subtle seam where the two eras meet.
-        drawRect(
-            brush = Brush.verticalGradient(
-                listOf(Color.Transparent, NeonCyan.copy(alpha = 0.18f * alpha), Color.Transparent),
-            ),
-            topLeft = Offset(mid - 1f, 0f),
-            size = Size(2f, h),
-        )
-
-        // The back-and-forth sweep, drawn over everything.
-        val sx = sweep * w
-        if (sx in -w..(2f * w)) {
-            val bw = w * 0.09f
-            drawRect(
-                brush = Brush.horizontalGradient(
-                    0f to Color.Transparent,
-                    0.5f to Color.White.copy(alpha = 0.16f * alpha),
-                    1f to Color.Transparent,
-                    startX = sx - bw,
-                    endX = sx + bw,
-                ),
-                topLeft = Offset(sx - bw, 0f),
-                size = Size(bw * 2f, h),
+            // Below the word, fired a little later as the head reaches the last letters.
+            drawBlast(
+                explosionShader, explosionBrush,
+                centerX = originX + (wordStartCol + 18f) * cell,
+                centerY = originY + (bandTop + 6.5f) * cell,
+                maxRadius = maxR,
+                progress = ((headCol - (wordStartCol + 16f)) / BLAST_COLS).coerceIn(0f, 1f),
+                color = BlastColorBottom,
             )
         }
     }
 }
 
-/** Two-tone full-screen backdrop: warm 80s on the left, clean modern on the right. */
-private fun DrawScope.drawBackdrops(mid: Float) {
-    clipRect(right = mid) {
-        drawRect(Brush.verticalGradient(listOf(RetroTop, RetroBottom)))
-    }
-    clipRect(left = mid) {
-        drawRect(Brush.verticalGradient(listOf(ModernTop, ModernBottom)))
-    }
+/** Paints one explosion via the shared [EXPLOSION_AGSL] shader (additive). */
+private fun DrawScope.drawBlast(
+    shader: RuntimeShader,
+    brush: ShaderBrush,
+    centerX: Float,
+    centerY: Float,
+    maxRadius: Float,
+    progress: Float,
+    color: Color,
+) {
+    if (progress <= 0f || progress >= 1f) return
+    shader.setFloatUniform("center", centerX, centerY)
+    shader.setFloatUniform("maxRadius", maxRadius)
+    shader.setFloatUniform("progress", progress)
+    shader.setColorUniform("color", color.toArgb())
+    drawRect(brush = brush, blendMode = BlendMode.Plus)
 }
 
-/** A bold synthwave grid receding to a vanishing point, with a bright horizon. */
-private fun DrawScope.drawSynthwaveGrid(mid: Float, alpha: Float) {
-    val h = size.height
-    val horizonY = h * 0.60f
-    val vp = Offset(mid * 0.42f, horizonY)
-    val grid = GridAmber.copy(alpha = 0.34f * alpha)
-
-    val verticals = 9
-    for (k in 0..verticals) {
-        val bx = (k / verticals.toFloat()) * (mid * 1.2f) - mid * 0.1f
-        drawLine(grid, vp, Offset(bx, h), strokeWidth = 2.2f)
+/** Lit cell coordinates of the whole WORD, expanded from the pixel font. */
+private fun wordCells(wordStartCol: Int, bandTop: Int): List<Cell> {
+    val cells = ArrayList<Cell>()
+    var col0 = wordStartCol
+    for (ch in WORD) {
+        val glyph = FONT.getValue(ch)
+        for (r in glyph.indices) {
+            val rowPattern = glyph[r]
+            for (cc in rowPattern.indices) {
+                if (rowPattern[cc] == '#') cells.add(Cell(bandTop + r, col0 + cc))
+            }
+        }
+        col0 += LETTER_WIDTH + LETTER_GAP
     }
-    val rows = 7
-    for (r in 1..rows) {
-        val t = r / rows.toFloat()
-        val y = horizonY + (h - horizonY) * (t * t)
-        drawLine(grid, Offset(0f, y), Offset(mid, y), strokeWidth = 2.2f)
-    }
-    // A bright horizon line where the sun meets the grid.
-    drawLine(
-        GridAmber.copy(alpha = 0.75f * alpha),
-        Offset(0f, horizonY),
-        Offset(mid, horizonY),
-        strokeWidth = 3.5f,
-    )
+    return cells
 }
 
-/** A classic 80s "sliced" synthwave sun rising from the grid horizon. */
-private fun DrawScope.drawSynthwaveSun(mid: Float, alpha: Float) {
-    val w = size.width
-    val h = size.height
-    // Sit on the grid's vanishing-point axis (vp.x = mid * 0.42f) so the sun is
-    // centred over the receding grid.
-    val center = Offset(mid * 0.42f, h * 0.685f)
-    val radius = w * 0.105f
-
-    // Soft outer glow.
-    drawCircle(
-        brush = Brush.radialGradient(
-            colors = listOf(Color(0x66FF4D8D), Color.Transparent),
-            center = center,
-            radius = radius * 1.9f,
-        ),
-        radius = radius * 1.9f,
-        center = center,
-        alpha = alpha,
-    )
-    // The disc: hot pink at the top melting into amber at the bottom.
-    drawCircle(
+/** Board background: vertical gradient, 1px grid, bordered frame — like the game. */
+private fun DrawScope.drawBoard(
+    originX: Float,
+    originY: Float,
+    cell: Float,
+    cols: Int,
+    rows: Int,
+    palette: SkinPalette,
+) {
+    val boardW = cell * cols
+    val boardH = cell * rows
+    drawRect(
         brush = Brush.verticalGradient(
-            colors = listOf(Color(0xFFFF4D8D), Color(0xFFFFC15A)),
-            startY = center.y - radius,
-            endY = center.y + radius,
+            colors = listOf(palette.boardTop, palette.boardBottom),
+            startY = originY,
+            endY = originY + boardH,
         ),
-        radius = radius,
-        center = center,
-        alpha = 0.95f * alpha,
+        topLeft = Offset(originX, originY),
+        size = Size(boardW, boardH),
     )
-    // Horizontal slits in the lower half, cut with the backdrop colour and
-    // getting thicker toward the bottom.
-    val bars = 6
-    for (i in 0 until bars) {
-        val t = i / (bars - 1f)
-        val y = center.y + radius * (0.12f + 0.82f * t)
-        val thickness = radius * (0.05f + 0.11f * t)
-        drawRect(
-            color = RetroBottom,
-            topLeft = Offset(center.x - radius, y),
-            size = Size(radius * 2f, thickness),
+    if (cell > 10f) {
+        val gridStroke = 1.5f
+        for (x in 0..cols) {
+            val lineX = originX + x * cell
+            drawLine(palette.gridLine, Offset(lineX, originY), Offset(lineX, originY + boardH), gridStroke)
+        }
+        for (y in 0..rows) {
+            val lineY = originY + y * cell
+            drawLine(palette.gridLine, Offset(originX, lineY), Offset(originX + boardW, lineY), gridStroke)
+        }
+    }
+    drawRect(
+        color = palette.boardBorder,
+        topLeft = Offset(originX, originY),
+        size = Size(boardW, boardH),
+        style = Stroke(width = (cell * 0.12f).coerceAtLeast(2f)),
+    )
+}
+
+/** A filled rounded letter cell (same shape as a snake body segment). */
+private fun DrawScope.drawCellSquare(
+    originX: Float,
+    originY: Float,
+    cell: Float,
+    col: Float,
+    row: Float,
+    fill: Color,
+    palette: SkinPalette,
+) {
+    val inset = cell * 0.06f
+    val topLeft = Offset(originX + col * cell + inset, originY + row * cell + inset)
+    val side = cell - 2 * inset
+    val radius = CornerRadius(cell * palette.cornerFactor, cell * palette.cornerFactor)
+    drawRoundRect(fill, topLeft, Size(side, side), radius)
+    drawRoundRect(
+        palette.snakeOutline,
+        topLeft,
+        Size(side, side),
+        radius,
+        style = Stroke(width = cell * 0.06f),
+    )
+}
+
+/** A snake segment (head or body), drawn like the in-game renderer. */
+private fun DrawScope.drawSegment(
+    originX: Float,
+    originY: Float,
+    cell: Float,
+    col: Float,
+    row: Float,
+    isHead: Boolean,
+    palette: SkinPalette,
+) {
+    val cx = originX + (col + 0.5f) * cell
+    val cy = originY + (row + 0.5f) * cell
+    if (isHead && palette.useGlow) {
+        val glowRadius = cell * 1.1f
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(palette.headGlow.copy(alpha = 0.45f), Color.Transparent),
+                center = Offset(cx, cy),
+                radius = glowRadius,
+            ),
+            radius = glowRadius,
+            center = Offset(cx, cy),
         )
     }
-}
-
-/** A sleek, glowing modern snake heading right — the game today. */
-private fun DrawScope.drawModernSnake(mid: Float, alpha: Float) {
-    val w = size.width
-    val h = size.height
-    val r = w * 0.034f
-    val seg = w * 0.052f
-    val baseX = mid + (w - mid) * 0.52f
-    val baseY = h * 0.70f
-    val amp = w * 0.035f
-    val n = 7
-
-    // Segment centres along a gentle S-curve (tail → head).
-    val pts = (0..n).map { i ->
-        Offset(baseX - (n / 2f - i) * seg, baseY + sin(i * 0.95f) * amp)
-    }
-    val head = pts.last()
-    val body = Color(0xFF3FA34D)
-
-    // Glow behind the head.
-    drawCircle(
-        brush = Brush.radialGradient(
-            colors = listOf(ModernLime.copy(alpha = 0.55f), Color.Transparent),
-            center = head,
-            radius = r * 3.2f,
-        ),
-        radius = r * 3.2f,
-        center = head,
-        alpha = alpha,
+    drawCellSquare(
+        originX, originY, cell, col, row,
+        fill = if (isHead) palette.snakeHead else palette.snakeBody,
+        palette = palette,
     )
-    // Body segments, tapering toward the tail.
-    pts.dropLast(1).forEachIndexed { i, p ->
-        drawCircle(body, radius = r * (0.7f + 0.3f * (i / n.toFloat())), center = p, alpha = alpha)
-    }
-    // Head + eye + catchlight.
-    drawCircle(ModernLime, radius = r * 1.15f, center = head, alpha = alpha)
-    val eye = Offset(head.x + r * 0.45f, head.y - r * 0.35f)
-    drawCircle(Color(0xFF101418), radius = r * 0.32f, center = eye, alpha = alpha)
-    drawCircle(Color.White, radius = r * 0.12f, center = Offset(eye.x + r * 0.12f, eye.y - r * 0.12f), alpha = alpha)
+    if (isHead) drawEyes(cx, cy, cell, palette)
 }
 
-/** CRT scanlines across the 80s half. */
-private fun DrawScope.drawScanlines(mid: Float, alpha: Float) {
-    val h = size.height
-    val gap = 5.dp.toPx()
-    val line = Scanline.copy(alpha = 0.16f * alpha)
-    var y = 0f
-    while (y < h) {
-        drawRect(line, topLeft = Offset(0f, y), size = Size(mid, gap * 0.5f))
-        y += gap
+/** Two eyes looking right (travel direction). Mirrors GameBoard's drawEyes. */
+private fun DrawScope.drawEyes(centerX: Float, centerY: Float, cell: Float, palette: SkinPalette) {
+    val forward = cell * 0.16f
+    val spread = cell * 0.2f
+    val eyeRadius = cell * 0.11f
+    val pupilRadius = cell * 0.055f
+    for (sign in intArrayOf(-1, 1)) {
+        val ex = centerX + forward
+        val ey = centerY + spread * sign
+        drawCircle(Color.White, eyeRadius, Offset(ex, ey))
+        drawCircle(palette.snakeEye, pupilRadius, Offset(ex + cell * 0.03f, ey))
     }
 }
 
-/** Hosts the entrance animation and the timed fade-out → hand-off. */
+/** Board fade-in, the snake's crawl, and the timed fade-out → hand-off. */
 @Composable
 private fun IntroAnimations(
     entrance: Animatable<Float, AnimationVector1D>,
+    travel: Animatable<Float, AnimationVector1D>,
     exitAlpha: Animatable<Float, AnimationVector1D>,
     finish: () -> Unit,
 ) {
     LaunchedEffect(Unit) {
-        entrance.animateTo(1f, tween(durationMillis = 700, easing = FastOutSlowInEasing))
+        entrance.animateTo(1f, tween(durationMillis = 500, easing = FastOutSlowInEasing))
+    }
+    LaunchedEffect(Unit) {
+        delay(TRAVEL_START_MS)
+        travel.animateTo(1f, tween(durationMillis = TRAVEL_MS.toInt(), easing = LinearEasing))
     }
     LaunchedEffect(Unit) {
         delay(INTRO_DURATION_MS - EXIT_FADE_MS)

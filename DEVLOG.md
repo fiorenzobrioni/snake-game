@@ -11,8 +11,8 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 
 - [ ] Finalise `applicationId` from `com.brioni.snake` placeholder before first Play upload (Step 7.1)
 - [ ] Write unit tests for `GameEngine` edge-cases: wall collision on all four sides, body self-collision, 180° reversal block
-- [ ] Verify smooth-motion interpolation on low-end devices (API 24/25)
-- [ ] Verify the mystery "?" glyph renders crisply on small cells (dense boards) and on API 24
+- [ ] Verify smooth-motion interpolation on low-end devices
+- [ ] Verify the mystery "?" glyph renders crisply on small cells (dense boards)
 - [ ] Re-tune the food spawn weights / time gates after playtesting on a device
 - [ ] Replace synthesized audio with richer CC0/commissioned tracks before Play release (optional polish)
 
@@ -33,7 +33,8 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 - Board presets are intentionally portrait (~7:10) — landscape grid dimensions from the WinForms prototype were discarded in Phase 2.
 - `GameEngine` is `Random`-injectable specifically to make unit tests deterministic; keep it that way.
 - Dynamic color (`dynamicColor`) is **off** by design in `Theme.kt` — the game has a fixed dark-arcade brand palette.
-- AGSL `RuntimeShader` (Phase 5) requires API 33+; every usage needs a graceful Canvas fallback for API 24–32.
+- AGSL `RuntimeShader` requires API 33+. Since **`minSdk` is 33**, shaders are **always available** — do
+  not reintroduce Canvas/older-API fallbacks for them (the old fallbacks were removed when the floor was raised).
 - `game/` package must remain free of Android/Compose imports — this is what makes it testable with plain JUnit.
 - **Mystery foods are resolved at spawn, not at eat**: `FoodTable.roll` rolls the concealed amount and
   stores the final `FoodEffect`, so `GameEngine.tick` consumes no randomness and stays deterministic.
@@ -81,6 +82,45 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 > Newest entries at the top. One entry per completed phase/step or significant change.
 
 ---
+
+### 2026-06-07 — minSdk → 33, fallback cleanup + two bonus blasts on the splash (v0.4.0)
+
+- **Raised `minSdk` 24 → 33** (Android 13) — premium baseline; AGSL is always available.
+- **Removed now-dead fallbacks**: `Shaders.supported` / `@RequiresApi`; the `BoardShaders?` nullability
+  and all `if (shaders != null && SDK >= 33) … else <Canvas>` branches in `GameBoard` (background,
+  food halo, head glow) — `shaders` is now non-null; the CRT SDK guard in `GameScreen`; the
+  `Shaders.supported` gate on the CRT toggle in `SettingsScreen`; the `Build.VERSION_CODES.O`
+  audio-focus branches in `MusicManager`; and the bloom SDK guard in the intro. Deleted the API 24–25
+  legacy launcher vectors in `mipmap-anydpi/` (adaptive `mipmap-anydpi-v26/` is always used now).
+- **Splash bonus blasts**: two AGSL **explosions** (`EXPLOSION_AGSL`, a shared `RuntimeShader` drawn
+  additively) detonate in the snake's wake — one gold above the word, one cyan below — each fired once
+  as the head sweeps past, driven by the head column. The whole-canvas bloom amplifies them.
+- `versionCode 8` / `versionName 0.4.0`. Build + lint + unit tests green.
+
+### 2026-06-07 — Intro: bloom shader (API 33+) + higher-contrast grid (v0.3.2)
+
+- Added an optional **AGSL bloom** post-filter to the splash: a `RuntimeShader` (`BLOOM_AGSL`) applied
+  as a `RenderEffect` on the Canvas `graphicsLayer` (`CompositingStrategy.Offscreen`), sampling bright
+  neighbours above a luminance threshold and screen-adding them — a soft halo around the snake and the
+  glowing letters; the dark board stays untouched. **API 33+ only**, built with `runCatching` so a
+  compile failure degrades to null (no crash); below 33 the per-cell radial glows remain the fallback.
+- Bumped the splash grid contrast (`SplashGridLine = 0x33FFFFFF`, stroke 1.5) so the board's squares
+  read clearly — **splash-only**, the in-game Classic palette is untouched (applied via `.copy()`).
+- `versionCode 7` / `versionName 0.3.2`.
+
+### 2026-06-07 — Brand intro redesign: "snake writes its name" (v0.3.1)
+
+- Replaced the split 80s/modern wordmark splash entirely with a gameplay-tied concept: the whole
+  splash **is the game board** (drawn like in-game — Classic palette gradient, 1px grid, bordered
+  frame). A snake crawls in from the left along the mid row; a **reveal curtain** tied to the float
+  head column lights up the **SNAKE** pixel-art (a 4×5 cell font) column-by-column in its wake —
+  fresh cells glow `headGlow` lime then **cool to** `snakeBody` green (`lerp(snakeHead, snakeBody, t)`).
+  The snake exits right, the word holds, then the whole canvas fades to the menu.
+- Kept the existing scaffolding (`entrance`/`exitAlpha`/timer, tap-to-skip, fire-once `finish`);
+  added a `travel` Animatable (`LinearEasing`) for the crawl. Board/segment/eye/glow draw calls are
+  copied from `GameBoard.kt`; palette via `paletteFor(Skin.Classic)`. No shaders → all-API safe.
+- Removed the now-unused `intro_tagline` string and the retro/modern artwork. Bumped to
+  `versionCode 6` / `versionName 0.3.1`.
 
 ### 2026-06-06 — Step 7.1: branded launch — icon, splash & brand intro (v0.3.0)
 

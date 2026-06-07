@@ -16,9 +16,9 @@ polished, **Google-Play-publishable** title with animation, particles, shaders, 
 
 The classic Snake mechanics, extended with configurable features so every run feels different:
 
-- 🚀 **Branded launch** — an animated splash flows into a short, skippable brand intro: the **SNAKE**
-  wordmark split down the middle, 80s neon on one side and clean modern styling on the other, nodding
-  to the game's arcade roots.
+- 🚀 **Branded launch** — an animated splash flows into a short, skippable brand intro played out on
+  the game board itself: a snake crawls across and the word **SNAKE** forms in glowing cells in its
+  wake, then it slips off-screen and the menu fades in.
 - 🍽️ **Two food categories** — **grow** food makes the snake longer; **shrink** food trims it back.
 - 🔠 **Magnitude tiers + maxi sizes** — each category comes in several strengths, and a 2×2 **maxi**
   variant that amplifies the effect.
@@ -108,7 +108,8 @@ Install on your development machine:
 - A **test target**: an AVD emulator or a physical device with **USB debugging** enabled.
 - **Gradle**: not needed globally — the project ships the **Gradle wrapper** (`./gradlew`).
 
-The project targets `minSdk 24` (Android 7.0) and `compileSdk`/`targetSdk 36` (Android 16).
+The project targets `minSdk 33` (Android 13) and `compileSdk`/`targetSdk 36` (Android 16) — a modern
+baseline so AGSL GPU effects and other recent APIs are available without fallback code.
 
 ---
 
