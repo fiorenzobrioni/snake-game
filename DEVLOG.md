@@ -83,6 +83,19 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
+### 2026-06-07 — Fix status-bar icons on cold start with Light theme (v0.7.6)
+
+- v0.7.5 worked when toggling the theme at runtime but **not on a cold start** with the Light theme
+  already selected (status-bar icons stayed light/invisible until a manual theme toggle). Cause: the
+  splash screen (`core-splashscreen`) owns the system-bar appearance during startup, so the
+  `enableEdgeToEdge` calls run while the splash is up and get reset to the theme default
+  (`Theme.SnakeGame.Main` → light icons) when the splash is removed; no later theme change occurs, so
+  nothing re-applied the app-themed appearance.
+- `MainActivity` now re-applies the bar appearance **after the splash is removed** (in the splash
+  exit `withEndAction`) and imperatively on every theme change, via a small `applyBarAppearance()`
+  helper + a cached `appDarkTheme` flag (`WindowCompat.getInsetsController`).
+- `versionCode 18` / `versionName 0.7.6`.
+
 ### 2026-06-07 — System-bar icons follow the app theme, take 2 (v0.7.5)
 
 - The v0.7.4 `SideEffect` that set `isAppearanceLightStatusBars` directly did not stick (status-bar
