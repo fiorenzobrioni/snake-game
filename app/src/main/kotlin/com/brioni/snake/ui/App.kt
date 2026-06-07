@@ -13,6 +13,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -24,6 +25,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -94,6 +96,7 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
     // current screen scales/fades back, then commits to the Menu on release.
     val backProgress = remember { Animatable(0f) }
     var backFromLeftEdge by remember { mutableStateOf(true) }
+    val cardColor = MaterialTheme.colorScheme.surface
     PredictiveBackHandler(enabled = screen != Screen.Menu && screen != Screen.Game) { progress ->
         try {
             progress.collect { event ->
@@ -120,19 +123,28 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
         AnimatedContent(
             targetState = screen,
             transitionSpec = { (fadeIn(tween(260)) togetherWith fadeOut(tween(260))) using null },
-            modifier = Modifier.graphicsLayer {
-                // Predictive back: the foreground shrinks, slides toward the swipe
-                // edge, rounds its corners and dims — revealing the live backdrop.
-                val p = backProgress.value
-                val s = 1f - 0.18f * p
-                scaleX = s
-                scaleY = s
-                val shift = size.width * 0.08f * p
-                translationX = if (backFromLeftEdge) shift else -shift
-                alpha = 1f - 0.25f * p
-                clip = true
-                shape = RoundedCornerShape((28f * p).dp)
-            },
+            modifier = Modifier
+                .graphicsLayer {
+                    // Predictive back: the foreground lifts into a rounded, shadowed
+                    // card that shrinks and slides toward the swipe edge, revealing
+                    // the live backdrop behind it.
+                    val p = backProgress.value
+                    val s = 1f - 0.20f * p
+                    scaleX = s
+                    scaleY = s
+                    val shift = size.width * 0.09f * p
+                    translationX = if (backFromLeftEdge) shift else -shift
+                    clip = true
+                    shape = RoundedCornerShape((30f * p).dp)
+                    shadowElevation = 26.dp.toPx() * p
+                }
+                // The menu screens are transparent over the shared backdrop; during
+                // the back gesture, fill the card so it reads as a solid surface
+                // peeling away (drawn at draw-time, so no per-frame recomposition).
+                .drawBehind {
+                    val p = backProgress.value
+                    if (p > 0f) drawRect(cardColor, alpha = p)
+                },
             label = "screen",
         ) { current ->
             // A "glass" blur dissolve: each entering screen sharpens into focus,

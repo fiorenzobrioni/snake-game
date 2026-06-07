@@ -83,6 +83,16 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
+### 2026-06-07 — Predictive-back "card", 5 more achievements (v0.6.1)
+
+- **Predictive back now reads clearly**: the menu screens are transparent over the shared backdrop, so a
+  bare scale was hard to see. During the gesture the foreground now lifts into a **rounded, shadowed,
+  opaque card** (`drawBehind` fills it with the surface colour at draw-time; `shadowElevation` on the
+  `graphicsLayer`) that shrinks ×0.80 and slides toward the swipe edge, clearly peeling off the backdrop.
+- **Five more achievements** (now 15): Stylist (1500 with a x5 combo), Marathoner (5 min), Big Eater
+  (100 foods), Trifecta (Explosion + Star + Jackpot in one run), Grandmaster (5000).
+- `versionCode 11` / `versionName 0.6.1`.
+
 ### 2026-06-07 — Menu backdrop everywhere, stronger predictive back, harder achievements (v0.6.0)
 
 - **Animated backdrop across all menu screens**: moved `AnimatedShaderBackground` from `MainMenuScreen`
