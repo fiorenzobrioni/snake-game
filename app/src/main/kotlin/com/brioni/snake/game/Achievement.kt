@@ -26,14 +26,20 @@ enum class Achievement(
     val test: (RunStats) -> Boolean,
 ) {
     FirstFeast("First Feast", "Eat your first food", { it.foodsEaten >= 1 }),
-    ComboMaster("Combo Master", "Reach a x5 combo", { it.maxCombo >= 5 }),
     Centurion("Centurion", "Score 100 in a single run", { it.score >= 100 }),
-    HighRoller("High Roller", "Score 1000 in a single run", { it.score >= 1000 }),
-    Survivor("Survivor", "Last two minutes in one run", { it.durationMs >= 120_000 }),
+    ComboMaster("Combo Master", "Reach a x5 combo", { it.maxCombo >= 5 }),
+    Gourmand("Gourmand", "Eat 50 foods in one run", { it.foodsEaten >= 50 }),
+    Survivor("Survivor", "Last three minutes in one run", { it.durationMs >= 180_000 }),
     Demolition("Demolition", "Set off an explosion", { it.usedExplosion }),
     Untouchable("Untouchable", "Use a Star power-up", { it.usedStar }),
     Lucky("Lucky", "Hit a Jackpot", { it.usedJackpot }),
-    SpeedRunner("Speed Runner", "Score 300 in Time Attack", { it.mode == GameMode.TimeAttack && it.score >= 300 }),
+    SpeedRunner("Speed Runner", "Score 600 in Time Attack", { it.mode == GameMode.TimeAttack && it.score >= 600 }),
+    Stylist("Stylist", "Score 1500 with a x5 combo", { it.maxCombo >= 5 && it.score >= 1500 }),
+    HighRoller("High Roller", "Score 2500 in a single run", { it.score >= 2500 }),
+    Marathoner("Marathoner", "Last five minutes in one run", { it.durationMs >= 300_000 }),
+    BigEater("Big Eater", "Eat 100 foods in one run", { it.foodsEaten >= 100 }),
+    Trifecta("Trifecta", "Explosion, Star and Jackpot in one run", { it.usedExplosion && it.usedStar && it.usedJackpot }),
+    Grandmaster("Grandmaster", "Score 5000 in a single run", { it.score >= 5000 }),
     ;
 
     companion object {

@@ -83,6 +83,88 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
+### 2026-06-07 — Light-theme HUD fix: dark gameplay background (v0.7.2)
+
+- Follow-up to v0.7.1: forcing the dark scheme made the HUD text light, but the HUD margins still
+  showed the outer (white) Surface under the light theme, so the top HUD text vanished and the
+  phosphor-green Score/Pause read poorly. `GameScreen` is now also given a **dark background** under
+  the forced dark scheme, so the whole gameplay screen is consistently dark and its light-on-dark
+  text + green accents stay readable in any app theme.
+- `versionCode 14` / `versionName 0.7.2`.
+
+### 2026-06-07 — Remove predictive back, fix light-theme gameplay UI (v0.7.1)
+
+- **Removed the in-app predictive-back animation**: it looked janky (screens briefly overlapping), so
+  `App` reverts to a plain `BackHandler` → navigate to Menu. The blur-dissolve screen transitions and
+  the animated menu backdrop stay. (`enableOnBackInvokedCallback` is kept in the manifest — it only
+  drives the smooth *system* exit-to-home from the Menu, which is not janky.)
+- **Light-theme gameplay text fixed**: the pre-game (Ready) overlay — and the other in-game overlays /
+  HUD — sit on an always-black scrim but used `onBackground`, which is dark in the light theme, so the
+  section labels ("Mode / Level / Board scale") were invisible. The board is an always-dark arcade
+  surface, so the whole `GameScreen` is now wrapped in a forced **dark** scheme
+  (`SnakeGameTheme(darkTheme = true)`), keeping its light-on-dark text visible under any app theme.
+- `versionCode 13` / `versionName 0.7.1`.
+
+### 2026-06-07 — Predictive-back overhaul, light-theme fix, landscape board, scale rename (v0.7.0)
+
+- **Predictive back, properly**: during the gesture the current screen now lifts into a rounded,
+  shadowed card that shrinks (×0.65) and slides off toward the swipe edge, while the **destination
+  (Menu) is previewed behind it**, softly blurred and easing into focus. Release commits with an
+  **instant swap** (no Settings flash); cancel eases the card back. (`backInProgress`/`instantSwap`
+  state, `BlurEffect` preview, `EnterTransition.None` on commit.)
+- **Light theme fixed**: the always-dark AGSL menu backdrop was painting over the light surface, so
+  light-theme menus/settings looked dark with invisible captions. The backdrop is now drawn **only in
+  the dark theme** (`colorScheme.background.luminance() < 0.5`); light theme keeps its plain surface.
+- **Landscape board sizing**: `boardFor` now fixes the preset count on the **short side** and solves
+  the long side from the aspect ratio, so a tablet in landscape gets the same density as a phone in
+  portrait instead of collapsing (e.g. 18×10 → ~29×18). Phone portrait is unchanged. Renamed
+  `BoardScale.cellsOnShortSide`.
+- **Naming clash**: the board-scale **"Classic" is renamed "Standard"** (Cozy / Standard / Epic) so it
+  no longer collides with **Classic mode** — important since the HUD shows the board-scale label. Enum
+  constant kept (`BoardScale.Classic`) so saved settings / highscores are untouched.
+- `versionCode 12` / `versionName 0.7.0`.
+
+### 2026-06-07 — Predictive-back "card", 5 more achievements (v0.6.1)
+
+- **Predictive back now reads clearly**: the menu screens are transparent over the shared backdrop, so a
+  bare scale was hard to see. During the gesture the foreground now lifts into a **rounded, shadowed,
+  opaque card** (`drawBehind` fills it with the surface colour at draw-time; `shadowElevation` on the
+  `graphicsLayer`) that shrinks ×0.80 and slides toward the swipe edge, clearly peeling off the backdrop.
+- **Five more achievements** (now 15): Stylist (1500 with a x5 combo), Marathoner (5 min), Big Eater
+  (100 foods), Trifecta (Explosion + Star + Jackpot in one run), Grandmaster (5000).
+- `versionCode 11` / `versionName 0.6.1`.
+
+### 2026-06-07 — Menu backdrop everywhere, stronger predictive back, harder achievements (v0.6.0)
+
+- **Animated backdrop across all menu screens**: moved `AnimatedShaderBackground` from `MainMenuScreen`
+  into the App shell, drawn behind the `AnimatedContent` for every non-Game/Intro screen, so Settings /
+  Records / Achievements share the living backdrop too.
+- **More visible predictive back**: the gesture now scales the foreground to ×0.82, slides it toward the
+  swipe edge (via `BackEventCompat.swipeEdge`), rounds its corners and dims it — revealing the backdrop.
+  (Needs gesture nav; on Android 13 also the "Predictive back animations" developer option.)
+- **Mystery food verified**: added `mysteryFoodAppliesItsResolvedAmount` to `GameEngineTest`. Confirmed
+  a "?" food applies its rolled amount exactly — Grow(N) adds N segments; Shrink(N) removes N tail cells
+  (the head still advances that tick, so net length is N−1, but N cells are genuinely trimmed). Behaviour
+  was already correct; no engine change.
+- **Achievements harder + a 10th**: raised HighRoller (1000 → 2500), Survivor (2 → 3 min), SpeedRunner
+  (300 → 600); added **Gourmand** (eat 50 foods in one run). Now 10 total.
+- `versionCode 10` / `versionName 0.6.0`.
+
+### 2026-06-07 — Premium UX: predictive back, animated menu shader, blur transitions (v0.5.0)
+
+- **Predictive back gesture**: `android:enableOnBackInvokedCallback="true"` in the manifest, and the
+  app-level `BackHandler` replaced with a **`PredictiveBackHandler`** in `ui/App.kt` — the secondary
+  screens scale (×0.88) and fade back following the gesture, committing to the menu on release and
+  resetting on cancel. The Menu (root) lets the system run its exit animation; the Game screen keeps
+  its own back (pause/exit).
+- **Animated AGSL menu background**: new `ui/AnimatedShaderBackground.kt` reuses the in-game
+  `Shaders.BACKGROUND` (drifting glows + vignette), advancing `time` via `withFrameNanos`; placed
+  behind `MainMenuScreen`. No fallback (minSdk 33).
+- **Blur-dissolve transitions**: navigation moved from `Crossfade` to `AnimatedContent` with a
+  fade + per-screen `Modifier.blur` (16dp → 0) so screens sharpen into focus / blur out.
+- **Cleanup**: removed `vectorDrawables { useSupportLibrary = true }` (only needed for old APIs).
+- `versionCode 9` / `versionName 0.5.0`. Build + lint + unit tests green.
+
 ### 2026-06-07 — minSdk → 33, fallback cleanup + two bonus blasts on the splash (v0.4.0)
 
 - **Raised `minSdk` 24 → 33** (Android 13) — premium baseline; AGSL is always available.

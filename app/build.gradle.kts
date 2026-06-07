@@ -12,12 +12,8 @@ android {
         applicationId = "com.brioni.snake"
         minSdk = 33
         targetSdk = 36
-        versionCode = 8
-        versionName = "0.4.0"
-
-        vectorDrawables {
-            useSupportLibrary = true
-        }
+        versionCode = 14
+        versionName = "0.7.2"
     }
 
     buildTypes {

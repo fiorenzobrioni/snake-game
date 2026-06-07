@@ -31,8 +31,8 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - ✖️ **Combo multiplier** — eating in quick succession multiplies your score (up to ×5).
 - 🚧 **Obstacles** — scattered blocks that raise the difficulty.
 - 🎚️ **Difficulty levels** — 5 levels (*Beginner* → *Legend*) tuning speed and obstacle count.
-- 📐 **Responsive board** — pick a granularity (*Cozy* / *Classic* / *Epic*); the board's rows and
-  columns are computed from your device's screen so it fills the display with square cells.
+- 📐 **Responsive board** — pick a granularity (*Cozy* / *Standard* / *Epic*); the grid is computed
+  from your device's screen so it fills the display with square cells in portrait **and** landscape.
 - 🎮 **Control schemes** — **swipe** by default, or a two-button *relative* steering / classic D-pad.
 - 🎨 **Skins** — four selectable looks (**Classic / Neon / Retro / Pixel**), each its own palette and
   cell shape (Pixel is flat & square, Neon bubbly), all available immediately in Settings.
@@ -55,11 +55,12 @@ The classic Snake mechanics, extended with configurable features so every run fe
   penalty, each with a floating callout.
 - 🏆 **Records screen** — a best-score table per difficulty × board scale (and per mode), reachable
   from the main menu.
-- 🎖️ **Achievements** — local milestones (combos, scores, surviving, using power-ups…) that unlock as
-  you play, with a dedicated screen and an unlock banner on the game-over screen.
+- 🎖️ **Achievements** — fifteen local milestones (combos, scores, endurance, eating sprees, using power-ups…)
+  that unlock as you play, with a dedicated screen and an unlock banner on the game-over screen.
 - 🕹️ **Game modes** — **Classic**, **Endless** (speed ramps up the longer you survive) and
   **Time Attack** (score as much as you can in 120s), selectable on the start screen.
 - ⏸️ **Pause & menus** — pause overlay with a blur effect; restart or return to the main menu at any time. Highscores are kept per (mode, level, board scale).
+- 💎 **Polished navigation** — an **animated GPU background** behind the menus and **blur-dissolve** screen transitions.
 
 ### 🍽️ Food system at a glance
 
@@ -87,14 +88,16 @@ margin next to every wall and a clear zone around the snake's spawn.
 
 ### 📐 Board scale
 
-The board is **responsive**: pick a granularity and the rows×columns are computed from your device's
-play-area aspect ratio so the board fills the screen with square cells.
+The board is **responsive**: pick a granularity and the grid is computed from your device's play-area
+aspect ratio so the board fills the screen with square cells. The preset count is applied to the
+**short side**, so the cell size — and the feel — stays consistent in portrait and landscape (a tablet
+in landscape gets the same density as a phone in portrait, not a squashed few-row board).
 
-| Scale   | Cell size | Columns (target) |
-|---------|-----------|------------------|
-| Cozy    | larger    | 12               |
-| Classic | medium    | 18               |
-| Epic    | smaller   | 26               |
+| Scale    | Cell size | Cells on short side |
+|----------|-----------|---------------------|
+| Cozy     | larger    | 12                  |
+| Standard | medium    | 18                  |
+| Epic     | smaller   | 26                  |
 
 ---
 

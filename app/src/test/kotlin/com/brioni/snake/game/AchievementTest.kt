@@ -34,7 +34,7 @@ class AchievementTest {
 
     @Test
     fun `already-unlocked achievements are not re-reported`() {
-        val all = stats(score = 1000, foodsEaten = 5)
+        val all = stats(score = 2500, foodsEaten = 5)
         val first = Achievement.earnedBy(all, already = emptySet())
         assertTrue(Achievement.HighRoller in first)
         val second = Achievement.earnedBy(all, already = first.map { it.name }.toSet())
@@ -43,7 +43,13 @@ class AchievementTest {
 
     @Test
     fun `speed runner requires time attack mode`() {
-        assertFalse(Achievement.SpeedRunner.test(stats(mode = GameMode.Classic, score = 500)))
-        assertTrue(Achievement.SpeedRunner.test(stats(mode = GameMode.TimeAttack, score = 300)))
+        assertFalse(Achievement.SpeedRunner.test(stats(mode = GameMode.Classic, score = 700)))
+        assertTrue(Achievement.SpeedRunner.test(stats(mode = GameMode.TimeAttack, score = 600)))
+    }
+
+    @Test
+    fun `gourmand needs fifty foods`() {
+        assertTrue(Achievement.Gourmand.test(stats(foodsEaten = 50)))
+        assertFalse(Achievement.Gourmand.test(stats(foodsEaten = 49)))
     }
 }

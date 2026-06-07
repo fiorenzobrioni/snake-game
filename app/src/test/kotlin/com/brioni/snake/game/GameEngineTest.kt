@@ -139,6 +139,36 @@ class GameEngineTest {
     }
 
     @Test
+    fun mysteryFoodAppliesItsResolvedAmount() {
+        // A mystery "?" food is just a Grow/Shrink with a random amount resolved
+        // at spawn, so the eat-time effect is applied exactly like a regular one.
+
+        // Mystery Grow(5): +1 segment this tick, the remaining 4 queued (total +5).
+        val growMystery = Food(
+            Position(6, 5), FoodCategory.Grow, FoodTier.Mystery, FoodSize.Standard, FoodEffect.Grow(5),
+        )
+        val grown = engine.tick(runningState(Direction.Right, foods = listOf(growMystery)))
+        assertEquals(4, grown.snake.size)
+        assertEquals(4, grown.pendingGrowth) // 1 paid now + 4 queued = 5 total
+
+        // Mystery Shrink(4) on a long snake: exactly 4 tail cells removed.
+        val longSnake = listOf(
+            Position(5, 5), Position(4, 5), Position(3, 5), Position(2, 5),
+            Position(1, 5), Position(1, 6), Position(1, 7), Position(1, 8),
+        )
+        val shrinkMystery = Food(
+            Position(6, 5), FoodCategory.Shrink, FoodTier.Mystery, FoodSize.Standard, FoodEffect.Shrink(4),
+        )
+        val shrunk = engine.tick(
+            runningState(Direction.Right, foods = listOf(shrinkMystery)).copy(snake = longSnake),
+        )
+        val removed = shrunk.lastEvents.filterIsInstance<GameEvent.Shrunk>().single().removed
+        assertEquals(4, removed)
+        // The head advanced (+1) and four tail cells dropped → net = size + 1 - 4.
+        assertEquals(longSnake.size + 1 - 4, shrunk.snake.size)
+    }
+
+    @Test
     fun shrinkAwardsReducedSymbolicPoints() {
         val std = engine.tick(runningState(Direction.Right, foods = listOf(shrinkFood(2))))
         assertEquals(GameEngine.SHRINK_POINTS, std.score)

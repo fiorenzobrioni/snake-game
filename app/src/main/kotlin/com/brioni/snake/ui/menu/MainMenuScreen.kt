@@ -26,7 +26,8 @@ import com.brioni.snake.R
 
 /**
  * The app's landing screen: an animated title with Play and Settings actions.
- * Pure navigation host; gameplay state lives in the game ViewModel.
+ * Pure navigation host; gameplay state lives in the game ViewModel. The animated
+ * AGSL backdrop is provided by the App shell (shared across the menu screens).
  */
 @Composable
 fun MainMenuScreen(

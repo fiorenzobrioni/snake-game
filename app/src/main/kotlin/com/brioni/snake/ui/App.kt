@@ -1,8 +1,17 @@
 package com.brioni.snake.ui
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.background
+import androidx.compose.animation.EnterExitState
+import androidx.compose.animation.core.animateDp
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -12,7 +21,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -27,6 +39,7 @@ import com.brioni.snake.ui.intro.BrandIntroScreen
 import com.brioni.snake.ui.menu.MainMenuScreen
 import com.brioni.snake.ui.records.RecordsScreen
 import com.brioni.snake.ui.settings.SettingsScreen
+import com.brioni.snake.ui.theme.SnakeGameTheme
 
 /** The top-level destinations. [Intro] is the cold-launch brand splash. */
 private enum class Screen { Intro, Menu, Game, Settings, Records, Achievements }
@@ -73,52 +86,87 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
         }
     }
 
-    // The Game screen owns its own back behaviour (pause vs. exit); the app-level
-    // handler only covers the other secondary screens.
+    // Secondary screens go back to the Menu; the Game screen owns its own back
+    // (pause vs. exit) and the Menu is the root (the system handles back/exit).
     BackHandler(enabled = screen != Screen.Menu && screen != Screen.Game) {
         navigate(Screen.Menu)
     }
 
-    Crossfade(targetState = screen, animationSpec = tween(300), label = "screen") { current ->
-        when (current) {
-            Screen.Intro -> BrandIntroScreen(
-                onFinished = { navigate(Screen.Menu) },
-                modifier = modifier,
-            )
+    val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
 
-            Screen.Menu -> MainMenuScreen(
-                onPlay = { navigate(Screen.Game) },
-                onRecords = { navigate(Screen.Records) },
-                onAchievements = { navigate(Screen.Achievements) },
-                onSettings = { navigate(Screen.Settings) },
-                modifier = modifier,
-            )
+    Box(modifier = modifier.fillMaxSize()) {
+        // Shared animated AGSL backdrop behind the menu-family screens — only in the
+        // dark (brand) theme; the light theme keeps its plain light surface.
+        if (darkTheme && screen != Screen.Game && screen != Screen.Intro) {
+            AnimatedShaderBackground(modifier = Modifier.fillMaxSize())
+        }
 
-            Screen.Game -> GameScreen(
-                viewModel = gameViewModel,
-                audio = audio,
-                onExitToMenu = { navigate(Screen.Menu) },
-                modifier = modifier,
-            )
+        AnimatedContent(
+            targetState = screen,
+            transitionSpec = { (fadeIn(tween(260)) togetherWith fadeOut(tween(260))) using null },
+            label = "screen",
+        ) { current ->
+            // A "glass" blur dissolve: each entering screen sharpens into focus,
+            // the leaving one blurs out (cheap RenderEffect, always on at minSdk 33).
+            val blurRadius by transition.animateDp(
+                transitionSpec = { tween(260) },
+                label = "screenBlur",
+            ) { state -> if (state == EnterExitState.Visible) 0.dp else 16.dp }
 
-            Screen.Settings -> SettingsScreen(
-                repo = repo,
-                audio = audio,
-                onBack = { navigate(Screen.Menu) },
-                modifier = modifier,
-            )
+            Box(Modifier.fillMaxSize().blur(blurRadius)) {
+                when (current) {
+                    Screen.Intro -> BrandIntroScreen(
+                        onFinished = { navigate(Screen.Menu) },
+                        modifier = Modifier.fillMaxSize(),
+                    )
 
-            Screen.Records -> RecordsScreen(
-                repo = repo,
-                onBack = { navigate(Screen.Menu) },
-                modifier = modifier,
-            )
+                    Screen.Menu -> MainMenuScreen(
+                        onPlay = { navigate(Screen.Game) },
+                        onRecords = { navigate(Screen.Records) },
+                        onAchievements = { navigate(Screen.Achievements) },
+                        onSettings = { navigate(Screen.Settings) },
+                        modifier = Modifier.fillMaxSize(),
+                    )
 
-            Screen.Achievements -> AchievementsScreen(
-                repo = repo,
-                onBack = { navigate(Screen.Menu) },
-                modifier = modifier,
-            )
+                    // The board is an always-dark arcade surface, so the whole
+                    // gameplay screen is forced to the dark scheme *and* given a
+                    // dark background — its light-on-dark HUD/overlay text (and the
+                    // phosphor-green accents) stay readable even under the light theme.
+                    Screen.Game -> SnakeGameTheme(darkTheme = true) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.background),
+                        ) {
+                            GameScreen(
+                                viewModel = gameViewModel,
+                                audio = audio,
+                                onExitToMenu = { navigate(Screen.Menu) },
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+                    }
+
+                    Screen.Settings -> SettingsScreen(
+                        repo = repo,
+                        audio = audio,
+                        onBack = { navigate(Screen.Menu) },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+
+                    Screen.Records -> RecordsScreen(
+                        repo = repo,
+                        onBack = { navigate(Screen.Menu) },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+
+                    Screen.Achievements -> AchievementsScreen(
+                        repo = repo,
+                        onBack = { navigate(Screen.Menu) },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            }
         }
     }
 }

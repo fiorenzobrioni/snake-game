@@ -9,12 +9,23 @@ import kotlin.math.abs
 class BoardLayoutTest {
 
     @Test
-    fun columnsComeFromTheScalePreset() {
-        // A typical phone aspect ratio leaves columns at the preset target.
+    fun shortSideComesFromTheScalePreset() {
+        // In portrait the short side is the width, fixed to the preset target.
         BoardScale.entries.forEach { scale ->
             val dims = boardFor(scale, aspectRatio = 0.55f)
-            assertEquals(scale.targetColumns, dims.width)
+            assertEquals(scale.cellsOnShortSide, dims.width)
         }
+    }
+
+    @Test
+    fun landscapeFixesTheShortSideAndSolvesColumns() {
+        // A tablet in landscape: the preset applies to the short side (rows) and
+        // columns are solved from the aspect, so the board fills the width instead
+        // of collapsing to a handful of rows.
+        val dims = boardFor(BoardScale.Classic, aspectRatio = 1.6f)
+        assertEquals(18, dims.height) // short side fixed to the preset
+        assertEquals(29, dims.width) // 18 * 1.6 ≈ 29
+        assertTrue(dims.width > dims.height)
     }
 
     @Test
