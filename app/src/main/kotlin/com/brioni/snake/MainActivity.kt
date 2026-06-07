@@ -1,7 +1,9 @@
 package com.brioni.snake
 
+import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -11,13 +13,12 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.core.view.WindowCompat
 import com.brioni.snake.data.Settings
 import com.brioni.snake.data.SettingsRepository
 import com.brioni.snake.game.BoardScale
@@ -55,13 +56,23 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.System -> isSystemInDarkTheme()
             }
             // Drive the system-bar icon colour from the *app* theme, not the system
-            // one: edge-to-edge defaults to the system dark mode, so a Light app
-            // theme on a dark-mode device would leave light (invisible) status-bar
-            // icons on our light background. Re-applied on every theme change.
-            SideEffect {
-                val controller = WindowCompat.getInsetsController(window, window.decorView)
-                controller.isAppearanceLightStatusBars = !darkTheme
-                controller.isAppearanceLightNavigationBars = !darkTheme
+            // one: edge-to-edge detects dark mode from the system config by default,
+            // so a Light app theme on a dark-mode device would leave light (invisible)
+            // status-bar icons on our light background. Re-applying enableEdgeToEdge
+            // with a custom detectDarkMode that returns our own darkTheme is the
+            // supported hook, and it re-runs whenever the theme changes.
+            DisposableEffect(darkTheme) {
+                enableEdgeToEdge(
+                    statusBarStyle = SystemBarStyle.auto(
+                        Color.TRANSPARENT,
+                        Color.TRANSPARENT,
+                    ) { darkTheme },
+                    navigationBarStyle = SystemBarStyle.auto(
+                        Color.TRANSPARENT,
+                        Color.TRANSPARENT,
+                    ) { darkTheme },
+                )
+                onDispose {}
             }
             SnakeGameTheme(darkTheme = darkTheme) {
                 SnakeApp(repo)
