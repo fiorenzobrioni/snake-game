@@ -83,6 +83,22 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
+### 2026-06-07 — Menu backdrop everywhere, stronger predictive back, harder achievements (v0.6.0)
+
+- **Animated backdrop across all menu screens**: moved `AnimatedShaderBackground` from `MainMenuScreen`
+  into the App shell, drawn behind the `AnimatedContent` for every non-Game/Intro screen, so Settings /
+  Records / Achievements share the living backdrop too.
+- **More visible predictive back**: the gesture now scales the foreground to ×0.82, slides it toward the
+  swipe edge (via `BackEventCompat.swipeEdge`), rounds its corners and dims it — revealing the backdrop.
+  (Needs gesture nav; on Android 13 also the "Predictive back animations" developer option.)
+- **Mystery food verified**: added `mysteryFoodAppliesItsResolvedAmount` to `GameEngineTest`. Confirmed
+  a "?" food applies its rolled amount exactly — Grow(N) adds N segments; Shrink(N) removes N tail cells
+  (the head still advances that tick, so net length is N−1, but N cells are genuinely trimmed). Behaviour
+  was already correct; no engine change.
+- **Achievements harder + a 10th**: raised HighRoller (1000 → 2500), Survivor (2 → 3 min), SpeedRunner
+  (300 → 600); added **Gourmand** (eat 50 foods in one run). Now 10 total.
+- `versionCode 10` / `versionName 0.6.0`.
+
 ### 2026-06-07 — Premium UX: predictive back, animated menu shader, blur transitions (v0.5.0)
 
 - **Predictive back gesture**: `android:enableOnBackInvokedCallback="true"` in the manifest, and the

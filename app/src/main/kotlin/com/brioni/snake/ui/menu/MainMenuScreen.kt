@@ -6,7 +6,6 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -24,11 +23,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.brioni.snake.R
-import com.brioni.snake.ui.AnimatedShaderBackground
 
 /**
  * The app's landing screen: an animated title with Play and Settings actions.
- * Pure navigation host; gameplay state lives in the game ViewModel.
+ * Pure navigation host; gameplay state lives in the game ViewModel. The animated
+ * AGSL backdrop is provided by the App shell (shared across the menu screens).
  */
 @Composable
 fun MainMenuScreen(
@@ -46,15 +45,12 @@ fun MainMenuScreen(
         label = "titleScale",
     )
 
-    Box(modifier = modifier.fillMaxSize()) {
-        AnimatedShaderBackground(modifier = Modifier.fillMaxSize())
-
-        Column(
-            modifier = Modifier.fillMaxSize().padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Text(
+    Column(
+        modifier = modifier.fillMaxSize().padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(
             text = stringResource(R.string.game_title),
             style = MaterialTheme.typography.displayLarge,
             fontWeight = FontWeight.Bold,
@@ -85,7 +81,6 @@ fun MainMenuScreen(
             modifier = Modifier.padding(top = 12.dp).widthIn(min = 220.dp),
         ) {
             Text(stringResource(R.string.menu_settings))
-        }
         }
     }
 }

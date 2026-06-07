@@ -55,8 +55,8 @@ The classic Snake mechanics, extended with configurable features so every run fe
   penalty, each with a floating callout.
 - 🏆 **Records screen** — a best-score table per difficulty × board scale (and per mode), reachable
   from the main menu.
-- 🎖️ **Achievements** — local milestones (combos, scores, surviving, using power-ups…) that unlock as
-  you play, with a dedicated screen and an unlock banner on the game-over screen.
+- 🎖️ **Achievements** — ten local milestones (combos, scores, endurance, eating sprees, using power-ups…)
+  that unlock as you play, with a dedicated screen and an unlock banner on the game-over screen.
 - 🕹️ **Game modes** — **Classic**, **Endless** (speed ramps up the longer you survive) and
   **Time Attack** (score as much as you can in 120s), selectable on the start screen.
 - ⏸️ **Pause & menus** — pause overlay with a blur effect; restart or return to the main menu at any time. Highscores are kept per (mode, level, board scale).

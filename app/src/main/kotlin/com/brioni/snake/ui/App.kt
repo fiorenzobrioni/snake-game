@@ -1,5 +1,6 @@
 package com.brioni.snake.ui
 
+import androidx.activity.BackEventCompat
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterExitState
@@ -11,11 +12,13 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -90,9 +93,13 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
     // PredictiveBackHandler drives the system back gesture: as the user drags, the
     // current screen scales/fades back, then commits to the Menu on release.
     val backProgress = remember { Animatable(0f) }
+    var backFromLeftEdge by remember { mutableStateOf(true) }
     PredictiveBackHandler(enabled = screen != Screen.Menu && screen != Screen.Game) { progress ->
         try {
-            progress.collect { event -> backProgress.snapTo(event.progress) }
+            progress.collect { event ->
+                backFromLeftEdge = event.swipeEdge == BackEventCompat.EDGE_LEFT
+                backProgress.snapTo(event.progress)
+            }
             navigate(Screen.Menu)
             backProgress.snapTo(0f)
         } catch (cancelled: CancellationException) {
@@ -103,15 +110,28 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
     }
 
     Box(modifier = modifier.fillMaxSize()) {
+        // Shared animated AGSL backdrop behind the menu-family screens; it stays
+        // put while screens dissolve over it, and is revealed as the predictive
+        // back gesture scales the foreground down.
+        if (screen != Screen.Game && screen != Screen.Intro) {
+            AnimatedShaderBackground(modifier = Modifier.fillMaxSize())
+        }
+
         AnimatedContent(
             targetState = screen,
             transitionSpec = { (fadeIn(tween(260)) togetherWith fadeOut(tween(260))) using null },
             modifier = Modifier.graphicsLayer {
+                // Predictive back: the foreground shrinks, slides toward the swipe
+                // edge, rounds its corners and dims — revealing the live backdrop.
                 val p = backProgress.value
-                val s = 1f - 0.12f * p
+                val s = 1f - 0.18f * p
                 scaleX = s
                 scaleY = s
-                alpha = 1f - 0.35f * p
+                val shift = size.width * 0.08f * p
+                translationX = if (backFromLeftEdge) shift else -shift
+                alpha = 1f - 0.25f * p
+                clip = true
+                shape = RoundedCornerShape((28f * p).dp)
             },
             label = "screen",
         ) { current ->
