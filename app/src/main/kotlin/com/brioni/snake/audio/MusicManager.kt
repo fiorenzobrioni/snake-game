@@ -5,7 +5,6 @@ import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.MediaPlayer
-import android.os.Build
 import com.brioni.snake.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -147,31 +146,17 @@ class MusicManager(context: Context, private val scope: CoroutineScope) {
 
     private fun ensureFocus() {
         if (hasFocus) return
-        val result = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
-                .setAudioAttributes(attributes)
-                .setOnAudioFocusChangeListener(focusListener)
-                .build()
-            focusRequest = request
-            audioManager.requestAudioFocus(request)
-        } else {
-            @Suppress("DEPRECATION")
-            audioManager.requestAudioFocus(
-                focusListener,
-                AudioManager.STREAM_MUSIC,
-                AudioManager.AUDIOFOCUS_GAIN,
-            )
-        }
+        val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+            .setAudioAttributes(attributes)
+            .setOnAudioFocusChangeListener(focusListener)
+            .build()
+        focusRequest = request
+        val result = audioManager.requestAudioFocus(request)
         hasFocus = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
     }
 
     private fun abandonFocus() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            focusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
-        } else {
-            @Suppress("DEPRECATION")
-            audioManager.abandonAudioFocus(focusListener)
-        }
+        focusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
         hasFocus = false
     }
 

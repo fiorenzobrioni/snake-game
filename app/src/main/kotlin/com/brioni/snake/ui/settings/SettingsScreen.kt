@@ -48,7 +48,6 @@ import com.brioni.snake.game.Level
 import com.brioni.snake.game.Skin
 import com.brioni.snake.game.SpecialFrequency
 import com.brioni.snake.game.ThemeMode
-import com.brioni.snake.ui.game.Shaders
 import com.brioni.snake.ui.game.paletteFor
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -158,14 +157,11 @@ fun SettingsScreen(
             onCommit = { scope.launch { repo.setSfxVolume(it) } },
         )
 
-        // The CRT post-filter is an AGSL effect; only offer it where supported.
-        if (Shaders.supported) {
-            ToggleSection(
-                title = stringResource(R.string.settings_crt_filter),
-                checked = settings.crtEnabled,
-                onCheckedChange = { enabled -> scope.launch { repo.setCrtEnabled(enabled) } },
-            )
-        }
+        ToggleSection(
+            title = stringResource(R.string.settings_crt_filter),
+            checked = settings.crtEnabled,
+            onCheckedChange = { enabled -> scope.launch { repo.setCrtEnabled(enabled) } },
+        )
 
         Button(
             onClick = onBack,

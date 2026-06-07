@@ -1,6 +1,5 @@
 package com.brioni.snake.ui.game
 
-import android.os.Build
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -75,10 +74,8 @@ fun GameBoard(
 ) {
     val particles: SnapshotStateList<Particle> = remember { emptyList<Particle>().toMutableStateList() }
     val floatingTexts: SnapshotStateList<FloatingText> = remember { emptyList<FloatingText>().toMutableStateList() }
-    // AGSL effects on API 33+, created once; null below (Canvas-only fallback).
-    val shaders = remember {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) BoardShaders() else null
-    }
+    // AGSL effects (always available — minSdk is 33), created once.
+    val shaders = remember { BoardShaders() }
     // A monotonic per-frame timestamp (same clock as tickTimeNanos) that pulses
     // a redraw each frame; the interpolation fraction is *derived* from it and
     // tickTimeNanos at draw time, so it can never lag a committed move.
@@ -279,30 +276,18 @@ private fun DrawScope.drawBoardBackground(
     boardWidth: Float,
     boardHeight: Float,
     palette: SkinPalette,
-    shaders: BoardShaders?,
+    shaders: BoardShaders,
     time: Float,
 ) {
-    if (shaders != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        // AGSL: the gradient brought to life with drifting glows + vignette.
-        shaders.background.setFloatUniform("origin", originX, originY)
-        shaders.background.setFloatUniform("resolution", boardWidth, boardHeight)
-        shaders.background.setFloatUniform("time", time)
-        drawRect(
-            brush = shaders.backgroundBrush,
-            topLeft = Offset(originX, originY),
-            size = Size(boardWidth, boardHeight),
-        )
-    } else {
-        drawRect(
-            brush = Brush.verticalGradient(
-                colors = listOf(palette.boardTop, palette.boardBottom),
-                startY = originY,
-                endY = originY + boardHeight,
-            ),
-            topLeft = Offset(originX, originY),
-            size = Size(boardWidth, boardHeight),
-        )
-    }
+    // AGSL: the gradient brought to life with drifting glows + vignette.
+    shaders.background.setFloatUniform("origin", originX, originY)
+    shaders.background.setFloatUniform("resolution", boardWidth, boardHeight)
+    shaders.background.setFloatUniform("time", time)
+    drawRect(
+        brush = shaders.backgroundBrush,
+        topLeft = Offset(originX, originY),
+        size = Size(boardWidth, boardHeight),
+    )
 
     if (cell < 10f) return // skip the grid on dense boards where it is just noise
     for (x in 0..board.width) {
@@ -349,7 +334,7 @@ private fun DrawScope.drawFood(
     pulse: Float,
     textMeasurer: TextMeasurer,
     palette: SkinPalette,
-    shaders: BoardShaders?,
+    shaders: BoardShaders,
     time: Float,
 ) {
     if (food.category == FoodCategory.Special) {
@@ -366,22 +351,12 @@ private fun DrawScope.drawFood(
     // Flat skins (useGlow == false) skip the halo for a crisp look.
     val rare = palette.useGlow && (food.span >= 2 || food.isMystery || food.tier == FoodTier.Huge)
     val haloRadius = radius * 1.9f
-    if (rare && shaders != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+    if (rare) {
         shaders.foodHalo.setFloatUniform("center", centerX, centerY)
         shaders.foodHalo.setFloatUniform("radius", haloRadius)
         shaders.foodHalo.setFloatUniform("time", time)
         shaders.foodHalo.setColorUniform("ringColor", color.toArgb())
         drawCircle(brush = shaders.foodHaloBrush, radius = haloRadius, center = Offset(centerX, centerY))
-    } else if (palette.useGlow && (food.span >= 2 || food.isMystery)) {
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(color.copy(alpha = 0.35f), Color.Transparent),
-                center = Offset(centerX, centerY),
-                radius = haloRadius,
-            ),
-            radius = haloRadius,
-            center = Offset(centerX, centerY),
-        )
     }
     // Pixel skin draws blocky square food; others keep the round drop.
     if (palette.cornerFactor < 0.06f) {
@@ -637,32 +612,20 @@ private fun DrawScope.drawSnakeSegment(
     direction: Direction,
     palette: SkinPalette,
     alpha: Float,
-    shaders: BoardShaders?,
+    shaders: BoardShaders,
     time: Float,
 ) {
     val centerX = left + cell / 2f
     val centerY = top + cell / 2f
 
     if (isHead && palette.useGlow) {
+        // AGSL: a pulsing, gently rotating glow halo.
         val glowRadius = cell * 1.1f
-        if (shaders != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // AGSL: a pulsing, gently rotating glow halo.
-            shaders.glow.setFloatUniform("center", centerX, centerY)
-            shaders.glow.setFloatUniform("radius", glowRadius)
-            shaders.glow.setFloatUniform("time", time)
-            shaders.glow.setColorUniform("glowColor", palette.headGlow.toArgb())
-            drawCircle(brush = shaders.glowBrush, radius = glowRadius, center = Offset(centerX, centerY))
-        } else {
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(palette.headGlow.copy(alpha = 0.45f), Color.Transparent),
-                    center = Offset(centerX, centerY),
-                    radius = glowRadius,
-                ),
-                radius = glowRadius,
-                center = Offset(centerX, centerY),
-            )
-        }
+        shaders.glow.setFloatUniform("center", centerX, centerY)
+        shaders.glow.setFloatUniform("radius", glowRadius)
+        shaders.glow.setFloatUniform("time", time)
+        shaders.glow.setColorUniform("glowColor", palette.headGlow.toArgb())
+        drawCircle(brush = shaders.glowBrush, radius = glowRadius, center = Offset(centerX, centerY))
     }
 
     val inset = cell * 0.06f

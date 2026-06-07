@@ -1,22 +1,17 @@
 package com.brioni.snake.ui.game
 
 import android.graphics.RuntimeShader
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.compose.ui.graphics.ShaderBrush
 
 /**
- * AGSL ([android.graphics.RuntimeShader]) sources and a holder for the Phase 5
- * GPU effects. All shaders require **API 33+**; every caller guards on
- * [supported] and falls back to the Canvas-only rendering below it.
+ * AGSL ([android.graphics.RuntimeShader]) sources and a holder for the GPU
+ * effects. AGSL requires Android 13+, which is the app's `minSdk`, so these are
+ * always available.
  *
  * Skia evaluates shaders in **premultiplied** alpha, so the glow/halo shaders
  * return `rgb * a` with alpha `a`.
  */
 object Shaders {
-
-    /** AGSL is only available from Android 13 (Tiramisu). */
-    val supported: Boolean get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
 
     /**
      * Animated board background: the Phase 2 vertical gradient brought to life
@@ -95,9 +90,8 @@ object Shaders {
 /**
  * Live [RuntimeShader] instances (and their [ShaderBrush] wrappers) for the
  * in-board effects, created once and mutated per frame via `setFloatUniform` /
- * `setColorUniform`. Constructed only when [Shaders.supported].
+ * `setColorUniform`.
  */
-@RequiresApi(Build.VERSION_CODES.TIRAMISU)
 class BoardShaders {
     val background = RuntimeShader(Shaders.BACKGROUND)
     val glow = RuntimeShader(Shaders.GLOW)

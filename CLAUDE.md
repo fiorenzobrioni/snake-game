@@ -24,7 +24,7 @@ The project started as a learning exercise in **C# / .NET 10 / Windows Forms (GD
 
 - **Active project**: native Android app at the **repository root**
   - Kotlin + Jetpack Compose (Material 3), built with Gradle (Kotlin DSL) + version catalog + wrapper
-  - `minSdk 24`, `compileSdk`/`targetSdk 35`; `applicationId` `com.brioni.snake` (placeholder, finalize before first Play upload)
+  - `minSdk 33` (Android 13), `compileSdk`/`targetSdk 36`; `applicationId` `com.brioni.snake` (placeholder, finalize before first Play upload). The `minSdk 33` floor means **AGSL shaders are always available** — no Canvas/older-API fallbacks are needed
   - Phase 0 done: `MainActivity` launches a themed, edge-to-edge, **portrait** full-screen Compose surface, splash via `core-splashscreen`, adaptive-icon placeholder
   - Phase 1 done: full gameplay at parity with v1.0.0 — pure-Kotlin `game/` model + `GameEngine`, Compose `Canvas` renderer, coroutine loop in `GameViewModel`, swipe + D-pad input, 5 levels, 5 board sizes, 7 food types, score HUD, pause/restart; unit-tested. See `ROADMAP.md`
   - Phase 2 done: visual polish — **portrait** board, smooth interpolated motion, gradient background, animated/haloed food, bevelled obstacles, glowing eyed snake head, eat particles and a game-over screen shake (`GameBoard`/`GameEffects`). See `ROADMAP.md`
@@ -63,7 +63,7 @@ Package root: `com.brioni.snake` under `app/src/main/kotlin/`.
 - **`game/`** — pure-Kotlin game model: `Direction`, `Position`, `BoardScale`/`BoardDimensions` (+ the `boardFor` responsive-sizing function in `BoardLayout`), `ControlScheme`, `Level`, `Food`/`FoodTable`, `GameState`/`GameStatus` and the rules engine `GameEngine` (deterministic, `Random`-injectable). **Keep this package free of Android/Compose imports** so it stays unit-testable (`app/src/test/`).
 - **`ui/`** — Compose UI and `ui/theme/` (`Color.kt`, `Theme.kt`, `Type.kt` — Orbitron type scale); dark-leaning Material 3 scheme, dynamic color intentionally off for a consistent brand look. `ui/App.kt` is the root, hosting state-based navigation (`Crossfade`) between `ui/menu/MainMenuScreen`, `ui/game/GameScreen` and `ui/settings/SettingsScreen`. `ui/game/` holds the gameplay surface: `GameScreen` (layout + overlays + board measurement), `GameBoard` (Canvas renderer), `GameViewModel` (state + coroutine loop, built via a `SettingsRepository` factory), `GameControls` (relative two-button / swipe / D-pad), `SkinPalette` (per-`Skin` colours + style flags via `paletteFor`).
 - **`data/`** — `SettingsRepository` over Preferences DataStore (control scheme, level, board scale, skin, hazards toggle, volumes, CRT, and per-(mode, level, scale) highscores). `ui/records/RecordsScreen` shows the highscore tables.
-- **Resources** (`app/src/main/res/`): `values/` (strings, colors, themes), adaptive icon in `mipmap-anydpi-v26/` with a self-contained vector fallback in `mipmap-anydpi/` for API 24–25.
+- **Resources** (`app/src/main/res/`): `values/` (strings, colors, themes), adaptive icon in `mipmap-anydpi-v26/` (foreground + background + monochrome themed layer).
 
 ### Gradle
 - `settings.gradle.kts` (repos + `include(":app")`), root `build.gradle.kts` (plugins declared `apply false`), `app/build.gradle.kts` (application module).
@@ -117,7 +117,7 @@ New entries go **at the top of the Log section** (newest first).
 Update `DEVLOG.md` when:
 - **Completing a step or phase**: add a dated log entry summarising what was implemented and any notable decisions made.
 - **Discovering a bug**: add an entry under **Known Bugs** with reproduction steps; remove it once fixed (reference the fix commit).
-- **Recording a short-term TODO**: add a checkbox under **TODOs** for tasks that are not yet a formal roadmap step (e.g. "write unit test for edge-case X", "verify on API 24").
+- **Recording a short-term TODO**: add a checkbox under **TODOs** for tasks that are not yet a formal roadmap step (e.g. "write unit test for edge-case X", "verify on API 33").
 - **Noting an architectural constraint**: add a bullet under **Notes** for decisions that future contributors (or future Claude sessions) must not accidentally undo.
 
 ---

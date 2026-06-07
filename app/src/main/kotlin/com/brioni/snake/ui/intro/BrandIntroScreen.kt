@@ -1,7 +1,6 @@
 package com.brioni.snake.ui.intro
 
 import android.graphics.RuntimeShader
-import android.os.Build
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -21,14 +20,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import com.brioni.snake.game.Skin
 import com.brioni.snake.ui.game.SkinPalette
@@ -96,6 +98,37 @@ private val FONT: Map<Char, List<String>> = mapOf(
 
 private data class Cell(val row: Int, val col: Int)
 
+// Two "bonus" explosions detonate in the snake's wake — one above the word, one
+// below — to make the splash feel alive. Each is an AGSL shader: an expanding
+// shockwave ring + a bright core with radial spark streaks, fading as it grows.
+// progress 0→1 is one blast; the head's column drives it, so each pops once as
+// the snake sweeps past that part of the board.
+private const val EXPLOSION_AGSL = """
+uniform float2 center;
+uniform float maxRadius;
+uniform float progress;
+layout(color) uniform half4 color;
+
+half4 main(float2 fragCoord) {
+    float d = distance(fragCoord, center);
+    float radius = maxRadius * progress;
+    float ringWidth = maxRadius * (0.06 + 0.12 * progress);
+    float ring = smoothstep(ringWidth, 0.0, abs(d - radius));
+    float core = smoothstep(maxRadius * 0.45 * (1.0 - progress), 0.0, d);
+    float fade = (1.0 - progress) * (1.0 - progress);
+    float ang = atan(fragCoord.y - center.y, fragCoord.x - center.x);
+    float spark = 0.6 + 0.4 * sin(ang * 16.0);
+    float intensity = (ring * mix(1.0, spark, 0.5) + core * 0.7) * fade;
+    intensity = clamp(intensity, 0.0, 1.0);
+    return half4(color.rgb * half(intensity), half(intensity));
+}
+"""
+
+private val BlastColorTop = Color(0xFFFFC107)   // gold bonus
+private val BlastColorBottom = Color(0xFF00E5FF) // cyan bonus
+// How many columns of head travel one blast lasts (≈0.8s at the crawl speed).
+private const val BLAST_COLS = 13f
+
 // Splash-only grid colour — brighter than the in-game Classic palette so the
 // board's squares read clearly here (the game's palette is left untouched).
 private val SplashGridLine = Color(0x33FFFFFF)
@@ -147,16 +180,12 @@ half4 main(float2 coord) {
 fun BrandIntroScreen(onFinished: () -> Unit, modifier: Modifier = Modifier) {
     val palette = remember { paletteFor(Skin.Classic).copy(gridLine = SplashGridLine) }
 
-    // On Android 13+ a bloom RuntimeShader adds a soft glow around the bright
-    // snake/letters. Built defensively: any compile failure falls back to null
-    // (no bloom) rather than crashing the launch.
-    val bloomShader = remember {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            runCatching { RuntimeShader(BLOOM_AGSL) }.getOrNull()
-        } else {
-            null
-        }
-    }
+    // A bloom RuntimeShader adds a soft glow around the bright snake/letters, and
+    // a shared explosion shader paints the two bonus blasts. Built defensively:
+    // any compile failure falls back to null rather than crashing the launch.
+    val bloomShader = remember { runCatching { RuntimeShader(BLOOM_AGSL) }.getOrNull() }
+    val explosionShader = remember { runCatching { RuntimeShader(EXPLOSION_AGSL) }.getOrNull() }
+    val explosionBrush = remember(explosionShader) { explosionShader?.let { ShaderBrush(it) } }
 
     // Fire onFinished once, whether by tap or by the auto-advance timer.
     var done by remember { mutableStateOf(false) }
@@ -184,7 +213,7 @@ fun BrandIntroScreen(onFinished: () -> Unit, modifier: Modifier = Modifier) {
             .graphicsLayer {
                 alpha = entrance.value * exitAlpha.value
                 // Apply the bloom as a render effect over the rasterised canvas.
-                if (bloomShader != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (bloomShader != null) {
                     bloomShader.setFloatUniform("resolution", size.width, size.height)
                     renderEffect = android.graphics.RenderEffect
                         .createRuntimeShaderEffect(bloomShader, "content")
@@ -243,7 +272,48 @@ fun BrandIntroScreen(onFinished: () -> Unit, modifier: Modifier = Modifier) {
             if (segCol < -1.2f || segCol > cols + 1.2f) continue
             drawSegment(originX, originY, cell, segCol, midRow.toFloat(), isHead = i == 0, palette)
         }
+
+        // Two bonus blasts pop in the snake's wake — above and below the word.
+        if (explosionBrush != null && explosionShader != null) {
+            val maxR = cell * 5.5f
+            // Above the word, fired as the head reaches the first letters.
+            drawBlast(
+                explosionShader, explosionBrush,
+                centerX = originX + (wordStartCol + 6f) * cell,
+                centerY = originY + (bandTop - 2.5f) * cell,
+                maxRadius = maxR,
+                progress = ((headCol - (wordStartCol + 4f)) / BLAST_COLS).coerceIn(0f, 1f),
+                color = BlastColorTop,
+            )
+            // Below the word, fired a little later as the head reaches the last letters.
+            drawBlast(
+                explosionShader, explosionBrush,
+                centerX = originX + (wordStartCol + 18f) * cell,
+                centerY = originY + (bandTop + 6.5f) * cell,
+                maxRadius = maxR,
+                progress = ((headCol - (wordStartCol + 16f)) / BLAST_COLS).coerceIn(0f, 1f),
+                color = BlastColorBottom,
+            )
+        }
     }
+}
+
+/** Paints one explosion via the shared [EXPLOSION_AGSL] shader (additive). */
+private fun DrawScope.drawBlast(
+    shader: RuntimeShader,
+    brush: ShaderBrush,
+    centerX: Float,
+    centerY: Float,
+    maxRadius: Float,
+    progress: Float,
+    color: Color,
+) {
+    if (progress <= 0f || progress >= 1f) return
+    shader.setFloatUniform("center", centerX, centerY)
+    shader.setFloatUniform("maxRadius", maxRadius)
+    shader.setFloatUniform("progress", progress)
+    shader.setColorUniform("color", color.toArgb())
+    drawRect(brush = brush, blendMode = BlendMode.Plus)
 }
 
 /** Lit cell coordinates of the whole WORD, expanded from the pixel font. */

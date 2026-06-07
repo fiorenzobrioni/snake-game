@@ -20,7 +20,9 @@ menus and replayability — and is **publishable on the Google Play Store** as a
 - **UI / rendering**: **Jetpack Compose** (Material 3) — gameplay drawn on Compose `Canvas`, the natural
   evolution of the immediate-mode GDI+ rendering learned in v1.0.0.
 - **Build**: Gradle (Kotlin DSL) + version catalog, Gradle wrapper pinned.
-- **Min/target SDK**: `minSdk 24` (Android 7.0), `compileSdk`/`targetSdk 36` (Android 16).
+- **Min/target SDK**: `minSdk 33` (Android 13), `compileSdk`/`targetSdk 36` (Android 16). The 33 floor
+  is intentional — it keeps the app on a modern, premium-device baseline and lets AGSL shaders and
+  other recent APIs be used without fallbacks.
 - **Persistence**: Preferences **DataStore** (settings, highscores).
 - **Effects**: hand-drawn particles on `Canvas`; **AGSL `RuntimeShader`** for glow/background on **API 33+**
   with a graceful fallback below.

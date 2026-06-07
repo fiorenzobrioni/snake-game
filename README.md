@@ -108,7 +108,8 @@ Install on your development machine:
 - A **test target**: an AVD emulator or a physical device with **USB debugging** enabled.
 - **Gradle**: not needed globally — the project ships the **Gradle wrapper** (`./gradlew`).
 
-The project targets `minSdk 24` (Android 7.0) and `compileSdk`/`targetSdk 36` (Android 16).
+The project targets `minSdk 33` (Android 13) and `compileSdk`/`targetSdk 36` (Android 16) — a modern
+baseline so AGSL GPU effects and other recent APIs are available without fallback code.
 
 ---
 
