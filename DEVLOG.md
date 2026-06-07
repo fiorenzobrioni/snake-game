@@ -83,6 +83,15 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
+### 2026-06-07 — Light-theme HUD fix: dark gameplay background (v0.7.2)
+
+- Follow-up to v0.7.1: forcing the dark scheme made the HUD text light, but the HUD margins still
+  showed the outer (white) Surface under the light theme, so the top HUD text vanished and the
+  phosphor-green Score/Pause read poorly. `GameScreen` is now also given a **dark background** under
+  the forced dark scheme, so the whole gameplay screen is consistently dark and its light-on-dark
+  text + green accents stay readable in any app theme.
+- `versionCode 14` / `versionName 0.7.2`.
+
 ### 2026-06-07 — Remove predictive back, fix light-theme gameplay UI (v0.7.1)
 
 - **Removed the in-app predictive-back animation**: it looked janky (screens briefly overlapping), so

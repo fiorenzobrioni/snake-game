@@ -2,6 +2,7 @@ package com.brioni.snake.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.background
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.core.animateDp
 import androidx.compose.animation.core.tween
@@ -127,16 +128,23 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
                         modifier = Modifier.fillMaxSize(),
                     )
 
-                    // The board is an always-dark arcade surface, so the gameplay
-                    // UI (HUD + overlays) is forced to the dark scheme — its
-                    // light-on-dark text stays visible even under the light theme.
+                    // The board is an always-dark arcade surface, so the whole
+                    // gameplay screen is forced to the dark scheme *and* given a
+                    // dark background — its light-on-dark HUD/overlay text (and the
+                    // phosphor-green accents) stay readable even under the light theme.
                     Screen.Game -> SnakeGameTheme(darkTheme = true) {
-                        GameScreen(
-                            viewModel = gameViewModel,
-                            audio = audio,
-                            onExitToMenu = { navigate(Screen.Menu) },
-                            modifier = Modifier.fillMaxSize(),
-                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.background),
+                        ) {
+                            GameScreen(
+                                viewModel = gameViewModel,
+                                audio = audio,
+                                onExitToMenu = { navigate(Screen.Menu) },
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
                     }
 
                     Screen.Settings -> SettingsScreen(
