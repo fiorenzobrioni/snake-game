@@ -1,8 +1,16 @@
 package com.brioni.snake.ui
 
-import androidx.activity.compose.BackHandler
-import androidx.compose.animation.Crossfade
+import androidx.activity.compose.PredictiveBackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterExitState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateDp
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -12,7 +20,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -27,6 +38,7 @@ import com.brioni.snake.ui.intro.BrandIntroScreen
 import com.brioni.snake.ui.menu.MainMenuScreen
 import com.brioni.snake.ui.records.RecordsScreen
 import com.brioni.snake.ui.settings.SettingsScreen
+import kotlin.coroutines.cancellation.CancellationException
 
 /** The top-level destinations. [Intro] is the cold-launch brand splash. */
 private enum class Screen { Intro, Menu, Game, Settings, Records, Achievements }
@@ -73,52 +85,85 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
         }
     }
 
-    // The Game screen owns its own back behaviour (pause vs. exit); the app-level
-    // handler only covers the other secondary screens.
-    BackHandler(enabled = screen != Screen.Menu && screen != Screen.Game) {
-        navigate(Screen.Menu)
+    // The Game screen owns its own back behaviour (pause vs. exit) and the Menu is
+    // the root (system predictive-back exits the app). For the other screens, a
+    // PredictiveBackHandler drives the system back gesture: as the user drags, the
+    // current screen scales/fades back, then commits to the Menu on release.
+    val backProgress = remember { Animatable(0f) }
+    PredictiveBackHandler(enabled = screen != Screen.Menu && screen != Screen.Game) { progress ->
+        try {
+            progress.collect { event -> backProgress.snapTo(event.progress) }
+            navigate(Screen.Menu)
+            backProgress.snapTo(0f)
+        } catch (cancelled: CancellationException) {
+            // Gesture aborted: ease the screen back to rest (do not re-throw —
+            // this is the canonical PredictiveBackHandler cancel path).
+            backProgress.animateTo(0f)
+        }
     }
 
-    Crossfade(targetState = screen, animationSpec = tween(300), label = "screen") { current ->
-        when (current) {
-            Screen.Intro -> BrandIntroScreen(
-                onFinished = { navigate(Screen.Menu) },
-                modifier = modifier,
-            )
+    Box(modifier = modifier.fillMaxSize()) {
+        AnimatedContent(
+            targetState = screen,
+            transitionSpec = { (fadeIn(tween(260)) togetherWith fadeOut(tween(260))) using null },
+            modifier = Modifier.graphicsLayer {
+                val p = backProgress.value
+                val s = 1f - 0.12f * p
+                scaleX = s
+                scaleY = s
+                alpha = 1f - 0.35f * p
+            },
+            label = "screen",
+        ) { current ->
+            // A "glass" blur dissolve: each entering screen sharpens into focus,
+            // the leaving one blurs out (cheap RenderEffect, always on at minSdk 33).
+            val blurRadius by transition.animateDp(
+                transitionSpec = { tween(260) },
+                label = "screenBlur",
+            ) { state -> if (state == EnterExitState.Visible) 0.dp else 16.dp }
 
-            Screen.Menu -> MainMenuScreen(
-                onPlay = { navigate(Screen.Game) },
-                onRecords = { navigate(Screen.Records) },
-                onAchievements = { navigate(Screen.Achievements) },
-                onSettings = { navigate(Screen.Settings) },
-                modifier = modifier,
-            )
+            Box(Modifier.fillMaxSize().blur(blurRadius)) {
+                when (current) {
+                    Screen.Intro -> BrandIntroScreen(
+                        onFinished = { navigate(Screen.Menu) },
+                        modifier = Modifier.fillMaxSize(),
+                    )
 
-            Screen.Game -> GameScreen(
-                viewModel = gameViewModel,
-                audio = audio,
-                onExitToMenu = { navigate(Screen.Menu) },
-                modifier = modifier,
-            )
+                    Screen.Menu -> MainMenuScreen(
+                        onPlay = { navigate(Screen.Game) },
+                        onRecords = { navigate(Screen.Records) },
+                        onAchievements = { navigate(Screen.Achievements) },
+                        onSettings = { navigate(Screen.Settings) },
+                        modifier = Modifier.fillMaxSize(),
+                    )
 
-            Screen.Settings -> SettingsScreen(
-                repo = repo,
-                audio = audio,
-                onBack = { navigate(Screen.Menu) },
-                modifier = modifier,
-            )
+                    Screen.Game -> GameScreen(
+                        viewModel = gameViewModel,
+                        audio = audio,
+                        onExitToMenu = { navigate(Screen.Menu) },
+                        modifier = Modifier.fillMaxSize(),
+                    )
 
-            Screen.Records -> RecordsScreen(
-                repo = repo,
-                onBack = { navigate(Screen.Menu) },
-                modifier = modifier,
-            )
+                    Screen.Settings -> SettingsScreen(
+                        repo = repo,
+                        audio = audio,
+                        onBack = { navigate(Screen.Menu) },
+                        modifier = Modifier.fillMaxSize(),
+                    )
 
-            Screen.Achievements -> AchievementsScreen(
-                repo = repo,
-                onBack = { navigate(Screen.Menu) },
-                modifier = modifier,
-            )
+                    Screen.Records -> RecordsScreen(
+                        repo = repo,
+                        onBack = { navigate(Screen.Menu) },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+
+                    Screen.Achievements -> AchievementsScreen(
+                        repo = repo,
+                        onBack = { navigate(Screen.Menu) },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            }
         }
     }
 }

@@ -83,6 +83,21 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
+### 2026-06-07 — Premium UX: predictive back, animated menu shader, blur transitions (v0.5.0)
+
+- **Predictive back gesture**: `android:enableOnBackInvokedCallback="true"` in the manifest, and the
+  app-level `BackHandler` replaced with a **`PredictiveBackHandler`** in `ui/App.kt` — the secondary
+  screens scale (×0.88) and fade back following the gesture, committing to the menu on release and
+  resetting on cancel. The Menu (root) lets the system run its exit animation; the Game screen keeps
+  its own back (pause/exit).
+- **Animated AGSL menu background**: new `ui/AnimatedShaderBackground.kt` reuses the in-game
+  `Shaders.BACKGROUND` (drifting glows + vignette), advancing `time` via `withFrameNanos`; placed
+  behind `MainMenuScreen`. No fallback (minSdk 33).
+- **Blur-dissolve transitions**: navigation moved from `Crossfade` to `AnimatedContent` with a
+  fade + per-screen `Modifier.blur` (16dp → 0) so screens sharpen into focus / blur out.
+- **Cleanup**: removed `vectorDrawables { useSupportLibrary = true }` (only needed for old APIs).
+- `versionCode 9` / `versionName 0.5.0`. Build + lint + unit tests green.
+
 ### 2026-06-07 — minSdk → 33, fallback cleanup + two bonus blasts on the splash (v0.4.0)
 
 - **Raised `minSdk` 24 → 33** (Android 13) — premium baseline; AGSL is always available.
