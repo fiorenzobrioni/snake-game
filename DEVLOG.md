@@ -86,9 +86,11 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 ### 2026-06-07 — System-bar icons follow the app theme, take 2 (v0.7.5)
 
 - The v0.7.4 `SideEffect` that set `isAppearanceLightStatusBars` directly did not stick (status-bar
-  icons stayed light/invisible under a Light app theme on a dark-mode device — observed on
-  Xiaomi HyperOS).
-- Replaced it with the supported hook: re-apply `enableEdgeToEdge` from a `DisposableEffect(darkTheme)`
+  icons stayed light/invisible under a Light app theme on a dark-mode device — observed on a
+  Samsung Galaxy S24 Ultra / One UI).
+- Samsung One UI honours the standard appearance flags, so the failure was the direct flag not
+  surviving edge-to-edge's own setup. Replaced it with the supported hook: re-apply
+  `enableEdgeToEdge` from a `DisposableEffect(darkTheme)`
   using `SystemBarStyle.auto(..., detectDarkMode = { darkTheme })` for both bars, so edge-to-edge's own
   appearance logic uses the app theme instead of the system config. Re-runs on every theme change.
 - `versionCode 17` / `versionName 0.7.5`.
