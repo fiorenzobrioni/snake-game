@@ -35,7 +35,7 @@ data class Settings(
     val hazardsEnabled: Boolean = true,
     val specialFrequency: SpecialFrequency = SpecialFrequency.Standard,
     val mode: GameMode = GameMode.Classic,
-    val themeMode: ThemeMode = ThemeMode.System,
+    val themeMode: ThemeMode = ThemeMode.Dark,
 )
 
 /** Default audio levels (also used as the in-memory fallback before load). */
@@ -66,7 +66,7 @@ class SettingsRepository(private val context: Context) {
             hazardsEnabled = prefs[HAZARDS_ENABLED] ?: true,
             specialFrequency = prefs[SPECIAL_FREQUENCY].toEnum(SpecialFrequency::valueOf) ?: SpecialFrequency.Standard,
             mode = prefs[MODE].toEnum(GameMode::valueOf) ?: GameMode.Classic,
-            themeMode = prefs[THEME_MODE].toEnum(ThemeMode::valueOf) ?: ThemeMode.System,
+            themeMode = prefs[THEME_MODE].toEnum(ThemeMode::valueOf) ?: ThemeMode.Dark,
         )
     }
 

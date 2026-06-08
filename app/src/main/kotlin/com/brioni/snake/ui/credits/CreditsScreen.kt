@@ -80,8 +80,16 @@ fun CreditsScreen(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
         )
+        Text(
+            text = stringResource(R.string.credits_tagline),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 12.dp),
+        )
 
         CreditSection(R.string.credits_section_license, R.string.credits_license_body)
+        CreditSection(R.string.credits_section_source, R.string.credits_source_body)
         CreditSection(R.string.credits_section_music, R.string.credits_music_body)
         CreditSection(R.string.credits_section_sfx, R.string.credits_sfx_body)
         CreditSection(R.string.credits_section_fonts, R.string.credits_fonts_body)

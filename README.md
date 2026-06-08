@@ -215,7 +215,7 @@ attribution. In short:
   [`tools/audio/generate_audio.py`](tools/audio/generate_audio.py).
 - **Fonts** — Orbitron (SIL Open Font License 1.1).
 - **Graphics & shaders** — original, hand-written in-repo.
-- **Built with** — developed with Claude Code.
+- **Built with** — developed with Google Antigravity and Claude Code.
 
 Full per-asset details and licenses are tracked in [`docs/CREDITS.md`](docs/CREDITS.md).
 

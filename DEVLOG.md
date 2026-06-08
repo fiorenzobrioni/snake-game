@@ -14,7 +14,7 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 - [ ] Verify smooth-motion interpolation on low-end devices
 - [ ] Verify the mystery "?" glyph renders crisply on small cells (dense boards)
 - [ ] Re-tune the food spawn weights / time gates after playtesting on a device
-- [ ] Replace synthesized audio with richer CC0/commissioned tracks before Play release (optional polish)
+- [ ] Optionally enrich the synthesized SFX before Play release (background music is now Gemini-generated)
 
 ---
 
@@ -82,6 +82,16 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 > Newest entries at the top. One entry per completed phase/step or significant change.
 
 ---
+
+### 2026-06-08 — Credits polish + dark theme by default
+
+- **Default theme is now Dark** (`SettingsRepository`: both the in-memory `Settings` default and the
+  decode fallback changed `ThemeMode.System` → `ThemeMode.Dark`) to match the app's dark-leaning brand
+  look. Light/System remain selectable in Settings; only fresh installs are affected.
+- **Credits screen refinements**: added a short project tagline (a learning project for Google
+  Antigravity and Claude Code, and a nod to a childhood classic), a **Source code** section linking
+  the repo, and updated **Built with** to credit **Google Antigravity** (before Claude Code). README
+  "Built with" line updated to match.
 
 ### 2026-06-08 — Gemini background music + in-app Credits screen (Step 7.7)
 
