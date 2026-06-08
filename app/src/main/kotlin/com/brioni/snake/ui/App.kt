@@ -35,13 +35,14 @@ import com.brioni.snake.data.SettingsRepository
 import com.brioni.snake.ui.game.GameScreen
 import com.brioni.snake.ui.game.GameViewModel
 import com.brioni.snake.ui.achievements.AchievementsScreen
+import com.brioni.snake.ui.credits.CreditsScreen
 import com.brioni.snake.ui.intro.BrandIntroScreen
 import com.brioni.snake.ui.menu.MainMenuScreen
 import com.brioni.snake.ui.records.RecordsScreen
 import com.brioni.snake.ui.settings.SettingsScreen
 
 /** The top-level destinations. [Intro] is the cold-launch brand splash. */
-private enum class Screen { Intro, Menu, Game, Settings, Records, Achievements }
+private enum class Screen { Intro, Menu, Game, Settings, Records, Achievements, Credits }
 
 /**
  * Root of the UI. Hosts a lightweight, state-based navigation between the main
@@ -125,6 +126,7 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
                         onRecords = { navigate(Screen.Records) },
                         onAchievements = { navigate(Screen.Achievements) },
                         onSettings = { navigate(Screen.Settings) },
+                        onCredits = { navigate(Screen.Credits) },
                         modifier = Modifier.fillMaxSize(),
                     )
 
@@ -160,6 +162,11 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
 
                     Screen.Achievements -> AchievementsScreen(
                         repo = repo,
+                        onBack = { navigate(Screen.Menu) },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+
+                    Screen.Credits -> CreditsScreen(
                         onBack = { navigate(Screen.Menu) },
                         modifier = Modifier.fillMaxSize(),
                     )

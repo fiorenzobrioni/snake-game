@@ -40,7 +40,7 @@ data class Settings(
 
 /** Default audio levels (also used as the in-memory fallback before load). */
 const val DEFAULT_MASTER_VOLUME = 1f
-const val DEFAULT_MUSIC_VOLUME = 0f
+const val DEFAULT_MUSIC_VOLUME = 0.5f
 const val DEFAULT_SFX_VOLUME = 0.8f
 
 /** Process-wide DataStore, created once for the app's [Context]. */

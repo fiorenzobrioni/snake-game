@@ -6,11 +6,12 @@ source, author and license **in the same change that adds it**. CC-BY assets
 must keep the required attribution.
 
 > The launcher icon and all in-game art are original vectors drawn in-repo. The
-> music and sound effects (Phase 4) are likewise **original works synthesized
-> in-repo** by [`tools/audio/generate_audio.py`](../tools/audio/generate_audio.py)
-> and dedicated to the public domain (CC0). The only bundled third-party asset is
-> the Orbitron display font (Phase 3, see Fonts below). The AGSL shaders (Phase 5)
-> are also original, hand-written in-repo (see Shaders below).
+> **sound effects** are original works synthesized in-repo by
+> [`tools/audio/generate_audio.py`](../tools/audio/generate_audio.py) and dedicated
+> to the public domain (CC0). The **background music** is generated with Google
+> Gemini (see Audio below). Bundled third-party assets are the Orbitron display
+> font (Phase 3, see Fonts below). The AGSL shaders (Phase 5) are also original,
+> hand-written in-repo (see Shaders below).
 
 ## Sprites
 
@@ -18,15 +19,32 @@ must keep the required attribution.
 |-------|--------|--------|---------|
 | Launcher icon — adaptive (`mipmap-anydpi-v26`) + vector fallback (`mipmap-anydpi`), hand-written vectors | original | Snake Game project | CC0 1.0 |
 
-## Audio (music & SFX)
+## Audio
 
-All clips are original works generated procedurally (no samples, no third-party
+### Music
+
+The looping background tracks (`music_menu`, `music_game`) were **generated with
+Google Gemini** (Lyria music model) and are used in accordance with
+[Google's generative-AI terms of service](https://policies.google.com/terms/generative-ai).
+They are bundled as OGG/Vorbis. The raw outputs were post-processed in-repo with
+`ffmpeg` (silence trimmed, an equal-power self-crossfade baked in for seamless
+looping under `MediaPlayer`, peaks limited to ~−1 dBFS). These tracks are
+**aggregated assets** distributed alongside — but not part of — the GPL-3.0 source
+code, and do not affect the project's license.
+
+| Asset | Source | Author | License / terms |
+|-------|--------|--------|-----------------|
+| `music_menu` — menu background loop (OGG) | Google Gemini (Lyria) | Generated via Google Gemini | Google generative-AI terms |
+| `music_game` — gameplay background loop (OGG) | Google Gemini (Lyria) | Generated via Google Gemini | Google generative-AI terms |
+
+### Sound effects
+
+All SFX are original works generated procedurally (no samples, no third-party
 audio) by [`tools/audio/generate_audio.py`](../tools/audio/generate_audio.py) and
 released under **CC0 1.0** (public domain). Re-run the script to reproduce them.
 
 | Asset | Source | Author | License |
 |-------|--------|--------|---------|
-| `music_menu` / `music_game` — looping background music | original (`tools/audio/generate_audio.py`) | Snake Game project | CC0 1.0 |
 | `sfx_eat` / `sfx_shrink` / `sfx_mystery` / `sfx_game_over` / `sfx_pause` — sound effects | original (`tools/audio/generate_audio.py`) | Snake Game project | CC0 1.0 |
 | `sfx_lightning` / `sfx_snail` / `sfx_star` / `sfx_freeze` / `sfx_jackpot` / `sfx_quake` / `sfx_explosion` — power-up / hazard SFX (Phase 6.2) | original (`tools/audio/generate_audio.py`) | Snake Game project | CC0 1.0 |
 
@@ -40,8 +58,8 @@ released under **CC0 1.0** (public domain). Re-run the script to reproduce them.
 
 All AGSL `RuntimeShader`s are original code written in-repo
 ([`ui/game/Shaders.kt`](../app/src/main/kotlin/com/brioni/snake/ui/game/Shaders.kt)), covered by the
-repository's MIT license.
+repository's GPL-3.0 license.
 
 | Asset | Source | Author | License |
 |-------|--------|--------|---------|
-| Head glow / food halo / animated background / CRT filter (AGSL) | original (`ui/game/Shaders.kt`) | Snake Game project | MIT |
+| Head glow / food halo / animated background / CRT filter (AGSL) | original (`ui/game/Shaders.kt`) | Snake Game project | GPL-3.0 |

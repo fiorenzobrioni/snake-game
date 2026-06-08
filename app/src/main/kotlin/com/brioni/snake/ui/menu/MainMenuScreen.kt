@@ -43,6 +43,7 @@ fun MainMenuScreen(
     onRecords: () -> Unit,
     onAchievements: () -> Unit,
     onSettings: () -> Unit,
+    onCredits: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val pulse = rememberInfiniteTransition(label = "titlePulse")
@@ -98,6 +99,12 @@ fun MainMenuScreen(
                 modifier = Modifier.padding(top = 12.dp).widthIn(min = 220.dp),
             ) {
                 Text(stringResource(R.string.menu_settings))
+            }
+            OutlinedButton(
+                onClick = onCredits,
+                modifier = Modifier.padding(top = 12.dp).widthIn(min = 220.dp),
+            ) {
+                Text(stringResource(R.string.menu_credits))
             }
         }
     }
