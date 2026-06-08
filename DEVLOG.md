@@ -83,6 +83,13 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
+### 2026-06-08 — Release v0.8.0
+
+- Bumped `versionName` `0.7.6` → `0.8.0` and `versionCode` `18` → `19` for the first tagged GitHub
+  release, which bundles the Gemini background music, the in-app Credits screen and the dark-by-default
+  theme.
+- Credits tagline: replaced the typographic em-dash (`—`) with a plain hyphen (`-`).
+
 ### 2026-06-08 — Credits polish + dark theme by default
 
 - **Default theme is now Dark** (`SettingsRepository`: both the in-memory `Settings` default and the
