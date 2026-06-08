@@ -90,8 +90,12 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
   look. Light/System remain selectable in Settings; only fresh installs are affected.
 - **Credits screen refinements**: added a short project tagline (a learning project for Google
   Antigravity and Claude Code, and a nod to a childhood classic), a **Source code** section linking
-  the repo, and updated **Built with** to credit **Google Antigravity** (before Claude Code). README
-  "Built with" line updated to match.
+  the repo (tappable, opens the browser), and updated **Built with** to credit **Google Antigravity**
+  (before Claude Code). README "Built with" line updated to match.
+- **Framing tweak**: the Credits tagline and the README intro now say the game is *inspired by /
+  reimagined from* the classic Snake rather than "rebuilt", since it extends the original rules
+  (shrink food, combos, power-ups, hazards, skins, extra modes). "Built from scratch" in
+  ROADMAP/CLAUDE is left as-is — there it refers to the Kotlin codebase, not the game's originality.
 
 ### 2026-06-08 — Gemini background music + in-app Credits screen (Step 7.7)
 

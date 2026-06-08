@@ -7,8 +7,8 @@
 [![targetSdk](https://img.shields.io/badge/targetSdk-36-blue)](https://developer.android.com/)
 [![License: GPL v3](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-A classic **Snake**, rebuilt as a **native Android game** in **Kotlin + Jetpack Compose**, on the way to a
-polished, **Google-Play-publishable** title with animation, particles, shaders, audio and menus.
+**Inspired by the classic Snake** and reimagined as a **native Android game** in **Kotlin + Jetpack Compose**,
+on the way to a polished, **Google-Play-publishable** title with animation, particles, shaders, audio and menus.
 
 ---
 
