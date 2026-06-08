@@ -26,7 +26,7 @@
     <string name="credits_version">Version %1$s</string>
     <string name="credits_author">Created by Fiorenzo Brioni</string>
     <string name="credits_copyright">© 2026 Fiorenzo Brioni</string>
-    <string name="credits_tagline">A classic Snake rebuilt from scratch for Android — a personal project for learning Google Antigravity and Claude Code, and a fond nod to a childhood favourite.</string>
+    <string name="credits_tagline">Inspired by the classic Snake, reimagined as a native Android game — a personal project for learning Google Antigravity and Claude Code, and a fond nod to a childhood favourite.</string>
     <string name="credits_section_license">License</string>
     <string name="credits_license_body">Released as free software under the GNU General Public License v3.0 (GPL-3.0).</string>
     <string name="credits_section_source">Source code</string>

@@ -1,5 +1,8 @@
 package com.brioni.snake.ui.credits
 
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,6 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.brioni.snake.R
 
@@ -89,7 +93,7 @@ fun CreditsScreen(
         )
 
         CreditSection(R.string.credits_section_license, R.string.credits_license_body)
-        CreditSection(R.string.credits_section_source, R.string.credits_source_body)
+        CreditLinkSection(R.string.credits_section_source, R.string.credits_source_body)
         CreditSection(R.string.credits_section_music, R.string.credits_music_body)
         CreditSection(R.string.credits_section_sfx, R.string.credits_sfx_body)
         CreditSection(R.string.credits_section_fonts, R.string.credits_fonts_body)
@@ -126,6 +130,41 @@ private fun CreditSection(titleRes: Int, bodyRes: Int) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Start,
+            )
+        }
+    }
+}
+
+/** A credit section whose body is a tappable URL opening in the browser. */
+@Composable
+private fun CreditLinkSection(titleRes: Int, urlRes: Int) {
+    val context = LocalContext.current
+    val url = stringResource(urlRes)
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+        ),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = stringResource(titleRes),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.tertiary,
+                modifier = Modifier.padding(bottom = 6.dp),
+            )
+            Text(
+                text = url,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+                textDecoration = TextDecoration.Underline,
+                textAlign = TextAlign.Start,
+                modifier = Modifier.clickable {
+                    runCatching {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                    }
+                },
             )
         }
     }
