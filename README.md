@@ -42,7 +42,7 @@ The classic Snake mechanics, extended with configurable features so every run fe
   **master / music / SFX** volume sliders in Settings; audio pauses when the app is backgrounded.
 - ✨ **GPU shader effects** — an animated background, a glowing snake head and pulsing
   halos on rare foods, all via **AGSL** `RuntimeShader`s, plus an optional **retro CRT filter**
-  toggle in Settings. All supported devices run Android 13+ so AGSL effects are always active.
+  toggle in Settings.
 - ⚡ **Power-ups & hazards** — rare maxi pieces that appear later in a run: **Lightning** (speed up),
   **Snail** (slow down), **Star** (invincible pass-through; the snake blinks faster as it runs out),
   **Freeze**, **Jackpot** (big bonus),
@@ -90,7 +90,7 @@ margin next to every wall and a clear zone around the snake's spawn.
 ### 📐 Board scale
 
 The board is **responsive**: pick a granularity and the grid is computed from your device's play-area
-aspect ratio so the board fills the screen with square cells in portrait. The preset count is applied
+aspect ratio so the board fills the screen with square cells. The preset count is applied
 to the **short side**, so the cell size — and the feel — stays consistent across different screen
 sizes (a tablet gets the same density as a phone, not a squashed few-row board).
 
