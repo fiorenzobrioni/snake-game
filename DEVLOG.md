@@ -14,7 +14,7 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 - [ ] Verify smooth-motion interpolation on low-end devices
 - [ ] Verify the mystery "?" glyph renders crisply on small cells (dense boards)
 - [ ] Re-tune the food spawn weights / time gates after playtesting on a device
-- [ ] Replace synthesized audio with richer CC0/commissioned tracks before Play release (optional polish)
+- [ ] Optionally enrich the synthesized SFX before Play release (background music is now Gemini-generated)
 
 ---
 
@@ -82,6 +82,49 @@ For the forward-looking plan and phase checklists see [`ROADMAP.md`](ROADMAP.md)
 > Newest entries at the top. One entry per completed phase/step or significant change.
 
 ---
+
+### 2026-06-08 — Credits polish + dark theme by default
+
+- **Default theme is now Dark** (`SettingsRepository`: both the in-memory `Settings` default and the
+  decode fallback changed `ThemeMode.System` → `ThemeMode.Dark`) to match the app's dark-leaning brand
+  look. Light/System remain selectable in Settings; only fresh installs are affected.
+- **Credits screen refinements**: added a short project tagline (a learning project for Google
+  Antigravity and Claude Code, and a nod to a childhood classic), a **Source code** section linking
+  the repo (tappable, opens the browser), and updated **Built with** to credit **Google Antigravity**
+  (before Claude Code). README "Built with" line updated to match.
+- **Framing tweak**: the Credits tagline and the README intro now say the game is *inspired by /
+  reimagined from* the classic Snake rather than "rebuilt", since it extends the original rules
+  (shrink food, combos, power-ups, hazards, skins, extra modes). "Built from scratch" in
+  ROADMAP/CLAUDE is left as-is — there it refers to the Kotlin codebase, not the game's originality.
+
+### 2026-06-08 — Gemini background music + in-app Credits screen (Step 7.7)
+
+- **Replaced the synthesized background music with Google Gemini (Lyria) tracks.** The two source
+  MP3s (192 kbps, ~140 s / ~153 s) were post-processed with `ffmpeg` into bundled OGG/Vorbis:
+  leading/trailing silence (MP3 encoder padding) trimmed, then an **equal-power self-crossfade**
+  (`acrossfade … c1=qsin:c2=qsin`, 4 s) baked in so the file loops seamlessly under
+  `MediaPlayer.isLooping` (which does a hard loop with no boundary crossfade). Peaks limited to
+  ~−1 dBFS to leave headroom for lossy decode overshoot. Final assets: `music_menu.ogg` (~1.7 MB),
+  `music_game.ogg` (~1.95 MB) — both smaller than the source MP3s.
+- **No audio-code changes:** the new files keep the resource base names `music_menu` / `music_game`,
+  so `MusicManager`'s `R.raw.*` references resolve unchanged. The old `.wav` loops were removed and
+  the `new-music/` drop folder deleted.
+- **Retired music synthesis:** `tools/audio/generate_audio.py` no longer generates the music loops
+  (removed `build_music`/`menu_music`/`game_music`); it now only emits SFX. The `NOTES` table is kept
+  (used by the melodic SFX).
+- **Music audible by default:** `DEFAULT_MUSIC_VOLUME` changed `0f` → `0.5f` so fresh installs hear
+  the new tracks (existing users keep their saved value).
+- **New in-app Credits screen** (`ui/credits/CreditsScreen.kt`), reachable from the main menu via a
+  new button: app identity (name + version from `PackageManager`), author **Fiorenzo Brioni**,
+  GPL-3.0, and per-asset attribution (music by Google Gemini, CC0 SFX, Orbitron font, original
+  art/shaders, built with Claude Code). Wired through `App.kt` (`Screen.Credits`) following the
+  existing Records/Achievements navigation pattern; the system-back + `onBack` return to the menu.
+- **Licensing:** the Gemini tracks are aggregated assets (their own terms) alongside the GPL-3.0
+  code — no conflict. Documented in `docs/CREDITS.md` and the README. Also corrected a stale
+  reference there that called the repo license "MIT" for the shaders (it is GPL-3.0).
+- **Note:** the loop seam was verified analytically (no silence gap, continuous waveform, no
+  clipping) — there is no audio playback in the build environment, so an on-device ear check is the
+  final confirmation.
 
 ### 2026-06-07 — Decorate the main menu with a gliding snake
 

@@ -35,12 +35,12 @@ data class Settings(
     val hazardsEnabled: Boolean = true,
     val specialFrequency: SpecialFrequency = SpecialFrequency.Standard,
     val mode: GameMode = GameMode.Classic,
-    val themeMode: ThemeMode = ThemeMode.System,
+    val themeMode: ThemeMode = ThemeMode.Dark,
 )
 
 /** Default audio levels (also used as the in-memory fallback before load). */
 const val DEFAULT_MASTER_VOLUME = 1f
-const val DEFAULT_MUSIC_VOLUME = 0f
+const val DEFAULT_MUSIC_VOLUME = 0.5f
 const val DEFAULT_SFX_VOLUME = 0.8f
 
 /** Process-wide DataStore, created once for the app's [Context]. */
@@ -66,7 +66,7 @@ class SettingsRepository(private val context: Context) {
             hazardsEnabled = prefs[HAZARDS_ENABLED] ?: true,
             specialFrequency = prefs[SPECIAL_FREQUENCY].toEnum(SpecialFrequency::valueOf) ?: SpecialFrequency.Standard,
             mode = prefs[MODE].toEnum(GameMode::valueOf) ?: GameMode.Classic,
-            themeMode = prefs[THEME_MODE].toEnum(ThemeMode::valueOf) ?: ThemeMode.System,
+            themeMode = prefs[THEME_MODE].toEnum(ThemeMode::valueOf) ?: ThemeMode.Dark,
         )
     }
 

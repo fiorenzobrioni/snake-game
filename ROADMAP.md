@@ -248,6 +248,9 @@ snake-game/
 - [ ] **Step 7.5** — Play readiness: privacy policy, **Data Safety** form, **IARC** rating, store listing
       (icon, feature graphic, phone screenshots), **internal testing** track.
 - [ ] **Step 7.6** — Finalize docs: README screenshots/GIFs + Play link; confirm the legacy note.
+- [x] **Step 7.7** — In-app **Credits / About** screen (author, GPL-3.0 license, asset attribution),
+      reachable from the main menu; bundle the Google Gemini background music in place of the
+      synthesized loops.
 
 ---
 
