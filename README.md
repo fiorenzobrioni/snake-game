@@ -3,12 +3,26 @@
 [![Kotlin](https://img.shields.io/badge/language-Kotlin-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org/)
 [![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4?logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
 [![Android](https://img.shields.io/badge/platform-Android-3DDC84?logo=android&logoColor=white)](https://www.android.com/)
-[![minSdk](https://img.shields.io/badge/minSdk-24-blue)](https://developer.android.com/)
+[![minSdk](https://img.shields.io/badge/minSdk-33-blue)](https://developer.android.com/)
 [![targetSdk](https://img.shields.io/badge/targetSdk-36-blue)](https://developer.android.com/)
 [![License: GPL v3](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 **Inspired by the classic Snake** and reimagined as a **native Android game** in **Kotlin + Jetpack Compose**,
 on the way to a polished, **Google-Play-publishable** title with animation, particles, shaders, audio and menus.
+
+---
+
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/screenshot_splash.jpg" width="160"/><br/><sub>Splash intro</sub></td>
+    <td align="center"><img src="docs/screenshots/screenshot_menu.jpg" width="160"/><br/><sub>Main menu</sub></td>
+    <td align="center"><img src="docs/screenshots/screenshot_gameplay.jpg" width="160"/><br/><sub>Gameplay</sub></td>
+    <td align="center"><img src="docs/screenshots/screenshot_gameplay_powerups.jpg" width="160"/><br/><sub>Power-ups &amp; hazards</sub></td>
+    <td align="center"><img src="docs/screenshots/screenshot_settings.jpg" width="160"/><br/><sub>Settings</sub></td>
+  </tr>
+</table>
 
 ---
 
@@ -32,7 +46,7 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - 🚧 **Obstacles** — scattered blocks that raise the difficulty.
 - 🎚️ **Difficulty levels** — 5 levels (*Beginner* → *Legend*) tuning speed and obstacle count.
 - 📐 **Responsive board** — pick a granularity (*Cozy* / *Standard* / *Epic*); the grid is computed
-  from your device's screen so it fills the display with square cells in portrait **and** landscape.
+  from your device's screen so it fills the display with square cells in portrait.
 - 🎮 **Control schemes** — **swipe** by default, or a two-button *relative* steering / classic D-pad.
 - 🎨 **Skins** — four selectable looks (**Classic / Neon / Retro / Pixel**), each its own palette and
   cell shape (Pixel is flat & square, Neon bubbly), all available immediately in Settings.
@@ -40,9 +54,9 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - 🔊 **Music & sound effects** — looping background music that crossfades between the menu and
   gameplay, plus SFX for eating, shrinking, mystery pieces, game over and UI. Independent
   **master / music / SFX** volume sliders in Settings; audio pauses when the app is backgrounded.
-- ✨ **GPU shader effects (Android 13+)** — an animated background, a glowing snake head and pulsing
+- ✨ **GPU shader effects** — an animated background, a glowing snake head and pulsing
   halos on rare foods, all via **AGSL** `RuntimeShader`s, plus an optional **retro CRT filter**
-  toggle in Settings. Devices below Android 13 fall back to the polished Canvas rendering.
+  toggle in Settings.
 - ⚡ **Power-ups & hazards** — rare maxi pieces that appear later in a run: **Lightning** (speed up),
   **Snail** (slow down), **Star** (invincible pass-through; the snake blinks faster as it runs out),
   **Freeze**, **Jackpot** (big bonus),
@@ -90,9 +104,9 @@ margin next to every wall and a clear zone around the snake's spawn.
 ### 📐 Board scale
 
 The board is **responsive**: pick a granularity and the grid is computed from your device's play-area
-aspect ratio so the board fills the screen with square cells. The preset count is applied to the
-**short side**, so the cell size — and the feel — stays consistent in portrait and landscape (a tablet
-in landscape gets the same density as a phone in portrait, not a squashed few-row board).
+aspect ratio so the board fills the screen with square cells. The preset count is applied
+to the **short side**, so the cell size — and the feel — stays consistent across different screen
+sizes (a tablet gets the same density as a phone, not a squashed few-row board).
 
 | Scale    | Cell size | Cells on short side |
 |----------|-----------|---------------------|
