@@ -63,6 +63,9 @@ sealed interface FoodEffect {
 
     /** Time Attack only (hazard): subtracts [seconds] from the remaining clock. */
     data class TimePenalty(val seconds: Int) : FoodEffect
+
+    /** Levels mode only: grants one extra life (points past [LevelsMode.MAX_LIVES]). */
+    data object ExtraLife : FoodEffect
 }
 
 /** True for the [FoodEffect]s that make the game harder (gated by the hazards toggle). */
@@ -170,7 +173,8 @@ object FoodTable {
      * @param specialFrequency scales the special spawn weight and unlock gate so
      *        the player can dial how often power-ups / hazards appear.
      * @param mode the active [GameMode]; the time-bonus / time-penalty specials
-     *        are produced only in [GameMode.TimeAttack].
+     *        are produced only in [GameMode.TimeAttack] and the extra-life
+     *        special only in [GameMode.Levels].
      */
     fun roll(
         random: Random,
@@ -220,6 +224,10 @@ object FoodTable {
             if (mode == GameMode.TimeAttack) {
                 add(Weighted(14) { FoodEffect.TimeBonus(TIME_BONUS_SECONDS) })
                 if (hazardsEnabled) add(Weighted(12) { FoodEffect.TimePenalty(TIME_PENALTY_SECONDS) })
+            }
+            // Levels only: a rare extra life.
+            if (mode == GameMode.Levels) {
+                add(Weighted(8) { FoodEffect.ExtraLife })
             }
         }
         val effect = pick(choices, random)

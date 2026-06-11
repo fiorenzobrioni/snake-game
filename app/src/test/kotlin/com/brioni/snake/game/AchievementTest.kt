@@ -16,7 +16,12 @@ class AchievementTest {
         usedExplosion: Boolean = false,
         usedStar: Boolean = false,
         usedJackpot: Boolean = false,
-    ) = RunStats(mode, score, maxCombo, durationMs, foodsEaten, usedExplosion, usedStar, usedJackpot)
+        maxLevelReached: Int = 0,
+        maxSpeedCycle: Int = 1,
+    ) = RunStats(
+        mode, score, maxCombo, durationMs, foodsEaten, usedExplosion, usedStar, usedJackpot,
+        maxLevelReached = maxLevelReached, maxSpeedCycle = maxSpeedCycle,
+    )
 
     @Test
     fun `first feast unlocks on the first food`() {
@@ -51,5 +56,16 @@ class AchievementTest {
     fun `gourmand needs fifty foods`() {
         assertTrue(Achievement.Gourmand.test(stats(foodsEaten = 50)))
         assertFalse(Achievement.Gourmand.test(stats(foodsEaten = 49)))
+    }
+
+    @Test
+    fun `levels achievements gate on mode and depth`() {
+        assertTrue(Achievement.Climber.test(stats(mode = GameMode.Levels, maxLevelReached = 5)))
+        assertFalse(Achievement.Climber.test(stats(mode = GameMode.Levels, maxLevelReached = 4)))
+        assertFalse(Achievement.Climber.test(stats(mode = GameMode.Classic, maxLevelReached = 5)))
+        assertTrue(Achievement.TowerTopper.test(stats(mode = GameMode.Levels, maxLevelReached = 10)))
+        assertFalse(Achievement.TowerTopper.test(stats(mode = GameMode.Levels, maxLevelReached = 9)))
+        assertTrue(Achievement.FullCircle.test(stats(mode = GameMode.Levels, maxSpeedCycle = 2)))
+        assertFalse(Achievement.FullCircle.test(stats(mode = GameMode.Levels, maxSpeedCycle = 1)))
     }
 }

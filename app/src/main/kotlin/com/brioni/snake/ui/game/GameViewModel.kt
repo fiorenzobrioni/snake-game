@@ -26,6 +26,7 @@ import com.brioni.snake.game.GameMode
 import com.brioni.snake.game.GameState
 import com.brioni.snake.game.GameStatus
 import com.brioni.snake.game.Level
+import com.brioni.snake.game.LevelsMode
 import com.brioni.snake.game.Position
 import com.brioni.snake.game.RunStats
 import com.brioni.snake.game.Skin
@@ -154,6 +155,14 @@ class GameViewModel(
     var newlyUnlocked by mutableStateOf<List<Achievement>>(emptyList())
         private set
 
+    /** Levels mode: seconds left on the intro countdown (0 when not counting). */
+    var introCountdown by mutableIntStateOf(0)
+        private set
+
+    /** Levels mode: true when the current intro follows a life loss. */
+    var introIsRespawn by mutableStateOf(false)
+        private set
+
     // Per-run accumulators feeding the achievement check at game over.
     private var runFoodsEaten = 0
     private var runMaxCombo = 0
@@ -161,9 +170,13 @@ class GameViewModel(
     private var runUsedStar = false
     private var runUsedJackpot = false
     private var runStartMs = 0L
+    private var runMaxLevel = 1
+    private var runMaxCycle = 1
+    private var runExtraLives = 0
 
     private var loop: Job? = null
     private var bestJob: Job? = null
+    private var introJob: Job? = null
     private var lastAspect = DEFAULT_ASPECT
 
     val level: Level get() = state.level
@@ -183,12 +196,15 @@ class GameViewModel(
                 hazardsEnabled = settings.hazardsEnabled
                 specialFrequency = settings.specialFrequency
                 if (state.status == GameStatus.Ready) {
-                    val levelChanged = settings.level != state.level
+                    // Levels mode ignores the difficulty selector: it is pinned
+                    // to its score level so this collector can't keep resetting.
+                    val targetLevel = if (settings.mode == GameMode.Levels) LevelsMode.SCORE_LEVEL else settings.level
+                    val levelChanged = targetLevel != state.level
                     val modeChanged = settings.mode != mode
                     mode = settings.mode
                     scale = settings.scale
                     if (levelChanged || modeChanged) {
-                        resetTo(engine.setup(settings.level, boardFor(scale, lastAspect), mode))
+                        resetTo(engine.setup(targetLevel, boardFor(scale, lastAspect), mode))
                     } else {
                         reconfigureBoard()
                     }
@@ -200,6 +216,7 @@ class GameViewModel(
 
     fun selectLevel(level: Level) {
         if (state.status != GameStatus.Ready) return
+        if (mode == GameMode.Levels) return // the selector is hidden and ignored
         viewModelScope.launch { repo.setLevel(level) }
         resetTo(engine.setup(level, state.board, mode))
         refreshBest()
@@ -209,7 +226,10 @@ class GameViewModel(
         if (state.status != GameStatus.Ready) return
         mode = newMode
         viewModelScope.launch { repo.setGameMode(newMode) }
-        resetTo(engine.setup(state.level, state.board, newMode))
+        // Levels pins its score level; leaving it, the settings collector
+        // restores the user's persisted difficulty right after this reset.
+        val level = if (newMode == GameMode.Levels) LevelsMode.SCORE_LEVEL else state.level
+        resetTo(engine.setup(level, state.board, newMode))
         refreshBest()
     }
 
@@ -245,7 +265,7 @@ class GameViewModel(
         resetTo(engine.start(state))
         isNewBest = false
         beginRun()
-        runLoop()
+        afterReset()
     }
 
     fun setDirection(direction: Direction) {
@@ -269,7 +289,41 @@ class GameViewModel(
         resetTo(engine.newGame(state.level, state.board, mode))
         isNewBest = false
         beginRun()
-        runLoop()
+        afterReset()
+    }
+
+    /** Routes a freshly reset game: Levels opens with its intro, others just run. */
+    private fun afterReset() {
+        if (state.status == GameStatus.LevelIntro) {
+            introIsRespawn = false
+            startIntro()
+        } else {
+            runLoop()
+        }
+    }
+
+    /**
+     * Levels mode: runs the 3-2-1 countdown over the staged board, then hands
+     * back to the engine ([GameEngine.beginLevel]) and restarts the loop.
+     */
+    private fun startIntro() {
+        introJob?.cancel()
+        introJob = viewModelScope.launch {
+            introCountdown = INTRO_SECONDS
+            while (introCountdown > 0) {
+                delay(1_000)
+                introCountdown--
+            }
+            resetTo(engine.beginLevel(state))
+            runLoop()
+        }
+    }
+
+    private fun cancelIntro() {
+        introJob?.cancel()
+        introJob = null
+        introCountdown = 0
+        introIsRespawn = false
     }
 
     /** Resets the per-run achievement accumulators at the start of a run. */
@@ -280,11 +334,15 @@ class GameViewModel(
         runUsedStar = false
         runUsedJackpot = false
         runStartMs = System.currentTimeMillis()
+        runMaxLevel = 1
+        runMaxCycle = 1
+        runExtraLives = 0
         newlyUnlocked = emptyList()
     }
 
     fun toMenu() {
         stopLoop()
+        cancelIntro()
         resetTo(engine.setup(state.level, state.board, mode))
         refreshBest()
     }
@@ -390,7 +448,36 @@ class GameViewModel(
                     if (event.kind == EffectKind.Ghost) runUsedStar = true
                 }
                 is GameEvent.EffectExpired -> Unit
+                is GameEvent.LevelAdvanced -> {
+                    sfx.levelUp()
+                    runMaxLevel = max(runMaxLevel, event.levelIndex)
+                    runMaxCycle = max(runMaxCycle, event.speedCycle)
+                }
+                is GameEvent.LifeLost -> {
+                    // A non-final crash: the lighter quake shake, not the death one.
+                    shakeEventId++
+                    sfx.lifeLost()
+                }
+                is GameEvent.LifeGained -> {
+                    eatEvent = EatEvent(event.food.position, event.food.span, SpecialVisuals.ExtraLifeColor, BurstStyle.Eat)
+                    eatEventId++
+                    val text = if (event.capped) "+${LevelsMode.LIFE_CAP_BONUS}" else "+1♥"
+                    floatingText = FloatingTextEvent(event.food.position, event.food.span, text, SpecialVisuals.ExtraLifeColor)
+                    floatingTextId++
+                    sfx.lifeGained()
+                    if (!event.capped) runExtraLives++
+                }
             }
+        }
+
+        if (after.status == GameStatus.LevelIntro) {
+            // Levels: the tick staged the next board (advance or respawn). Use
+            // resetTo — not the interpolation commit — so the renderer doesn't
+            // tween the old snake across the board to the new spawn.
+            resetTo(after)
+            introIsRespawn = after.lastEvents.any { it is GameEvent.LifeLost }
+            startIntro()
+            return
         }
 
         // Commit the interpolation snapshot atomically: previous, current, time.
@@ -410,9 +497,17 @@ class GameViewModel(
             usedExplosion = runUsedExplosion,
             usedStar = runUsedStar,
             usedJackpot = runUsedJackpot,
+            maxLevelReached = if (mode == GameMode.Levels) runMaxLevel else 0,
+            maxSpeedCycle = runMaxCycle,
+            extraLivesGained = runExtraLives,
         )
         // Persist; the bestJob collector reflects the new value back into state.
         viewModelScope.launch { repo.submitScore(mode, state.level, scale, score) }
+        if (mode == GameMode.Levels) {
+            // Levels: also track how deep the run got, for the Records screen.
+            val completed = (state.speedCycle - 1) * LevelsMode.LEVEL_COUNT + (state.levelIndex - 1)
+            viewModelScope.launch { repo.submitLevelsProgress(scale, completed) }
+        }
         // Evaluate achievements against the run and surface any new unlocks.
         viewModelScope.launch {
             val already = repo.unlockedAchievements().first()
@@ -442,12 +537,16 @@ class GameViewModel(
 
     override fun onCleared() {
         stopLoop()
+        cancelIntro()
     }
 
     companion object {
         private val DEFAULT_LEVEL = Level.Beginner
         private val DEFAULT_SCALE = BoardScale.Classic
         private val DEFAULT_CONTROL = ControlScheme.Swipe
+
+        /** Levels mode: seconds counted down by the intro overlay. */
+        private const val INTRO_SECONDS = 3
 
         fun factory(repo: SettingsRepository, sfx: GameSfx = GameSfx.None) = viewModelFactory {
             initializer { GameViewModel(repo, sfx) }

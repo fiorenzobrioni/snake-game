@@ -1,13 +1,21 @@
 package com.brioni.snake.ui.game
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,11 +25,17 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -86,13 +100,17 @@ fun ReadyOverlay(
             }
         }
 
-        ChipSection(title = stringResource(R.string.menu_level)) {
-            Level.entries.forEach { level ->
-                FilterChip(
-                    selected = level == selectedLevel,
-                    onClick = { onLevelSelected(level) },
-                    label = { Text(level.label) },
-                )
+        // Levels mode has its own speed curve and shaped boards: the difficulty
+        // selector is hidden (and ignored by the ViewModel) while it is active.
+        if (selectedMode != GameMode.Levels) {
+            ChipSection(title = stringResource(R.string.menu_level)) {
+                Level.entries.forEach { level ->
+                    FilterChip(
+                        selected = level == selectedLevel,
+                        onClick = { onLevelSelected(level) },
+                        label = { Text(level.label) },
+                    )
+                }
             }
         }
 
@@ -138,6 +156,96 @@ private fun ChipSection(title: String, chips: @Composable () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         ) {
             chips()
+        }
+    }
+}
+
+/**
+ * Levels mode: the staged-level banner with the 3-2-1 countdown — shown at game
+ * start, on every level advance and after a life loss ([isRespawn]). The board
+ * behind it already wears the next level's shape, so the scrim is kept light.
+ */
+@Composable
+fun LevelIntroOverlay(
+    levelIndex: Int,
+    speedCycle: Int,
+    lives: Int,
+    countdown: Int,
+    isRespawn: Boolean,
+) {
+    OverlayScrim(alpha = 0.55f) {
+        // The title pops in once per staged level (or respawn).
+        val titleIn = remember(levelIndex, speedCycle, isRespawn) { Animatable(0f) }
+        LaunchedEffect(titleIn) {
+            titleIn.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow))
+        }
+        Text(
+            text = stringResource(R.string.level_intro_title, levelIndex, speedCycle),
+            style = MaterialTheme.typography.displaySmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.graphicsLayer {
+                scaleX = 0.6f + 0.4f * titleIn.value
+                scaleY = 0.6f + 0.4f * titleIn.value
+                alpha = titleIn.value.coerceIn(0f, 1f)
+            },
+        )
+        if (isRespawn) {
+            Text(
+                text = stringResource(R.string.level_intro_ready),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
+        val livesDescription = stringResource(R.string.hud_lives, lives)
+        Text(
+            text = "♥".repeat(lives.coerceAtLeast(0)),
+            style = MaterialTheme.typography.titleLarge,
+            color = SpecialVisuals.ExtraLifeColor,
+            modifier = Modifier
+                .padding(top = 8.dp)
+                .semantics { contentDescription = livesDescription },
+        )
+
+        // Countdown digit: re-pops each second inside an expanding, fading ring.
+        val pulse = remember { Animatable(1f) }
+        LaunchedEffect(countdown) {
+            if (countdown > 0) {
+                pulse.snapTo(0f)
+                pulse.animateTo(1f, tween(durationMillis = 600, easing = FastOutSlowInEasing))
+            }
+        }
+        if (countdown > 0) {
+            Box(
+                modifier = Modifier
+                    .padding(top = 24.dp)
+                    .size(140.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                val ringColor = MaterialTheme.colorScheme.primary
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val t = pulse.value
+                    drawCircle(
+                        color = ringColor.copy(alpha = (1f - t) * 0.8f),
+                        radius = size.minDimension / 2f * (0.4f + 0.6f * t),
+                        style = Stroke(width = size.minDimension * 0.04f),
+                    )
+                }
+                Text(
+                    text = countdown.toString(),
+                    style = MaterialTheme.typography.displayLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.graphicsLayer {
+                        val t = pulse.value
+                        scaleX = 1.6f - 0.6f * t
+                        scaleY = 1.6f - 0.6f * t
+                        alpha = (0.4f + 0.6f * t).coerceIn(0f, 1f)
+                    },
+                )
+            }
         }
     }
 }

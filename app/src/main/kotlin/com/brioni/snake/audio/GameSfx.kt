@@ -21,11 +21,23 @@ interface GameSfx {
     /** A special power-up / hazard was eaten; the clip is chosen from its effect. */
     fun special(food: Food)
 
+    /** Levels mode: an extra life was banked. */
+    fun lifeGained()
+
+    /** Levels mode: a crash consumed a life (the run continues). */
+    fun lifeLost()
+
+    /** Levels mode: the food goal was met and the next level is staging. */
+    fun levelUp()
+
     /** No-op sink — the ViewModel's default, so it runs and tests without audio. */
     object None : GameSfx {
         override fun ate(food: Food, combo: Int) {}
         override fun shrunk(food: Food) {}
         override fun died() {}
         override fun special(food: Food) {}
+        override fun lifeGained() {}
+        override fun lifeLost() {}
+        override fun levelUp() {}
     }
 }

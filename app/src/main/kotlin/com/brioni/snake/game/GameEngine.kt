@@ -16,16 +16,13 @@ class GameEngine(private val random: Random = Random.Default) {
 
     /**
      * Builds a [GameStatus.Ready] state: snake centred, obstacles generated for
-     * [level], no food yet. The menu is shown over this until [start].
+     * [level], no food yet. The menu is shown over this until [start]. In
+     * [GameMode.Levels] the random obstacles are replaced by the first level's
+     * designed wall shape and the lives stock is filled.
      */
     fun setup(level: Level, board: BoardDimensions, mode: GameMode = GameMode.Classic): GameState {
-        val cx = board.width / 2
-        val cy = board.height / 2
-        val snake = listOf(
-            Position(cx, cy),
-            Position(cx, cy + 1),
-            Position(cx, cy + 2),
-        )
+        val snake = startingSnake(board)
+        val isLevels = mode == GameMode.Levels
         return GameState(
             board = board,
             level = level,
@@ -33,23 +30,56 @@ class GameEngine(private val random: Random = Random.Default) {
             direction = Direction.Up,
             pendingDirection = Direction.Up,
             foods = emptyList(),
-            obstacles = generateObstacles(level, board, snake),
+            obstacles = if (isLevels) emptySet() else generateObstacles(level, board, snake),
             score = 0,
             pendingGrowth = 0,
             status = GameStatus.Ready,
             mode = mode,
+            lives = if (isLevels) LevelsMode.START_LIVES else 0,
+            walls = if (isLevels) LevelsMode.shapeFor(1, board) else emptySet(),
         )
     }
 
-    /** Transitions a [GameStatus.Ready] state into a running game with food. */
+    /**
+     * Transitions a [GameStatus.Ready] state into a running game with food.
+     * In [GameMode.Levels] it lands on [GameStatus.LevelIntro] instead (still
+     * without food) so the intro countdown can play; [beginLevel] follows.
+     */
     fun start(state: GameState): GameState {
         if (state.status != GameStatus.Ready) return state
+        if (state.mode == GameMode.Levels) return state.copy(status = GameStatus.LevelIntro)
         return state.copy(
             foods = refill(
-                state.board, state.snake, state.obstacles, emptyList(),
+                state.board, state.snake, state.obstacles, state.walls, emptyList(),
                 elapsedTicks = 0, level = state.level, mode = state.mode,
             ),
             status = GameStatus.Running,
+        )
+    }
+
+    /**
+     * Levels mode: leaves [GameStatus.LevelIntro] (after the countdown ran in
+     * the ViewModel), seeding food onto the staged board and starting the loop.
+     */
+    fun beginLevel(state: GameState): GameState {
+        if (state.status != GameStatus.LevelIntro) return state
+        return state.copy(
+            foods = refill(
+                state.board, state.snake, state.obstacles, state.walls, emptyList(),
+                elapsedTicks = state.elapsedTicks, level = state.level, mode = state.mode,
+            ),
+            status = GameStatus.Running,
+        )
+    }
+
+    /** The centred three-cell spawn (heading Up) shared by setup and Levels resets. */
+    private fun startingSnake(board: BoardDimensions): List<Position> {
+        val cx = board.width / 2
+        val cy = board.height / 2
+        return listOf(
+            Position(cx, cy),
+            Position(cx, cy + 1),
+            Position(cx, cy + 2),
         )
     }
 
@@ -147,10 +177,15 @@ class GameEngine(private val random: Random = Random.Default) {
         var combo = state.combo
         var comboDeadlineTick = state.comboDeadlineTick
         var timeAdjustMs = state.timeAdjustMs
+        var lives = state.lives
+        var levelFoodsEaten = state.levelFoodsEaten
 
         val eaten = foods.firstOrNull { it.occupies(newHead) }
         if (eaten != null) {
             foods = foods - eaten
+            // Levels: every eaten food, whatever its category, counts toward
+            // the level's food goal.
+            if (state.mode == GameMode.Levels) levelFoodsEaten++
             when (val effect = eaten.effect) {
                 is FoodEffect.Grow -> {
                     // A fresh streak, or extend the running one if still in time.
@@ -179,6 +214,7 @@ class GameEngine(private val random: Random = Random.Default) {
                     val occupied = HashSet<Position>().apply {
                         addAll(body)
                         addAll(state.obstacles)
+                        addAll(state.walls)
                         foods.forEach { addAll(it.cells()) }
                         debris.forEach { add(it.cell) }
                     }
@@ -233,6 +269,14 @@ class GameEngine(private val random: Random = Random.Default) {
                     timeAdjustMs -= effect.seconds * 1000L
                     events.add(GameEvent.TimeLost(eaten, effect.seconds))
                 }
+                is FoodEffect.ExtraLife -> {
+                    // Levels: bank a life, or pay points once the stock is full.
+                    // Pure effect — keep length.
+                    body.removeAt(body.lastIndex)
+                    val capped = lives >= LevelsMode.MAX_LIVES
+                    if (capped) score += LevelsMode.LIFE_CAP_BONUS else lives++
+                    events.add(GameEvent.LifeGained(eaten, lives, capped))
+                }
             }
         } else if (pendingGrowth > 0) {
             pendingGrowth--
@@ -262,11 +306,25 @@ class GameEngine(private val random: Random = Random.Default) {
             val freezeActive = effectTimers.any { it.kind == EffectKind.Freeze }
             val specialsOnBoard = foods.count { it.category == FoodCategory.Special }
             foods = refill(
-                board, body, state.obstacles, foods, elapsedTicks, state.level,
+                board, body, state.obstacles, state.walls, foods, elapsedTicks, state.level,
                 hazardsEnabled = hazardsEnabled,
                 specialAllowed = specialsOnBoard < MAX_SPECIALS_ON_BOARD && !freezeActive,
                 specialFrequency = specialFrequency,
                 mode = state.mode,
+            )
+        }
+
+        // Levels: the food goal advances to the next staged level. Checked
+        // before the death test — the completing eat wins over a same-tick
+        // crash, since the snake is reset to the spawn anyway.
+        if (state.mode == GameMode.Levels && levelFoodsEaten >= LevelsMode.LEVEL_FOOD_GOAL) {
+            val nextIndex = state.levelIndex % LevelsMode.LEVEL_COUNT + 1
+            val nextCycle = if (state.levelIndex == LevelsMode.LEVEL_COUNT) state.speedCycle + 1 else state.speedCycle
+            events.add(GameEvent.LevelAdvanced(nextIndex, nextCycle))
+            return stageLevel(
+                state, events,
+                levelIndex = nextIndex, speedCycle = nextCycle, lives = lives,
+                score = score, elapsedTicks = elapsedTicks, playedMs = playedMs,
             )
         }
 
@@ -277,9 +335,23 @@ class GameEngine(private val random: Random = Random.Default) {
         val crashed = !ghost && (
             isOutOfBounds(newHead, board) ||
                 newHead in state.obstacles ||
+                newHead in state.walls ||
                 collidesWithBody(newHead, body) ||
                 debris.any { it.cell == newHead }
             )
+
+        // Levels: a crash with lives to spare consumes one and restages the
+        // same level (score and food progress kept) instead of ending the run.
+        if (crashed && state.mode == GameMode.Levels && lives > 1) {
+            events.add(GameEvent.LifeLost(lives - 1))
+            return stageLevel(
+                state, events,
+                levelIndex = state.levelIndex, speedCycle = state.speedCycle, lives = lives - 1,
+                score = score, elapsedTicks = elapsedTicks, playedMs = playedMs,
+                levelFoodsEaten = levelFoodsEaten,
+            )
+        }
+
         val dead = crashed || timeUp
         if (dead) events.add(GameEvent.Died)
 
@@ -296,10 +368,52 @@ class GameEngine(private val random: Random = Random.Default) {
             debris = debris,
             effectTimers = effectTimers,
             timeAdjustMs = timeAdjustMs,
+            lives = if (dead && crashed && state.mode == GameMode.Levels) 0 else lives,
+            levelFoodsEaten = levelFoodsEaten,
             lastEvents = events,
             status = if (dead) GameStatus.GameOver else GameStatus.Running,
         )
     }
+
+    /**
+     * Levels mode: stages a fresh board for [levelIndex] — new wall shape,
+     * snake back at the spawn, everything transient cleared — landing on
+     * [GameStatus.LevelIntro] for the countdown. Score, [elapsedTicks] (which
+     * drives the food-progression gates across the whole run) and the clock
+     * are carried over; [levelFoodsEaten] restarts unless a life loss restages
+     * the same level mid-goal.
+     */
+    private fun stageLevel(
+        state: GameState,
+        events: List<GameEvent>,
+        levelIndex: Int,
+        speedCycle: Int,
+        lives: Int,
+        score: Int,
+        elapsedTicks: Int,
+        playedMs: Long,
+        levelFoodsEaten: Int = 0,
+    ): GameState = state.copy(
+        snake = startingSnake(state.board),
+        direction = Direction.Up,
+        pendingDirection = Direction.Up,
+        foods = emptyList(),
+        score = score,
+        pendingGrowth = 0,
+        elapsedTicks = elapsedTicks,
+        playedMs = playedMs,
+        combo = 0,
+        comboDeadlineTick = 0,
+        debris = emptyList(),
+        effectTimers = emptyList(),
+        levelIndex = levelIndex,
+        speedCycle = speedCycle,
+        lives = lives,
+        levelFoodsEaten = levelFoodsEaten,
+        walls = LevelsMode.shapeFor(levelIndex, state.board),
+        lastEvents = events,
+        status = GameStatus.LevelIntro,
+    )
 
     /** Drops up to [segments] tail cells, never below the length floor; returns how many went. */
     private fun trimTail(body: MutableList<Position>, segments: Int): Int {
@@ -383,6 +497,7 @@ class GameEngine(private val random: Random = Random.Default) {
         board: BoardDimensions,
         snake: List<Position>,
         obstacles: Set<Position>,
+        walls: Set<Position>,
         existing: List<Food>,
         elapsedTicks: Int,
         level: Level,
@@ -396,7 +511,7 @@ class GameEngine(private val random: Random = Random.Default) {
             // A special is allowed only while fewer than the cap are on the board.
             val allowSpecial = specialAllowed &&
                 foods.count { it.category == FoodCategory.Special } < MAX_SPECIALS_ON_BOARD
-            val food = spawnFood(board, snake, obstacles, foods, elapsedTicks, level, hazardsEnabled, allowSpecial, specialFrequency, mode) ?: break
+            val food = spawnFood(board, snake, obstacles, walls, foods, elapsedTicks, level, hazardsEnabled, allowSpecial, specialFrequency, mode) ?: break
             foods = foods + food
         }
         return foods
@@ -411,6 +526,7 @@ class GameEngine(private val random: Random = Random.Default) {
         board: BoardDimensions,
         snake: List<Position>,
         obstacles: Set<Position>,
+        walls: Set<Position>,
         existing: List<Food>,
         elapsedTicks: Int,
         level: Level,
@@ -429,6 +545,7 @@ class GameEngine(private val random: Random = Random.Default) {
         val occupied = HashSet<Position>()
         occupied.addAll(snake)
         occupied.addAll(obstacles)
+        occupied.addAll(walls)
         existing.forEach { occupied.addAll(it.cells()) }
 
         fun candidateAt(x: Int, y: Int): Food? {

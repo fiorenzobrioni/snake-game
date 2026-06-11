@@ -11,33 +11,6 @@ Roadmap, work in progress, TODOs, known bugs, and ideas. For the history of deve
 
 ## TODOs
 
-- [ ] **New Levels game mode:**
-    - MODE: Levels
-    - How it works:
-      - 10 Levels that repeat in sequence infinitely with an increase in Snake speed at each cycle:
-        - Level 1 - Speed 1
-        - Level 2 - Speed 1
-        - Level 3 - Speed 1
-        - Level ... - Speed 1
-        - Level 10 - Speed 1
-        - Level 1 - Speed 2
-        - Level 2 - Speed 2
-        - Level 3 - Speed 2
-        - Level ... - Speed 2
-        - Level 10 - Speed 2
-        - Level 1 - Speed 3
-        - …
-      - During gameplay, the player starts with 3 Snakes/lives (which decrement on each error until the final GAME OVER).
-      - A new 2x2 bonus (same size as large foods/power-ups) randomly appears, granting an extra life/Snake (evaluate the spawn probability, it could display a Snake head icon).
-      - In the HUD the "Level x - Speed x" will be displayed.
-      - Each level has a fixed duration before advancing to the next level (suggested 3 minutes, but please evaluate if this is appropriate).
-      - When the player advances to the next level the next Board is displayed and message appear in the center of the screen with the next level message "Level x - Speed x" with a countdown timer of 3 seconds before the new level starts (this apply for the start of the game and for all level transitions). The message must be displayed with some special effects.
-      - When the player advances to the next level the new board will be reset and the snake will be reset to its initial position.
-      - Each level has a unique board shape. There are no static obstacle blocks; instead, the shape itself (outer boundaries and internal holes) changes. Level 1 starts with the classic rectangular board, then subsequent levels introduce internal cutouts or non-rectangular boundaries to reshape the playable area.
-      - Board shapes for each level are fixed and not randomly generated. They are designed and defined at implementation time. With Board scale Cozy the reshapes are minimal because of the large cell size and the minimal grid.
-      - Foods, power-ups, hazards, and all other mechanics from other game modes are also active in this mode.
-    - Evaluate this proposal and suggest improvements or refinements to make it more exciting and engaging.
-
 > Short-term tasks not yet tracked as a formal roadmap step.
 
 - [ ] Finalise `applicationId` from `com.brioni.snake` placeholder before first Play upload (Step 7.1)
@@ -287,6 +260,15 @@ snake-game/
 - [x] **Step 6.3** — Highscore tables per (level × size), per mode, in a "Records" screen.
 - [x] **Step 6.4** — Local achievements.
 - [x] **Step 6.5** — Extra modes: Endless, Time Attack.
+- [x] **Step 6.6** — **Levels mode** (`GameMode.Levels`, `game/LevelsMode.kt`): ten **designed board
+      shapes** (procedural over the responsive grid — no random obstacles; walls reshape the playable
+      area and the frame follows the outline) repeating forever, one **speed cycle** faster each lap
+      (170 ms → 80 ms floor); advance by **eating 12 foods** per level (HUD counts down); **3 lives**
+      with same-level respawns (score and progress kept) and a rare 2×2 **extra-life** special
+      (snake-head icon, capped at 5 → points); a `LevelIntro` status drives the animated
+      **"Level x · Speed x" 3-2-1 countdown** overlay (game start, every advance, every respawn).
+      The difficulty selector is hidden/ignored (scores pinned to one level per scale; a "best level"
+      record is also kept); three new achievements (Climber / Tower Topper / Full Circle).
 
 ### Phase 7 — Play Store distribution & cleanup
 
@@ -372,3 +354,19 @@ snake-game/
 - **Shaders return premultiplied alpha** (Skia convention): the glow/halo shaders output `rgb * a`.
 - **The CRT filter is a `RenderEffect`** applied to the board's `graphicsLayer` (API 33+), gated by a
   persisted `crtEnabled` setting that is only surfaced in Settings when `Shaders.supported`.
+- **Levels mode walls are not obstacles**: `GameState.walls` is a separate cell set — lethal like
+  out-of-bounds, excluded from every spawn (food, quake debris), passed through under Ghost, and
+  rendered as "outside the board" (background fill + a boundary-edge frame) rather than bevelled
+  blocks. Shapes come from `LevelsMode.shapeFor(levelIndex, board)` — deterministic, designed,
+  guarded by `LevelShapesTest` (spawn-zone clearance, flood-fill connectivity, ≥60% playable).
+- **`GameStatus.LevelIntro` separates staging from timing**: the engine atomically stages a level
+  (walls swapped, snake at spawn, transients cleared) inside `setup`/`tick` and lands on `LevelIntro`;
+  the 3-second countdown itself is wall-clock UI and lives in `GameViewModel` (`introCountdown`),
+  which then calls `GameEngine.beginLevel` to seed food and resume. `tick` stays deterministic.
+- **Levels mode pins the difficulty**: the selector is hidden in the Ready overlay and the ViewModel
+  compares settings against `LevelsMode.SCORE_LEVEL` (not `settings.level`) while the mode is active —
+  otherwise the settings collector would endlessly reset the board. Scores stay on the existing
+  `ScoreKey(mode, level, scale)` codec; the deepest run is stored separately
+  (`levels_progress_<scale>`, count of completed levels).
+- **`elapsedTicks` is deliberately not reset across Levels transitions** so the time-gated food
+  progression (shrink → maxi → mystery → specials) spans the whole run, not a single level.

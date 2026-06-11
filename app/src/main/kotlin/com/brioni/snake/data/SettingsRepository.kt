@@ -134,6 +134,26 @@ class SettingsRepository(private val context: Context) {
             }
         }
 
+    /**
+     * Levels mode: the deepest run per board scale, stored as the total count
+     * of completed levels (cycles × 10 + levels), for the Records screen.
+     */
+    fun allLevelsProgress(): Flow<Map<BoardScale, Int>> =
+        context.dataStore.data.map { prefs ->
+            BoardScale.entries.associateWith { prefs[levelsProgressKey(it)] ?: 0 }
+        }
+
+    /** Records [levelsCompleted] for the scale iff it beats the stored best. */
+    suspend fun submitLevelsProgress(scale: BoardScale, levelsCompleted: Int): Int {
+        val key = levelsProgressKey(scale)
+        var best = levelsCompleted
+        context.dataStore.edit { prefs ->
+            best = max(prefs[key] ?: 0, levelsCompleted)
+            prefs[key] = best
+        }
+        return best
+    }
+
     /** The set of unlocked achievement ids (enum names). */
     fun unlockedAchievements(): Flow<Set<String>> =
         context.dataStore.data.map { it[UNLOCKED_ACHIEVEMENTS] ?: emptySet() }
@@ -151,6 +171,9 @@ class SettingsRepository(private val context: Context) {
 
     private fun highScoreKey(mode: GameMode, level: Level, scale: BoardScale) =
         intPreferencesKey(ScoreKey(mode, level, scale).storageName())
+
+    private fun levelsProgressKey(scale: BoardScale) =
+        intPreferencesKey("levels_progress_${scale.name}")
 
     private companion object {
         val LEVEL = stringPreferencesKey("level")

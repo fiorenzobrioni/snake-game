@@ -38,6 +38,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.IntOffset
@@ -48,6 +50,7 @@ import com.brioni.snake.game.ControlScheme
 import com.brioni.snake.game.DEFAULT_ASPECT
 import com.brioni.snake.game.GameMode
 import com.brioni.snake.game.GameStatus
+import com.brioni.snake.game.LevelsMode
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
@@ -119,18 +122,30 @@ fun GameScreen(
 
     Box(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize().blur(blurRadius)) {
-            val timeLabel = if (state.mode == GameMode.TimeAttack && playing) {
-                val secs = (state.timeRemainingMs / 1000).toInt()
-                "%d:%02d".format(secs / 60, secs % 60)
-            } else {
-                null
+            val inLevels = state.mode == GameMode.Levels
+            val onBoard = playing || state.status == GameStatus.LevelIntro
+            // The auxiliary HUD slot: the Time Attack clock, or the Levels-mode
+            // count of foods still to eat before the next level.
+            val timeLabel = when {
+                state.mode == GameMode.TimeAttack && playing -> {
+                    val secs = (state.timeRemainingMs / 1000).toInt()
+                    "%d:%02d".format(secs / 60, secs % 60)
+                }
+                inLevels && onBoard ->
+                    stringResource(R.string.hud_next_level, (LevelsMode.LEVEL_FOOD_GOAL - state.levelFoodsEaten).coerceAtLeast(0))
+                else -> null
             }
             Hud(
                 score = state.score,
                 combo = state.combo,
-                levelLabel = if (state.mode == GameMode.Classic) state.level.displayName else state.mode.displayName,
+                levelLabel = when {
+                    inLevels -> stringResource(R.string.hud_level_speed, state.levelIndex, state.speedCycle)
+                    state.mode == GameMode.Classic -> state.level.displayName
+                    else -> state.mode.displayName
+                },
                 boardLabel = "${viewModel.scale.displayName} · ${state.board.width}×${state.board.height}",
                 timeLabel = timeLabel,
+                lives = if (inLevels && onBoard) state.lives else 0,
                 showPause = state.status == GameStatus.Running,
                 onPause = { audio.playPause(); viewModel.togglePause() },
             )
@@ -195,6 +210,7 @@ fun GameScreen(
                     textMeasurer = textMeasurer,
                     palette = viewModel.palette,
                     borderColor = boardBorderColor,
+                    outsideColor = MaterialTheme.colorScheme.background,
                     modifier = boardModifier,
                 )
             }
@@ -219,6 +235,14 @@ fun GameScreen(
                 onLevelSelected = { viewModel.selectLevel(it) },
                 onScaleSelected = { viewModel.selectScale(it) },
                 onPlay = { viewModel.start() },
+            )
+
+            GameStatus.LevelIntro -> LevelIntroOverlay(
+                levelIndex = state.levelIndex,
+                speedCycle = state.speedCycle,
+                lives = state.lives,
+                countdown = viewModel.introCountdown,
+                isRespawn = viewModel.introIsRespawn,
             )
 
             GameStatus.Paused -> PausedOverlay(
@@ -335,6 +359,7 @@ private fun Hud(
     levelLabel: String,
     boardLabel: String,
     timeLabel: String?,
+    lives: Int,
     showPause: Boolean,
     onPause: () -> Unit,
 ) {
@@ -357,6 +382,19 @@ private fun Hud(
                 text = "$levelLabel · $boardLabel",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+            )
+        }
+        if (lives > 0) {
+            // Levels mode: the remaining snakes/lives.
+            val livesDescription = stringResource(R.string.hud_lives, lives)
+            Text(
+                text = "♥".repeat(lives),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = SpecialVisuals.ExtraLifeColor,
+                modifier = Modifier
+                    .padding(end = 12.dp)
+                    .semantics { contentDescription = livesDescription },
             )
         }
         if (timeLabel != null) {

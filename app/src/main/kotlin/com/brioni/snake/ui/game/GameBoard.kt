@@ -71,10 +71,14 @@ fun GameBoard(
     textMeasurer: TextMeasurer,
     palette: SkinPalette,
     borderColor: Color = palette.boardBorder,
+    outsideColor: Color = Color.Black,
     modifier: Modifier = Modifier,
 ) {
     val particles: SnapshotStateList<Particle> = remember { emptyList<Particle>().toMutableStateList() }
     val floatingTexts: SnapshotStateList<FloatingText> = remember { emptyList<FloatingText>().toMutableStateList() }
+    // Levels mode: the playable-area outline (in cell units) that replaces the
+    // rectangular frame when the board has a designed wall shape.
+    val boundary = remember(state.walls, state.board) { boundaryEdges(state.walls, state.board) }
     // AGSL effects (always available — minSdk is 33), created once.
     val shaders = remember { BoardShaders() }
     // A monotonic per-frame timestamp (same clock as tickTimeNanos) that pulses
@@ -167,6 +171,15 @@ fun GameBoard(
         // Clip dynamic content to the board so the head can slide "into" a wall
         // on the fatal tick without painting over the HUD.
         clipRect(originX, originY, originX + boardWidth, originY + boardHeight) {
+            // Levels mode: wall cells read as "outside the board" — they wear
+            // the screen background, and the shaped frame is drawn on top later.
+            state.walls.forEach { wall ->
+                drawRect(
+                    color = outsideColor,
+                    topLeft = Offset(originX + wall.x * cell, originY + wall.y * cell),
+                    size = Size(cell + 0.5f, cell + 0.5f), // overdraw to hide seams
+                )
+            }
             state.obstacles.forEach { obstacle ->
                 drawObstacle(cell, originX + obstacle.x * cell, originY + obstacle.y * cell, palette)
             }
@@ -259,14 +272,53 @@ fun GameBoard(
             }
         }
 
-        // Framing border painted on top.
-        drawRect(
-            color = borderColor,
-            topLeft = Offset(originX, originY),
-            size = Size(boardWidth, boardHeight),
-            style = Stroke(width = (cell * 0.12f).coerceAtLeast(2f)),
-        )
+        // Framing border painted on top. With a shaped board (Levels mode) the
+        // frame follows the playable area's outline instead of the rectangle.
+        val borderWidth = (cell * 0.12f).coerceAtLeast(2f)
+        if (boundary.isEmpty()) {
+            drawRect(
+                color = borderColor,
+                topLeft = Offset(originX, originY),
+                size = Size(boardWidth, boardHeight),
+                style = Stroke(width = borderWidth),
+            )
+        } else {
+            boundary.forEach { e ->
+                drawLine(
+                    color = borderColor,
+                    start = Offset(originX + e.x1 * cell, originY + e.y1 * cell),
+                    end = Offset(originX + e.x2 * cell, originY + e.y2 * cell),
+                    strokeWidth = borderWidth,
+                    cap = StrokeCap.Square, // square caps close the corner joints
+                )
+            }
+        }
     }
+}
+
+/** One edge (in cell units) between a playable cell and a wall / out-of-board. */
+private data class BoundaryEdge(val x1: Float, val y1: Float, val x2: Float, val y2: Float)
+
+/**
+ * The outline of the playable area for a shaped (Levels mode) board: every edge
+ * separating a playable cell from a wall cell or the outside. Empty when the
+ * board has no walls, selecting the plain rectangular frame instead.
+ */
+private fun boundaryEdges(walls: Set<Position>, board: BoardDimensions): List<BoundaryEdge> {
+    if (walls.isEmpty()) return emptyList()
+    fun blocked(x: Int, y: Int): Boolean =
+        x < 0 || x >= board.width || y < 0 || y >= board.height || Position(x, y) in walls
+    val edges = ArrayList<BoundaryEdge>()
+    for (y in 0 until board.height) {
+        for (x in 0 until board.width) {
+            if (Position(x, y) in walls) continue
+            if (blocked(x - 1, y)) edges.add(BoundaryEdge(x.toFloat(), y.toFloat(), x.toFloat(), y + 1f))
+            if (blocked(x + 1, y)) edges.add(BoundaryEdge(x + 1f, y.toFloat(), x + 1f, y + 1f))
+            if (blocked(x, y - 1)) edges.add(BoundaryEdge(x.toFloat(), y.toFloat(), x + 1f, y.toFloat()))
+            if (blocked(x, y + 1)) edges.add(BoundaryEdge(x.toFloat(), y + 1f, x + 1f, y + 1f))
+        }
+    }
+    return edges
 }
 
 private fun DrawScope.drawBoardBackground(
@@ -474,7 +526,26 @@ private fun DrawScope.drawSpecialSymbol(
         is FoodEffect.Quake -> drawCrack(cx, cy, r, color)
         is FoodEffect.TimeBonus -> drawClock(cx, cy, r, color, plus = true)
         is FoodEffect.TimePenalty -> drawClock(cx, cy, r, color, plus = false)
+        is FoodEffect.ExtraLife -> drawSnakeHeadIcon(cx, cy, r, color)
         else -> Unit
+    }
+}
+
+/** A tiny snake head (rounded square + upward eyes) — the extra-life bonus icon. */
+private fun DrawScope.drawSnakeHeadIcon(cx: Float, cy: Float, r: Float, color: Color) {
+    val side = r * 1.25f
+    drawRoundRect(
+        color = color,
+        topLeft = Offset(cx - side / 2f, cy - side / 2f),
+        size = Size(side, side),
+        cornerRadius = CornerRadius(side * 0.3f, side * 0.3f),
+    )
+    val eyeRadius = side * 0.14f
+    for (sign in intArrayOf(-1, 1)) {
+        val ex = cx + sign * side * 0.2f
+        val ey = cy - side * 0.14f
+        drawCircle(Color.White, eyeRadius, Offset(ex, ey))
+        drawCircle(color, eyeRadius * 0.5f, Offset(ex, ey - eyeRadius * 0.2f))
     }
 }
 

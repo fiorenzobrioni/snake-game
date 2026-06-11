@@ -57,10 +57,17 @@ class GameAudio(context: Context, repo: SettingsRepository) : GameSfx {
             is FoodEffect.Burst -> Sfx.Explosion
             is FoodEffect.TimeBonus -> Sfx.Jackpot // a rewarding chime
             is FoodEffect.TimePenalty -> Sfx.Shrink // a deflating tone
+            is FoodEffect.ExtraLife -> Sfx.Star // a sparkling reward
             // Grow/Shrink never reach here (those route through ate/shrunk).
             else -> Sfx.Eat
         },
     )
+
+    override fun lifeGained() = sound.play(Sfx.Star)
+
+    override fun lifeLost() = sound.play(Sfx.Quake)
+
+    override fun levelUp() = sound.play(Sfx.Jackpot)
 
     // --- UI sound effects ------------------------------------------------
 
