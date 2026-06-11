@@ -107,6 +107,9 @@ class LevelsModeTest {
         assertEquals(1, next.levelFoodsEaten)
         // A tick without an eat leaves the count alone.
         assertEquals(1, engine.tick(next).levelFoodsEaten)
+        // Specials count too (the extra-life is the one exception).
+        val special = engine.tick(levelsState(foods = listOf(specialAt(Position(6, 5), FoodEffect.Haste(6_000)))))
+        assertEquals(1, special.levelFoodsEaten)
     }
 
     @Test
@@ -252,12 +255,30 @@ class LevelsModeTest {
     fun `extra life banks a life and keeps the snake length`() {
         val state = levelsState(foods = listOf(specialAt(Position(6, 5), FoodEffect.ExtraLife)), lives = 3)
         val next = engine.tick(state)
+        assertEquals(GameStatus.Running, next.status) // the run just continues
         assertEquals(4, next.lives)
         assertEquals(3, next.snake.size) // pure effect: no growth
         assertEquals(0, next.score)
         val gained = next.lastEvents.filterIsInstance<GameEvent.LifeGained>().single()
         assertEquals(4, gained.lives)
         assertFalse(gained.capped)
+    }
+
+    @Test
+    fun `extra life never triggers a level transition`() {
+        // Even with the food goal one bite away, the extra-life is a pure gift:
+        // it does not count toward the goal and the game keeps running.
+        val state = levelsState(
+            foods = listOf(specialAt(Position(6, 5), FoodEffect.ExtraLife)),
+            levelFoodsEaten = LevelsMode.LEVEL_FOOD_GOAL - 1,
+            lives = 3,
+        )
+        val next = engine.tick(state)
+        assertEquals(GameStatus.Running, next.status)
+        assertEquals(1, next.levelIndex)
+        assertEquals(LevelsMode.LEVEL_FOOD_GOAL - 1, next.levelFoodsEaten)
+        assertEquals(4, next.lives)
+        assertTrue(next.lastEvents.none { it is GameEvent.LevelAdvanced })
     }
 
     @Test

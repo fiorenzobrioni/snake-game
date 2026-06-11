@@ -183,9 +183,10 @@ class GameEngine(private val random: Random = Random.Default) {
         val eaten = foods.firstOrNull { it.occupies(newHead) }
         if (eaten != null) {
             foods = foods - eaten
-            // Levels: every eaten food, whatever its category, counts toward
-            // the level's food goal.
-            if (state.mode == GameMode.Levels) levelFoodsEaten++
+            // Levels: every eaten food counts toward the level's food goal —
+            // except the extra-life bonus, which is a pure gift: eating it must
+            // never be the bite that triggers a level transition.
+            if (state.mode == GameMode.Levels && eaten.effect !is FoodEffect.ExtraLife) levelFoodsEaten++
             when (val effect = eaten.effect) {
                 is FoodEffect.Grow -> {
                     // A fresh streak, or extend the running one if still in time.

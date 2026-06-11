@@ -424,7 +424,13 @@ private fun Hud(
                 modifier = Modifier.weight(1f),
             )
             if (lives > 0) {
-                // Levels mode: the remaining snakes/lives.
+                // Levels mode: the remaining snakes/lives. The row pops briefly
+                // when a heart is banked so an extra life never goes unnoticed.
+                val heartsPop = remember { Animatable(1f) }
+                LaunchedEffect(lives) {
+                    heartsPop.snapTo(1.6f)
+                    heartsPop.animateTo(1f, tween(durationMillis = 450))
+                }
                 val livesDescription = stringResource(R.string.hud_lives, lives)
                 Text(
                     text = "♥".repeat(lives),
@@ -434,6 +440,10 @@ private fun Hud(
                     maxLines = 1,
                     modifier = Modifier
                         .padding(start = 8.dp)
+                        .graphicsLayer {
+                            scaleX = heartsPop.value
+                            scaleY = heartsPop.value
+                        }
                         .semantics { contentDescription = livesDescription },
                 )
             }

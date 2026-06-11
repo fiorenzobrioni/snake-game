@@ -13,6 +13,17 @@ Roadmap, work in progress, TODOs, known bugs, and ideas. For the history of deve
 
 > Short-term tasks not yet tracked as a formal roadmap step.
 
+- [ ] **Odd board columns to centre the snake**: bump `BoardScale.cellsOnShortSide` from 12/18/26 to
+      **13/19/27** so every scale has an odd column count and the spawn column (`cx = w/2`) is the
+      exact middle of the board — today the snake sits half a cell off-centre, visibly misaligned
+      with the centred Levels-mode countdown overlay. The long side recomputes automatically from
+      the aspect ratio (`boardFor`), so rows grow by ~1–2. Assessed low-risk: highscores are keyed
+      per (mode, level, scale) — not per dimensions — so no records are invalidated; the Levels
+      shapes are procedural with `w-1-x` mirrors and actually become *more* symmetric on odd widths;
+      the 4-fold obstacle symmetry already handles odd dims (the centre column mirrors onto itself).
+      To touch when done: `BoardScale`, `BoardLayoutTest` expectations, `LevelShapesTest` board
+      matrix (add odd boards), the README board-scale table. Cells shrink ~8% at Cozy (12 → 13).
+
 - [ ] Finalise `applicationId` from `com.brioni.snake` placeholder before first Play upload (Step 7.1)
 - [ ] Write unit tests for `GameEngine` edge-cases: wall collision on all four sides, body self-collision, 180° reversal block
 - [ ] Verify smooth-motion interpolation on low-end devices
