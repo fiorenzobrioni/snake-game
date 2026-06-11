@@ -29,7 +29,10 @@ Roadmap, work in progress, TODOs, known bugs, and ideas. For the history of deve
         - …
       - During gameplay, the player starts with 3 Snakes/lives (which decrement on each error until the final GAME OVER).
       - A new 2x2 bonus (same size as large foods/power-ups) randomly appears, granting an extra life/Snake (evaluate the spawn probability, it could display a Snake head icon).
+      - In the HUD the "Level x - Speed x" will be displayed.
       - Each level has a fixed duration before advancing to the next level (suggested 3 minutes, but please evaluate if this is appropriate).
+      - When the player advances to the next level the next Board is displayed and message appear in the center of the screen with the next level message "Level x - Speed x" with a countdown timer of 3 seconds before the new level starts (this apply for the start of the game and for all level transitions). The message must be displayed with some special effects.
+      - When the player advances to the next level the new board will be reset and the snake will be reset to its initial position.
       - Each level has a unique board shape. There are no static obstacle blocks; instead, the shape itself (outer boundaries and internal holes) changes. Level 1 starts with the classic rectangular board, then subsequent levels introduce internal cutouts or non-rectangular boundaries to reshape the playable area.
       - Board shapes for each level are fixed and not randomly generated. They are designed and defined at implementation time. With Board scale Cozy the reshapes are minimal because of the large cell size and the minimal grid.
       - Foods, power-ups, hazards, and all other mechanics from other game modes are also active in this mode.
