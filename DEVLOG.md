@@ -11,6 +11,19 @@ For the forward-looking plan, roadmap, active TODOs, bugs, and notes, see [`PLAN
 
 ---
 
+### 2026-06-11 — Fix: constant-height HUD (score could wrap and shrink the board)
+
+- With the Levels-mode HUD additions (hearts, foods-to-go counter) a growing score could run out of
+  width and wrap to a second line, making the HUD taller and visibly shrinking the board (which fills
+  the remaining vertical space). Restructured `Hud` into **two fixed single-line rows** — score +
+  combo + pause on top, level/board labels + lives + clock/foods counter below — with `maxLines = 1`
+  everywhere: the labels ellipsize, the score **steps its font size down** (new `ShrinkToFitText`,
+  floor at 50%) instead of wrapping, and the pause-button slot is always reserved (alpha-hidden when
+  inactive) so no state change can reflow the header. The HUD height is now invariant for a given
+  font scale.
+
+---
+
 ### 2026-06-11 — Levels game mode (Step 6.6)
 
 - **New `GameMode.Levels`**: ten designed levels repeating forever, one **speed cycle** faster each

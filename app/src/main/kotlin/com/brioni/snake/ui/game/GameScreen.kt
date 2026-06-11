@@ -28,11 +28,15 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
@@ -40,8 +44,10 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.brioni.snake.R
@@ -352,6 +358,13 @@ private fun ControlRegion(
     }
 }
 
+/**
+ * The score/status header. Its height is deliberately constant: the board below
+ * fills the remaining space, so any HUD growth would visibly resize the board
+ * mid-game. Two fixed single-line rows (no text ever wraps — the score shrinks
+ * its font instead, the labels ellipsize) and the pause-button slot is always
+ * reserved (alpha-hidden when inactive) so no state change reflows the layout.
+ */
 @Composable
 private fun Hud(
     score: Int,
@@ -365,60 +378,101 @@ private fun Hud(
 ) {
     // Rolling score counter (step 3.6).
     val animatedScore by animateIntAsState(targetValue = score, animationSpec = tween(300), label = "score")
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(horizontal = 16.dp, vertical = 4.dp),
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ShrinkToFitText(
                 text = stringResource(R.string.hud_score, animatedScore),
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.weight(1f),
             )
+            if (combo > 1) {
+                Text(
+                    text = stringResource(R.string.hud_combo, combo),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    maxLines = 1,
+                    modifier = Modifier.padding(end = 8.dp),
+                )
+            }
+            TextButton(
+                onClick = onPause,
+                enabled = showPause,
+                modifier = Modifier.alpha(if (showPause) 1f else 0f),
+            ) {
+                Text(stringResource(R.string.action_pause), maxLines = 1)
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
                 text = "$levelLabel · $boardLabel",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
             )
-        }
-        if (lives > 0) {
-            // Levels mode: the remaining snakes/lives.
-            val livesDescription = stringResource(R.string.hud_lives, lives)
-            Text(
-                text = "♥".repeat(lives),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = SpecialVisuals.ExtraLifeColor,
-                modifier = Modifier
-                    .padding(end = 12.dp)
-                    .semantics { contentDescription = livesDescription },
-            )
-        }
-        if (timeLabel != null) {
-            Text(
-                text = timeLabel,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.padding(end = 12.dp),
-            )
-        }
-        if (combo > 1) {
-            Text(
-                text = stringResource(R.string.hud_combo, combo),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.tertiary,
-                modifier = Modifier.padding(end = 12.dp),
-            )
-        }
-        if (showPause) {
-            TextButton(onClick = onPause) {
-                Text(stringResource(R.string.action_pause))
+            if (lives > 0) {
+                // Levels mode: the remaining snakes/lives.
+                val livesDescription = stringResource(R.string.hud_lives, lives)
+                Text(
+                    text = "♥".repeat(lives),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = SpecialVisuals.ExtraLifeColor,
+                    maxLines = 1,
+                    modifier = Modifier
+                        .padding(start = 8.dp)
+                        .semantics { contentDescription = livesDescription },
+                )
+            }
+            if (timeLabel != null) {
+                Text(
+                    text = timeLabel,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.secondary,
+                    maxLines = 1,
+                    modifier = Modifier.padding(start = 12.dp),
+                )
             }
         }
     }
+}
+
+/**
+ * A single-line text that steps its font size down (never below half) instead
+ * of wrapping or clipping when the available width runs out — keyed on the
+ * text length so it re-grows when the content gets shorter again.
+ */
+@Composable
+private fun ShrinkToFitText(
+    text: String,
+    style: TextStyle,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    var scale by remember(text.length) { mutableFloatStateOf(1f) }
+    Text(
+        text = text,
+        style = style,
+        color = color,
+        fontWeight = FontWeight.Bold,
+        fontSize = style.fontSize * scale,
+        maxLines = 1,
+        softWrap = false,
+        onTextLayout = { if (it.hasVisualOverflow && scale > 0.5f) scale *= 0.92f },
+        modifier = modifier,
+    )
 }
