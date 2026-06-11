@@ -31,7 +31,7 @@ Roadmap, work in progress, TODOs, known bugs, and ideas. For the history of deve
       - A new 2x2 bonus (same size as large foods/power-ups) randomly appears, granting an extra life/Snake (evaluate the spawn probability, it could display a Snake head icon).
       - Each level has a fixed duration before advancing to the next level (suggested 3 minutes, but please evaluate if this is appropriate).
       - Each level has a unique board shape. There are no static obstacle blocks; instead, the shape itself (outer boundaries and internal holes) changes. Level 1 starts with the classic rectangular board, then subsequent levels introduce internal cutouts or non-rectangular boundaries to reshape the playable area.
-      - Board shapes for each level are fixed and not randomly generated. They are designed and defined at implementation time.
+      - Board shapes for each level are fixed and not randomly generated. They are designed and defined at implementation time. With Board scale Cozy the reshapes are minimal because of the large cell size and the minimal grid.
       - Foods, power-ups, hazards, and all other mechanics from other game modes are also active in this mode.
     - Evaluate this proposal and suggest improvements or refinements to make it more exciting and engaging.
 
