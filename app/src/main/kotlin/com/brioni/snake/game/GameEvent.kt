@@ -53,4 +53,19 @@ sealed interface GameEvent {
      * particle burst.
      */
     data class FoodVanished(val food: Food) : GameEvent
+
+    // --- Levels mode. ---
+
+    /** Levels: the food goal was met; the board staged level [levelIndex] at [speedCycle]. */
+    data class LevelAdvanced(val levelIndex: Int, val speedCycle: Int) : GameEvent
+
+    /** Levels: a crash consumed a life; [remaining] are left and the level restages. */
+    data class LifeLost(val remaining: Int) : GameEvent
+
+    /**
+     * Levels: an extra-life food was eaten. [lives] is the resulting stock;
+     * [capped] is true when the stock was already full and points were paid
+     * instead ([LevelsMode.LIFE_CAP_BONUS]).
+     */
+    data class LifeGained(val food: Food, val lives: Int, val capped: Boolean) : GameEvent
 }

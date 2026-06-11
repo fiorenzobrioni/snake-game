@@ -28,18 +28,26 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.brioni.snake.R
@@ -48,6 +56,7 @@ import com.brioni.snake.game.ControlScheme
 import com.brioni.snake.game.DEFAULT_ASPECT
 import com.brioni.snake.game.GameMode
 import com.brioni.snake.game.GameStatus
+import com.brioni.snake.game.LevelsMode
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
@@ -119,18 +128,30 @@ fun GameScreen(
 
     Box(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize().blur(blurRadius)) {
-            val timeLabel = if (state.mode == GameMode.TimeAttack && playing) {
-                val secs = (state.timeRemainingMs / 1000).toInt()
-                "%d:%02d".format(secs / 60, secs % 60)
-            } else {
-                null
+            val inLevels = state.mode == GameMode.Levels
+            val onBoard = playing || state.status == GameStatus.LevelIntro
+            // The auxiliary HUD slot: the Time Attack clock, or the Levels-mode
+            // count of foods still to eat before the next level.
+            val timeLabel = when {
+                state.mode == GameMode.TimeAttack && playing -> {
+                    val secs = (state.timeRemainingMs / 1000).toInt()
+                    "%d:%02d".format(secs / 60, secs % 60)
+                }
+                inLevels && onBoard ->
+                    stringResource(R.string.hud_next_level, (LevelsMode.LEVEL_FOOD_GOAL - state.levelFoodsEaten).coerceAtLeast(0))
+                else -> null
             }
             Hud(
                 score = state.score,
                 combo = state.combo,
-                levelLabel = if (state.mode == GameMode.Classic) state.level.displayName else state.mode.displayName,
+                levelLabel = when {
+                    inLevels -> stringResource(R.string.hud_level_speed, state.levelIndex, state.speedCycle)
+                    state.mode == GameMode.Classic -> state.level.displayName
+                    else -> state.mode.displayName
+                },
                 boardLabel = "${viewModel.scale.displayName} · ${state.board.width}×${state.board.height}",
                 timeLabel = timeLabel,
+                lives = if (inLevels && onBoard) state.lives else 0,
                 showPause = state.status == GameStatus.Running,
                 onPause = { audio.playPause(); viewModel.togglePause() },
             )
@@ -195,6 +216,7 @@ fun GameScreen(
                     textMeasurer = textMeasurer,
                     palette = viewModel.palette,
                     borderColor = boardBorderColor,
+                    outsideColor = MaterialTheme.colorScheme.background,
                     modifier = boardModifier,
                 )
             }
@@ -219,6 +241,14 @@ fun GameScreen(
                 onLevelSelected = { viewModel.selectLevel(it) },
                 onScaleSelected = { viewModel.selectScale(it) },
                 onPlay = { viewModel.start() },
+            )
+
+            GameStatus.LevelIntro -> LevelIntroOverlay(
+                levelIndex = state.levelIndex,
+                speedCycle = state.speedCycle,
+                lives = state.lives,
+                countdown = viewModel.introCountdown,
+                isRespawn = viewModel.introIsRespawn,
             )
 
             GameStatus.Paused -> PausedOverlay(
@@ -328,6 +358,13 @@ private fun ControlRegion(
     }
 }
 
+/**
+ * The score/status header. Its height is deliberately constant: the board below
+ * fills the remaining space, so any HUD growth would visibly resize the board
+ * mid-game. Two fixed single-line rows (no text ever wraps — the score shrinks
+ * its font instead, the labels ellipsize) and the pause-button slot is always
+ * reserved (alpha-hidden when inactive) so no state change reflows the layout.
+ */
 @Composable
 private fun Hud(
     score: Int,
@@ -335,52 +372,117 @@ private fun Hud(
     levelLabel: String,
     boardLabel: String,
     timeLabel: String?,
+    lives: Int,
     showPause: Boolean,
     onPause: () -> Unit,
 ) {
     // Rolling score counter (step 3.6).
     val animatedScore by animateIntAsState(targetValue = score, animationSpec = tween(300), label = "score")
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(horizontal = 16.dp, vertical = 4.dp),
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ShrinkToFitText(
                 text = stringResource(R.string.hud_score, animatedScore),
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.weight(1f),
             )
+            if (combo > 1) {
+                Text(
+                    text = stringResource(R.string.hud_combo, combo),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    maxLines = 1,
+                    modifier = Modifier.padding(end = 8.dp),
+                )
+            }
+            TextButton(
+                onClick = onPause,
+                enabled = showPause,
+                modifier = Modifier.alpha(if (showPause) 1f else 0f),
+            ) {
+                Text(stringResource(R.string.action_pause), maxLines = 1)
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
                 text = "$levelLabel · $boardLabel",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
             )
-        }
-        if (timeLabel != null) {
-            Text(
-                text = timeLabel,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.padding(end = 12.dp),
-            )
-        }
-        if (combo > 1) {
-            Text(
-                text = stringResource(R.string.hud_combo, combo),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.tertiary,
-                modifier = Modifier.padding(end = 12.dp),
-            )
-        }
-        if (showPause) {
-            TextButton(onClick = onPause) {
-                Text(stringResource(R.string.action_pause))
+            if (lives > 0) {
+                // Levels mode: the remaining snakes/lives. The row pops briefly
+                // when a heart is banked so an extra life never goes unnoticed.
+                val heartsPop = remember { Animatable(1f) }
+                LaunchedEffect(lives) {
+                    heartsPop.snapTo(1.6f)
+                    heartsPop.animateTo(1f, tween(durationMillis = 450))
+                }
+                val livesDescription = stringResource(R.string.hud_lives, lives)
+                Text(
+                    text = "♥".repeat(lives),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = SpecialVisuals.ExtraLifeColor,
+                    maxLines = 1,
+                    modifier = Modifier
+                        .padding(start = 8.dp)
+                        .graphicsLayer {
+                            scaleX = heartsPop.value
+                            scaleY = heartsPop.value
+                        }
+                        .semantics { contentDescription = livesDescription },
+                )
+            }
+            if (timeLabel != null) {
+                Text(
+                    text = timeLabel,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.secondary,
+                    maxLines = 1,
+                    modifier = Modifier.padding(start = 12.dp),
+                )
             }
         }
     }
+}
+
+/**
+ * A single-line text that steps its font size down (never below half) instead
+ * of wrapping or clipping when the available width runs out — keyed on the
+ * text length so it re-grows when the content gets shorter again.
+ */
+@Composable
+private fun ShrinkToFitText(
+    text: String,
+    style: TextStyle,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    var scale by remember(text.length) { mutableFloatStateOf(1f) }
+    Text(
+        text = text,
+        style = style,
+        color = color,
+        fontWeight = FontWeight.Bold,
+        fontSize = style.fontSize * scale,
+        maxLines = 1,
+        softWrap = false,
+        onTextLayout = { if (it.hasVisualOverflow && scale > 0.5f) scale *= 0.92f },
+        modifier = modifier,
+    )
 }

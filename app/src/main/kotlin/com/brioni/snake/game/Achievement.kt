@@ -13,6 +13,12 @@ data class RunStats(
     val usedExplosion: Boolean,
     val usedStar: Boolean,
     val usedJackpot: Boolean,
+    /** Levels mode: the highest 1-based level entered during the run. */
+    val maxLevelReached: Int = 0,
+    /** Levels mode: the highest 1-based speed cycle entered during the run. */
+    val maxSpeedCycle: Int = 1,
+    /** Levels mode: extra lives banked during the run. */
+    val extraLivesGained: Int = 0,
 )
 
 /**
@@ -40,6 +46,9 @@ enum class Achievement(
     BigEater("Big Eater", "Eat 100 foods in one run", { it.foodsEaten >= 100 }),
     Trifecta("Trifecta", "Explosion, Star and Jackpot in one run", { it.usedExplosion && it.usedStar && it.usedJackpot }),
     Grandmaster("Grandmaster", "Score 5000 in a single run", { it.score >= 5000 }),
+    Climber("Climber", "Reach Level 5 in Levels mode", { it.mode == GameMode.Levels && it.maxLevelReached >= 5 }),
+    TowerTopper("Tower Topper", "Reach Level 10 in Levels mode", { it.mode == GameMode.Levels && it.maxLevelReached >= 10 }),
+    FullCircle("Full Circle", "Clear all ten levels and start Speed 2", { it.mode == GameMode.Levels && it.maxSpeedCycle >= 2 }),
     ;
 
     companion object {

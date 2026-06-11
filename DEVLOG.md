@@ -11,6 +11,74 @@ For the forward-looking plan, roadmap, active TODOs, bugs, and notes, see [`PLAN
 
 ---
 
+### 2026-06-11 — Odd board columns + redesigned Levels shapes 5/6/8
+
+- **Odd column counts**: `BoardScale.cellsOnShortSide` bumped 12/18/26 → **13/19/27** so every
+  portrait board has a true middle column and the snake's spawn (`width / 2`) sits exactly under
+  centred overlays like the Levels countdown (it was half a cell off). Rows recompute from the
+  aspect ratio (`boardFor`) as before; highscores are keyed per (mode, level, scale) so no records
+  were invalidated. `BoardLayoutTest` expectations updated plus a new odd-centre-column guard;
+  `LevelShapesTest` board matrix moved to the odd grids (keeping one even landscape board).
+- **Levels 5, 6 and 8 redesigned from scratch** (the old Side Notches / The Gate / Border Teeth were
+  too easy), still fully mirrored: **The Hourglass** (L5 — triangular wedges from the side walls
+  pinch mid-board into a narrow waist with open lanes above and below), **Crossed Blades** (L6 —
+  four diagonal 8-connected staircase blades from the corners carve the board into four chambers
+  that connect only through the spawn zone; thicker on Epic) and **The Colonnade** (L8 — a regular
+  lattice of single-cell pillars centred on the spawn column, wider-spaced on Cozy, with gaps that
+  fit a 2×2 maxi food exactly). All shape invariants (spawn clearance, flood-fill connectivity,
+  ≥60% playable) hold across the new board matrix.
+
+---
+
+### 2026-06-11 — Fix: constant-height HUD (score could wrap and shrink the board)
+
+- With the Levels-mode HUD additions (hearts, foods-to-go counter) a growing score could run out of
+  width and wrap to a second line, making the HUD taller and visibly shrinking the board (which fills
+  the remaining vertical space). Restructured `Hud` into **two fixed single-line rows** — score +
+  combo + pause on top, level/board labels + lives + clock/foods counter below — with `maxLines = 1`
+  everywhere: the labels ellipsize, the score **steps its font size down** (new `ShrinkToFitText`,
+  floor at 50%) instead of wrapping, and the pause-button slot is always reserved (alpha-hidden when
+  inactive) so no state change can reflow the header. The HUD height is now invariant for a given
+  font scale.
+
+---
+
+### 2026-06-11 — Levels game mode (Step 6.6)
+
+- **New `GameMode.Levels`**: ten designed levels repeating forever, one **speed cycle** faster each
+  lap (`LevelsMode.tickMillisFor`: 170 ms base, −15 ms per cycle, 80 ms floor — the difficulty
+  selector is ignored and hidden in this mode). Advancement is **food-based** (12 foods of any
+  category per level; the HUD shows a "Next: N" countdown) — chosen over the originally proposed
+  fixed 3-minute timer after evaluation, as it is more active and skill-driven on mobile.
+- **Shaped boards instead of obstacles** (`game/LevelsMode.kt`): each level reshapes the playable
+  area via a designed, procedural wall set scaled to the responsive grid (cut unit `short/8`, so
+  Cozy gets minimal cuts) — Open Field, Cut Corners, Twin Pillars, Crossfire, Side Notches, The
+  Gate, The Octagon, Border Teeth, Three Chambers, The Vault. `GameState.walls` is lethal like
+  out-of-bounds, excluded from all spawns, passed through under Ghost, painted as "outside the
+  board", and the frame follows the playable outline (`boundaryEdges` in `GameBoard`).
+- **Lives**: start with 3; a crash with lives left respawns the snake at the spawn in the *same*
+  level (score, food progress and `elapsedTicks` kept) behind the countdown; at 0 → Game Over. A
+  rare 2×2 **extra-life special** (`FoodEffect.ExtraLife`, pink snake-head icon, Levels-only spawn
+  like the Time Attack clock blocks) banks a life up to a cap of 5, paying 150 points when full.
+- **`GameStatus.LevelIntro` + `GameEngine.beginLevel`**: the engine stages levels atomically inside
+  `tick` (advance and respawn) and `start`; the 3-2-1 countdown timing lives in `GameViewModel`
+  (`introCountdown`/`introJob`). New `LevelIntroOverlay` animates the "Level x · Speed x" banner
+  (springy title, expanding ring, re-popping digit) at game start, level advances and respawns.
+- **HUD**: "Level x · Speed x" label, a hearts row for lives, and the foods-to-go counter in the
+  Time Attack clock slot. New `GameEvent`s (`LevelAdvanced`, `LifeLost`, `LifeGained`) drive SFX
+  (reusing existing clips), the quake shake on a life loss and a "+1♥" floating callout.
+- **Records**: Levels scores are pinned to one `ScoreKey` level per scale; the Records screen
+  special-cases the mode with a single "Best" row plus a "Best level" row (`L x · S y`) backed by a
+  new `levels_progress_<scale>` DataStore key. Three new achievements: **Climber** (reach L5),
+  **Tower Topper** (reach L10), **Full Circle** (start Speed 2).
+- **Verified**: 24 new unit tests (`LevelShapesTest`: determinism, spawn-zone clearance, flood-fill
+  connectivity and ≥60% playable area across portrait/landscape boards at all scales, speed-curve
+  monotonicity; `LevelsModeTest`: goal advancement, cycle wrap, wall lethality, ghost pass-through,
+  spawn exclusion, life loss/respawn state preservation, extra-life cap, mode-gated rolls) — 112
+  total green; `assembleDebug` and `lint` clean.
+
+---
+
 ### 2026-06-08 — Release v0.8.0
 
 - Bumped `versionName` `0.7.6` → `0.8.0` and `versionCode` `18` → `19` for the first tagged GitHub

@@ -11,6 +11,14 @@ enum class GameStatus {
     /** Frozen by the player; resumable. */
     Paused,
 
+    /**
+     * Levels mode only: the board is staged (walls swapped, snake at spawn,
+     * no food) and the intro countdown is showing — at game start, on every
+     * level advance and after a life loss. [GameEngine.beginLevel] moves on
+     * to [Running]; the countdown timing itself lives in the ViewModel.
+     */
+    LevelIntro,
+
     /** The snake died; the loop is stopped. */
     GameOver,
 }
@@ -38,6 +46,16 @@ enum class GameStatus {
  *                         from time-bonus / time-penalty blocks (positive adds
  *                         time, negative removes it). Kept separate from
  *                         [playedMs] so the elapsed clock stays truthful.
+ * @param levelIndex       Levels mode only: the 1-based designed level (1..10).
+ * @param speedCycle       Levels mode only: the 1-based cycle ("Speed x"); it
+ *                         increments each time the ten levels wrap and drives
+ *                         the pace via [LevelsMode.tickMillisFor].
+ * @param lives            Levels mode only: remaining snakes (0 elsewhere).
+ * @param levelFoodsEaten  Levels mode only: foods eaten in the current level;
+ *                         the level advances at [LevelsMode.LEVEL_FOOD_GOAL].
+ * @param walls            Levels mode only: cells outside the level's playable
+ *                         shape. Lethal like out-of-bounds, excluded from every
+ *                         spawn, and painted as "outside the board".
  * @param lastEvents       what happened on the most recent tick, for the UI to
  *                         react to (particle bursts, future effects). Not part
  *                         of the logical state — cleared/replaced every tick.
@@ -61,6 +79,11 @@ data class GameState(
     val debris: List<Debris> = emptyList(),
     val effectTimers: List<ActiveEffect> = emptyList(),
     val timeAdjustMs: Long = 0,
+    val levelIndex: Int = 1,
+    val speedCycle: Int = 1,
+    val lives: Int = 0,
+    val levelFoodsEaten: Int = 0,
+    val walls: Set<Position> = emptySet(),
     val lastEvents: List<GameEvent> = emptyList(),
 ) {
     val head: Position get() = snake.first()
@@ -78,8 +101,13 @@ data class GameState(
      */
     val tickIntervalMillis: Long
         get() {
-            // Endless overrides the level pace with a curve that quickens over time.
-            var ms = if (mode == GameMode.Endless) endlessBaseMs(elapsedTicks) else level.tickMillis.toDouble()
+            // Endless overrides the level pace with a curve that quickens over
+            // time; Levels paces by its speed cycle instead of the difficulty.
+            var ms = when (mode) {
+                GameMode.Endless -> endlessBaseMs(elapsedTicks)
+                GameMode.Levels -> LevelsMode.tickMillisFor(speedCycle).toDouble()
+                else -> level.tickMillis.toDouble()
+            }
             if (hasEffect(EffectKind.Haste)) ms *= HASTE_FACTOR
             if (hasEffect(EffectKind.Slow)) ms *= SLOW_FACTOR
             if (hasEffect(EffectKind.Freeze)) ms *= FREEZE_FACTOR

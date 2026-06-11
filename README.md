@@ -71,8 +71,16 @@ The classic Snake mechanics, extended with configurable features so every run fe
   from the main menu.
 - 🎖️ **Achievements** — fifteen local milestones (combos, scores, endurance, eating sprees, using power-ups…)
   that unlock as you play, with a dedicated screen and an unlock banner on the game-over screen.
-- 🕹️ **Game modes** — **Classic**, **Endless** (speed ramps up the longer you survive) and
-  **Time Attack** (score as much as you can in 120s), selectable on the start screen.
+- 🕹️ **Game modes** — **Classic**, **Endless** (speed ramps up the longer you survive),
+  **Time Attack** (score as much as you can in 120s) and **Levels** (see below), selectable on the
+  start screen.
+- 🧩 **Levels mode** — ten **designed board shapes** (cut corners, pillars, chambers, a vault…)
+  that repeat forever, one **speed step faster** each lap. Eat **12 foods** to clear a level; you
+  start with **3 lives** (a crash respawns you in the same level, keeping score and progress) and a
+  rare 2×2 **extra-life** piece with a snake-head icon can bank more (up to 5). Every transition
+  plays an animated *"Level x · Speed x"* banner with a 3-second countdown. The difficulty selector
+  doesn't apply here — the mode has its own pace — and the Records screen tracks both your best
+  score and the deepest level you reached per board scale.
 - ⏸️ **Pause & menus** — pause overlay with a blur effect; restart or return to the main menu at any time. Highscores are kept per (mode, level, board scale).
 - 💎 **Polished navigation** — an **animated GPU background** behind the menus, a **decorated main menu** (a gliding snake that follows your selected skin), and **blur-dissolve** screen transitions.
 - 📜 **Credits screen** — an in-app **Credits / About** page (author, license and asset attribution), reachable from the main menu.
@@ -110,9 +118,12 @@ sizes (a tablet gets the same density as a phone, not a squashed few-row board).
 
 | Scale    | Cell size | Cells on short side |
 |----------|-----------|---------------------|
-| Cozy     | larger    | 12                  |
-| Standard | medium    | 18                  |
-| Epic     | smaller   | 26                  |
+| Cozy     | larger    | 13                  |
+| Standard | medium    | 19                  |
+| Epic     | smaller   | 27                  |
+
+The counts are odd on purpose: the board gets a true middle column, so the snake's centred spawn
+lines up exactly with centred overlays (like the Levels-mode countdown).
 
 ---
 
@@ -171,10 +182,12 @@ sound effects for eating, shrinking, mystery pieces, game over and button taps. 
 automatically pauses when you leave the app and yields to other apps' audio.
 
 **Game modes:** choose your mode on the start screen — **Classic** (survive as long as you can),
-**Endless** (the snake keeps accelerating the longer you survive) or **Time Attack** (score as much
+**Endless** (the snake keeps accelerating the longer you survive), **Time Attack** (score as much
 as possible in 120 seconds — watch for the exclusive **+5s** / **−3s** clock pieces that stretch or
-shave your remaining time). Your best score is tracked per mode, level and board scale; check the
-**Records** screen from the main menu.
+shave your remaining time) or **Levels** (clear ten shaped boards by eating 12 foods each, with 3
+lives, an exclusive 2×2 extra-life piece, and a speed-up every completed lap — the HUD shows
+*Level x · Speed x*, your hearts and the foods still to go). Your best score is tracked per mode,
+level and board scale; check the **Records** screen from the main menu.
 
 **Power-ups & hazards:** as a run progresses, rare special pieces start appearing on the board.
 Power-ups help: **Lightning** speeds the snake up, **Snail** slows it down, **Star** grants brief
