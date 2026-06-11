@@ -23,16 +23,26 @@ class BoardLayoutTest {
         // columns are solved from the aspect, so the board fills the width instead
         // of collapsing to a handful of rows.
         val dims = boardFor(BoardScale.Classic, aspectRatio = 1.6f)
-        assertEquals(18, dims.height) // short side fixed to the preset
-        assertEquals(29, dims.width) // 18 * 1.6 ≈ 29
+        assertEquals(19, dims.height) // short side fixed to the preset
+        assertEquals(30, dims.width) // 19 * 1.6 ≈ 30
         assertTrue(dims.width > dims.height)
     }
 
     @Test
     fun rowsAreDerivedFromAspectRatioForSquareCells() {
         val dims = boardFor(BoardScale.Classic, aspectRatio = 0.6f)
-        // rows ≈ columns / aspectRatio → 18 / 0.6 = 30.
-        assertEquals(30, dims.height)
+        // rows ≈ columns / aspectRatio → 19 / 0.6 ≈ 32.
+        assertEquals(32, dims.height)
+    }
+
+    @Test
+    fun portraitBoardsHaveAnOddCentreColumn() {
+        // Odd column counts give the board a true middle column, so the snake's
+        // spawn (width / 2) is the exact centre under centred overlays.
+        BoardScale.entries.forEach { scale ->
+            val dims = boardFor(scale, aspectRatio = 0.55f)
+            assertEquals("${scale.displayName} columns must stay odd", 1, dims.width % 2)
+        }
     }
 
     @Test

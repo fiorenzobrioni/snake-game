@@ -11,6 +11,25 @@ For the forward-looking plan, roadmap, active TODOs, bugs, and notes, see [`PLAN
 
 ---
 
+### 2026-06-11 — Odd board columns + redesigned Levels shapes 5/6/8
+
+- **Odd column counts**: `BoardScale.cellsOnShortSide` bumped 12/18/26 → **13/19/27** so every
+  portrait board has a true middle column and the snake's spawn (`width / 2`) sits exactly under
+  centred overlays like the Levels countdown (it was half a cell off). Rows recompute from the
+  aspect ratio (`boardFor`) as before; highscores are keyed per (mode, level, scale) so no records
+  were invalidated. `BoardLayoutTest` expectations updated plus a new odd-centre-column guard;
+  `LevelShapesTest` board matrix moved to the odd grids (keeping one even landscape board).
+- **Levels 5, 6 and 8 redesigned from scratch** (the old Side Notches / The Gate / Border Teeth were
+  too easy), still fully mirrored: **The Hourglass** (L5 — triangular wedges from the side walls
+  pinch mid-board into a narrow waist with open lanes above and below), **Crossed Blades** (L6 —
+  four diagonal 8-connected staircase blades from the corners carve the board into four chambers
+  that connect only through the spawn zone; thicker on Epic) and **The Colonnade** (L8 — a regular
+  lattice of single-cell pillars centred on the spawn column, wider-spaced on Cozy, with gaps that
+  fit a 2×2 maxi food exactly). All shape invariants (spawn clearance, flood-fill connectivity,
+  ≥60% playable) hold across the new board matrix.
+
+---
+
 ### 2026-06-11 — Fix: constant-height HUD (score could wrap and shrink the board)
 
 - With the Levels-mode HUD additions (hearts, foods-to-go counter) a growing score could run out of

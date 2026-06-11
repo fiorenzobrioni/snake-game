@@ -118,9 +118,12 @@ sizes (a tablet gets the same density as a phone, not a squashed few-row board).
 
 | Scale    | Cell size | Cells on short side |
 |----------|-----------|---------------------|
-| Cozy     | larger    | 12                  |
-| Standard | medium    | 18                  |
-| Epic     | smaller   | 26                  |
+| Cozy     | larger    | 13                  |
+| Standard | medium    | 19                  |
+| Epic     | smaller   | 27                  |
+
+The counts are odd on purpose: the board gets a true middle column, so the snake's centred spawn
+lines up exactly with centred overlays (like the Levels-mode countdown).
 
 ---
 

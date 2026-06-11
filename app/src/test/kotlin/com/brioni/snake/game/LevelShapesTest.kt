@@ -14,10 +14,10 @@ import java.util.ArrayDeque
 class LevelShapesTest {
 
     private val boards = listOf(
-        BoardDimensions(12, 20), // Cozy portrait
-        BoardDimensions(18, 30), // Classic portrait
-        BoardDimensions(26, 44), // Epic portrait
-        BoardDimensions(30, 18), // landscape
+        BoardDimensions(13, 22), // Cozy portrait (odd columns)
+        BoardDimensions(19, 32), // Classic portrait (odd columns)
+        BoardDimensions(27, 45), // Epic portrait (odd columns)
+        BoardDimensions(30, 19), // landscape (even columns must keep working)
     )
 
     private fun spawn(board: BoardDimensions): List<Position> {

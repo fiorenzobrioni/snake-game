@@ -61,10 +61,10 @@ object LevelsMode {
             2 -> cutCorners(board)
             3 -> twinPillars(board)
             4 -> crossfire(board)
-            5 -> sideNotches(board)
-            6 -> gate(board)
+            5 -> hourglass(board)
+            6 -> crossedBlades(board)
             7 -> octagon(board)
-            8 -> borderTeeth(board)
+            8 -> colonnade(board)
             9 -> threeChambers(board)
             else -> vault(board)
         }
@@ -146,28 +146,53 @@ object LevelsMode {
         }
     }
 
-    /** Level 5 — Side Notches: rectangular bites centred on the left/right edges. */
-    private fun sideNotches(b: BoardDimensions): Set<Position> {
-        val depth = cutUnit(b) + 1
-        val notchH = (b.height / 5).coerceAtLeast(2)
-        val y0 = (b.height - notchH) / 2
+    /**
+     * Level 5 — The Hourglass: triangular wedges grow out of the left and right
+     * walls at mid-height, pinching the board into a narrow central waist with
+     * open lanes above and below. Mirrored across both axes.
+     */
+    private fun hourglass(b: BoardDimensions): Set<Position> {
+        val len = (b.width / 3).coerceAtLeast(2) // wedge depth from each side wall
+        val maxHalf = (b.height / 4).coerceAtLeast(2) // wedge half-height at the wall
+        val cy = b.height / 2
         return buildSet {
-            for (y in y0 until y0 + notchH) {
-                for (x in 0 until depth) add(Position(x, y))
-                for (x in b.width - depth until b.width) add(Position(x, y))
+            for (d in 0 until len) {
+                val half = maxHalf * (len - d) / len // tapers toward the centre
+                for (y in (cy - half)..(cy + half)) {
+                    add(Position(d, y))
+                    add(Position(b.width - 1 - d, y))
+                }
             }
         }
     }
 
-    /** Level 6 — The Gate: top/bottom centre blocks leave a rotated-H play area. */
-    private fun gate(b: BoardDimensions): Set<Position> {
-        val depth = (b.height / 5).coerceAtLeast(2)
-        val x0 = b.width / 3
-        val x1 = b.width - 1 - b.width / 3
+    /**
+     * Level 6 — Crossed Blades: four diagonal blades run from the corners toward
+     * the centre, carving the board into four chambers that connect only through
+     * the protected spawn zone. The blade is an 8-connected staircase, which a
+     * 4-way mover can never slip through; thicker on Epic-sized grids.
+     */
+    private fun crossedBlades(b: BoardDimensions): Set<Position> {
+        val cx = b.width / 2
+        val cy = b.height / 2
+        val steps = maxOf(cx, cy)
+        if (steps == 0) return emptySet()
+        val thick = cutUnit(b) >= 3
+        // One corner-to-centre blade, then its four mirror images.
+        val blade = buildSet {
+            for (i in 0..steps) {
+                val x = i * cx / steps
+                val y = i * cy / steps
+                add(Position(x, y))
+                if (thick) add(Position(x + 1, y))
+            }
+        }
         return buildSet {
-            for (x in x0..x1) {
-                for (y in 0 until depth) add(Position(x, y))
-                for (y in b.height - depth until b.height) add(Position(x, y))
+            blade.forEach { cell ->
+                add(cell)
+                add(Position(b.width - 1 - cell.x, cell.y))
+                add(Position(cell.x, b.height - 1 - cell.y))
+                add(Position(b.width - 1 - cell.x, b.height - 1 - cell.y))
             }
         }
     }
@@ -187,15 +212,23 @@ object LevelsMode {
         }
     }
 
-    /** Level 8 — Border Teeth: periodic spikes along the top and bottom edges. */
-    private fun borderTeeth(b: BoardDimensions): Set<Position> {
-        val depth = cutUnit(b)
+    /**
+     * Level 8 — The Colonnade: a regular lattice of single-cell pillars centred
+     * on the spawn column, turning the whole board into a slalom. The border
+     * ring stays pillar-free so the outer lane is always open; the lattice is
+     * wider-spaced on Cozy grids. Gaps fit a 2×2 maxi food exactly.
+     */
+    private fun colonnade(b: BoardDimensions): Set<Position> {
+        val spacing = if (cutUnit(b) <= 1) 4 else 3
         val cx = b.width / 2
+        val cy = b.height / 2
         return buildSet {
-            for (x in 0 until b.width step 3) {
-                if (abs(x - cx) <= 1) continue // keep the snake's launch column clear
-                for (y in 0 until depth) add(Position(x, y))
-                for (y in b.height - depth until b.height) add(Position(x, y))
+            for (x in 1 until b.width - 1) {
+                for (y in 1 until b.height - 1) {
+                    if ((x - cx).mod(spacing) == 0 && (y - cy).mod(spacing) == 0) {
+                        add(Position(x, y))
+                    }
+                }
             }
         }
     }
