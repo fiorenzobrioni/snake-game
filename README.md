@@ -221,10 +221,10 @@ Full per-asset details and licenses are tracked in [`docs/CREDITS.md`](docs/CRED
 
 ---
 
-## 🗺️ Roadmap
+## 🧭 Planning & Roadmap
 
-The full plan — from these foundations through gameplay, visual polish, audio, AGSL shaders, content and
-**Google Play distribution** — is in [`ROADMAP.md`](ROADMAP.md).
+The full development plan — from foundations through gameplay, visual polish, audio, shaders, content, and
+**Google Play distribution** — as well as active TODOs, bugs, and architecture notes, is in [`PLANNING.md`](PLANNING.md).
 
 ---
 

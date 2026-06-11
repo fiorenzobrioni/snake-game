@@ -1,11 +1,60 @@
-# 🗺️ ROADMAP — Native Android Snake (Kotlin + Jetpack Compose)
+# 🧭 PLANNING — Snake
 
 Plan to take Snake from a learning prototype to a **polished, Play-Store-ready Android game**, built
 **from scratch** in **Kotlin + Jetpack Compose**.
 
-The original **C# / .NET 10 / WinForms (GDI+)** version shipped as **v1.0.0** and is now **frozen** under
-[`legacy/`](legacy/). It is kept only as a reference for the *game model* — no further feature work happens
-there. Everything below is the new app at the repository root.
+Roadmap, work in progress, TODOs, known bugs, and ideas. For the history of development cycles and design notes, see [`DEVLOG.md`](DEVLOG.md).
+
+> Status: `[x] Done` · `[-] In progress` · `[ ] To do`
+
+---
+
+## TODOs
+
+- [ ] **New Levels game mode:**
+    - MODE: Levels
+    - How it works:
+      - 10 Levels that repeat in sequence infinitely with an increase in Snake speed at each cycle:
+        - Level 1 - Speed 1
+        - Level 2 - Speed 1
+        - Level 3 - Speed 1
+        - Level ... - Speed 1
+        - Level 10 - Speed 1
+        - Level 1 - Speed 2
+        - Level 2 - Speed 2
+        - Level 3 - Speed 2
+        - Level ... - Speed 2
+        - Level 10 - Speed 2
+        - Level 1 - Speed 3
+        - …
+      - During gameplay, the player starts with 3 Snakes/lives (which decrement on each error until the final GAME OVER).
+      - A new 2x2 bonus (same size as large foods/power-ups) randomly appears, granting an extra life/Snake (evaluate the spawn probability, it could display a Snake head icon).
+      - Each level has a fixed duration before advancing to the next level (suggested 3 minutes, but please evaluate if this is appropriate).
+      - Each level has a unique board shape. There are no static obstacle blocks; instead, the shape itself (outer boundaries and internal holes) changes. Level 1 starts with the classic rectangular board, then subsequent levels introduce internal cutouts or non-rectangular boundaries to reshape the playable area.
+      - Board shapes for each level are fixed and not randomly generated. They are designed and defined at implementation time.
+      - Foods, power-ups, hazards, and all other mechanics from other game modes are also active in this mode.
+    - Evaluate this proposal and suggest improvements or refinements to make it more exciting and engaging.
+
+> Short-term tasks not yet tracked as a formal roadmap step.
+
+- [ ] Finalise `applicationId` from `com.brioni.snake` placeholder before first Play upload (Step 7.1)
+- [ ] Write unit tests for `GameEngine` edge-cases: wall collision on all four sides, body self-collision, 180° reversal block
+- [ ] Verify smooth-motion interpolation on low-end devices
+- [ ] Verify the mystery "?" glyph renders crisply on small cells (dense boards)
+- [ ] Re-tune the food spawn weights / time gates after playtesting on a device
+- [ ] Optionally enrich the synthesized SFX before Play release (background music is now Gemini-generated)
+
+---
+
+## Known Bugs
+
+> Reproducible issues found during testing. Remove entry once fixed (the fix will be documented in [`DEVLOG.md`](DEVLOG.md)).
+
+*None open.*
+
+---
+
+> The original **C# / .NET 10 / WinForms (GDI+)** version shipped as **v1.0.0** and is now **frozen** under [`legacy/`](legacy/). It is kept only as a reference for the *game model* — no further feature work happens there. Everything below is the new app at the repository root.
 
 ---
 
@@ -48,8 +97,6 @@ Install on your development machine:
 - **For Play distribution (Phase 7)**: a **Google Play Console** account, an **upload keystore**
   (`keytool` / Android Studio), and **Play App Signing** enabled.
 
-> Godot, the .NET SDK and Visual Studio are **no longer required** for the active project.
-
 ---
 
 ## 📐 Target repo layout
@@ -77,7 +124,7 @@ snake-game/
 ├── docs/CREDITS.md               # asset credits (CC0/CC-BY/MIT)
 ├── legacy/SnakeGame/             # frozen C#/.NET 10 GDI+ v1.0.0 (learning)
 ├── .github/workflows/            # release CI (Phase 7)
-├── CLAUDE.md  README.md  ROADMAP.md  DEVLOG.md  LICENSE
+└── CLAUDE.md  README.md  PLANNING.md  DEVLOG.md  LICENSE
 ```
 
 ---
@@ -271,3 +318,54 @@ snake-game/
 | **M3 — Alive** | End of Phases 4–5 | Audio + AGSL shaders, "premium arcade" feel |
 | **M4 — Deep** | End of Phase 6 | Skins, power-ups, achievements, extra modes |
 | **M5 — Published** | End of Phase 7 | Signed AAB on the Google Play Store, legacy archived |
+
+---
+
+## Notes
+
+> Architecture decisions, constraints, and observations worth remembering.
+
+- Board presets are intentionally portrait (~7:10) — landscape grid dimensions from the WinForms prototype were discarded in Phase 2.
+- `GameEngine` is `Random`-injectable specifically to make unit tests deterministic; keep it that way.
+- Dynamic color (`dynamicColor`) is **off** by design in `Theme.kt` — the game has a fixed dark-arcade brand palette.
+- AGSL `RuntimeShader` requires API 33+. Since **`minSdk` is 33**, shaders are **always available** — do
+  not reintroduce Canvas/older-API fallbacks for them (the old fallbacks were removed when the floor was raised).
+- `game/` package must remain free of Android/Compose imports — this is what makes it testable with plain JUnit.
+- **Mystery foods are resolved at spawn, not at eat**: `FoodTable.roll` rolls the concealed amount and
+  stores the final `FoodEffect`, so `GameEngine.tick` consumes no randomness and stays deterministic.
+- **Special power-ups / hazards** shipped in **Phase 6.2** (earthquake, explosion + lethal debris,
+  Lightning/Snail, Star/ghost, Freeze, Jackpot) via `FoodCategory.Special`, the extra `FoodEffect`
+  cases and `GameState.debris`/`effectTimers`. Effect durations are stored in **ms** and aged by the
+  effective interval each tick; the loop reads `GameState.tickIntervalMillis` (never `level.tickMillis`)
+  so speed effects actually change the pace. Keep that invariant.
+- **Control scheme**: the default is **Swipe** (set in `GameViewModel.DEFAULT_CONTROL` and the
+  persisted fallback in `SettingsRepository`); the two-button relative scheme and the D-pad remain
+  selectable in Settings (choice persisted via DataStore). Phase 3 had originally shipped two-button
+  as the default; it was flipped to swipe per the original request.
+- The food spawn table is **time- and level-aware** (`FoodTable.roll(random, elapsedTicks, level)`);
+  early game is intentionally simple (grow only) and ramps up — keep this progression intact.
+- **Special spawn frequency** is a setting (`SpecialFrequency`) that scales both the special
+  branch weight and its unlock gate in `FoodTable.roll`; it is independent of level and board size.
+- **Regular food auto-vanishes** after `GameEngine.VANISH_FOOD_MS` (~7 s at the level's base pace),
+  stamped via `Food.spawnTick` and removed one-per-tick in `tick`; **specials never vanish**. `tick`
+  now refills on any drop below `FOOD_COUNT` (eat *or* vanish) and still stays seed-deterministic.
+- **Audio assets are generated, not committed by hand**: `tools/audio/generate_audio.py`
+  (stdlib only, no deps) synthesizes every clip in `app/src/main/res/raw/` as original CC0 16-bit
+  mono WAV. Music loops are rendered to an exact bar count with zero-amplitude note ends so they
+  loop seamlessly under `MediaPlayer`. Re-run the script to regenerate; don't edit the WAVs directly.
+- **No encoder in CI**: there's no `ffmpeg`/`oggenc` available, so music ships as WAV (~0.6–0.8 MB
+  each). If an OGG/Opus encoder becomes available, encode the music to shrink the APK before release.
+- **Audio is decoupled from the model**: the pure `game/` package emits no audio. `GameViewModel`
+  depends only on the `audio/GameSfx` interface (default `GameSfx.None`), so it stays unit-testable.
+  The Android audio engines (`SoundManager`/`MusicManager`) live behind the `audio/GameAudio` facade,
+  which is created once in `ui/App.kt` and released on the host's `onDispose`.
+- **Music backend is framework `MediaPlayer`** (two instances for the crossfade), chosen over
+  ExoPlayer to keep the binary lean. `MusicManager` requests audio focus and ducks/pauses on loss.
+- **AGSL shaders require API 33+ and must stay optional**: `ui/game/Shaders.kt` holds the sources and
+  the `BoardShaders` holder (annotated `@RequiresApi(33)`). Construction and every `setFloatUniform`/
+  `setColorUniform` call must sit behind an explicit `Build.VERSION.SDK_INT >= TIRAMISU` check — lint
+  does **not** treat a `shaders != null` null-check as an API guard. Below 33 the holder is `null`
+  and the renderer uses the Canvas fallbacks. Keep both paths in sync when changing visuals.
+- **Shaders return premultiplied alpha** (Skia convention): the glow/halo shaders output `rgb * a`.
+- **The CRT filter is a `RenderEffect`** applied to the board's `graphicsLayer` (API 33+), gated by a
+  persisted `crtEnabled` setting that is only surfaced in Settings when `Shaders.supported`.

@@ -19,5 +19,5 @@ dotnet run
 - All logic + UI + rendering live in `SnakeGame/SnakeForm.cs`.
 - Solution file: `snake-game.slnx`.
 
-See the repository root [`README.md`](../README.md) and [`ROADMAP.md`](../ROADMAP.md) for the
+See the repository root [`README.md`](../README.md) and [`PLANNING.md`](../PLANNING.md) for the
 current Android project.
