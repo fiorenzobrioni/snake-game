@@ -71,4 +71,42 @@ class ObstacleSymmetryTest {
             assertTrue(setup(board, Level.Beginner).obstacles.isEmpty())
         }
     }
+
+    @Test
+    fun obstacleCountMatchesTheLevelTarget() {
+        // On a roomy even-sized board nothing collapses onto the centre axes,
+        // so the full ceil(count / 4) * 4 cells must be placed.
+        val board = BoardDimensions(26, 40)
+        Level.entries.filter { it.obstacleCount > 0 }.forEach { level ->
+            val expected = (level.obstacleCount + 3) / 4 * 4
+            (0L until 20L).forEach { seed ->
+                assertEquals(
+                    "wrong count for $level (seed $seed)",
+                    expected,
+                    setup(board, level, seed).obstacles.size,
+                )
+            }
+        }
+    }
+
+    @Test
+    fun obstaclesTendToCluster() {
+        // The growth bias should leave most obstacles touching another one
+        // orthogonally, instead of scattering as isolated single blocks.
+        val board = BoardDimensions(18, 30)
+        var adjacent = 0
+        var total = 0
+        (0L until 100L).forEach { seed ->
+            val obstacles = setup(board, Level.Legend, seed).obstacles
+            total += obstacles.size
+            adjacent += obstacles.count { p ->
+                Position(p.x + 1, p.y) in obstacles ||
+                    Position(p.x - 1, p.y) in obstacles ||
+                    Position(p.x, p.y + 1) in obstacles ||
+                    Position(p.x, p.y - 1) in obstacles
+            }
+        }
+        val fraction = adjacent.toFloat() / total
+        assertTrue("only $fraction of obstacles have a neighbour", fraction >= 0.5f)
+    }
 }

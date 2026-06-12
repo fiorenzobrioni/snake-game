@@ -100,17 +100,18 @@ fun ReadyOverlay(
             }
         }
 
-        // Levels mode has its own speed curve and shaped boards: the difficulty
-        // selector is hidden (and ignored by the ViewModel) while it is active.
-        if (selectedMode != GameMode.Levels) {
-            ChipSection(title = stringResource(R.string.menu_level)) {
-                Level.entries.forEach { level ->
-                    FilterChip(
-                        selected = level == selectedLevel,
-                        onClick = { onLevelSelected(level) },
-                        label = { Text(level.label) },
-                    )
-                }
+        // Campaign mode has its own speed curve and shaped boards: the difficulty
+        // selector stays in place but is disabled (and ignored by the ViewModel)
+        // while it is active, so the menu layout never reflows.
+        val levelSelectable = selectedMode != GameMode.Levels
+        ChipSection(title = stringResource(R.string.menu_level), enabled = levelSelectable) {
+            Level.entries.forEach { level ->
+                FilterChip(
+                    selected = level == selectedLevel,
+                    onClick = { onLevelSelected(level) },
+                    label = { Text(level.label) },
+                    enabled = levelSelectable,
+                )
             }
         }
 
@@ -136,7 +137,7 @@ fun ReadyOverlay(
 }
 
 @Composable
-private fun ChipSection(title: String, chips: @Composable () -> Unit) {
+private fun ChipSection(title: String, enabled: Boolean = true, chips: @Composable () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -146,7 +147,7 @@ private fun ChipSection(title: String, chips: @Composable () -> Unit) {
         Text(
             text = title,
             style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onBackground,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = if (enabled) 1f else 0.38f),
         )
         Row(
             modifier = Modifier
@@ -161,7 +162,7 @@ private fun ChipSection(title: String, chips: @Composable () -> Unit) {
 }
 
 /**
- * Levels mode: the staged-level banner with the 3-2-1 countdown — shown at game
+ * Campaign mode: the staged-level banner with the 3-2-1 countdown — shown at game
  * start, on every level advance and after a life loss ([isRespawn]). The board
  * behind it already wears the next level's shape, so the scrim is kept light.
  */

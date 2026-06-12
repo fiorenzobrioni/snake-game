@@ -216,7 +216,7 @@ class GameViewModel(
 
     fun selectLevel(level: Level) {
         if (state.status != GameStatus.Ready) return
-        if (mode == GameMode.Levels) return // the selector is hidden and ignored
+        if (mode == GameMode.Levels) return // the selector is disabled and ignored
         viewModelScope.launch { repo.setLevel(level) }
         resetTo(engine.setup(level, state.board, mode))
         refreshBest()

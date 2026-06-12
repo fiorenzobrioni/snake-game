@@ -46,8 +46,8 @@ enum class Achievement(
     BigEater("Big Eater", "Eat 100 foods in one run", { it.foodsEaten >= 100 }),
     Trifecta("Trifecta", "Explosion, Star and Jackpot in one run", { it.usedExplosion && it.usedStar && it.usedJackpot }),
     Grandmaster("Grandmaster", "Score 5000 in a single run", { it.score >= 5000 }),
-    Climber("Climber", "Reach Level 5 in Levels mode", { it.mode == GameMode.Levels && it.maxLevelReached >= 5 }),
-    TowerTopper("Tower Topper", "Reach Level 10 in Levels mode", { it.mode == GameMode.Levels && it.maxLevelReached >= 10 }),
+    Climber("Climber", "Reach Level 5 in Campaign mode", { it.mode == GameMode.Levels && it.maxLevelReached >= 5 }),
+    TowerTopper("Tower Topper", "Reach Level 10 in Campaign mode", { it.mode == GameMode.Levels && it.maxLevelReached >= 10 }),
     FullCircle("Full Circle", "Clear all ten levels and start Speed 2", { it.mode == GameMode.Levels && it.maxSpeedCycle >= 2 }),
     ;
 

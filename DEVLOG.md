@@ -11,6 +11,27 @@ For the forward-looking plan, roadmap, active TODOs, bugs, and notes, see [`PLAN
 
 ---
 
+### 2026-06-12 — Campaign rename, stable Ready-menu layout, clustered obstacles
+
+- **"Levels" mode renamed to "Campaign"** (display name only): the mode name was too easy to confuse
+  with the difficulty "Level" selector sitting right under it. Only `GameMode.Levels.displayName`
+  and user-facing text (achievement descriptions, README) changed — the enum constant doubles as the
+  DataStore key for the saved mode and `ScoreKey.storageName()`, so internal identifiers stay
+  `Levels` and no saved highscores were invalidated.
+- **Ready overlay no longer reflows**: selecting Campaign used to remove the difficulty selector
+  from composition, shifting the controls below it. The `ChipSection` and its `FilterChip`s now stay
+  in place and are just disabled (dimmed) while Campaign is active; the ViewModel already ignored
+  level changes in that mode.
+- **Random obstacles now clump**: `GameEngine.generateObstacles` grows each new quadrant cell out of
+  an already-placed one with probability `OBSTACLE_CLUSTER_BIAS` (0.6) instead of always sampling
+  uniformly, so high-difficulty fields form larger shapes rather than scattered singletons.
+  Per-level counts, 4-fold symmetry, border margins, the centre clear zone and seed determinism are
+  unchanged. Verified by the existing `ObstacleSymmetryTest` invariants plus two new tests: exact
+  per-level cell counts on an even board, and a ≥50% orthogonal-adjacency fraction across 100 seeds.
+- Verified: full unit-test suite green, `assembleDebug` builds.
+
+---
+
 ### 2026-06-11 — Odd board columns + redesigned Levels shapes 5/6/8
 
 - **Odd column counts**: `BoardScale.cellsOnShortSide` bumped 12/18/26 → **13/19/27** so every
