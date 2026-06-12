@@ -38,3 +38,4 @@ jobs:
         with:
           name: test-reports
           path: '**/build/reports/tests/'
+        retention-days: 3
