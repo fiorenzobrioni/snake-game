@@ -11,6 +11,17 @@ For the forward-looking plan, roadmap, active TODOs, bugs, and notes, see [`PLAN
 
 ---
 
+### 2026-06-12 — Game-over "Game setup" action
+
+- **New middle option on the game-over overlay**: between "Play again" and "Menu" there is now a
+  **"Game setup"** button that returns to the pre-game Ready overlay (mode / level / board-scale
+  selection) without leaving the game screen — so the player can tweak the setup and replay
+  immediately instead of round-tripping through the main menu. `GameViewModel.toMenu()` was renamed
+  to `toSetup()` (it always reset the game to `GameStatus.Ready`; the new name matches both uses).
+- Verified: unit tests green, `assembleDebug` builds.
+
+---
+
 ### 2026-06-12 — Campaign rename, stable Ready-menu layout, clustered obstacles
 
 - **"Levels" mode renamed to "Campaign"** (display name only): the mode name was too easy to confuse

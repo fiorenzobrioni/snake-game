@@ -276,7 +276,7 @@ fun PausedOverlay(onResume: () -> Unit, onMenu: () -> Unit) {
     }
 }
 
-/** Final screen: score, best, replay, or return to the menu. */
+/** Final screen: score, best, replay, back to game setup, or return to the menu. */
 @Composable
 fun GameOverOverlay(
     score: Int,
@@ -284,6 +284,7 @@ fun GameOverOverlay(
     isNewBest: Boolean,
     unlocked: List<String>,
     onPlayAgain: () -> Unit,
+    onSetup: () -> Unit,
     onMenu: () -> Unit,
 ) {
     OverlayScrim {
@@ -346,6 +347,12 @@ fun GameOverOverlay(
             modifier = Modifier.padding(top = 24.dp).widthIn(min = 200.dp),
         ) {
             Text(stringResource(R.string.action_play_again))
+        }
+        OutlinedButton(
+            onClick = onSetup,
+            modifier = Modifier.padding(top = 12.dp).widthIn(min = 200.dp),
+        ) {
+            Text(stringResource(R.string.action_game_setup))
         }
         OutlinedButton(
             onClick = onMenu,

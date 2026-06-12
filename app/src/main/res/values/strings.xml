@@ -91,6 +91,8 @@
     <string name="game_over_title">Game Over</string>
     <string name="game_over_score">Final score: %1$d</string>
     <string name="action_play_again">Play again</string>
+    <!-- Returns to the pre-game Ready overlay (mode/level/board selection). -->
+    <string name="action_game_setup">Game setup</string>
     <string name="highscore_label">Best: %1$d</string>
     <string name="new_highscore">New best!</string>
 
