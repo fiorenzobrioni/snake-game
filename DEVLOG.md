@@ -11,6 +11,60 @@ For the forward-looking plan, roadmap, active TODOs, bugs, and notes, see [`PLAN
 
 ---
 
+### 2026-06-12 — Fix: Campaign intro title could wrap
+
+- The "Level X · Speed Y" banner on the Campaign level-intro overlay could wrap to a second line on
+  narrow screens / multi-digit numbers. It is now **two fixed stacked lines** — "Level X"
+  (`displaySmall`, primary) over a smaller "Speed Y" (`titleLarge`, secondary) — sharing the same
+  pop-in animation, so it never wraps. `level_intro_title` replaced by `level_intro_level` +
+  `level_intro_speed`.
+
+---
+
+### 2026-06-12 — Pause "Game setup" action + version bump to 0.9.0
+
+- **The pause overlay gains the same "Game setup" middle option** as the game-over overlay: it
+  abandons the paused run and returns to the pre-game Ready overlay (`GameViewModel.toSetup()`),
+  sitting between "Resume" and "Menu".
+- **Version bumped to 0.9.0** (`versionCode` 20) for the GitHub release covering everything since
+  v0.8.0: the Campaign game mode, odd board columns, redesigned Campaign shapes 5/6/8, clustered
+  random obstacles, the "Game setup" actions, and the HUD/extra-life fixes.
+- Verified: unit tests green, `assembleDebug` builds.
+
+---
+
+### 2026-06-12 — Game-over "Game setup" action
+
+- **New middle option on the game-over overlay**: between "Play again" and "Menu" there is now a
+  **"Game setup"** button that returns to the pre-game Ready overlay (mode / level / board-scale
+  selection) without leaving the game screen — so the player can tweak the setup and replay
+  immediately instead of round-tripping through the main menu. `GameViewModel.toMenu()` was renamed
+  to `toSetup()` (it always reset the game to `GameStatus.Ready`; the new name matches both uses).
+- Verified: unit tests green, `assembleDebug` builds.
+
+---
+
+### 2026-06-12 — Campaign rename, stable Ready-menu layout, clustered obstacles
+
+- **"Levels" mode renamed to "Campaign"** (display name only): the mode name was too easy to confuse
+  with the difficulty "Level" selector sitting right under it. Only `GameMode.Levels.displayName`
+  and user-facing text (achievement descriptions, README) changed — the enum constant doubles as the
+  DataStore key for the saved mode and `ScoreKey.storageName()`, so internal identifiers stay
+  `Levels` and no saved highscores were invalidated.
+- **Ready overlay no longer reflows**: selecting Campaign used to remove the difficulty selector
+  from composition, shifting the controls below it. The `ChipSection` and its `FilterChip`s now stay
+  in place and are just disabled (dimmed) while Campaign is active; the ViewModel already ignored
+  level changes in that mode.
+- **Random obstacles now clump**: `GameEngine.generateObstacles` grows each new quadrant cell out of
+  an already-placed one with probability `OBSTACLE_CLUSTER_BIAS` (0.6) instead of always sampling
+  uniformly, so high-difficulty fields form larger shapes rather than scattered singletons.
+  Per-level counts, 4-fold symmetry, border margins, the centre clear zone and seed determinism are
+  unchanged. Verified by the existing `ObstacleSymmetryTest` invariants plus two new tests: exact
+  per-level cell counts on an even board, and a ≥50% orthogonal-adjacency fraction across 100 seeds.
+- Verified: full unit-test suite green, `assembleDebug` builds.
+
+---
+
 ### 2026-06-11 — Odd board columns + redesigned Levels shapes 5/6/8
 
 - **Odd column counts**: `BoardScale.cellsOnShortSide` bumped 12/18/26 → **13/19/27** so every

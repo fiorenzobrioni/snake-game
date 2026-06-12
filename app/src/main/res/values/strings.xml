@@ -61,7 +61,7 @@
     <!-- HUD -->
     <string name="hud_score">Score: %1$d</string>
     <string name="hud_combo">x%1$d</string>
-    <!-- Levels mode HUD: "Level 3 · Speed 2", the foods left in the level, lives -->
+    <!-- Campaign mode HUD: "Level 3 · Speed 2", the foods left in the level, lives -->
     <string name="hud_level_speed">Level %1$d · Speed %2$d</string>
     <string name="hud_next_level">Next: %1$d</string>
     <string name="hud_lives">Lives: %1$d</string>
@@ -77,11 +77,12 @@
     <!-- Pause overlay -->
     <string name="paused_title">Paused</string>
 
-    <!-- Levels mode intro overlay -->
-    <string name="level_intro_title">Level %1$d · Speed %2$d</string>
+    <!-- Campaign mode intro overlay (two stacked lines so the title never wraps) -->
+    <string name="level_intro_level">Level %1$d</string>
+    <string name="level_intro_speed">Speed %1$d</string>
     <string name="level_intro_ready">Get ready!</string>
 
-    <!-- Records screen (Levels mode rows) -->
+    <!-- Records screen (Campaign mode rows) -->
     <string name="records_best">Best</string>
     <string name="records_best_level">Best level</string>
     <!-- "L<level> · S<speed>", e.g. "L7 · S2" -->
@@ -91,6 +92,8 @@
     <string name="game_over_title">Game Over</string>
     <string name="game_over_score">Final score: %1$d</string>
     <string name="action_play_again">Play again</string>
+    <!-- Returns to the pre-game Ready overlay (mode/level/board selection). -->
+    <string name="action_game_setup">Game setup</string>
     <string name="highscore_label">Best: %1$d</string>
     <string name="new_highscore">New best!</string>
 

@@ -216,7 +216,7 @@ class GameViewModel(
 
     fun selectLevel(level: Level) {
         if (state.status != GameStatus.Ready) return
-        if (mode == GameMode.Levels) return // the selector is hidden and ignored
+        if (mode == GameMode.Levels) return // the selector is disabled and ignored
         viewModelScope.launch { repo.setLevel(level) }
         resetTo(engine.setup(level, state.board, mode))
         refreshBest()
@@ -340,7 +340,12 @@ class GameViewModel(
         newlyUnlocked = emptyList()
     }
 
-    fun toMenu() {
+    /**
+     * Ends the current run and returns the game screen to the pre-game setup
+     * ([GameStatus.Ready]). Used both by the game-over "Game setup" action and
+     * when leaving for the main menu (so the next visit starts at setup).
+     */
+    fun toSetup() {
         stopLoop()
         cancelIntro()
         resetTo(engine.setup(state.level, state.board, mode))

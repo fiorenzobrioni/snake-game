@@ -363,10 +363,19 @@ snake-game/
   (walls swapped, snake at spawn, transients cleared) inside `setup`/`tick` and lands on `LevelIntro`;
   the 3-second countdown itself is wall-clock UI and lives in `GameViewModel` (`introCountdown`),
   which then calls `GameEngine.beginLevel` to seed food and resume. `tick` stays deterministic.
-- **Levels mode pins the difficulty**: the selector is hidden in the Ready overlay and the ViewModel
+- **Levels mode pins the difficulty**: the selector is disabled (greyed out, not removed, so the
+  Ready overlay layout never reflows) and the ViewModel
   compares settings against `LevelsMode.SCORE_LEVEL` (not `settings.level`) while the mode is active —
   otherwise the settings collector would endlessly reset the board. Scores stay on the existing
   `ScoreKey(mode, level, scale)` codec; the deepest run is stored separately
   (`levels_progress_<scale>`, count of completed levels).
 - **`elapsedTicks` is deliberately not reset across Levels transitions** so the time-gated food
   progression (shrink → maxi → mystery → specials) spans the whole run, not a single level.
+- **`GameMode.Levels` is displayed as "Campaign"**: the user-facing `displayName` was renamed to stop
+  the confusion with the difficulty "Level" selector, but the enum constant name doubles as the
+  DataStore key (saved mode preference + `ScoreKey.storageName()`), so the constant — and internal
+  identifiers like `LevelsMode` — must stay `Levels` to keep existing highscores readable.
+- **Random obstacles are cluster-biased**: `generateObstacles` grows each new quadrant cell out of an
+  already-placed one with probability `OBSTACLE_CLUSTER_BIAS` (0.6), so blocks clump into larger
+  shapes instead of scattering as singletons. Per-level counts, 4-fold symmetry, border margins, the
+  centre clear zone and seed determinism are unchanged (guarded by `ObstacleSymmetryTest`).

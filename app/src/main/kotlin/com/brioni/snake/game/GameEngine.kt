@@ -443,7 +443,10 @@ class GameEngine(private val random: Random = Random.Default) {
      * Lays out obstacles with **4-fold symmetry**: cells are sampled in the
      * top-left quadrant and mirrored across the vertical and horizontal axes
      * (`x → w-1-x`, `y → h-1-y`) so the field looks deliberate rather than
-     * random. Two rows/columns next to every border are kept clear, and a zone
+     * random. After the first cell, each new cell grows orthogonally out of an
+     * already-placed one with probability [OBSTACLE_CLUSTER_BIAS], so blocks
+     * tend to clump into larger shapes instead of scattering as singletons.
+     * Two rows/columns next to every border are kept clear, and a zone
      * around the centre (where the snake spawns) is excluded so a game never
      * ends on the first ticks. Deterministic given the injected [random].
      */
@@ -470,6 +473,7 @@ class GameEngine(private val random: Random = Random.Default) {
 
         val snakeCells = snake.toHashSet()
         val obstacles = LinkedHashSet<Position>()
+        val seedCells = ArrayList<Position>() // quadrant cells placed so far
         val perQuadrant = (level.obstacleCount + 3) / 4 // ceil — four mirrors each
         val targetCount = perQuadrant * 4
         var attempts = 0
@@ -477,18 +481,32 @@ class GameEngine(private val random: Random = Random.Default) {
 
         while (obstacles.size < targetCount && attempts < maxAttempts) {
             attempts++
-            val x = random.nextInt(minX, maxXExclusive)
-            val y = random.nextInt(minY, maxYExclusive)
+            val x: Int
+            val y: Int
+            if (seedCells.isNotEmpty() && random.nextFloat() < OBSTACLE_CLUSTER_BIAS) {
+                // Grow a cluster: step one cell out of an existing seed.
+                val base = seedCells[random.nextInt(seedCells.size)]
+                val side = random.nextInt(4)
+                x = base.x + if (side == 0) -1 else if (side == 1) 1 else 0
+                y = base.y + if (side == 2) -1 else if (side == 3) 1 else 0
+                if (x < minX || x >= maxXExclusive || y < minY || y >= maxYExclusive) continue
+            } else {
+                x = random.nextInt(minX, maxXExclusive)
+                y = random.nextInt(minY, maxYExclusive)
+            }
             // Keep the spawn area around the centre clear.
             if (abs(x - cx) <= clearRadiusX && abs(y - cy) <= clearRadiusY) continue
+            val cell = Position(x, y)
+            if (cell in obstacles) continue
             val mirrored = listOf(
-                Position(x, y),
+                cell,
                 Position(w - 1 - x, y),
                 Position(x, h - 1 - y),
                 Position(w - 1 - x, h - 1 - y),
             )
             if (mirrored.any { it in snakeCells }) continue
             obstacles.addAll(mirrored)
+            seedCells.add(cell)
         }
         return obstacles
     }
@@ -645,6 +663,12 @@ class GameEngine(private val random: Random = Random.Default) {
 
         /** Rows/columns kept clear next to every border for symmetric obstacles. */
         private const val OBSTACLE_MARGIN = 2
+
+        /**
+         * Probability that the next obstacle cell grows adjacent to one already
+         * placed (instead of being sampled uniformly), clumping blocks together.
+         */
+        private const val OBSTACLE_CLUSTER_BIAS = 0.6f
 
         /** Half-extent of the central spawn clear-zone, as a fraction of the board. */
         private const val CENTER_CLEAR_FRACTION = 0.18f

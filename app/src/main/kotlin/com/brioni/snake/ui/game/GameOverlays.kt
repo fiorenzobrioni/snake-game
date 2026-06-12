@@ -100,17 +100,18 @@ fun ReadyOverlay(
             }
         }
 
-        // Levels mode has its own speed curve and shaped boards: the difficulty
-        // selector is hidden (and ignored by the ViewModel) while it is active.
-        if (selectedMode != GameMode.Levels) {
-            ChipSection(title = stringResource(R.string.menu_level)) {
-                Level.entries.forEach { level ->
-                    FilterChip(
-                        selected = level == selectedLevel,
-                        onClick = { onLevelSelected(level) },
-                        label = { Text(level.label) },
-                    )
-                }
+        // Campaign mode has its own speed curve and shaped boards: the difficulty
+        // selector stays in place but is disabled (and ignored by the ViewModel)
+        // while it is active, so the menu layout never reflows.
+        val levelSelectable = selectedMode != GameMode.Levels
+        ChipSection(title = stringResource(R.string.menu_level), enabled = levelSelectable) {
+            Level.entries.forEach { level ->
+                FilterChip(
+                    selected = level == selectedLevel,
+                    onClick = { onLevelSelected(level) },
+                    label = { Text(level.label) },
+                    enabled = levelSelectable,
+                )
             }
         }
 
@@ -136,7 +137,7 @@ fun ReadyOverlay(
 }
 
 @Composable
-private fun ChipSection(title: String, chips: @Composable () -> Unit) {
+private fun ChipSection(title: String, enabled: Boolean = true, chips: @Composable () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -146,7 +147,7 @@ private fun ChipSection(title: String, chips: @Composable () -> Unit) {
         Text(
             text = title,
             style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onBackground,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = if (enabled) 1f else 0.38f),
         )
         Row(
             modifier = Modifier
@@ -161,7 +162,7 @@ private fun ChipSection(title: String, chips: @Composable () -> Unit) {
 }
 
 /**
- * Levels mode: the staged-level banner with the 3-2-1 countdown — shown at game
+ * Campaign mode: the staged-level banner with the 3-2-1 countdown — shown at game
  * start, on every level advance and after a life loss ([isRespawn]). The board
  * behind it already wears the next level's shape, so the scrim is kept light.
  */
@@ -174,23 +175,39 @@ fun LevelIntroOverlay(
     isRespawn: Boolean,
 ) {
     OverlayScrim(alpha = 0.55f) {
-        // The title pops in once per staged level (or respawn).
+        // The title pops in once per staged level (or respawn). It is split over
+        // two fixed lines ("Level X" / "Speed Y") so it can never wrap
+        // unpredictably on narrow boards or with multi-digit numbers.
         val titleIn = remember(levelIndex, speedCycle, isRespawn) { Animatable(0f) }
         LaunchedEffect(titleIn) {
             titleIn.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow))
         }
-        Text(
-            text = stringResource(R.string.level_intro_title, levelIndex, speedCycle),
-            style = MaterialTheme.typography.displaySmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            textAlign = TextAlign.Center,
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.graphicsLayer {
                 scaleX = 0.6f + 0.4f * titleIn.value
                 scaleY = 0.6f + 0.4f * titleIn.value
                 alpha = titleIn.value.coerceIn(0f, 1f)
             },
-        )
+        ) {
+            Text(
+                text = stringResource(R.string.level_intro_level, levelIndex),
+                style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                text = stringResource(R.string.level_intro_speed, speedCycle),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.secondary,
+                maxLines = 1,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
         if (isRespawn) {
             Text(
                 text = stringResource(R.string.level_intro_ready),
@@ -250,9 +267,9 @@ fun LevelIntroOverlay(
     }
 }
 
-/** Shown while paused; resume or bail to the menu. */
+/** Shown while paused; resume, go back to game setup, or bail to the menu. */
 @Composable
-fun PausedOverlay(onResume: () -> Unit, onMenu: () -> Unit) {
+fun PausedOverlay(onResume: () -> Unit, onSetup: () -> Unit, onMenu: () -> Unit) {
     OverlayScrim {
         Text(
             text = stringResource(R.string.paused_title),
@@ -267,6 +284,12 @@ fun PausedOverlay(onResume: () -> Unit, onMenu: () -> Unit) {
             Text(stringResource(R.string.action_resume))
         }
         OutlinedButton(
+            onClick = onSetup,
+            modifier = Modifier.padding(top = 12.dp).widthIn(min = 200.dp),
+        ) {
+            Text(stringResource(R.string.action_game_setup))
+        }
+        OutlinedButton(
             onClick = onMenu,
             modifier = Modifier.padding(top = 12.dp).widthIn(min = 200.dp),
         ) {
@@ -275,7 +298,7 @@ fun PausedOverlay(onResume: () -> Unit, onMenu: () -> Unit) {
     }
 }
 
-/** Final screen: score, best, replay, or return to the menu. */
+/** Final screen: score, best, replay, back to game setup, or return to the menu. */
 @Composable
 fun GameOverOverlay(
     score: Int,
@@ -283,6 +306,7 @@ fun GameOverOverlay(
     isNewBest: Boolean,
     unlocked: List<String>,
     onPlayAgain: () -> Unit,
+    onSetup: () -> Unit,
     onMenu: () -> Unit,
 ) {
     OverlayScrim {
@@ -345,6 +369,12 @@ fun GameOverOverlay(
             modifier = Modifier.padding(top = 24.dp).widthIn(min = 200.dp),
         ) {
             Text(stringResource(R.string.action_play_again))
+        }
+        OutlinedButton(
+            onClick = onSetup,
+            modifier = Modifier.padding(top = 12.dp).widthIn(min = 200.dp),
+        ) {
+            Text(stringResource(R.string.action_game_setup))
         }
         OutlinedButton(
             onClick = onMenu,

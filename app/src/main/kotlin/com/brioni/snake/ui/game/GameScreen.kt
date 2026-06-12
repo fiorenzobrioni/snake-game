@@ -86,7 +86,7 @@ fun GameScreen(
         if (state.status == GameStatus.Running) {
             audio.playPause(); viewModel.togglePause()
         } else {
-            viewModel.toMenu(); onExitToMenu()
+            viewModel.toSetup(); onExitToMenu()
         }
     }
 
@@ -253,7 +253,8 @@ fun GameScreen(
 
             GameStatus.Paused -> PausedOverlay(
                 onResume = { audio.playPause(); viewModel.togglePause() },
-                onMenu = { viewModel.toMenu(); onExitToMenu() },
+                onSetup = { viewModel.toSetup() },
+                onMenu = { viewModel.toSetup(); onExitToMenu() },
             )
 
             GameStatus.GameOver -> GameOverOverlay(
@@ -262,7 +263,8 @@ fun GameScreen(
                 isNewBest = viewModel.isNewBest,
                 unlocked = viewModel.newlyUnlocked.map { it.title },
                 onPlayAgain = { viewModel.playAgain() },
-                onMenu = { viewModel.toMenu(); onExitToMenu() },
+                onSetup = { viewModel.toSetup() },
+                onMenu = { viewModel.toSetup(); onExitToMenu() },
             )
 
             GameStatus.Running -> Unit
