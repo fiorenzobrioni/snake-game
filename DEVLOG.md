@@ -11,6 +11,14 @@ For the forward-looking plan, roadmap, active TODOs, bugs, and notes, see [`PLAN
 
 ---
 
+### 2026-06-12 — GitHub Actions CI workflow
+
+- **Created GitHub Actions CI workflow** (`.github/workflows/ci.yml`) to automatically build and run unit tests under `app/src/test`.
+- Configured the workflow to run on push to the `main` branch and on any pull requests targeting `main`.
+- The runner uses Ubuntu, sets up JDK 17 (Temurin), configures Gradle with caching (`gradle/actions/setup-gradle`), runs unit tests (`./gradlew test`), and uploads HTML/XML test reports as action artifacts for troubleshooting.
+
+---
+
 ### 2026-06-12 — Fix: Campaign intro title could wrap
 
 - The "Level X · Speed Y" banner on the Campaign level-intro overlay could wrap to a second line on
