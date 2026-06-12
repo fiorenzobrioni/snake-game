@@ -11,6 +11,16 @@ For the forward-looking plan, roadmap, active TODOs, bugs, and notes, see [`PLAN
 
 ---
 
+### 2026-06-12 — Fix: Campaign intro title could wrap
+
+- The "Level X · Speed Y" banner on the Campaign level-intro overlay could wrap to a second line on
+  narrow screens / multi-digit numbers. It is now **two fixed stacked lines** — "Level X"
+  (`displaySmall`, primary) over a smaller "Speed Y" (`titleLarge`, secondary) — sharing the same
+  pop-in animation, so it never wraps. `level_intro_title` replaced by `level_intro_level` +
+  `level_intro_speed`.
+
+---
+
 ### 2026-06-12 — Pause "Game setup" action + version bump to 0.9.0
 
 - **The pause overlay gains the same "Game setup" middle option** as the game-over overlay: it

@@ -175,23 +175,39 @@ fun LevelIntroOverlay(
     isRespawn: Boolean,
 ) {
     OverlayScrim(alpha = 0.55f) {
-        // The title pops in once per staged level (or respawn).
+        // The title pops in once per staged level (or respawn). It is split over
+        // two fixed lines ("Level X" / "Speed Y") so it can never wrap
+        // unpredictably on narrow boards or with multi-digit numbers.
         val titleIn = remember(levelIndex, speedCycle, isRespawn) { Animatable(0f) }
         LaunchedEffect(titleIn) {
             titleIn.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow))
         }
-        Text(
-            text = stringResource(R.string.level_intro_title, levelIndex, speedCycle),
-            style = MaterialTheme.typography.displaySmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            textAlign = TextAlign.Center,
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.graphicsLayer {
                 scaleX = 0.6f + 0.4f * titleIn.value
                 scaleY = 0.6f + 0.4f * titleIn.value
                 alpha = titleIn.value.coerceIn(0f, 1f)
             },
-        )
+        ) {
+            Text(
+                text = stringResource(R.string.level_intro_level, levelIndex),
+                style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                text = stringResource(R.string.level_intro_speed, speedCycle),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.secondary,
+                maxLines = 1,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
         if (isRespawn) {
             Text(
                 text = stringResource(R.string.level_intro_ready),
