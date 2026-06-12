@@ -253,6 +253,7 @@ fun GameScreen(
 
             GameStatus.Paused -> PausedOverlay(
                 onResume = { audio.playPause(); viewModel.togglePause() },
+                onSetup = { viewModel.toSetup() },
                 onMenu = { viewModel.toSetup(); onExitToMenu() },
             )
 

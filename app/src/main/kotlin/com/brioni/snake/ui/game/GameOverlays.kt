@@ -251,9 +251,9 @@ fun LevelIntroOverlay(
     }
 }
 
-/** Shown while paused; resume or bail to the menu. */
+/** Shown while paused; resume, go back to game setup, or bail to the menu. */
 @Composable
-fun PausedOverlay(onResume: () -> Unit, onMenu: () -> Unit) {
+fun PausedOverlay(onResume: () -> Unit, onSetup: () -> Unit, onMenu: () -> Unit) {
     OverlayScrim {
         Text(
             text = stringResource(R.string.paused_title),
@@ -266,6 +266,12 @@ fun PausedOverlay(onResume: () -> Unit, onMenu: () -> Unit) {
             modifier = Modifier.padding(top = 24.dp).widthIn(min = 200.dp),
         ) {
             Text(stringResource(R.string.action_resume))
+        }
+        OutlinedButton(
+            onClick = onSetup,
+            modifier = Modifier.padding(top = 12.dp).widthIn(min = 200.dp),
+        ) {
+            Text(stringResource(R.string.action_game_setup))
         }
         OutlinedButton(
             onClick = onMenu,

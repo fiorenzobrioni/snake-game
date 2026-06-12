@@ -11,6 +11,18 @@ For the forward-looking plan, roadmap, active TODOs, bugs, and notes, see [`PLAN
 
 ---
 
+### 2026-06-12 — Pause "Game setup" action + version bump to 0.9.0
+
+- **The pause overlay gains the same "Game setup" middle option** as the game-over overlay: it
+  abandons the paused run and returns to the pre-game Ready overlay (`GameViewModel.toSetup()`),
+  sitting between "Resume" and "Menu".
+- **Version bumped to 0.9.0** (`versionCode` 20) for the GitHub release covering everything since
+  v0.8.0: the Campaign game mode, odd board columns, redesigned Campaign shapes 5/6/8, clustered
+  random obstacles, the "Game setup" actions, and the HUD/extra-life fixes.
+- Verified: unit tests green, `assembleDebug` builds.
+
+---
+
 ### 2026-06-12 — Game-over "Game setup" action
 
 - **New middle option on the game-over overlay**: between "Play again" and "Menu" there is now a
