@@ -16,11 +16,14 @@ on the way to a polished, **Google-Play-publishable** title with animation, part
 
 <table>
   <tr>
-    <td align="center"><img src="docs/screenshots/screenshot_splash.jpg" width="160"/><br/><sub>Splash intro</sub></td>
-    <td align="center"><img src="docs/screenshots/screenshot_menu.jpg" width="160"/><br/><sub>Main menu</sub></td>
-    <td align="center"><img src="docs/screenshots/screenshot_gameplay.jpg" width="160"/><br/><sub>Gameplay</sub></td>
-    <td align="center"><img src="docs/screenshots/screenshot_gameplay_powerups.jpg" width="160"/><br/><sub>Power-ups &amp; hazards</sub></td>
-    <td align="center"><img src="docs/screenshots/screenshot_settings.jpg" width="160"/><br/><sub>Settings</sub></td>
+    <td align="center"><img src="docs/screenshots/screenshot_splash.jpg" width="220"/><br/><sub>Splash intro</sub></td>
+    <td align="center"><img src="docs/screenshots/screenshot_menu.jpg" width="220"/><br/><sub>Main menu</sub></td>
+    <td align="center"><img src="docs/screenshots/screenshot_settings.jpg" width="220"/><br/><sub>Settings</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/screenshot_gameplay.jpg" width="220"/><br/><sub>Classic gameplay</sub></td>
+    <td align="center"><img src="docs/screenshots/screenshot_gameplay_powerups.jpg" width="220"/><br/><sub>Power-ups &amp; hazards</sub></td>
+    <td align="center"><img src="docs/screenshots/screenshot_campaign.jpg" width="220"/><br/><sub>Campaign — Level 4</sub></td>
   </tr>
 </table>
 
