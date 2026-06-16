@@ -11,6 +11,17 @@ For the forward-looking plan, roadmap, active TODOs, bugs, and notes, see [`PLAN
 
 ---
 
+### 2026-06-16 - 3D World toggle moved to the start screen
+
+- Moved the **3D World** toggle from the Settings screen to the start screen, as a **"View"** chip in
+  `ReadyOverlay` (beside the Mode / Level / Board-scale chips), where the per-run choice is most
+  discoverable and reads as a modifier on the mode. Removed it from `SettingsScreen` (and the unused
+  `settings_3d_world` string; added `menu_view` / `menu_3d_world`). Still persisted via DataStore
+  through the new `GameViewModel.setThreeDWorld`, so the choice is remembered between sessions.
+- Verified: `./gradlew test`, `lint`, `assembleDebug` pass.
+
+---
+
 ### 2026-06-16 - 3D World becomes an orthogonal Settings toggle (not a mode)
 
 - Replaced the `GameMode.ThreeDWorld` mode with a **3D World** Settings switch (`Settings.threeDWorld`,

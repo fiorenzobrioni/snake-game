@@ -163,12 +163,6 @@ fun SettingsScreen(
             onCheckedChange = { enabled -> scope.launch { repo.setCrtEnabled(enabled) } },
         )
 
-        ToggleSection(
-            title = stringResource(R.string.settings_3d_world),
-            checked = settings.threeDWorld,
-            onCheckedChange = { enabled -> scope.launch { repo.setThreeDWorld(enabled) } },
-        )
-
         Button(
             onClick = onBack,
             modifier = Modifier.padding(top = 32.dp).widthIn(min = 200.dp),

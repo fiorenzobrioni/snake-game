@@ -278,9 +278,11 @@ fun GameScreen(
                 selectedMode = viewModel.mode,
                 selectedLevel = viewModel.level,
                 selectedScale = viewModel.scale,
+                threeDWorld = viewModel.threeDWorldEnabled,
                 onModeSelected = { viewModel.selectMode(it) },
                 onLevelSelected = { viewModel.selectLevel(it) },
                 onScaleSelected = { viewModel.selectScale(it) },
+                onThreeDWorldChanged = { viewModel.setThreeDWorld(it) },
                 onPlay = { viewModel.start() },
             )
 

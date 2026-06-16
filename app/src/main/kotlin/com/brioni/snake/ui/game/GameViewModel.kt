@@ -282,6 +282,16 @@ class GameViewModel(
         refreshBest()
     }
 
+    /** Start-screen toggle: play the chosen mode in 3D (persisted across runs). */
+    fun setThreeDWorld(enabled: Boolean) {
+        if (state.status != GameStatus.Ready) return
+        threeDWorldEnabled = enabled
+        // Reflect immediately so the not-yet-started board carries the flag; the
+        // settings collector will re-apply the same value once DataStore emits.
+        state = state.copy(threeDWorld = enabled)
+        viewModelScope.launch { repo.setThreeDWorld(enabled) }
+    }
+
     /**
      * Called by the UI when the play area is (re)measured. Resizes the board to
      * fill it, but only while [GameStatus.Ready]; ignored once a game starts so
