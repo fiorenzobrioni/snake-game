@@ -11,6 +11,22 @@ For the forward-looking plan, roadmap, active TODOs, bugs, and notes, see [`PLAN
 
 ---
 
+### 2026-06-16 - 3D polish: one turn per swipe, full-length boundary walls
+
+- **Swipe double-turn fixed**: a single continuous drag re-crossed the swipe threshold several times
+  and re-fired; harmless for absolute 2D steering but in 3D each emit is a relative turn, so one swipe
+  became a 180° reversal. `swipeToSteer` now emits each distinct direction at most once per gesture
+  (`emitted` guard, reset on drag start/end). Quick successive flicks are separate gestures, so they
+  still steer freely.
+- **Boundary walls no longer truncated**: `draw3DScene` culled a whole wall edge if any corner crossed
+  the near plane, so side walls vanished and only the wall directly ahead showed (no corners). The
+  board-rectangle edges are now subdivided into unit-cell segments (Campaign outline edges already are),
+  so only the single cell straddling the camera drops and the rest of every wall - corners included -
+  stays drawn.
+- Verified: `./gradlew test`, `lint`, `assembleDebug` pass.
+
+---
+
 ### 2026-06-16 - 3D follow-up: swipe fix, slower pace, walls, and a "3D World" mode
 
 Playtest follow-ups to the 3D chase-cam:

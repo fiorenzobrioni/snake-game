@@ -941,13 +941,21 @@ private fun DrawScope.draw3DScene(
         })
     }
     if (boundary.isEmpty()) {
-        val w = board.width.toFloat()
-        val h = board.height.toFloat()
-        addWall(0f, 0f, w, 0f)
-        addWall(w, 0f, w, h)
-        addWall(w, h, 0f, h)
-        addWall(0f, h, 0f, 0f)
+        // Subdivide each board edge into unit-cell segments so the near-plane cull
+        // only drops the single cell straddling the camera - the rest of every
+        // wall (and the corners) stays drawn, instead of a whole edge vanishing.
+        val w = board.width
+        val h = board.height
+        for (x in 0 until w) {
+            addWall(x.toFloat(), 0f, x + 1f, 0f) // top edge
+            addWall(x.toFloat(), h.toFloat(), x + 1f, h.toFloat()) // bottom edge
+        }
+        for (y in 0 until h) {
+            addWall(0f, y.toFloat(), 0f, y + 1f) // left edge
+            addWall(w.toFloat(), y.toFloat(), w.toFloat(), y + 1f) // right edge
+        }
     } else {
+        // Campaign boundary edges are already unit-length (see boundaryEdges).
         boundary.forEach { e -> addWall(e.x1, e.y1, e.x2, e.y2) }
     }
 

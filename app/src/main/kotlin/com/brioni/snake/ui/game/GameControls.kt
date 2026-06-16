@@ -29,8 +29,13 @@ import kotlin.math.abs
 
 /**
  * A [Modifier] that turns drag gestures into [Direction] changes. Emits as soon
- * as the accumulated drag passes [thresholdPx] on either axis, then resets, so
- * the player can keep steering with continuous swipes.
+ * as the accumulated drag passes [thresholdPx] on an axis, then resets. Within a
+ * single gesture each distinct direction is emitted **at most once** (tracked via
+ * `emitted`): a continuous drag would otherwise re-cross the threshold several
+ * times and fire the same direction repeatedly - harmless for absolute 2D
+ * steering, but in the 3D view (where each emit is a *relative* turn) that turned
+ * one swipe into a 180° reversal. A fresh flick is a new gesture, so quick
+ * successive swipes still steer freely.
  */
 fun Modifier.swipeToSteer(
     thresholdPx: Float = 48f,
@@ -38,10 +43,11 @@ fun Modifier.swipeToSteer(
 ): Modifier = pointerInput(Unit) {
     var dx = 0f
     var dy = 0f
+    var emitted: Direction? = null
     detectDragGestures(
-        onDragStart = { dx = 0f; dy = 0f },
-        onDragEnd = { dx = 0f; dy = 0f },
-        onDragCancel = { dx = 0f; dy = 0f },
+        onDragStart = { dx = 0f; dy = 0f; emitted = null },
+        onDragEnd = { dx = 0f; dy = 0f; emitted = null },
+        onDragCancel = { dx = 0f; dy = 0f; emitted = null },
         onDrag = { change, drag ->
             change.consume()
             dx += drag.x
@@ -52,7 +58,10 @@ fun Modifier.swipeToSteer(
                 } else {
                     if (dy > 0) Direction.Down else Direction.Up
                 }
-                onSwipe(direction)
+                if (direction != emitted) {
+                    onSwipe(direction)
+                    emitted = direction
+                }
                 dx = 0f
                 dy = 0f
             }
