@@ -64,7 +64,9 @@ The classic Snake mechanics, extended with configurable features so every run fe
   **Snail** (slow down), **Star** (invincible pass-through; the snake blinks faster as it runs out),
   **Freeze**, **Jackpot** (big bonus),
   plus the hazards **Earthquake** (bites a chunk off your tail and scatters those segments across the
-  board as lethal, fading debris) and **Explosion** (splits the snake, leaving lethal debris). Active
+  board as lethal, fading debris), **Explosion** (splits the snake, leaving lethal debris) and **3D**
+  (the board tilts into a behind-the-head chase-cam and you play in perspective for the duration, with
+  the steering switched to relative left/right turns). Active
   effects show countdown chips; up to **two specials** can share the board at once. Toggle **Hazards**
   off in Settings for a calmer run, or dial how often specials appear with the **Special blocks**
   setting (*Standard / Frequent / Frenzy*) - the higher tiers also bring specials online earlier in a
@@ -72,11 +74,14 @@ The classic Snake mechanics, extended with configurable features so every run fe
   penalty, each with a floating callout.
 - 🏆 **Records screen** - a best-score table per difficulty × board scale (and per mode), reachable
   from the main menu.
-- 🎖️ **Achievements** - fifteen local milestones (combos, scores, endurance, eating sprees, using power-ups…)
+- 🎖️ **Achievements** - eighteen local milestones (combos, scores, endurance, eating sprees, using power-ups…)
   that unlock as you play, with a dedicated screen and an unlock banner on the game-over screen.
 - 🕹️ **Game modes** - **Classic**, **Endless** (speed ramps up the longer you survive),
   **Time Attack** (score as much as you can in 120s) and **Campaign** (see below), selectable on the
   start screen.
+- 🧊 **3D World** - a **View** toggle on the start screen that plays **any** mode entirely in the
+  behind-the-head 3D chase-cam (at a slightly eased pace, with relative left/right steering), instead
+  of the flat top-down board. The choice is remembered between sessions.
 - 🧩 **Campaign mode** - ten **designed board shapes** (cut corners, pillars, chambers, a vault…)
   that repeat forever, one **speed step faster** each lap. Eat **12 foods** to clear a level; you
   start with **3 lives** (a crash respawns you in the same level, keeping score and progress) and a
@@ -189,10 +194,16 @@ automatically pauses when you leave the app and yields to other apps' audio.
 **Game modes:** choose your mode on the start screen - **Classic** (survive as long as you can),
 **Endless** (the snake keeps accelerating the longer you survive), **Time Attack** (score as much
 as possible in 120 seconds - watch for the exclusive **+5s** / **−3s** clock pieces that stretch or
-shave your remaining time) or **Campaign** (clear ten shaped boards by eating 12 foods each, with 3
+shave your remaining time), **Campaign** (clear ten shaped boards by eating 12 foods each, with 3
 lives, an exclusive 2×2 extra-life piece, and a speed-up every completed lap - the HUD shows
 *Level x · Speed x*, your hearts and the foods still to go). Your best score is tracked per mode,
 level and board scale; check the **Records** screen from the main menu.
+
+**3D World:** on the start screen, switch the **View** to **3D World** to play *any* mode entirely in
+the behind-the-head 3D chase-cam - the board tilts into perspective as the run starts, the pace is
+eased a little for playability, and steering becomes relative left/right turns (swipe horizontally, or
+the two-button control). Switch it back off for the classic flat top-down board. Your choice is
+remembered between sessions.
 
 **Power-ups & hazards:** as a run progresses, rare special pieces start appearing on the board.
 Power-ups help: **Lightning** speeds the snake up, **Snail** slows it down, **Star** grants brief
@@ -200,7 +211,10 @@ invincibility (you can pass through walls, obstacles and your own body - the sna
 effect fades), **Freeze** pauses further specials for a strategic breather, and **Jackpot** grants a
 large score bonus. Hazards hinder: **Earthquake** bites a chunk off your tail and flings those
 segments across the board as lethal debris (it fades after a few seconds); **Explosion** splits the
-snake in two - the detached segment turns into lethal debris until it auto-clears. Active effects show
+snake in two - the detached segment turns into lethal debris until it auto-clears; and **3D** briefly
+freezes the action while the board tilts forward into a chase-cam mounted behind and above the snake's
+head, then hands play back in that perspective view for the duration (steering becomes relative
+left/right turns) before tilting back to the flat top-down. Active effects show
 a countdown chip in the HUD. **Time Attack** also has two clock-only pieces - a **+5s** bonus and a
 **−3s** penalty. Toggle **Hazards** off in **Settings** for a calmer run (this also hides the time
 penalty), or raise **Special blocks** to *Frenzy* for constant chaos.

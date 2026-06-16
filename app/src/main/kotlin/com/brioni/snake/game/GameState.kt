@@ -84,6 +84,9 @@ data class GameState(
     val lives: Int = 0,
     val levelFoodsEaten: Int = 0,
     val walls: Set<Position> = emptySet(),
+    /** When true, the run is played in the 3D chase-cam (a UI/settings flag the
+     *  model only consults to ease the pace and suppress the redundant 3D food). */
+    val threeDWorld: Boolean = false,
     val lastEvents: List<GameEvent> = emptyList(),
 ) {
     val head: Position get() = snake.first()
@@ -111,6 +114,10 @@ data class GameState(
             if (hasEffect(EffectKind.Haste)) ms *= HASTE_FACTOR
             if (hasEffect(EffectKind.Slow)) ms *= SLOW_FACTOR
             if (hasEffect(EffectKind.Freeze)) ms *= FREEZE_FACTOR
+            // The 3D chase-cam (timed hazard or the whole 3D World mode) eases the
+            // pace a little so the perspective view stays playable; proportional,
+            // so high levels stay fast in relative terms.
+            if (hasEffect(EffectKind.ThreeD) || threeDWorld) ms *= THREED_FACTOR
             return ms.toLong().coerceIn(MIN_TICK_MS, MAX_TICK_MS)
         }
 
@@ -122,6 +129,9 @@ data class GameState(
         const val HASTE_FACTOR = 0.6
         const val SLOW_FACTOR = 1.6
         const val FREEZE_FACTOR = 1.4
+
+        /** 3D view pace multiplier (>1 = a touch slower, for playability). */
+        const val THREED_FACTOR = 1.4
 
         /** Clamp so stacked effects can't make the game unplayably fast/slow. */
         const val MIN_TICK_MS = 40L

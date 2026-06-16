@@ -257,6 +257,20 @@ snake-game/
   - [x] **Star** - brief invincibility / ghost (pass through walls, obstacles and self) with a HUD timer.
   - [x] **Freeze** - temporarily freezes special spawns / slows time - a strategic breather.
   - [x] **Jackpot** - rare piece granting a large score bonus (and a random growth).
+  - [x] **3D** (hazard) - the game briefly freezes while the board tilts into a behind-the-head
+        **chase-cam**, then resumes in perspective for the effect's duration before tilting back.
+        Model-wise it is a plain timed `EffectKind.ThreeD`; the only rule effect is a **proportional
+        slowdown** (`THREED_FACTOR`) for playability. The cinematic freeze is **UI-only** (a transient
+        `GameViewModel.cinematicHold`, *not* `GameStatus.Paused` and *not* a model field) and the
+        camera lives entirely under `ui/game/` (`ChaseCam.kt` perspective projection + `GameBoard`
+        `draw3DScene`, driven by a single `camBlend` 0→1 that morphs flat top-down ↔ chase-cam, so
+        `t=0` stays pixel-identical to the 2D renderer). Steering becomes **relative** while active
+        (swipe = horizontal turn, every other scheme → two-button). Gated by the **Hazards** toggle.
+        The chase-cam view also raises **boundary walls** so the arena reads clearly in 3D.
+  - [x] **3D World** - a **start-screen "View" toggle** (not a mode) that plays *any* mode entirely in
+        the chase-cam (+ the 3D slowdown). Reuses the same renderer/controls; suppresses the
+        now-redundant 3D food. Persisted via DataStore (`Settings.threeDWorld`) and carried into the run
+        as the `GameState.threeDWorld` flag.
 - [x] **Step 6.3** - Highscore tables per (level × size), per mode, in a "Records" screen.
 - [x] **Step 6.4** - Local achievements.
 - [x] **Step 6.5** - Extra modes: Endless, Time Attack.
@@ -319,10 +333,26 @@ snake-game/
 - **Mystery foods are resolved at spawn, not at eat**: `FoodTable.roll` rolls the concealed amount and
   stores the final `FoodEffect`, so `GameEngine.tick` consumes no randomness and stays deterministic.
 - **Special power-ups / hazards** shipped in **Phase 6.2** (earthquake, explosion + lethal debris,
-  Lightning/Snail, Star/ghost, Freeze, Jackpot) via `FoodCategory.Special`, the extra `FoodEffect`
-  cases and `GameState.debris`/`effectTimers`. Effect durations are stored in **ms** and aged by the
-  effective interval each tick; the loop reads `GameState.tickIntervalMillis` (never `level.tickMillis`)
-  so speed effects actually change the pace. Keep that invariant.
+  Lightning/Snail, Star/ghost, Freeze, Jackpot, and the **3D** chase-cam hazard) via
+  `FoodCategory.Special`, the extra `FoodEffect` cases and `GameState.debris`/`effectTimers`. Effect
+  durations are stored in **ms** and aged by the effective interval each tick; the loop reads
+  `GameState.tickIntervalMillis` (never `level.tickMillis`) so speed effects actually change the pace.
+  Keep that invariant. The 3D view eases the pace by `THREED_FACTOR` (proportional, applied when the
+  3D hazard is active or the **3D World** setting is on) so the perspective stays playable. The 3D *camera* is
+  otherwise rendering-only: the `game/` package is unaware of it (besides the speed factor), the
+  cinematic freeze is a transient UI flag (`GameViewModel.cinematicHold`), and all perspective math
+  lives in `ui/game/ChaseCam.kt` + `GameBoard.draw3DScene` behind a single `camBlend` blend. The board
+  swipe uses a **single, never-swapped** `pointerInput` routed through `GameViewModel.onSwipe`, which
+  picks relative-turn vs absolute steering from the current `threeDActive` (swapping the modifier on a
+  state change left a stale gesture handler - do not reintroduce that).
+- **3D World** is a **start-screen "View" toggle** (the `ReadyOverlay` chip, via
+  `GameViewModel.setThreeDWorld`), persisted via DataStore (`Settings.threeDWorld`) and orthogonal to
+  the mode: any mode plays in the chase-cam when it is on. It is carried into a run as the pure
+  `GameState.threeDWorld` flag (stamped in `GameViewModel.resetTo` + synced on the Ready screen), which
+  the model consults only to ease the pace and suppress the redundant 3D food. `threeDActive`
+  (`threeDWorldEnabled || threeDHazardActive`) drives the renderer + relative controls; `GameScreen`
+  holds `camBlend` at 1 while the toggle is on. It was briefly a `GameMode` (`ThreeDWorld`); that was
+  removed in favour of the orthogonal toggle - do not reintroduce it as a mode.
 - **Control scheme**: the default is **Swipe** (set in `GameViewModel.DEFAULT_CONTROL` and the
   persisted fallback in `SettingsRepository`); the two-button relative scheme and the D-pad remain
   selectable in Settings (choice persisted via DataStore). Phase 3 had originally shipped two-button

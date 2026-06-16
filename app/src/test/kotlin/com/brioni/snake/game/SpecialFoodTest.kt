@@ -165,6 +165,81 @@ class SpecialFoodTest {
         assertTrue(next.lastEvents.any { it is GameEvent.EffectExpired })
     }
 
+    // --- 3D -------------------------------------------------------------
+
+    @Test
+    fun eatingThreeDStartsEffectAndKeepsLength() {
+        val state = runningState(foods = listOf(specialAt(Position(6, 5), FoodEffect.ThreeD(11_000))))
+        val next = engine.tick(state)
+        assertTrue(next.hasEffect(EffectKind.ThreeD))
+        assertEquals(3, next.snake.size) // pure effect: no growth, no shrink
+        assertTrue(
+            next.lastEvents.filterIsInstance<GameEvent.EffectStarted>()
+                .any { it.kind == EffectKind.ThreeD },
+        )
+    }
+
+    @Test
+    fun threeDAgesDownAndExpiresWithEvent() {
+        // 50ms remaining < one Beginner interval → expires this tick.
+        val state = runningState(effectTimers = listOf(ActiveEffect(EffectKind.ThreeD, 50, 11_000)))
+        val next = engine.tick(state)
+        assertFalse(next.hasEffect(EffectKind.ThreeD))
+        assertTrue(
+            next.lastEvents.filterIsInstance<GameEvent.EffectExpired>()
+                .any { it.kind == EffectKind.ThreeD },
+        )
+    }
+
+    @Test
+    fun threeDSlowsTheTickIntervalProportionally() {
+        // The 3D view eases the pace by THREED_FACTOR (proportional to the base).
+        val base = Level.Beginner.tickMillis
+        val state = runningState(effectTimers = listOf(ActiveEffect(EffectKind.ThreeD, 6_000, 11_000)))
+        assertTrue(state.tickIntervalMillis > base)
+        assertEquals((base * GameState.THREED_FACTOR).toLong(), state.tickIntervalMillis)
+    }
+
+    @Test
+    fun threeDWorldSlowsAndUsesLevelPace() {
+        // The 3D World flag eases the level base pace by the same factor.
+        val base = Level.Beginner.tickMillis
+        val state = runningState().copy(threeDWorld = true)
+        assertEquals((base * GameState.THREED_FACTOR).toLong(), state.tickIntervalMillis)
+    }
+
+    @Test
+    fun threeDWorldDoesNotSpawnTheThreeDFood() {
+        val rolls = (0 until 6000).map {
+            FoodTable.roll(Random(it.toLong()), 2000, Level.Beginner, threeDWorld = true)
+        }
+        assertTrue("no 3D food in 3D World", rolls.none { it.effect is FoodEffect.ThreeD })
+        // Other specials still appear (it is otherwise Classic-like).
+        assertTrue("other specials still spawn", rolls.any { it.category == FoodCategory.Special })
+    }
+
+    @Test
+    fun threeDIsAHazardGatedByTheToggle() {
+        assertTrue(FoodEffect.ThreeD(11_000).isHazard)
+        val withHazards = (0 until 6000).map {
+            FoodTable.roll(Random(it.toLong()), 2000, Level.Beginner, hazardsEnabled = true)
+        }
+        assertTrue("3D appears when hazards enabled", withHazards.any { it.effect is FoodEffect.ThreeD })
+        val noHazards = (0 until 6000).map {
+            FoodTable.roll(Random(it.toLong()), 2000, Level.Beginner, hazardsEnabled = false)
+        }
+        assertTrue("no 3D when hazards disabled", noHazards.none { it.effect is FoodEffect.ThreeD })
+    }
+
+    @Test
+    fun threeDSpawnsAsSpecialMaxi() {
+        val spec = (0 until 6000).map {
+            FoodTable.roll(Random(it.toLong()), 2000, Level.Beginner)
+        }.first { it.effect is FoodEffect.ThreeD }
+        assertEquals(FoodCategory.Special, spec.category)
+        assertEquals(FoodSize.Maxi, spec.size)
+    }
+
     // --- Star (Ghost) -----------------------------------------------------
 
     @Test

@@ -4,6 +4,7 @@ import android.graphics.RenderEffect
 import android.graphics.RuntimeShader
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateIntAsState
@@ -54,6 +55,7 @@ import com.brioni.snake.R
 import com.brioni.snake.audio.GameAudio
 import com.brioni.snake.game.ControlScheme
 import com.brioni.snake.game.DEFAULT_ASPECT
+import com.brioni.snake.game.EffectKind
 import com.brioni.snake.game.GameMode
 import com.brioni.snake.game.GameStatus
 import com.brioni.snake.game.LevelsMode
@@ -126,6 +128,40 @@ fun GameScreen(
         label = "pauseBlur",
     )
 
+    // 3D hazard camera blend: 0 = flat top-down, 1 = full chase-cam. The VM bumps
+    // cinematicId on tilt-in (effect started) and tilt-out (effect expired); we
+    // animate the tilt then release the loop freeze it set.
+    val camBlend = remember { Animatable(0f) }
+    // The timed hazard's tilt-in / tilt-out (only when 3D World is off; with it on
+    // the whole game stays in 3D, driven permanently below).
+    LaunchedEffect(viewModel.cinematicId) {
+        if (viewModel.cinematicId == 0 || viewModel.threeDWorldEnabled) return@LaunchedEffect
+        val entering = viewModel.state.hasEffect(EffectKind.ThreeD)
+        camBlend.animateTo(
+            targetValue = if (entering) 1f else 0f,
+            animationSpec = tween(durationMillis = 700, easing = FastOutSlowInEasing),
+        )
+        viewModel.endCinematicHold()
+        if (!entering) viewModel.clearThreeD()
+    }
+    // 3D World setting: every mode is in the chase-cam. Tilt in once play starts
+    // and hold; the terminal/setup snap below drops back to flat for the overlays.
+    LaunchedEffect(viewModel.threeDWorldEnabled, state.status) {
+        if (!viewModel.threeDWorldEnabled) return@LaunchedEffect
+        if (state.status == GameStatus.Running || state.status == GameStatus.Paused) {
+            if (camBlend.value < 1f) {
+                camBlend.animateTo(1f, tween(durationMillis = 700, easing = FastOutSlowInEasing))
+            }
+        }
+    }
+    // Safety: snap flat for the terminal / setup screens so overlays render over
+    // the normal top-down board (covers both the hazard and 3D World).
+    LaunchedEffect(state.status) {
+        val playing3D = state.status == GameStatus.Running || state.status == GameStatus.Paused
+        if (!playing3D && !viewModel.threeDActive) camBlend.snapTo(0f)
+        if (state.status == GameStatus.GameOver || state.status == GameStatus.Ready) camBlend.snapTo(0f)
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize().blur(blurRadius)) {
             val inLevels = state.mode == GameMode.Levels
@@ -192,7 +228,10 @@ fun GameScreen(
                 }
                 boardModifier = boardModifier.offset { IntOffset(shakeX.roundToInt(), shakeY.roundToInt()) }
                 if (state.status == GameStatus.Running && viewModel.controlScheme == ControlScheme.Swipe) {
-                    boardModifier = boardModifier.swipeToSteer(onSwipe = viewModel::setDirection)
+                    // A single, never-swapped detector: the VM routes each swipe to
+                    // a relative turn (3D) or an absolute direction (2D). Swapping
+                    // the modifier on threeDActive would leave a stale pointerInput.
+                    boardModifier = boardModifier.swipeToSteer(onSwipe = viewModel::onSwipe)
                 }
                 // The board interior stays dark, but its frame follows the theme:
                 // a branded green border on the light surround, the skin's subtle
@@ -217,6 +256,7 @@ fun GameScreen(
                     palette = viewModel.palette,
                     borderColor = boardBorderColor,
                     outsideColor = MaterialTheme.colorScheme.background,
+                    cameraBlend = camBlend.value,
                     modifier = boardModifier,
                 )
             }
@@ -225,6 +265,7 @@ fun GameScreen(
                 ControlRegion(
                     scheme = viewModel.controlScheme,
                     viewModel = viewModel,
+                    forceRelative = viewModel.threeDActive,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp, vertical = 12.dp),
@@ -237,9 +278,11 @@ fun GameScreen(
                 selectedMode = viewModel.mode,
                 selectedLevel = viewModel.level,
                 selectedScale = viewModel.scale,
+                threeDWorld = viewModel.threeDWorldEnabled,
                 onModeSelected = { viewModel.selectMode(it) },
                 onLevelSelected = { viewModel.selectLevel(it) },
                 onScaleSelected = { viewModel.selectScale(it) },
+                onThreeDWorldChanged = { viewModel.setThreeDWorld(it) },
                 onPlay = { viewModel.start() },
             )
 
@@ -304,6 +347,7 @@ private fun EffectChip(effect: com.brioni.snake.game.ActiveEffect) {
         com.brioni.snake.game.EffectKind.Slow -> stringResource(R.string.effect_snail)
         com.brioni.snake.game.EffectKind.Ghost -> stringResource(R.string.effect_star)
         com.brioni.snake.game.EffectKind.Freeze -> stringResource(R.string.effect_freeze)
+        com.brioni.snake.game.EffectKind.ThreeD -> stringResource(R.string.effect_threed)
     }
     Column(
         modifier = Modifier
@@ -341,8 +385,19 @@ private fun EffectChip(effect: com.brioni.snake.game.ActiveEffect) {
 private fun ControlRegion(
     scheme: ControlScheme,
     viewModel: GameViewModel,
+    forceRelative: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    // During the 3D view every non-swipe scheme collapses to the two-button
+    // relative turns (swipe keeps steering on the board itself).
+    if (forceRelative && scheme != ControlScheme.Swipe) {
+        RelativeControls(
+            onLeft = viewModel::turnLeft,
+            onRight = viewModel::turnRight,
+            modifier = modifier,
+        )
+        return
+    }
     when (scheme) {
         ControlScheme.TwoButton -> RelativeControls(
             onLeft = viewModel::turnLeft,

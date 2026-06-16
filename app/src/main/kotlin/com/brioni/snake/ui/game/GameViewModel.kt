@@ -103,6 +103,10 @@ class GameViewModel(
     var specialFrequency by mutableStateOf(SpecialFrequency.Standard)
         private set
 
+    /** When true, every mode is played in the 3D chase-cam view (setting). */
+    var threeDWorldEnabled by mutableStateOf(false)
+        private set
+
     /** Active play mode; highscores are tracked per (mode, level, scale). */
     var mode by mutableStateOf(GameMode.Classic)
         private set
@@ -144,6 +148,37 @@ class GameViewModel(
     /** Bumped on earthquake/explosion so the UI can shake the board mid-game. */
     var shakeEventId by mutableIntStateOf(0)
         private set
+
+    /**
+     * True while the 3D (chase-cam) *hazard* is on screen — from the tilt-in until
+     * the tilt-out completes. Distinct from the effect timer so it can bracket the
+     * cinematic. The whole 3D World mode is handled separately via [threeDActive].
+     */
+    var threeDHazardActive by mutableStateOf(false)
+        private set
+
+    /**
+     * Whether the board should render (and steer) in the 3D chase-cam: the timed
+     * hazard, or the "3D World" setting that plays every mode in 3D. Gates the
+     * relative-controls override and the perspective renderer.
+     */
+    val threeDActive: Boolean get() = threeDWorldEnabled || threeDHazardActive
+
+    /**
+     * Bumped when the 3D cinematic should play (tilt-in on start, tilt-out on
+     * expiry). The screen observes it to drive the camera-blend animation, the
+     * same id-counter pattern as [deathEventId] / [shakeEventId].
+     */
+    var cinematicId by mutableIntStateOf(0)
+        private set
+
+    /**
+     * Transient, UI-only freeze of the tick loop while a 3D tilt animation plays.
+     * Not [GameStatus.Paused] (no overlay/blur) and not a model field — the model
+     * stays unaware of the camera. Holding the loop also pauses the effect-timer
+     * aging, so the 3D duration counts only real play time.
+     */
+    private var cinematicHold = false
 
     /** Best score for the current (level, scale), and whether the last run beat it. */
     var bestScore by mutableIntStateOf(0)
@@ -195,7 +230,13 @@ class GameViewModel(
                 skin = settings.skin
                 hazardsEnabled = settings.hazardsEnabled
                 specialFrequency = settings.specialFrequency
+                threeDWorldEnabled = settings.threeDWorld
                 if (state.status == GameStatus.Ready) {
+                    // Keep the not-yet-started board's 3D flag in sync with the
+                    // toggle so the pace/spawn rules match before play begins.
+                    if (state.threeDWorld != threeDWorldEnabled) {
+                        state = state.copy(threeDWorld = threeDWorldEnabled)
+                    }
                     // Levels mode ignores the difficulty selector: it is pinned
                     // to its score level so this collector can't keep resetting.
                     val targetLevel = if (settings.mode == GameMode.Levels) LevelsMode.SCORE_LEVEL else settings.level
@@ -239,6 +280,16 @@ class GameViewModel(
         viewModelScope.launch { repo.setScale(scale) }
         reconfigureBoard()
         refreshBest()
+    }
+
+    /** Start-screen toggle: play the chosen mode in 3D (persisted across runs). */
+    fun setThreeDWorld(enabled: Boolean) {
+        if (state.status != GameStatus.Ready) return
+        threeDWorldEnabled = enabled
+        // Reflect immediately so the not-yet-started board carries the flag; the
+        // settings collector will re-apply the same value once DataStore emits.
+        state = state.copy(threeDWorld = enabled)
+        viewModelScope.launch { repo.setThreeDWorld(enabled) }
     }
 
     /**
@@ -355,8 +406,13 @@ class GameViewModel(
     /** Replaces the state and resets interpolation bookkeeping to it. */
     private fun resetTo(newState: GameState) {
         previousSnake = newState.snake
-        state = newState
+        // Stamp the current "3D World" toggle onto the run so the model eases the
+        // pace and suppresses the redundant 3D food for the whole game.
+        state = newState.copy(threeDWorld = threeDWorldEnabled)
         tickTimeNanos = System.nanoTime()
+        // Any reset (setup / new game / level stage) clears the hazard cinematic.
+        threeDHazardActive = false
+        cinematicHold = false
     }
 
     private fun runLoop() {
@@ -366,7 +422,10 @@ class GameViewModel(
                 // Read the *effective* interval each iteration so Lightning/Snail/
                 // Freeze actually change the pace mid-run.
                 delay(state.tickIntervalMillis)
-                if (state.status == GameStatus.Running) advance()
+                // The loop keeps spinning during a 3D tilt cinematic but skips the
+                // simulation, so the snake and the effect timers freeze until the
+                // camera has settled (see [endCinematicHold]).
+                if (state.status == GameStatus.Running && !cinematicHold) advance()
             }
         }
     }
@@ -376,6 +435,8 @@ class GameViewModel(
         val before = state
         val after = engine.tick(before, hazardsEnabled, specialFrequency)
 
+        var threeDStarted = false
+        var threeDExpired = false
         after.lastEvents.forEach { event ->
             when (event) {
                 is GameEvent.Ate -> {
@@ -451,8 +512,11 @@ class GameViewModel(
                 is GameEvent.EffectStarted -> {
                     sfx.special(event.food)
                     if (event.kind == EffectKind.Ghost) runUsedStar = true
+                    if (event.kind == EffectKind.ThreeD) threeDStarted = true
                 }
-                is GameEvent.EffectExpired -> Unit
+                is GameEvent.EffectExpired -> {
+                    if (event.kind == EffectKind.ThreeD) threeDExpired = true
+                }
                 is GameEvent.LevelAdvanced -> {
                     sfx.levelUp()
                     runMaxLevel = max(runMaxLevel, event.levelIndex)
@@ -489,9 +553,58 @@ class GameViewModel(
         previousSnake = before.snake
         state = after
         tickTimeNanos = System.nanoTime()
+
+        // 3D cinematic brackets. Enter only on the rising edge (a second 3D eaten
+        // while already active just refreshes the timer — no re-tilt). Both edges
+        // freeze the loop until the screen's blend animation calls back.
+        if (threeDStarted && !threeDHazardActive) {
+            threeDHazardActive = true
+            cinematicHold = true
+            cinematicId++
+        }
+        if (threeDExpired) {
+            cinematicHold = true
+            cinematicId++
+        }
+    }
+
+    /**
+     * Called by the screen when a 3D tilt animation finishes: releases the loop
+     * freeze so play resumes. Safe to call after the game already left Running
+     * (the loop has stopped; the flag is simply cleared for the next run).
+     */
+    fun endCinematicHold() {
+        cinematicHold = false
+    }
+
+    /** Clears the 3D hazard state once the tilt-out has restored the flat view. */
+    fun clearThreeD() {
+        threeDHazardActive = false
+    }
+
+    /**
+     * Routes a board swipe. In the 3D view a horizontal swipe is a heading-relative
+     * turn (left/right) and vertical swipes are ignored; otherwise it steers by the
+     * swiped absolute [direction]. Reading [threeDActive] here (not at wiring time)
+     * keeps a single, never-swapped gesture detector correct in both views.
+     */
+    fun onSwipe(direction: Direction) {
+        if (threeDActive) {
+            when (direction) {
+                Direction.Left -> turnLeft()
+                Direction.Right -> turnRight()
+                Direction.Up, Direction.Down -> Unit
+            }
+        } else {
+            setDirection(direction)
+        }
     }
 
     private fun onGameOver(score: Int) {
+        // Death during 3D: drop the cinematic state so the game-over overlay shows
+        // the flat board (the screen snaps the camera blend back to 0 on status).
+        threeDHazardActive = false
+        cinematicHold = false
         isNewBest = score > bestScore
         val stats = RunStats(
             mode = mode,

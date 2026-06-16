@@ -11,6 +11,132 @@ For the forward-looking plan, roadmap, active TODOs, bugs, and notes, see [`PLAN
 
 ---
 
+### 2026-06-16 - 3D World toggle moved to the start screen
+
+- Moved the **3D World** toggle from the Settings screen to the start screen, as a **"View"** chip in
+  `ReadyOverlay` (beside the Mode / Level / Board-scale chips), where the per-run choice is most
+  discoverable and reads as a modifier on the mode. Removed it from `SettingsScreen` (and the unused
+  `settings_3d_world` string; added `menu_view` / `menu_3d_world`). Still persisted via DataStore
+  through the new `GameViewModel.setThreeDWorld`, so the choice is remembered between sessions.
+- Verified: `./gradlew test`, `lint`, `assembleDebug` pass.
+
+---
+
+### 2026-06-16 - 3D World becomes an orthogonal Settings toggle (not a mode)
+
+- Replaced the `GameMode.ThreeDWorld` mode with a **3D World** Settings switch (`Settings.threeDWorld`,
+  DataStore-persisted, `setThreeDWorld`). When on, **any** mode (Classic / Endless / Time Attack /
+  Campaign) is played in the chase-cam, so the 3D view is now orthogonal to the mode rather than a
+  duplicate of Classic.
+- The toggle is carried into a run as a pure `GameState.threeDWorld` flag (stamped in
+  `GameViewModel.resetTo`, synced on the Ready screen), which the model reads only to ease the pace
+  (`THREED_FACTOR`) and suppress the redundant 3D food (threaded through `FoodTable.roll` /
+  `specialSpec`). `threeDActive = threeDWorldEnabled || threeDHazardActive` drives the renderer and the
+  relative controls; `GameScreen` holds `camBlend` at 1 while the toggle is on.
+- Added the toggle to the Settings screen (after the CRT filter) and the `settings_3d_world` string.
+  Docs (README / PLANNING) updated; the old `ThreeDWorld` enum value is gone (stale highscores under
+  that key are ignored by `ScoreKey.parse`).
+- Verified: `./gradlew test`, `lint`, `assembleDebug` pass.
+
+---
+
+### 2026-06-16 - 3D walls extrude outward; README modes/features refresh
+
+- **Walls no longer overlap the snake**: the boundary wall box was centred on the edge line, so its
+  inner half intruded into the edge cell and overlapped the snake at the border. `BoundaryEdge` now
+  carries an outward normal and `draw3DScene` extrudes each wall **entirely outward** (inner face flush
+  with the boundary), so a snake running along the edge sits just inside the wall with no overlap.
+- **README**: documented the **3D World** mode and the **3D** hazard, and verified the rest of the
+  feature/mode list against the code - corrected the achievements count (15 -> 18); board scales
+  (Cozy/Standard/Epic), levels (5), skins (4) and modes (5) confirmed accurate.
+- Verified: `./gradlew test`, `lint`, `assembleDebug` pass.
+
+---
+
+### 2026-06-16 - 3D polish: solid boundary walls, no 2D-board ghost
+
+- **Walls given depth**: boundary walls were a zero-thickness plane. Each edge is now extruded into a
+  solid box (`WALL_THICKNESS`) with two side faces and a top cap, painted far->near so the box occludes
+  itself - reads like the interior obstacle blocks.
+- **2D-board ghost removed**: in 3D the backdrop was painted only over the flat board rectangle, so that
+  screen-aligned rectangle showed through behind the perspective scene like a 2D-board shadow.
+  `draw3DScene` now paints the animated backdrop + fog over the whole canvas (full-bleed).
+- Verified: `./gradlew test`, `lint`, `assembleDebug` pass.
+
+---
+
+### 2026-06-16 - 3D polish: one turn per swipe, full-length boundary walls
+
+- **Swipe double-turn fixed**: a single continuous drag re-crossed the swipe threshold several times
+  and re-fired; harmless for absolute 2D steering but in 3D each emit is a relative turn, so one swipe
+  became a 180° reversal. `swipeToSteer` now emits each distinct direction at most once per gesture
+  (`emitted` guard, reset on drag start/end). Quick successive flicks are separate gestures, so they
+  still steer freely.
+- **Boundary walls no longer truncated**: `draw3DScene` culled a whole wall edge if any corner crossed
+  the near plane, so side walls vanished and only the wall directly ahead showed (no corners). The
+  board-rectangle edges are now subdivided into unit-cell segments (Campaign outline edges already are),
+  so only the single cell straddling the camera drops and the rest of every wall - corners included -
+  stays drawn.
+- Verified: `./gradlew test`, `lint`, `assembleDebug` pass.
+
+---
+
+### 2026-06-16 - 3D follow-up: swipe fix, slower pace, walls, and a "3D World" mode
+
+Playtest follow-ups to the 3D chase-cam:
+- **Swipe fixed**: in 3D only the first swipe used to register. Root cause was swapping the board's
+  `pointerInput` modifier on `threeDActive` - an unchanged-key `pointerInput` is not restarted, so the
+  stale absolute handler kept running and, in the rotated view, most swipes mapped to a reversal and
+  were rejected. Now a single, never-swapped `swipeToSteer` routes through `GameViewModel.onSwipe`,
+  which picks a heading-relative turn (left/right; vertical ignored) in 3D or absolute steering in 2D,
+  reading the *current* `threeDActive`. Removed the unused `swipeToSteerRelative`.
+- **Proportional slowdown**: added `GameState.THREED_FACTOR = 1.4`, applied in `tickIntervalMillis`
+  when the 3D hazard is active or in 3D World mode. It multiplies the already-computed interval, so
+  high levels stay fast in relative terms.
+- **Raised boundary walls**: `draw3DScene` now draws vertical wall quads along the play-area edges
+  (rectangle or shaped Campaign outline) with a bright top rail and a gradient face, depth-sorted with
+  the rest of the scene - the arena reads clearly in perspective (also fixes Campaign walls).
+- **New `GameMode.ThreeDWorld` ("3D World")**: a full Classic game played in the chase-cam, selectable
+  beside Campaign. `threeDActive` is true for the whole mode (`mode == ThreeDWorld || threeDHazardActive`),
+  `GameScreen` holds `camBlend` at 1 (with a quick intro tilt), the 3D food hazard is suppressed in it,
+  and it inherits Classic rules + its own highscore table automatically.
+- Camera constants were tuned (slightly higher/further chase-cam, wider FOV).
+- **Verified**: `./gradlew test` (updated/added model tests), `lint`, `assembleDebug` all pass.
+
+---
+
+### 2026-06-16 - "3D" chase-cam hazard (Step 6.2)
+
+- **New special hazard `3D`**: eating it briefly freezes the game while the flat top-down board tilts
+  forward into a **chase-cam** mounted behind and above the snake's head; play then resumes in that
+  perspective view for the effect duration (~11 s), and on expiry the camera lifts back to the flat
+  2D board. Gated by the **Hazards** toggle, like Snail / Earthquake / Explosion.
+- **Model (pure Kotlin, no rule change)**: added `EffectKind.ThreeD`, `FoodEffect.ThreeD(durationMs)`
+  (`THREE_D_MS = 11_000`), an `isHazard` entry, and a weighted spawn in the hazard branch of
+  `FoodTable.specialSpec`. The eat handler mirrors `Ghost`/`Freeze` (pure timed effect). Crucially
+  **`tickIntervalMillis` is left untouched** - 3D never changes the snake's pace.
+- **Camera (rendering only)**: new `ui/game/ChaseCam.kt` holds a pure, unit-tested perspective
+  projection (`Cam`/`project`/`blendedCam`/`yawFor`/near-plane clipping). `GameBoard` gained
+  `draw3DScene`: a receding floor grid + play-area boundary, with obstacles / debris / food / snake
+  projected and depth-sorted (painter's algorithm), the head keeping its glow shader, and
+  particles / floating text billboarded. A single `camBlend` 0→1 morphs flat top-down ↔ chase-cam, so
+  at `t=0` the renderer is pixel-identical to the existing 2D path (zero regression). Heading turns
+  ease via an `Animatable` yaw so 90° turns swing smoothly.
+- **Cinematic (UI-only)**: the tilt-in/out freeze is a transient `GameViewModel.cinematicHold`
+  gating `advance()` - *not* `GameStatus.Paused` and *not* a model field - bracketed by a
+  `cinematicId` the screen observes to drive the 700 ms `camBlend` tween, then release the hold.
+  Death / reset clear the 3D state and snap the camera flat.
+- **Controls**: while 3D is active, steering becomes **relative** - Swipe keeps swiping but
+  horizontal = turn left/right (`Modifier.swipeToSteerRelative`, vertical ignored); D-pad / two-button
+  collapse to the two-button relative widget. Reverts to the player's scheme afterward.
+- **Polish**: indigo accent (`SpecialVisuals.ThreeDColor`), a HUD "3D" countdown chip
+  (`effect_threed` string), a wireframe-cube on-board icon, and the reused `Sfx.Star` cue (no new
+  assets).
+- **Verified**: `./gradlew test` (new model + `ChaseCamTest` projection tests), `./gradlew lint`, and
+  `./gradlew assembleDebug` all pass.
+
+---
+
 ### 2026-06-12 - GitHub Actions CI workflow
 
 - **Created GitHub Actions CI workflow** (`.github/workflows/ci.yml`) to automatically build and run unit tests under `app/src/test`.

@@ -77,9 +77,11 @@ fun ReadyOverlay(
     selectedMode: GameMode,
     selectedLevel: Level,
     selectedScale: BoardScale,
+    threeDWorld: Boolean,
     onModeSelected: (GameMode) -> Unit,
     onLevelSelected: (Level) -> Unit,
     onScaleSelected: (BoardScale) -> Unit,
+    onThreeDWorldChanged: (Boolean) -> Unit,
     onPlay: () -> Unit,
 ) {
     OverlayScrim(alpha = 0.55f) {
@@ -98,6 +100,16 @@ fun ReadyOverlay(
                     label = { Text(gameMode.displayName) },
                 )
             }
+        }
+
+        // 3D World is orthogonal to the mode: a single toggle chip that plays the
+        // chosen mode in the behind-the-head chase-cam instead of flat top-down.
+        ChipSection(title = stringResource(R.string.menu_view)) {
+            FilterChip(
+                selected = threeDWorld,
+                onClick = { onThreeDWorldChanged(!threeDWorld) },
+                label = { Text(stringResource(R.string.menu_3d_world)) },
+            )
         }
 
         // Campaign mode has its own speed curve and shaped boards: the difficulty
