@@ -11,6 +11,18 @@ For the forward-looking plan, roadmap, active TODOs, bugs, and notes, see [`PLAN
 
 ---
 
+### 2026-06-16 - 3D polish: solid boundary walls, no 2D-board ghost
+
+- **Walls given depth**: boundary walls were a zero-thickness plane. Each edge is now extruded into a
+  solid box (`WALL_THICKNESS`) with two side faces and a top cap, painted far->near so the box occludes
+  itself - reads like the interior obstacle blocks.
+- **2D-board ghost removed**: in 3D the backdrop was painted only over the flat board rectangle, so that
+  screen-aligned rectangle showed through behind the perspective scene like a 2D-board shadow.
+  `draw3DScene` now paints the animated backdrop + fog over the whole canvas (full-bleed).
+- Verified: `./gradlew test`, `lint`, `assembleDebug` pass.
+
+---
+
 ### 2026-06-16 - 3D polish: one turn per swipe, full-length boundary walls
 
 - **Swipe double-turn fixed**: a single continuous drag re-crossed the swipe threshold several times

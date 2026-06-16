@@ -44,6 +44,7 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 /**
  * Draws the board on a Compose [Canvas]. The grid logic stays in the model;
@@ -62,6 +63,9 @@ private const val GHOST_WARN_MS = 2_000f
 
 /** Height (cells) of the raised boundary walls in the 3D chase-cam view. */
 private const val WALL_HEIGHT = 0.7f
+
+/** Thickness (cells) of the boundary walls, giving them obstacle-like depth. */
+private const val WALL_THICKNESS = 0.28f
 
 /** Mixes [c] toward white by [f] (0..1), forcing full opacity — for bright rails. */
 private fun brighten(c: Color, f: Float): Color = Color(
@@ -872,19 +876,21 @@ private fun DrawScope.draw3DScene(
 
     val t = smoothstep(cameraBlend)
 
-    // Base background, plus a fog gradient that deepens toward the top (distance).
-    shaders.background.setFloatUniform("origin", originX, originY)
-    shaders.background.setFloatUniform("resolution", boardWidth, boardHeight)
+    // Full-bleed backdrop: cover the whole canvas (not just the board rectangle)
+    // so no flat board-shaped panel shows through behind the perspective scene.
+    // A fog gradient deepens toward the top (distance).
+    shaders.background.setFloatUniform("origin", 0f, 0f)
+    shaders.background.setFloatUniform("resolution", size.width, size.height)
     shaders.background.setFloatUniform("time", time)
-    drawRect(brush = shaders.backgroundBrush, topLeft = Offset(originX, originY), size = Size(boardWidth, boardHeight))
+    drawRect(brush = shaders.backgroundBrush, topLeft = Offset.Zero, size = size)
     drawRect(
         brush = Brush.verticalGradient(
             colors = listOf(palette.boardTop.copy(alpha = 0.65f * t), Color.Transparent),
-            startY = originY,
-            endY = originY + boardHeight * 0.6f,
+            startY = 0f,
+            endY = size.height * 0.6f,
         ),
-        topLeft = Offset(originX, originY),
-        size = Size(boardWidth, boardHeight * 0.6f),
+        topLeft = Offset.Zero,
+        size = Size(size.width, size.height * 0.6f),
     )
 
     // A straight world line (z constant), clipped to the near plane so segments
@@ -905,39 +911,63 @@ private fun DrawScope.draw3DScene(
     // Depth-sorted scene items (drawn far -> near).
     val items = ArrayList<Pair<Float, DrawScope.() -> Unit>>()
 
-    // Raised boundary walls: a vertical strip along each play-area edge (the board
-    // rectangle, or the shaped Campaign outline), so the arena reads clearly in 3D.
+    // Raised boundary walls: each edge is extruded into a solid box (thickness
+    // WALL_THICKNESS) so the arena wall reads with depth, like the interior
+    // obstacle blocks, rather than as a thin plane.
     val edgeWidth = (cell * 0.12f).coerceAtLeast(2f) * (0.6f + 0.4f * t)
     val wallTop = lerpF(0f, WALL_HEIGHT, t) // grows with the tilt; flat stays flat
-    val railColor = brighten(borderColor, 0.55f)
+    val faceColor = brighten(borderColor, 0.30f)
+    val capColor = brighten(borderColor, 0.50f)
+    val railColor = brighten(borderColor, 0.65f)
     fun addWall(ax: Float, ay: Float, bx: Float, by: Float) {
-        val baseA = cam.cameraSpace(Vec3(ax, ay, 0f))
-        val baseB = cam.cameraSpace(Vec3(bx, by, 0f))
-        val topA = cam.cameraSpace(Vec3(ax, ay, wallTop))
-        val topB = cam.cameraSpace(Vec3(bx, by, wallTop))
-        // Cull the segment if any corner is behind the near plane.
-        if (baseA.z <= Cam.NEAR || baseB.z <= Cam.NEAR || topA.z <= Cam.NEAR || topB.z <= Cam.NEAR) return
-        val pBaseA = toPixel(cam.projectCamera(baseA))
-        val pBaseB = toPixel(cam.projectCamera(baseB))
-        val pTopA = toPixel(cam.projectCamera(topA))
-        val pTopB = toPixel(cam.projectCamera(topB))
-        items.add((baseA.z + baseB.z) / 2f to {
-            val face = Path().apply {
-                moveTo(pBaseA.x, pBaseA.y)
-                lineTo(pBaseB.x, pBaseB.y)
-                lineTo(pTopB.x, pTopB.y)
-                lineTo(pTopA.x, pTopA.y)
-                close()
+        // In-plane perpendicular at half the thickness, to extrude the edge sideways.
+        val ex = bx - ax
+        val ey = by - ay
+        val len = sqrt(ex * ex + ey * ey)
+        if (len < 1e-4f) return
+        val nx = -ey / len * (WALL_THICKNESS / 2f)
+        val ny = ex / len * (WALL_THICKNESS / 2f)
+        fun cs(x: Float, y: Float, z: Float) = cam.cameraSpace(Vec3(x, y, z))
+        val aOutB = cs(ax + nx, ay + ny, 0f)
+        val bOutB = cs(bx + nx, by + ny, 0f)
+        val aInB = cs(ax - nx, ay - ny, 0f)
+        val bInB = cs(bx - nx, by - ny, 0f)
+        val aOutT = cs(ax + nx, ay + ny, wallTop)
+        val bOutT = cs(bx + nx, by + ny, wallTop)
+        val aInT = cs(ax - nx, ay - ny, wallTop)
+        val bInT = cs(bx - nx, by - ny, wallTop)
+        val corners = listOf(aOutB, bOutB, aInB, bInB, aOutT, bOutT, aInT, bInT)
+        // Cull the whole segment if any corner is behind the near plane (segments
+        // are unit-length, so at most the cell straddling the camera drops).
+        if (corners.any { it.z <= Cam.NEAR }) return
+        // Two long sides + the top cap, each tagged with its fill colour. They are
+        // painted far -> near inside the lambda so the box occludes itself.
+        val faces = listOf(
+            listOf(aOutB, bOutB, bOutT, aOutT) to faceColor,
+            listOf(aInB, bInB, bInT, aInT) to faceColor,
+            listOf(aOutT, bOutT, bInT, aInT) to capColor,
+        )
+        val centroidZ = corners.map { it.z }.average().toFloat()
+        items.add(centroidZ to {
+            faces.sortedByDescending { (pts, _) -> pts.sumOf { it.z.toDouble() } }.forEach { (pts, color) ->
+                val pix = pts.map { toPixel(cam.projectCamera(it)) }
+                val path = Path().apply {
+                    moveTo(pix[0].x, pix[0].y)
+                    for (i in 1 until pix.size) lineTo(pix[i].x, pix[i].y)
+                    close()
+                }
+                drawPath(
+                    path,
+                    brush = Brush.verticalGradient(
+                        colors = listOf(color.copy(alpha = 0.95f), borderColor.copy(alpha = 0.5f)),
+                        startY = pix.minOf { it.y },
+                        endY = pix.maxOf { it.y },
+                    ),
+                )
             }
-            drawPath(
-                face,
-                brush = Brush.verticalGradient(
-                    colors = listOf(railColor.copy(alpha = 0.85f), borderColor.copy(alpha = 0.4f)),
-                    startY = minOf(pTopA.y, pTopB.y),
-                    endY = maxOf(pBaseA.y, pBaseB.y),
-                ),
-            )
-            drawLine(railColor, pTopA, pTopB, edgeWidth)
+            // Bright rails along both top edges; the far one sits behind the box.
+            drawLine(railColor, toPixel(cam.projectCamera(aOutT)), toPixel(cam.projectCamera(bOutT)), edgeWidth)
+            drawLine(railColor, toPixel(cam.projectCamera(aInT)), toPixel(cam.projectCamera(bInT)), edgeWidth)
         })
     }
     if (boundary.isEmpty()) {
