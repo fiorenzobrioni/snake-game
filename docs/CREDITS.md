@@ -17,7 +17,7 @@ must keep the required attribution.
 
 | Asset | Source | Author | License |
 |-------|--------|--------|---------|
-| Launcher icon — adaptive (`mipmap-anydpi-v26`) + vector fallback (`mipmap-anydpi`), hand-written vectors | original | Snake Game project | CC0 1.0 |
+| Launcher icon - adaptive (`mipmap-anydpi-v26`) + vector fallback (`mipmap-anydpi`), hand-written vectors | original | Snake Game project | CC0 1.0 |
 
 ## Audio
 
@@ -29,13 +29,13 @@ Google Gemini** (Lyria music model) and are used in accordance with
 They are bundled as OGG/Vorbis. The raw outputs were post-processed in-repo with
 `ffmpeg` (silence trimmed, an equal-power self-crossfade baked in for seamless
 looping under `MediaPlayer`, peaks limited to ~−1 dBFS). These tracks are
-**aggregated assets** distributed alongside — but not part of — the GPL-3.0 source
+**aggregated assets** distributed alongside - but not part of - the GPL-3.0 source
 code, and do not affect the project's license.
 
 | Asset | Source | Author | License / terms |
 |-------|--------|--------|-----------------|
-| `music_menu` — menu background loop (OGG) | Google Gemini (Lyria) | Generated via Google Gemini | Google generative-AI terms |
-| `music_game` — gameplay background loop (OGG) | Google Gemini (Lyria) | Generated via Google Gemini | Google generative-AI terms |
+| `music_menu` - menu background loop (OGG) | Google Gemini (Lyria) | Generated via Google Gemini | Google generative-AI terms |
+| `music_game` - gameplay background loop (OGG) | Google Gemini (Lyria) | Generated via Google Gemini | Google generative-AI terms |
 
 ### Sound effects
 
@@ -45,14 +45,14 @@ released under **CC0 1.0** (public domain). Re-run the script to reproduce them.
 
 | Asset | Source | Author | License |
 |-------|--------|--------|---------|
-| `sfx_eat` / `sfx_shrink` / `sfx_mystery` / `sfx_game_over` / `sfx_pause` — sound effects | original (`tools/audio/generate_audio.py`) | Snake Game project | CC0 1.0 |
-| `sfx_lightning` / `sfx_snail` / `sfx_star` / `sfx_freeze` / `sfx_jackpot` / `sfx_quake` / `sfx_explosion` — power-up / hazard SFX (Phase 6.2) | original (`tools/audio/generate_audio.py`) | Snake Game project | CC0 1.0 |
+| `sfx_eat` / `sfx_shrink` / `sfx_mystery` / `sfx_game_over` / `sfx_pause` - sound effects | original (`tools/audio/generate_audio.py`) | Snake Game project | CC0 1.0 |
+| `sfx_lightning` / `sfx_snail` / `sfx_star` / `sfx_freeze` / `sfx_jackpot` / `sfx_quake` / `sfx_explosion` - power-up / hazard SFX (Phase 6.2) | original (`tools/audio/generate_audio.py`) | Snake Game project | CC0 1.0 |
 
 ## Fonts
 
 | Asset | Source | Author | License |
 |-------|--------|--------|---------|
-| Orbitron (Regular, Bold) — titles & HUD | [Google Fonts](https://fonts.google.com/specimen/Orbitron) · [The League of Moveable Type](https://github.com/theleagueof/orbitron) | The Orbitron Project Authors (designed by Matt McInerney) | [SIL OFL 1.1](licenses/Orbitron-OFL.txt) |
+| Orbitron (Regular, Bold) - titles & HUD | [Google Fonts](https://fonts.google.com/specimen/Orbitron) · [The League of Moveable Type](https://github.com/theleagueof/orbitron) | The Orbitron Project Authors (designed by Matt McInerney) | [SIL OFL 1.1](licenses/Orbitron-OFL.txt) |
 
 ## Shaders
 
