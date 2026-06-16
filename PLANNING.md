@@ -257,6 +257,15 @@ snake-game/
   - [x] **Star** - brief invincibility / ghost (pass through walls, obstacles and self) with a HUD timer.
   - [x] **Freeze** - temporarily freezes special spawns / slows time - a strategic breather.
   - [x] **Jackpot** - rare piece granting a large score bonus (and a random growth).
+  - [x] **3D** (hazard) - the game briefly freezes while the board tilts into a behind-the-head
+        **chase-cam**, then resumes in perspective for the effect's duration before tilting back.
+        Model-wise it is a plain timed `EffectKind.ThreeD` with **no rule/speed change**
+        (`tickIntervalMillis` untouched); the cinematic freeze is **UI-only** (a transient
+        `GameViewModel.cinematicHold`, *not* `GameStatus.Paused` and *not* a model field) and the
+        camera lives entirely under `ui/game/` (`ChaseCam.kt` perspective projection + `GameBoard`
+        `draw3DScene`, driven by a single `camBlend` 0→1 that morphs flat top-down ↔ chase-cam, so
+        `t=0` stays pixel-identical to the 2D renderer). Steering becomes **relative** while active
+        (swipe = horizontal turn, every other scheme → two-button). Gated by the **Hazards** toggle.
 - [x] **Step 6.3** - Highscore tables per (level × size), per mode, in a "Records" screen.
 - [x] **Step 6.4** - Local achievements.
 - [x] **Step 6.5** - Extra modes: Endless, Time Attack.
@@ -319,10 +328,14 @@ snake-game/
 - **Mystery foods are resolved at spawn, not at eat**: `FoodTable.roll` rolls the concealed amount and
   stores the final `FoodEffect`, so `GameEngine.tick` consumes no randomness and stays deterministic.
 - **Special power-ups / hazards** shipped in **Phase 6.2** (earthquake, explosion + lethal debris,
-  Lightning/Snail, Star/ghost, Freeze, Jackpot) via `FoodCategory.Special`, the extra `FoodEffect`
-  cases and `GameState.debris`/`effectTimers`. Effect durations are stored in **ms** and aged by the
-  effective interval each tick; the loop reads `GameState.tickIntervalMillis` (never `level.tickMillis`)
-  so speed effects actually change the pace. Keep that invariant.
+  Lightning/Snail, Star/ghost, Freeze, Jackpot, and the **3D** chase-cam hazard) via
+  `FoodCategory.Special`, the extra `FoodEffect` cases and `GameState.debris`/`effectTimers`. Effect
+  durations are stored in **ms** and aged by the effective interval each tick; the loop reads
+  `GameState.tickIntervalMillis` (never `level.tickMillis`) so speed effects actually change the pace.
+  Keep that invariant - and note **3D is deliberately excluded** from it (a pure render effect, no
+  speed change). The 3D camera is rendering-only: the `game/` package stays unaware of it, the
+  cinematic freeze is a transient UI flag (`GameViewModel.cinematicHold`), and all perspective math
+  lives in `ui/game/ChaseCam.kt` + `GameBoard.draw3DScene` behind a single `camBlend` blend.
 - **Control scheme**: the default is **Swipe** (set in `GameViewModel.DEFAULT_CONTROL` and the
   persisted fallback in `SettingsRepository`); the two-button relative scheme and the D-pad remain
   selectable in Settings (choice persisted via DataStore). Phase 3 had originally shipped two-button

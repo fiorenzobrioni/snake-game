@@ -11,6 +11,38 @@ For the forward-looking plan, roadmap, active TODOs, bugs, and notes, see [`PLAN
 
 ---
 
+### 2026-06-16 - "3D" chase-cam hazard (Step 6.2)
+
+- **New special hazard `3D`**: eating it briefly freezes the game while the flat top-down board tilts
+  forward into a **chase-cam** mounted behind and above the snake's head; play then resumes in that
+  perspective view for the effect duration (~11 s), and on expiry the camera lifts back to the flat
+  2D board. Gated by the **Hazards** toggle, like Snail / Earthquake / Explosion.
+- **Model (pure Kotlin, no rule change)**: added `EffectKind.ThreeD`, `FoodEffect.ThreeD(durationMs)`
+  (`THREE_D_MS = 11_000`), an `isHazard` entry, and a weighted spawn in the hazard branch of
+  `FoodTable.specialSpec`. The eat handler mirrors `Ghost`/`Freeze` (pure timed effect). Crucially
+  **`tickIntervalMillis` is left untouched** - 3D never changes the snake's pace.
+- **Camera (rendering only)**: new `ui/game/ChaseCam.kt` holds a pure, unit-tested perspective
+  projection (`Cam`/`project`/`blendedCam`/`yawFor`/near-plane clipping). `GameBoard` gained
+  `draw3DScene`: a receding floor grid + play-area boundary, with obstacles / debris / food / snake
+  projected and depth-sorted (painter's algorithm), the head keeping its glow shader, and
+  particles / floating text billboarded. A single `camBlend` 0→1 morphs flat top-down ↔ chase-cam, so
+  at `t=0` the renderer is pixel-identical to the existing 2D path (zero regression). Heading turns
+  ease via an `Animatable` yaw so 90° turns swing smoothly.
+- **Cinematic (UI-only)**: the tilt-in/out freeze is a transient `GameViewModel.cinematicHold`
+  gating `advance()` - *not* `GameStatus.Paused` and *not* a model field - bracketed by a
+  `cinematicId` the screen observes to drive the 700 ms `camBlend` tween, then release the hold.
+  Death / reset clear the 3D state and snap the camera flat.
+- **Controls**: while 3D is active, steering becomes **relative** - Swipe keeps swiping but
+  horizontal = turn left/right (`Modifier.swipeToSteerRelative`, vertical ignored); D-pad / two-button
+  collapse to the two-button relative widget. Reverts to the player's scheme afterward.
+- **Polish**: indigo accent (`SpecialVisuals.ThreeDColor`), a HUD "3D" countdown chip
+  (`effect_threed` string), a wireframe-cube on-board icon, and the reused `Sfx.Star` cue (no new
+  assets).
+- **Verified**: `./gradlew test` (new model + `ChaseCamTest` projection tests), `./gradlew lint`, and
+  `./gradlew assembleDebug` all pass.
+
+---
+
 ### 2026-06-12 - GitHub Actions CI workflow
 
 - **Created GitHub Actions CI workflow** (`.github/workflows/ci.yml`) to automatically build and run unit tests under `app/src/test`.

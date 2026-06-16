@@ -70,6 +70,7 @@
     <string name="effect_snail">Snail</string>
     <string name="effect_star">Star</string>
     <string name="effect_freeze">Freeze</string>
+    <string name="effect_threed">3D</string>
     <string name="action_pause">Pause</string>
     <string name="action_resume">Resume</string>
     <string name="action_menu">Menu</string>

@@ -165,6 +165,61 @@ class SpecialFoodTest {
         assertTrue(next.lastEvents.any { it is GameEvent.EffectExpired })
     }
 
+    // --- 3D -------------------------------------------------------------
+
+    @Test
+    fun eatingThreeDStartsEffectAndKeepsLength() {
+        val state = runningState(foods = listOf(specialAt(Position(6, 5), FoodEffect.ThreeD(11_000))))
+        val next = engine.tick(state)
+        assertTrue(next.hasEffect(EffectKind.ThreeD))
+        assertEquals(3, next.snake.size) // pure effect: no growth, no shrink
+        assertTrue(
+            next.lastEvents.filterIsInstance<GameEvent.EffectStarted>()
+                .any { it.kind == EffectKind.ThreeD },
+        )
+    }
+
+    @Test
+    fun threeDAgesDownAndExpiresWithEvent() {
+        // 50ms remaining < one Beginner interval → expires this tick.
+        val state = runningState(effectTimers = listOf(ActiveEffect(EffectKind.ThreeD, 50, 11_000)))
+        val next = engine.tick(state)
+        assertFalse(next.hasEffect(EffectKind.ThreeD))
+        assertTrue(
+            next.lastEvents.filterIsInstance<GameEvent.EffectExpired>()
+                .any { it.kind == EffectKind.ThreeD },
+        )
+    }
+
+    @Test
+    fun threeDDoesNotChangeTickInterval() {
+        // Unlike Haste/Slow/Freeze, 3D is a pure render effect: the pace is unchanged.
+        val state = runningState(effectTimers = listOf(ActiveEffect(EffectKind.ThreeD, 6_000, 11_000)))
+        assertEquals(Level.Beginner.tickMillis, state.tickIntervalMillis)
+    }
+
+    @Test
+    fun threeDIsAHazardGatedByTheToggle() {
+        assertTrue(FoodEffect.ThreeD(11_000).isHazard)
+        val withHazards = (0 until 6000).map {
+            FoodTable.roll(Random(it.toLong()), 2000, Level.Beginner, hazardsEnabled = true)
+        }
+        assertTrue("3D appears when hazards enabled", withHazards.any { it.effect is FoodEffect.ThreeD })
+        val noHazards = (0 until 6000).map {
+            FoodTable.roll(Random(it.toLong()), 2000, Level.Beginner, hazardsEnabled = false)
+        }
+        assertTrue("no 3D when hazards disabled", noHazards.none { it.effect is FoodEffect.ThreeD })
+    }
+
+    @Test
+    fun threeDSpawnsAsSpecialMaxi() {
+        val spec = (0 until 6000).map {
+            FoodTable.roll(Random(it.toLong()), 2000, Level.Beginner)
+        }.first { it.effect is FoodEffect.ThreeD }
+        assertEquals(FoodCategory.Special, spec.category)
+        assertEquals(FoodSize.Maxi, spec.size)
+    }
+
     // --- Star (Ghost) -----------------------------------------------------
 
     @Test

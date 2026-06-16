@@ -61,6 +61,41 @@ fun Modifier.swipeToSteer(
 }
 
 /**
+ * The 3D-mode swipe variant: a swipe steers **relative to the heading** instead
+ * of by absolute direction, because in the chase-cam view "left/right" is what
+ * makes sense. A horizontal swipe turns left / right; vertical swipes are ignored
+ * (forward is implicit and a backward turn would be a reversal anyway).
+ */
+fun Modifier.swipeToSteerRelative(
+    thresholdPx: Float = 48f,
+    onLeft: () -> Unit,
+    onRight: () -> Unit,
+): Modifier = pointerInput(Unit) {
+    var dx = 0f
+    var dy = 0f
+    detectDragGestures(
+        onDragStart = { dx = 0f; dy = 0f },
+        onDragEnd = { dx = 0f; dy = 0f },
+        onDragCancel = { dx = 0f; dy = 0f },
+        onDrag = { change, drag ->
+            change.consume()
+            dx += drag.x
+            dy += drag.y
+            if (abs(dx) >= thresholdPx && abs(dx) > abs(dy)) {
+                if (dx > 0) onRight() else onLeft()
+                dx = 0f
+                dy = 0f
+            } else if (abs(dy) >= thresholdPx) {
+                // Vertical swipe carries no meaning in 3D; reset so it can't build
+                // up and later trip a stray horizontal turn.
+                dx = 0f
+                dy = 0f
+            }
+        },
+    )
+}
+
+/**
  * The default scheme: two large half-width buttons that turn the snake left /
  * right **relative to its heading** (Left = counter-clockwise, Right =
  * clockwise). They fill the bottom of the screen, split in half, for easy

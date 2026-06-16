@@ -55,6 +55,13 @@ sealed interface FoodEffect {
     /** Freeze: slows time and suspends special spawns for [durationMs]. */
     data class Freeze(val durationMs: Long) : FoodEffect
 
+    /**
+     * 3D (hazard): tilts the board into a chase-cam view from behind the snake's
+     * head for [durationMs]. A pure render/controls effect — it does not change
+     * any gameplay rule or the tick speed.
+     */
+    data class ThreeD(val durationMs: Long) : FoodEffect
+
     /** Jackpot: a large score [bonus] plus a [growth] of segments. */
     data class Jackpot(val bonus: Int, val growth: Int) : FoodEffect
 
@@ -71,7 +78,8 @@ sealed interface FoodEffect {
 /** True for the [FoodEffect]s that make the game harder (gated by the hazards toggle). */
 val FoodEffect.isHazard: Boolean
     get() = this is FoodEffect.Quake || this is FoodEffect.Burst ||
-        this is FoodEffect.Slow || this is FoodEffect.TimePenalty
+        this is FoodEffect.Slow || this is FoodEffect.TimePenalty ||
+        this is FoodEffect.ThreeD
 
 /**
  * A food item on the board.
@@ -156,6 +164,9 @@ object FoodTable {
     private const val FREEZE_MS = 8_000L
     private const val BURST_DEBRIS_MS = 4_000L
 
+    /** 3D lasts long enough to read the perspective and play a few turns in it. */
+    private const val THREE_D_MS = 11_000L
+
     /** Seconds the Time Attack clock blocks add / remove (tuned for a 120 s run). */
     const val TIME_BONUS_SECONDS = 5
     const val TIME_PENALTY_SECONDS = 3
@@ -219,6 +230,7 @@ object FoodTable {
                 add(Weighted(16) { FoodEffect.Quake(random.nextInt(3, 7)) })
                 add(Weighted(12) { FoodEffect.Burst(BURST_DEBRIS_MS) })
                 add(Weighted(14) { FoodEffect.Slow(SLOW_MS) })
+                add(Weighted(12) { FoodEffect.ThreeD(THREE_D_MS) })
             }
             // Time Attack only: the clock blocks. The penalty is a hazard.
             if (mode == GameMode.TimeAttack) {

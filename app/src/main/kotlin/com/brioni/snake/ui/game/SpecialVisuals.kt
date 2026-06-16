@@ -22,6 +22,7 @@ object SpecialVisuals {
     val TimeBonusColor = Color(0xFF66BB6A)
     val TimePenaltyColor = Color(0xFFEF5350)
     val ExtraLifeColor = Color(0xFFFF4081)
+    val ThreeDColor = Color(0xFF7C4DFF)
 
     /** Accent for a special food, chosen from its effect. */
     fun accent(effect: FoodEffect): Color = when (effect) {
@@ -35,6 +36,7 @@ object SpecialVisuals {
         is FoodEffect.TimeBonus -> TimeBonusColor
         is FoodEffect.TimePenalty -> TimePenaltyColor
         is FoodEffect.ExtraLife -> ExtraLifeColor
+        is FoodEffect.ThreeD -> ThreeDColor
         else -> Color(0xFFB388FF)
     }
 
@@ -44,5 +46,6 @@ object SpecialVisuals {
         EffectKind.Slow -> SnailColor
         EffectKind.Ghost -> StarColor
         EffectKind.Freeze -> FreezeColor
+        EffectKind.ThreeD -> ThreeDColor
     }
 }

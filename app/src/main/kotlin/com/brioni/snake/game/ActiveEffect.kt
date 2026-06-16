@@ -17,6 +17,9 @@ enum class EffectKind {
 
     /** Freeze: slows time and suspends new special spawns — a strategic breather. */
     Freeze,
+
+    /** 3D (hazard): chase-cam view from behind the head with relative controls; no rule or speed change. */
+    ThreeD,
 }
 
 /**

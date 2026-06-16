@@ -64,7 +64,9 @@ The classic Snake mechanics, extended with configurable features so every run fe
   **Snail** (slow down), **Star** (invincible pass-through; the snake blinks faster as it runs out),
   **Freeze**, **Jackpot** (big bonus),
   plus the hazards **Earthquake** (bites a chunk off your tail and scatters those segments across the
-  board as lethal, fading debris) and **Explosion** (splits the snake, leaving lethal debris). Active
+  board as lethal, fading debris), **Explosion** (splits the snake, leaving lethal debris) and **3D**
+  (the board tilts into a behind-the-head chase-cam and you play in perspective for the duration, with
+  the steering switched to relative left/right turns). Active
   effects show countdown chips; up to **two specials** can share the board at once. Toggle **Hazards**
   off in Settings for a calmer run, or dial how often specials appear with the **Special blocks**
   setting (*Standard / Frequent / Frenzy*) - the higher tiers also bring specials online earlier in a
@@ -200,7 +202,10 @@ invincibility (you can pass through walls, obstacles and your own body - the sna
 effect fades), **Freeze** pauses further specials for a strategic breather, and **Jackpot** grants a
 large score bonus. Hazards hinder: **Earthquake** bites a chunk off your tail and flings those
 segments across the board as lethal debris (it fades after a few seconds); **Explosion** splits the
-snake in two - the detached segment turns into lethal debris until it auto-clears. Active effects show
+snake in two - the detached segment turns into lethal debris until it auto-clears; and **3D** briefly
+freezes the action while the board tilts forward into a chase-cam mounted behind and above the snake's
+head, then hands play back in that perspective view for the duration (steering becomes relative
+left/right turns) before tilting back to the flat top-down. Active effects show
 a countdown chip in the HUD. **Time Attack** also has two clock-only pieces - a **+5s** bonus and a
 **−3s** penalty. Toggle **Hazards** off in **Settings** for a calmer run (this also hides the time
 penalty), or raise **Special blocks** to *Frenzy* for constant chaos.

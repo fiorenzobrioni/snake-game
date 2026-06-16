@@ -1,5 +1,8 @@
 package com.brioni.snake.ui.game
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -72,6 +75,7 @@ fun GameBoard(
     palette: SkinPalette,
     borderColor: Color = palette.boardBorder,
     outsideColor: Color = Color.Black,
+    cameraBlend: Float = 0f,
     modifier: Modifier = Modifier,
 ) {
     val particles: SnapshotStateList<Particle> = remember { emptyList<Particle>().toMutableStateList() }
@@ -85,6 +89,14 @@ fun GameBoard(
     // a redraw each frame; the interpolation fraction is *derived* from it and
     // tickTimeNanos at draw time, so it can never lag a committed move.
     var frameNanos by remember { mutableLongStateOf(System.nanoTime()) }
+
+    // Chase-cam yaw, eased toward the heading so a 90° turn swings smoothly
+    // rather than snapping. Only meaningful while the 3D view is on screen.
+    val yawAnim = remember { Animatable(yawFor(state.direction)) }
+    LaunchedEffect(state.direction) {
+        val target = yawAnim.value + shortestDelta(yawAnim.value, yawFor(state.direction))
+        yawAnim.animateTo(target, tween(durationMillis = 150, easing = FastOutSlowInEasing))
+    }
 
     // A single frame-driven loop runs only while the game is running: it
     // advances the particles and writes [frameNanos] to force a redraw each
@@ -166,6 +178,45 @@ fun GameBoard(
         val originX = (size.width - boardWidth) / 2f
         val originY = (size.height - boardHeight) / 2f
 
+        // Shared snake shimmer: Ghost (Star) blinks faster toward expiry.
+        val ghostEffect = state.effectTimers.firstOrNull { it.kind == EffectKind.Ghost }
+        val snakeAlpha = if (ghostEffect != null) {
+            val warnT = (1f - ghostEffect.remainingMs.toFloat() / GHOST_WARN_MS).coerceIn(0f, 1f)
+            val hz = 9f + warnT * 26f
+            val amp = 0.15f + warnT * 0.45f
+            val base = 0.5f - warnT * 0.30f
+            (base + amp * (sin(seconds * hz).toFloat() * 0.5f + 0.5f)).coerceIn(0.1f, 1f)
+        } else {
+            1f
+        }
+
+        // The 3D (chase-cam) hazard renders a perspective view; otherwise the flat
+        // top-down board. The blend animates the tilt between the two.
+        if (cameraBlend > 0.001f) {
+            draw3DScene(
+                state = state,
+                previousSnake = previousSnake,
+                f = f,
+                cameraBlend = cameraBlend,
+                yaw = yawAnim.value,
+                cell = cell,
+                originX = originX,
+                originY = originY,
+                boardWidth = boardWidth,
+                boardHeight = boardHeight,
+                boundary = boundary,
+                palette = palette,
+                shaders = shaders,
+                particles = particles,
+                floatingTexts = floatingTexts,
+                snakeAlpha = snakeAlpha,
+                time = time,
+                textMeasurer = textMeasurer,
+                borderColor = borderColor,
+            )
+            return@Canvas
+        }
+
         drawBoardBackground(board, cell, originX, originY, boardWidth, boardHeight, palette, shaders, time)
 
         // Clip dynamic content to the board so the head can slide "into" a wall
@@ -189,19 +240,8 @@ fun GameBoard(
             state.foods.forEach { food ->
                 drawFood(food, cell, originX, originY, pulse, textMeasurer, palette, shaders, time)
             }
-            // Ghost (Star): the snake shimmers while invincible, then blinks
-            // faster and deeper over the final GHOST_WARN_MS so the player gets a
-            // clear "about to expire" warning and can steer somewhere safe.
-            val ghostEffect = state.effectTimers.firstOrNull { it.kind == EffectKind.Ghost }
-            val snakeAlpha = if (ghostEffect != null) {
-                val warnT = (1f - ghostEffect.remainingMs.toFloat() / GHOST_WARN_MS).coerceIn(0f, 1f)
-                val hz = 9f + warnT * 26f
-                val amp = 0.15f + warnT * 0.45f
-                val base = 0.5f - warnT * 0.30f
-                (base + amp * (sin(seconds * hz).toFloat() * 0.5f + 0.5f)).coerceIn(0.1f, 1f)
-            } else {
-                1f
-            }
+            // Ghost (Star): the snake shimmers while invincible (snakeAlpha is
+            // computed once above and reused by both the 2D and 3D renderers).
             val snake = state.snake
             for (k in snake.indices.reversed()) {
                 val to = snake[k]
@@ -527,8 +567,27 @@ private fun DrawScope.drawSpecialSymbol(
         is FoodEffect.TimeBonus -> drawClock(cx, cy, r, color, plus = true)
         is FoodEffect.TimePenalty -> drawClock(cx, cy, r, color, plus = false)
         is FoodEffect.ExtraLife -> drawSnakeHeadIcon(cx, cy, r, color)
+        is FoodEffect.ThreeD -> drawCube(cx, cy, r, color)
         else -> Unit
     }
+}
+
+/** A small wireframe cube — the 3D hazard icon. */
+private fun DrawScope.drawCube(cx: Float, cy: Float, r: Float, color: Color) {
+    val s = r * 0.96f // square side
+    val d = r * 0.5f // depth offset to the back face
+    val sw = r * 0.15f
+    val stroke = Stroke(width = sw, cap = StrokeCap.Round)
+    val fx = cx - s / 2f - d / 2f // front face, top-left
+    val fy = cy - s / 2f + d / 2f
+    val bx = fx + d // back face, shifted up-right
+    val by = fy - d
+    drawRect(color, topLeft = Offset(fx, fy), size = Size(s, s), style = stroke)
+    drawRect(color, topLeft = Offset(bx, by), size = Size(s, s), style = stroke)
+    drawLine(color, Offset(fx, fy), Offset(bx, by), sw)
+    drawLine(color, Offset(fx + s, fy), Offset(bx + s, by), sw)
+    drawLine(color, Offset(fx, fy + s), Offset(bx, by + s), sw)
+    drawLine(color, Offset(fx + s, fy + s), Offset(bx + s, by + s), sw)
 }
 
 /** A tiny snake head (rounded square + upward eyes) — the extra-life bonus icon. */
@@ -749,5 +808,236 @@ private fun DrawScope.drawEyes(
             pupilRadius,
             Offset(ex + forwardX * cell * 0.03f, ey + forwardY * cell * 0.03f),
         )
+    }
+}
+
+/**
+ * The 3D (chase-cam) hazard view. Renders the board in perspective from behind
+ * and above the snake's head via [blendedCam]: a receding floor grid, the
+ * play-area boundary, then the obstacles / debris / food / snake projected as
+ * billboards and raised quads, depth-sorted far-to-near (painter's algorithm).
+ * [cameraBlend] eases the whole scene between the flat top-down (≈0) and the full
+ * chase-cam (1), so the same code drives the tilt-in / tilt-out cinematic.
+ */
+private fun DrawScope.draw3DScene(
+    state: GameState,
+    previousSnake: List<Position>,
+    f: Float,
+    cameraBlend: Float,
+    yaw: Float,
+    cell: Float,
+    originX: Float,
+    originY: Float,
+    boardWidth: Float,
+    boardHeight: Float,
+    boundary: List<BoundaryEdge>,
+    palette: SkinPalette,
+    shaders: BoardShaders,
+    particles: List<Particle>,
+    floatingTexts: List<FloatingText>,
+    snakeAlpha: Float,
+    time: Float,
+    textMeasurer: TextMeasurer,
+    borderColor: Color,
+) {
+    val board = state.board
+    val snake = state.snake
+
+    // Interpolated head centre anchors the camera.
+    val headTo = snake.first()
+    val headFrom = if (previousSnake.isEmpty()) headTo else previousSnake.first()
+    val hx = lerp(headFrom.x.toFloat(), headTo.x.toFloat(), f) + 0.5f
+    val hy = lerp(headFrom.y.toFloat(), headTo.y.toFloat(), f) + 0.5f
+
+    val aspect = boardWidth / boardHeight
+    val cam = blendedCam(hx, hy, board.width.toFloat(), board.height.toFloat(), yaw, cameraBlend, aspect)
+
+    val centerX = originX + boardWidth / 2f
+    val centerY = originY + boardHeight / 2f
+    val halfW = boardWidth / 2f
+    val halfH = boardHeight / 2f
+    fun toPixel(p: Proj) = Offset(centerX + p.sx * halfW, centerY - p.sy * halfH)
+    fun scaleAt(depth: Float) = cam.focal / depth * halfH
+
+    val t = smoothstep(cameraBlend)
+
+    // Base background, plus a fog gradient that deepens toward the top (distance).
+    shaders.background.setFloatUniform("origin", originX, originY)
+    shaders.background.setFloatUniform("resolution", boardWidth, boardHeight)
+    shaders.background.setFloatUniform("time", time)
+    drawRect(brush = shaders.backgroundBrush, topLeft = Offset(originX, originY), size = Size(boardWidth, boardHeight))
+    drawRect(
+        brush = Brush.verticalGradient(
+            colors = listOf(palette.boardTop.copy(alpha = 0.65f * t), Color.Transparent),
+            startY = originY,
+            endY = originY + boardHeight * 0.6f,
+        ),
+        topLeft = Offset(originX, originY),
+        size = Size(boardWidth, boardHeight * 0.6f),
+    )
+
+    // A straight world line (z constant), clipped to the near plane so segments
+    // that pass behind the camera don't smear.
+    fun worldLine(ax: Float, ay: Float, bx: Float, by: Float, z: Float, color: Color, width: Float) {
+        val clip = cam.clipNear(cam.cameraSpace(Vec3(ax, ay, z)), cam.cameraSpace(Vec3(bx, by, z))) ?: return
+        val pa = cam.projectCamera(clip.first)
+        val pb = cam.projectCamera(clip.second)
+        if (!pa.visible || !pb.visible) return
+        drawLine(color, toPixel(pa), toPixel(pb), width)
+    }
+
+    // Receding floor grid.
+    val gridColor = palette.gridLine.copy(alpha = (palette.gridLine.alpha * (0.5f + 0.5f * t)).coerceIn(0f, 1f))
+    for (x in 0..board.width) worldLine(x.toFloat(), 0f, x.toFloat(), board.height.toFloat(), 0f, gridColor, 1f)
+    for (y in 0..board.height) worldLine(0f, y.toFloat(), board.width.toFloat(), y.toFloat(), 0f, gridColor, 1f)
+
+    // Play-area boundary: the rectangle, or the shaped (Levels) outline.
+    val edgeWidth = (cell * 0.12f).coerceAtLeast(2f) * (0.6f + 0.4f * t)
+    if (boundary.isEmpty()) {
+        val w = board.width.toFloat()
+        val h = board.height.toFloat()
+        worldLine(0f, 0f, w, 0f, 0f, borderColor, edgeWidth)
+        worldLine(w, 0f, w, h, 0f, borderColor, edgeWidth)
+        worldLine(w, h, 0f, h, 0f, borderColor, edgeWidth)
+        worldLine(0f, h, 0f, 0f, 0f, borderColor, edgeWidth)
+    } else {
+        boundary.forEach { e -> worldLine(e.x1, e.y1, e.x2, e.y2, 0f, borderColor, edgeWidth) }
+    }
+
+    // Depth-sorted scene items (drawn far -> near).
+    val items = ArrayList<Pair<Float, DrawScope.() -> Unit>>()
+
+    fun addRaisedQuad(cx: Float, cy: Float, fill: Color, outline: Color, height: Float, alpha: Float) {
+        val cc = cam.cameraSpace(Vec3(cx, cy, height))
+        if (cc.z <= Cam.NEAR) return
+        val m = 0.06f
+        val top = listOf(
+            cam.project(Vec3(cx - 0.5f + m, cy - 0.5f + m, height)),
+            cam.project(Vec3(cx + 0.5f - m, cy - 0.5f + m, height)),
+            cam.project(Vec3(cx + 0.5f - m, cy + 0.5f - m, height)),
+            cam.project(Vec3(cx - 0.5f + m, cy + 0.5f - m, height)),
+        )
+        if (top.any { !it.visible }) return
+        val base = listOf(
+            cam.project(Vec3(cx - 0.5f + m, cy - 0.5f + m, 0f)),
+            cam.project(Vec3(cx + 0.5f - m, cy - 0.5f + m, 0f)),
+            cam.project(Vec3(cx + 0.5f - m, cy + 0.5f - m, 0f)),
+            cam.project(Vec3(cx - 0.5f + m, cy + 0.5f - m, 0f)),
+        )
+        items.add(cc.z to {
+            // Side faces give the tile some bulk.
+            if (base.all { it.visible }) {
+                for (i in 0 until 4) {
+                    val j = (i + 1) % 4
+                    val face = Path().apply {
+                        moveTo(toPixel(base[i]).x, toPixel(base[i]).y)
+                        lineTo(toPixel(base[j]).x, toPixel(base[j]).y)
+                        lineTo(toPixel(top[j]).x, toPixel(top[j]).y)
+                        lineTo(toPixel(top[i]).x, toPixel(top[i]).y)
+                        close()
+                    }
+                    drawPath(face, fill.copy(alpha = 0.5f * alpha))
+                }
+            }
+            val face = Path().apply {
+                moveTo(toPixel(top[0]).x, toPixel(top[0]).y)
+                for (i in 1 until 4) lineTo(toPixel(top[i]).x, toPixel(top[i]).y)
+                close()
+            }
+            drawPath(face, fill.copy(alpha = alpha))
+            drawPath(face, outline.copy(alpha = alpha), style = Stroke(width = (scaleAt(cc.z) * 0.04f).coerceAtLeast(1f)))
+        })
+    }
+
+    state.obstacles.forEach { o ->
+        addRaisedQuad(o.x + 0.5f, o.y + 0.5f, palette.obstacle, palette.obstacleHighlight, ZTOP * 1.2f, 1f)
+    }
+
+    state.debris.forEach { d ->
+        val cc = cam.cameraSpace(Vec3(d.cell.x + 0.5f, d.cell.y + 0.5f, 0f))
+        if (cc.z <= Cam.NEAR) return@forEach
+        val p = cam.projectCamera(cc)
+        if (!p.visible) return@forEach
+        val r = (scaleAt(cc.z) * 0.34f).coerceAtLeast(2f)
+        val alpha = 0.35f + 0.55f * d.life
+        items.add(cc.z to { drawCircle(SpecialVisuals.ExplosionColor.copy(alpha = alpha), r, toPixel(p)) })
+    }
+
+    state.foods.forEach { food ->
+        val cx = food.position.x + food.span / 2f
+        val cy = food.position.y + food.span / 2f
+        val cc = cam.cameraSpace(Vec3(cx, cy, ZTOP * 0.7f))
+        if (cc.z <= Cam.NEAR) return@forEach
+        val p = cam.projectCamera(cc)
+        if (!p.visible) return@forEach
+        val center = toPixel(p)
+        val rad = (scaleAt(cc.z) * 0.42f * food.span).coerceAtLeast(2f)
+        val color = if (food.category == FoodCategory.Special) SpecialVisuals.accent(food.effect) else palette.foodColor(food)
+        items.add(cc.z to {
+            drawCircle(
+                brush = Brush.radialGradient(listOf(color.copy(alpha = 0.5f), Color.Transparent), center = center, radius = rad * 2f),
+                radius = rad * 2f,
+                center = center,
+            )
+            drawCircle(color, rad, center)
+            when {
+                food.category == FoodCategory.Special -> drawSpecialSymbol(food.effect, center.x, center.y, rad * 0.9f, Color(0xFF10151C), textMeasurer)
+                food.isMystery -> drawGlyph(textMeasurer, "?", center.x, center.y, rad * 1.2f, Color.White)
+            }
+        })
+    }
+
+    for (k in snake.indices) {
+        val to = snake[k]
+        val from = if (previousSnake.isEmpty()) to else previousSnake[k.coerceAtMost(previousSnake.lastIndex)]
+        val cx = lerp(from.x.toFloat(), to.x.toFloat(), f) + 0.5f
+        val cy = lerp(from.y.toFloat(), to.y.toFloat(), f) + 0.5f
+        val isHead = k == 0
+        val fill = if (isHead) palette.snakeHead else palette.snakeBody
+        addRaisedQuad(cx, cy, fill, palette.snakeOutline, ZTOP, if (isHead) (snakeAlpha + 0.2f).coerceAtMost(1f) else snakeAlpha)
+        if (isHead && palette.useGlow) {
+            val cc = cam.cameraSpace(Vec3(cx, cy, ZTOP))
+            if (cc.z > Cam.NEAR) {
+                val gp = cam.projectCamera(cc)
+                if (gp.visible) {
+                    val center = toPixel(gp)
+                    val gr = (scaleAt(cc.z) * 1.0f).coerceAtLeast(4f)
+                    // Slightly farther depth so the halo sorts behind the head.
+                    items.add(cc.z + 0.01f to {
+                        shaders.glow.setFloatUniform("center", center.x, center.y)
+                        shaders.glow.setFloatUniform("radius", gr)
+                        shaders.glow.setFloatUniform("time", time)
+                        shaders.glow.setColorUniform("glowColor", palette.headGlow.toArgb())
+                        drawCircle(brush = shaders.glowBrush, radius = gr, center = center)
+                    })
+                }
+            }
+        }
+    }
+
+    items.sortByDescending { it.first }
+    items.forEach { it.second.invoke(this) }
+
+    // Overlays projected as billboards.
+    particles.forEach { pt ->
+        val cc = cam.cameraSpace(Vec3(pt.x, pt.y, 0.05f))
+        if (cc.z <= Cam.NEAR) return@forEach
+        val p = cam.projectCamera(cc)
+        if (!p.visible) return@forEach
+        val r = (scaleAt(cc.z) * pt.radiusCells).coerceAtLeast(1f)
+        drawCircle(pt.color.copy(alpha = 0.85f * pt.fade), r, toPixel(p))
+    }
+    floatingTexts.forEach { tx ->
+        val cc = cam.cameraSpace(Vec3(tx.x, tx.y, ZTOP))
+        if (cc.z <= Cam.NEAR) return@forEach
+        val p = cam.projectCamera(cc)
+        if (!p.visible) return@forEach
+        val center = toPixel(p)
+        val fontPx = (scaleAt(cc.z) * 0.95f).coerceIn(8f, cell * 2f)
+        val layout = textMeasurer.measure(
+            text = tx.text,
+            style = TextStyle(color = tx.color.copy(alpha = tx.fade), fontSize = fontPx.toSp(), fontWeight = FontWeight.Black),
+        )
+        drawText(layout, topLeft = Offset(center.x - layout.size.width / 2f, center.y - layout.size.height / 2f))
     }
 }

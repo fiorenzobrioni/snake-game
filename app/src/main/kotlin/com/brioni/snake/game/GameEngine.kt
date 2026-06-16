@@ -253,6 +253,11 @@ class GameEngine(private val random: Random = Random.Default) {
                     effectTimers = addOrRefresh(effectTimers, EffectKind.Freeze, effect.durationMs)
                     events.add(GameEvent.EffectStarted(EffectKind.Freeze, eaten))
                 }
+                is FoodEffect.ThreeD -> {
+                    body.removeAt(body.lastIndex) // pure effect: keep length, no rule/speed change
+                    effectTimers = addOrRefresh(effectTimers, EffectKind.ThreeD, effect.durationMs)
+                    events.add(GameEvent.EffectStarted(EffectKind.ThreeD, eaten))
+                }
                 is FoodEffect.Jackpot -> {
                     score += effect.bonus
                     pendingGrowth += effect.growth
