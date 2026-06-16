@@ -77,7 +77,8 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - 🎖️ **Achievements** - fifteen local milestones (combos, scores, endurance, eating sprees, using power-ups…)
   that unlock as you play, with a dedicated screen and an unlock banner on the game-over screen.
 - 🕹️ **Game modes** - **Classic**, **Endless** (speed ramps up the longer you survive),
-  **Time Attack** (score as much as you can in 120s) and **Campaign** (see below), selectable on the
+  **Time Attack** (score as much as you can in 120s), **Campaign** (see below) and **3D World** (a full
+  Classic run played in the behind-the-head chase-cam, at a slightly eased pace), selectable on the
   start screen.
 - 🧩 **Campaign mode** - ten **designed board shapes** (cut corners, pillars, chambers, a vault…)
   that repeat forever, one **speed step faster** each lap. Eat **12 foods** to clear a level; you
@@ -193,7 +194,9 @@ automatically pauses when you leave the app and yields to other apps' audio.
 as possible in 120 seconds - watch for the exclusive **+5s** / **−3s** clock pieces that stretch or
 shave your remaining time) or **Campaign** (clear ten shaped boards by eating 12 foods each, with 3
 lives, an exclusive 2×2 extra-life piece, and a speed-up every completed lap - the HUD shows
-*Level x · Speed x*, your hearts and the foods still to go). Your best score is tracked per mode,
+*Level x · Speed x*, your hearts and the foods still to go) or **3D World** (Classic rules played
+entirely in the behind-the-head 3D chase-cam, at a slightly eased pace, with relative left/right
+steering). Your best score is tracked per mode,
 level and board scale; check the **Records** screen from the main menu.
 
 **Power-ups & hazards:** as a run progresses, rare special pieces start appearing on the board.

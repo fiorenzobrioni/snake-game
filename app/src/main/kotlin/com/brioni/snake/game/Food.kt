@@ -230,7 +230,8 @@ object FoodTable {
                 add(Weighted(16) { FoodEffect.Quake(random.nextInt(3, 7)) })
                 add(Weighted(12) { FoodEffect.Burst(BURST_DEBRIS_MS) })
                 add(Weighted(14) { FoodEffect.Slow(SLOW_MS) })
-                add(Weighted(12) { FoodEffect.ThreeD(THREE_D_MS) })
+                // Pointless inside the always-on 3D World mode.
+                if (mode != GameMode.ThreeDWorld) add(Weighted(12) { FoodEffect.ThreeD(THREE_D_MS) })
             }
             // Time Attack only: the clock blocks. The penalty is a hazard.
             if (mode == GameMode.TimeAttack) {

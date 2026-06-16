@@ -111,6 +111,10 @@ data class GameState(
             if (hasEffect(EffectKind.Haste)) ms *= HASTE_FACTOR
             if (hasEffect(EffectKind.Slow)) ms *= SLOW_FACTOR
             if (hasEffect(EffectKind.Freeze)) ms *= FREEZE_FACTOR
+            // The 3D chase-cam (timed hazard or the whole 3D World mode) eases the
+            // pace a little so the perspective view stays playable; proportional,
+            // so high levels stay fast in relative terms.
+            if (hasEffect(EffectKind.ThreeD) || mode == GameMode.ThreeDWorld) ms *= THREED_FACTOR
             return ms.toLong().coerceIn(MIN_TICK_MS, MAX_TICK_MS)
         }
 
@@ -122,6 +126,9 @@ data class GameState(
         const val HASTE_FACTOR = 0.6
         const val SLOW_FACTOR = 1.6
         const val FREEZE_FACTOR = 1.4
+
+        /** 3D view pace multiplier (>1 = a touch slower, for playability). */
+        const val THREED_FACTOR = 1.4
 
         /** Clamp so stacked effects can't make the game unplayably fast/slow. */
         const val MIN_TICK_MS = 40L

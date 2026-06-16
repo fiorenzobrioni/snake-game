@@ -192,10 +192,30 @@ class SpecialFoodTest {
     }
 
     @Test
-    fun threeDDoesNotChangeTickInterval() {
-        // Unlike Haste/Slow/Freeze, 3D is a pure render effect: the pace is unchanged.
+    fun threeDSlowsTheTickIntervalProportionally() {
+        // The 3D view eases the pace by THREED_FACTOR (proportional to the base).
+        val base = Level.Beginner.tickMillis
         val state = runningState(effectTimers = listOf(ActiveEffect(EffectKind.ThreeD, 6_000, 11_000)))
-        assertEquals(Level.Beginner.tickMillis, state.tickIntervalMillis)
+        assertTrue(state.tickIntervalMillis > base)
+        assertEquals((base * GameState.THREED_FACTOR).toLong(), state.tickIntervalMillis)
+    }
+
+    @Test
+    fun threeDWorldSlowsAndUsesLevelPace() {
+        // 3D World is Classic-paced (level base) but eased by the same factor.
+        val base = Level.Beginner.tickMillis
+        val state = runningState(mode = GameMode.ThreeDWorld)
+        assertEquals((base * GameState.THREED_FACTOR).toLong(), state.tickIntervalMillis)
+    }
+
+    @Test
+    fun threeDWorldDoesNotSpawnTheThreeDFood() {
+        val rolls = (0 until 6000).map {
+            FoodTable.roll(Random(it.toLong()), 2000, Level.Beginner, mode = GameMode.ThreeDWorld)
+        }
+        assertTrue("no 3D food in 3D World", rolls.none { it.effect is FoodEffect.ThreeD })
+        // Other specials still appear (it is otherwise Classic-like).
+        assertTrue("other specials still spawn", rolls.any { it.category == FoodCategory.Special })
     }
 
     @Test

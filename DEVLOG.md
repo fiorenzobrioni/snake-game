@@ -11,6 +11,30 @@ For the forward-looking plan, roadmap, active TODOs, bugs, and notes, see [`PLAN
 
 ---
 
+### 2026-06-16 - 3D follow-up: swipe fix, slower pace, walls, and a "3D World" mode
+
+Playtest follow-ups to the 3D chase-cam:
+- **Swipe fixed**: in 3D only the first swipe used to register. Root cause was swapping the board's
+  `pointerInput` modifier on `threeDActive` - an unchanged-key `pointerInput` is not restarted, so the
+  stale absolute handler kept running and, in the rotated view, most swipes mapped to a reversal and
+  were rejected. Now a single, never-swapped `swipeToSteer` routes through `GameViewModel.onSwipe`,
+  which picks a heading-relative turn (left/right; vertical ignored) in 3D or absolute steering in 2D,
+  reading the *current* `threeDActive`. Removed the unused `swipeToSteerRelative`.
+- **Proportional slowdown**: added `GameState.THREED_FACTOR = 1.4`, applied in `tickIntervalMillis`
+  when the 3D hazard is active or in 3D World mode. It multiplies the already-computed interval, so
+  high levels stay fast in relative terms.
+- **Raised boundary walls**: `draw3DScene` now draws vertical wall quads along the play-area edges
+  (rectangle or shaped Campaign outline) with a bright top rail and a gradient face, depth-sorted with
+  the rest of the scene - the arena reads clearly in perspective (also fixes Campaign walls).
+- **New `GameMode.ThreeDWorld` ("3D World")**: a full Classic game played in the chase-cam, selectable
+  beside Campaign. `threeDActive` is true for the whole mode (`mode == ThreeDWorld || threeDHazardActive`),
+  `GameScreen` holds `camBlend` at 1 (with a quick intro tilt), the 3D food hazard is suppressed in it,
+  and it inherits Classic rules + its own highscore table automatically.
+- Camera constants were tuned (slightly higher/further chase-cam, wider FOV).
+- **Verified**: `./gradlew test` (updated/added model tests), `lint`, `assembleDebug` all pass.
+
+---
+
 ### 2026-06-16 - "3D" chase-cam hazard (Step 6.2)
 
 - **New special hazard `3D`**: eating it briefly freezes the game while the flat top-down board tilts

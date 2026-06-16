@@ -87,11 +87,11 @@ fun yawFor(dir: Direction): Float = atan2(dir.dy.toFloat(), dir.dx.toFloat())
 // Camera poses. "Flat" is a near-straight-down top-down that closely matches the
 // 2D renderer; "chase" sits behind and above the head looking along the heading.
 private const val FLAT_PITCH = 1.4835f // ~85° down (avoids the 90° basis singularity)
-private const val CHASE_PITCH = 0.62f // ~35.5° down
-private const val CAM_BACK = 2.6f // cells behind the head centre
-private const val CAM_HEIGHT = 2.2f // cells above the plane
+private const val CHASE_PITCH = 0.70f // ~40° down (compensates for the higher camera)
+private const val CAM_BACK = 3.2f // cells behind the head centre (a bit further back)
+private const val CAM_HEIGHT = 2.9f // cells above the plane (higher, more panoramic)
 private const val FOCAL_FLAT = 1.0f
-private const val FOCAL_CHASE = 1.4f
+private const val FOCAL_CHASE = 1.05f // lower focal = wider field of view
 private val FLAT_YAW = (-PI / 2).toFloat() // "Up": screen-up = world -y, matching 2D
 
 /** Raised top-face height (cells) used to give snake/obstacle quads some bulk. */

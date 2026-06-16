@@ -132,8 +132,10 @@ fun GameScreen(
     // cinematicId on tilt-in (effect started) and tilt-out (effect expired); we
     // animate the tilt then release the loop freeze it set.
     val camBlend = remember { Animatable(0f) }
+    // The timed hazard's tilt-in / tilt-out (other modes only; 3D World is driven
+    // permanently below).
     LaunchedEffect(viewModel.cinematicId) {
-        if (viewModel.cinematicId == 0) return@LaunchedEffect
+        if (viewModel.cinematicId == 0 || viewModel.mode == GameMode.ThreeDWorld) return@LaunchedEffect
         val entering = viewModel.state.hasEffect(EffectKind.ThreeD)
         camBlend.animateTo(
             targetValue = if (entering) 1f else 0f,
@@ -142,10 +144,22 @@ fun GameScreen(
         viewModel.endCinematicHold()
         if (!entering) viewModel.clearThreeD()
     }
-    // Safety: snap flat when the board leaves play without the 3D view up (game
-    // over / setup), so the overlays render over the normal top-down board.
+    // 3D World: the whole game is in the chase-cam. Tilt in once play starts and
+    // hold; the terminal/setup snap below drops back to flat for the overlays.
+    LaunchedEffect(viewModel.mode, state.status) {
+        if (viewModel.mode != GameMode.ThreeDWorld) return@LaunchedEffect
+        if (state.status == GameStatus.Running || state.status == GameStatus.Paused) {
+            if (camBlend.value < 1f) {
+                camBlend.animateTo(1f, tween(durationMillis = 700, easing = FastOutSlowInEasing))
+            }
+        }
+    }
+    // Safety: snap flat for the terminal / setup screens so overlays render over
+    // the normal top-down board (covers both the hazard and 3D World).
     LaunchedEffect(state.status) {
-        if (state.status != GameStatus.Running && !viewModel.threeDActive) camBlend.snapTo(0f)
+        val playing3D = state.status == GameStatus.Running || state.status == GameStatus.Paused
+        if (!playing3D && !viewModel.threeDActive) camBlend.snapTo(0f)
+        if (state.status == GameStatus.GameOver || state.status == GameStatus.Ready) camBlend.snapTo(0f)
     }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -214,16 +228,10 @@ fun GameScreen(
                 }
                 boardModifier = boardModifier.offset { IntOffset(shakeX.roundToInt(), shakeY.roundToInt()) }
                 if (state.status == GameStatus.Running && viewModel.controlScheme == ControlScheme.Swipe) {
-                    // In 3D, a horizontal swipe turns left/right relative to the
-                    // heading; otherwise it steers by absolute direction.
-                    boardModifier = if (viewModel.threeDActive) {
-                        boardModifier.swipeToSteerRelative(
-                            onLeft = viewModel::turnLeft,
-                            onRight = viewModel::turnRight,
-                        )
-                    } else {
-                        boardModifier.swipeToSteer(onSwipe = viewModel::setDirection)
-                    }
+                    // A single, never-swapped detector: the VM routes each swipe to
+                    // a relative turn (3D) or an absolute direction (2D). Swapping
+                    // the modifier on threeDActive would leave a stale pointerInput.
+                    boardModifier = boardModifier.swipeToSteer(onSwipe = viewModel::onSwipe)
                 }
                 // The board interior stays dark, but its frame follows the theme:
                 // a branded green border on the light surround, the skin's subtle

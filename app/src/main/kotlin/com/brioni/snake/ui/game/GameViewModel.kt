@@ -146,12 +146,19 @@ class GameViewModel(
         private set
 
     /**
-     * True while the 3D (chase-cam) hazard is on screen — from the tilt-in until
-     * the tilt-out completes. Gates the relative-controls override and the 3D
-     * renderer. Distinct from the effect timer so it can bracket the cinematic.
+     * True while the 3D (chase-cam) *hazard* is on screen — from the tilt-in until
+     * the tilt-out completes. Distinct from the effect timer so it can bracket the
+     * cinematic. The whole 3D World mode is handled separately via [threeDActive].
      */
-    var threeDActive by mutableStateOf(false)
+    var threeDHazardActive by mutableStateOf(false)
         private set
+
+    /**
+     * Whether the board should render (and steer) in the 3D chase-cam: the timed
+     * hazard, or the always-on 3D World mode. Gates the relative-controls override
+     * and the perspective renderer.
+     */
+    val threeDActive: Boolean get() = mode == GameMode.ThreeDWorld || threeDHazardActive
 
     /**
      * Bumped when the 3D cinematic should play (tilt-in on start, tilt-out on
@@ -381,8 +388,8 @@ class GameViewModel(
         previousSnake = newState.snake
         state = newState
         tickTimeNanos = System.nanoTime()
-        // Any reset (setup / new game / level stage) returns to the flat view.
-        threeDActive = false
+        // Any reset (setup / new game / level stage) clears the hazard cinematic.
+        threeDHazardActive = false
         cinematicHold = false
     }
 
@@ -528,8 +535,8 @@ class GameViewModel(
         // 3D cinematic brackets. Enter only on the rising edge (a second 3D eaten
         // while already active just refreshes the timer — no re-tilt). Both edges
         // freeze the loop until the screen's blend animation calls back.
-        if (threeDStarted && !threeDActive) {
-            threeDActive = true
+        if (threeDStarted && !threeDHazardActive) {
+            threeDHazardActive = true
             cinematicHold = true
             cinematicId++
         }
@@ -548,15 +555,33 @@ class GameViewModel(
         cinematicHold = false
     }
 
-    /** Clears the 3D state once the tilt-out has fully restored the flat view. */
+    /** Clears the 3D hazard state once the tilt-out has restored the flat view. */
     fun clearThreeD() {
-        threeDActive = false
+        threeDHazardActive = false
+    }
+
+    /**
+     * Routes a board swipe. In the 3D view a horizontal swipe is a heading-relative
+     * turn (left/right) and vertical swipes are ignored; otherwise it steers by the
+     * swiped absolute [direction]. Reading [threeDActive] here (not at wiring time)
+     * keeps a single, never-swapped gesture detector correct in both views.
+     */
+    fun onSwipe(direction: Direction) {
+        if (threeDActive) {
+            when (direction) {
+                Direction.Left -> turnLeft()
+                Direction.Right -> turnRight()
+                Direction.Up, Direction.Down -> Unit
+            }
+        } else {
+            setDirection(direction)
+        }
     }
 
     private fun onGameOver(score: Int) {
         // Death during 3D: drop the cinematic state so the game-over overlay shows
         // the flat board (the screen snaps the camera blend back to 0 on status).
-        threeDActive = false
+        threeDHazardActive = false
         cinematicHold = false
         isNewBest = score > bestScore
         val stats = RunStats(

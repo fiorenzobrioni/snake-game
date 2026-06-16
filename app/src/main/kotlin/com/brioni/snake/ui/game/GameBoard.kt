@@ -60,6 +60,17 @@ import kotlin.math.sin
 /** Final window of a Ghost (Star) effect over which the warning blink ramps up. */
 private const val GHOST_WARN_MS = 2_000f
 
+/** Height (cells) of the raised boundary walls in the 3D chase-cam view. */
+private const val WALL_HEIGHT = 0.7f
+
+/** Mixes [c] toward white by [f] (0..1), forcing full opacity — for bright rails. */
+private fun brighten(c: Color, f: Float): Color = Color(
+    red = c.red + (1f - c.red) * f,
+    green = c.green + (1f - c.green) * f,
+    blue = c.blue + (1f - c.blue) * f,
+    alpha = 1f,
+)
+
 @Composable
 fun GameBoard(
     state: GameState,
@@ -891,21 +902,54 @@ private fun DrawScope.draw3DScene(
     for (x in 0..board.width) worldLine(x.toFloat(), 0f, x.toFloat(), board.height.toFloat(), 0f, gridColor, 1f)
     for (y in 0..board.height) worldLine(0f, y.toFloat(), board.width.toFloat(), y.toFloat(), 0f, gridColor, 1f)
 
-    // Play-area boundary: the rectangle, or the shaped (Levels) outline.
+    // Depth-sorted scene items (drawn far -> near).
+    val items = ArrayList<Pair<Float, DrawScope.() -> Unit>>()
+
+    // Raised boundary walls: a vertical strip along each play-area edge (the board
+    // rectangle, or the shaped Campaign outline), so the arena reads clearly in 3D.
     val edgeWidth = (cell * 0.12f).coerceAtLeast(2f) * (0.6f + 0.4f * t)
+    val wallTop = lerpF(0f, WALL_HEIGHT, t) // grows with the tilt; flat stays flat
+    val railColor = brighten(borderColor, 0.55f)
+    fun addWall(ax: Float, ay: Float, bx: Float, by: Float) {
+        val baseA = cam.cameraSpace(Vec3(ax, ay, 0f))
+        val baseB = cam.cameraSpace(Vec3(bx, by, 0f))
+        val topA = cam.cameraSpace(Vec3(ax, ay, wallTop))
+        val topB = cam.cameraSpace(Vec3(bx, by, wallTop))
+        // Cull the segment if any corner is behind the near plane.
+        if (baseA.z <= Cam.NEAR || baseB.z <= Cam.NEAR || topA.z <= Cam.NEAR || topB.z <= Cam.NEAR) return
+        val pBaseA = toPixel(cam.projectCamera(baseA))
+        val pBaseB = toPixel(cam.projectCamera(baseB))
+        val pTopA = toPixel(cam.projectCamera(topA))
+        val pTopB = toPixel(cam.projectCamera(topB))
+        items.add((baseA.z + baseB.z) / 2f to {
+            val face = Path().apply {
+                moveTo(pBaseA.x, pBaseA.y)
+                lineTo(pBaseB.x, pBaseB.y)
+                lineTo(pTopB.x, pTopB.y)
+                lineTo(pTopA.x, pTopA.y)
+                close()
+            }
+            drawPath(
+                face,
+                brush = Brush.verticalGradient(
+                    colors = listOf(railColor.copy(alpha = 0.85f), borderColor.copy(alpha = 0.4f)),
+                    startY = minOf(pTopA.y, pTopB.y),
+                    endY = maxOf(pBaseA.y, pBaseB.y),
+                ),
+            )
+            drawLine(railColor, pTopA, pTopB, edgeWidth)
+        })
+    }
     if (boundary.isEmpty()) {
         val w = board.width.toFloat()
         val h = board.height.toFloat()
-        worldLine(0f, 0f, w, 0f, 0f, borderColor, edgeWidth)
-        worldLine(w, 0f, w, h, 0f, borderColor, edgeWidth)
-        worldLine(w, h, 0f, h, 0f, borderColor, edgeWidth)
-        worldLine(0f, h, 0f, 0f, 0f, borderColor, edgeWidth)
+        addWall(0f, 0f, w, 0f)
+        addWall(w, 0f, w, h)
+        addWall(w, h, 0f, h)
+        addWall(0f, h, 0f, 0f)
     } else {
-        boundary.forEach { e -> worldLine(e.x1, e.y1, e.x2, e.y2, 0f, borderColor, edgeWidth) }
+        boundary.forEach { e -> addWall(e.x1, e.y1, e.x2, e.y2) }
     }
-
-    // Depth-sorted scene items (drawn far -> near).
-    val items = ArrayList<Pair<Float, DrawScope.() -> Unit>>()
 
     fun addRaisedQuad(cx: Float, cy: Float, fill: Color, outline: Color, height: Float, alpha: Float) {
         val cc = cam.cameraSpace(Vec3(cx, cy, height))
