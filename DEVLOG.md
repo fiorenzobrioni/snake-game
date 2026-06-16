@@ -11,6 +11,19 @@ For the forward-looking plan, roadmap, active TODOs, bugs, and notes, see [`PLAN
 
 ---
 
+### 2026-06-16 - 3D walls extrude outward; README modes/features refresh
+
+- **Walls no longer overlap the snake**: the boundary wall box was centred on the edge line, so its
+  inner half intruded into the edge cell and overlapped the snake at the border. `BoundaryEdge` now
+  carries an outward normal and `draw3DScene` extrudes each wall **entirely outward** (inner face flush
+  with the boundary), so a snake running along the edge sits just inside the wall with no overlap.
+- **README**: documented the **3D World** mode and the **3D** hazard, and verified the rest of the
+  feature/mode list against the code - corrected the achievements count (15 -> 18); board scales
+  (Cozy/Standard/Epic), levels (5), skins (4) and modes (5) confirmed accurate.
+- Verified: `./gradlew test`, `lint`, `assembleDebug` pass.
+
+---
+
 ### 2026-06-16 - 3D polish: solid boundary walls, no 2D-board ghost
 
 - **Walls given depth**: boundary walls were a zero-thickness plane. Each edge is now extruded into a

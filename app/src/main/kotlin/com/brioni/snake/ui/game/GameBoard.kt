@@ -44,7 +44,6 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
-import kotlin.math.sqrt
 
 /**
  * Draws the board on a Compose [Canvas]. The grid logic stays in the model;
@@ -352,12 +351,21 @@ fun GameBoard(
 }
 
 /** One edge (in cell units) between a playable cell and a wall / out-of-board. */
-private data class BoundaryEdge(val x1: Float, val y1: Float, val x2: Float, val y2: Float)
+private data class BoundaryEdge(
+    val x1: Float,
+    val y1: Float,
+    val x2: Float,
+    val y2: Float,
+    /** Unit outward normal (away from the play area) - used to extrude 3D walls. */
+    val nx: Float = 0f,
+    val ny: Float = 0f,
+)
 
 /**
  * The outline of the playable area for a shaped (Levels mode) board: every edge
  * separating a playable cell from a wall cell or the outside. Empty when the
- * board has no walls, selecting the plain rectangular frame instead.
+ * board has no walls, selecting the plain rectangular frame instead. Each edge
+ * carries its outward normal so the 3D renderer can extrude walls away from play.
  */
 private fun boundaryEdges(walls: Set<Position>, board: BoardDimensions): List<BoundaryEdge> {
     if (walls.isEmpty()) return emptyList()
@@ -367,10 +375,10 @@ private fun boundaryEdges(walls: Set<Position>, board: BoardDimensions): List<Bo
     for (y in 0 until board.height) {
         for (x in 0 until board.width) {
             if (Position(x, y) in walls) continue
-            if (blocked(x - 1, y)) edges.add(BoundaryEdge(x.toFloat(), y.toFloat(), x.toFloat(), y + 1f))
-            if (blocked(x + 1, y)) edges.add(BoundaryEdge(x + 1f, y.toFloat(), x + 1f, y + 1f))
-            if (blocked(x, y - 1)) edges.add(BoundaryEdge(x.toFloat(), y.toFloat(), x + 1f, y.toFloat()))
-            if (blocked(x, y + 1)) edges.add(BoundaryEdge(x.toFloat(), y + 1f, x + 1f, y + 1f))
+            if (blocked(x - 1, y)) edges.add(BoundaryEdge(x.toFloat(), y.toFloat(), x.toFloat(), y + 1f, -1f, 0f))
+            if (blocked(x + 1, y)) edges.add(BoundaryEdge(x + 1f, y.toFloat(), x + 1f, y + 1f, 1f, 0f))
+            if (blocked(x, y - 1)) edges.add(BoundaryEdge(x.toFloat(), y.toFloat(), x + 1f, y.toFloat(), 0f, -1f))
+            if (blocked(x, y + 1)) edges.add(BoundaryEdge(x.toFloat(), y + 1f, x + 1f, y + 1f, 0f, 1f))
         }
     }
     return edges
@@ -919,33 +927,32 @@ private fun DrawScope.draw3DScene(
     val faceColor = brighten(borderColor, 0.30f)
     val capColor = brighten(borderColor, 0.50f)
     val railColor = brighten(borderColor, 0.65f)
-    fun addWall(ax: Float, ay: Float, bx: Float, by: Float) {
-        // In-plane perpendicular at half the thickness, to extrude the edge sideways.
-        val ex = bx - ax
-        val ey = by - ay
-        val len = sqrt(ex * ex + ey * ey)
-        if (len < 1e-4f) return
-        val nx = -ey / len * (WALL_THICKNESS / 2f)
-        val ny = ex / len * (WALL_THICKNESS / 2f)
+    // [nx]/[ny] is the unit outward normal: the wall is extruded entirely to the
+    // outside of the play area (inner face flush with the boundary line), so it
+    // never overlaps the snake when it runs along the edge.
+    fun addWall(ax: Float, ay: Float, bx: Float, by: Float, nx: Float, ny: Float) {
+        val ox = nx * WALL_THICKNESS
+        val oy = ny * WALL_THICKNESS
         fun cs(x: Float, y: Float, z: Float) = cam.cameraSpace(Vec3(x, y, z))
-        val aOutB = cs(ax + nx, ay + ny, 0f)
-        val bOutB = cs(bx + nx, by + ny, 0f)
-        val aInB = cs(ax - nx, ay - ny, 0f)
-        val bInB = cs(bx - nx, by - ny, 0f)
-        val aOutT = cs(ax + nx, ay + ny, wallTop)
-        val bOutT = cs(bx + nx, by + ny, wallTop)
-        val aInT = cs(ax - nx, ay - ny, wallTop)
-        val bInT = cs(bx - nx, by - ny, wallTop)
-        val corners = listOf(aOutB, bOutB, aInB, bInB, aOutT, bOutT, aInT, bInT)
+        // "in" = the boundary line (play-area side); "out" = pushed outward.
+        val aInB = cs(ax, ay, 0f)
+        val bInB = cs(bx, by, 0f)
+        val aOutB = cs(ax + ox, ay + oy, 0f)
+        val bOutB = cs(bx + ox, by + oy, 0f)
+        val aInT = cs(ax, ay, wallTop)
+        val bInT = cs(bx, by, wallTop)
+        val aOutT = cs(ax + ox, ay + oy, wallTop)
+        val bOutT = cs(bx + ox, by + oy, wallTop)
+        val corners = listOf(aInB, bInB, aOutB, bOutB, aInT, bInT, aOutT, bOutT)
         // Cull the whole segment if any corner is behind the near plane (segments
         // are unit-length, so at most the cell straddling the camera drops).
         if (corners.any { it.z <= Cam.NEAR }) return
-        // Two long sides + the top cap, each tagged with its fill colour. They are
-        // painted far -> near inside the lambda so the box occludes itself.
+        // Inner & outer side faces + the top cap, each tagged with its fill colour.
+        // Painted far -> near inside the lambda so the box occludes itself.
         val faces = listOf(
-            listOf(aOutB, bOutB, bOutT, aOutT) to faceColor,
             listOf(aInB, bInB, bInT, aInT) to faceColor,
-            listOf(aOutT, bOutT, bInT, aInT) to capColor,
+            listOf(aOutB, bOutB, bOutT, aOutT) to faceColor,
+            listOf(aInT, bInT, bOutT, aOutT) to capColor,
         )
         val centroidZ = corners.map { it.z }.average().toFloat()
         items.add(centroidZ to {
@@ -965,28 +972,27 @@ private fun DrawScope.draw3DScene(
                     ),
                 )
             }
-            // Bright rails along both top edges; the far one sits behind the box.
-            drawLine(railColor, toPixel(cam.projectCamera(aOutT)), toPixel(cam.projectCamera(bOutT)), edgeWidth)
+            // Bright rail along the inner top edge (the side facing the player).
             drawLine(railColor, toPixel(cam.projectCamera(aInT)), toPixel(cam.projectCamera(bInT)), edgeWidth)
         })
     }
     if (boundary.isEmpty()) {
         // Subdivide each board edge into unit-cell segments so the near-plane cull
         // only drops the single cell straddling the camera - the rest of every
-        // wall (and the corners) stays drawn, instead of a whole edge vanishing.
+        // wall (and the corners) stays drawn. Each edge is extruded outward.
         val w = board.width
         val h = board.height
         for (x in 0 until w) {
-            addWall(x.toFloat(), 0f, x + 1f, 0f) // top edge
-            addWall(x.toFloat(), h.toFloat(), x + 1f, h.toFloat()) // bottom edge
+            addWall(x.toFloat(), 0f, x + 1f, 0f, 0f, -1f) // top edge, outward = up
+            addWall(x.toFloat(), h.toFloat(), x + 1f, h.toFloat(), 0f, 1f) // bottom edge, outward = down
         }
         for (y in 0 until h) {
-            addWall(0f, y.toFloat(), 0f, y + 1f) // left edge
-            addWall(w.toFloat(), y.toFloat(), w.toFloat(), y + 1f) // right edge
+            addWall(0f, y.toFloat(), 0f, y + 1f, -1f, 0f) // left edge, outward = left
+            addWall(w.toFloat(), y.toFloat(), w.toFloat(), y + 1f, 1f, 0f) // right edge, outward = right
         }
     } else {
-        // Campaign boundary edges are already unit-length (see boundaryEdges).
-        boundary.forEach { e -> addWall(e.x1, e.y1, e.x2, e.y2) }
+        // Campaign boundary edges are already unit-length and carry their normal.
+        boundary.forEach { e -> addWall(e.x1, e.y1, e.x2, e.y2, e.nx, e.ny) }
     }
 
     fun addRaisedQuad(cx: Float, cy: Float, fill: Color, outline: Color, height: Float, alpha: Float) {

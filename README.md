@@ -74,7 +74,7 @@ The classic Snake mechanics, extended with configurable features so every run fe
   penalty, each with a floating callout.
 - 🏆 **Records screen** - a best-score table per difficulty × board scale (and per mode), reachable
   from the main menu.
-- 🎖️ **Achievements** - fifteen local milestones (combos, scores, endurance, eating sprees, using power-ups…)
+- 🎖️ **Achievements** - eighteen local milestones (combos, scores, endurance, eating sprees, using power-ups…)
   that unlock as you play, with a dedicated screen and an unlock banner on the game-over screen.
 - 🕹️ **Game modes** - **Classic**, **Endless** (speed ramps up the longer you survive),
   **Time Attack** (score as much as you can in 120s), **Campaign** (see below) and **3D World** (a full
@@ -192,7 +192,7 @@ automatically pauses when you leave the app and yields to other apps' audio.
 **Game modes:** choose your mode on the start screen - **Classic** (survive as long as you can),
 **Endless** (the snake keeps accelerating the longer you survive), **Time Attack** (score as much
 as possible in 120 seconds - watch for the exclusive **+5s** / **−3s** clock pieces that stretch or
-shave your remaining time) or **Campaign** (clear ten shaped boards by eating 12 foods each, with 3
+shave your remaining time), **Campaign** (clear ten shaped boards by eating 12 foods each, with 3
 lives, an exclusive 2×2 extra-life piece, and a speed-up every completed lap - the HUD shows
 *Level x · Speed x*, your hearts and the foods still to go) or **3D World** (Classic rules played
 entirely in the behind-the-head 3D chase-cam, at a slightly eased pace, with relative left/right
