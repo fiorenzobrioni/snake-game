@@ -103,6 +103,10 @@ class GameViewModel(
     var specialFrequency by mutableStateOf(SpecialFrequency.Standard)
         private set
 
+    /** When true, every mode is played in the 3D chase-cam view (setting). */
+    var threeDWorldEnabled by mutableStateOf(false)
+        private set
+
     /** Active play mode; highscores are tracked per (mode, level, scale). */
     var mode by mutableStateOf(GameMode.Classic)
         private set
@@ -155,10 +159,10 @@ class GameViewModel(
 
     /**
      * Whether the board should render (and steer) in the 3D chase-cam: the timed
-     * hazard, or the always-on 3D World mode. Gates the relative-controls override
-     * and the perspective renderer.
+     * hazard, or the "3D World" setting that plays every mode in 3D. Gates the
+     * relative-controls override and the perspective renderer.
      */
-    val threeDActive: Boolean get() = mode == GameMode.ThreeDWorld || threeDHazardActive
+    val threeDActive: Boolean get() = threeDWorldEnabled || threeDHazardActive
 
     /**
      * Bumped when the 3D cinematic should play (tilt-in on start, tilt-out on
@@ -226,7 +230,13 @@ class GameViewModel(
                 skin = settings.skin
                 hazardsEnabled = settings.hazardsEnabled
                 specialFrequency = settings.specialFrequency
+                threeDWorldEnabled = settings.threeDWorld
                 if (state.status == GameStatus.Ready) {
+                    // Keep the not-yet-started board's 3D flag in sync with the
+                    // toggle so the pace/spawn rules match before play begins.
+                    if (state.threeDWorld != threeDWorldEnabled) {
+                        state = state.copy(threeDWorld = threeDWorldEnabled)
+                    }
                     // Levels mode ignores the difficulty selector: it is pinned
                     // to its score level so this collector can't keep resetting.
                     val targetLevel = if (settings.mode == GameMode.Levels) LevelsMode.SCORE_LEVEL else settings.level
@@ -386,7 +396,9 @@ class GameViewModel(
     /** Replaces the state and resets interpolation bookkeeping to it. */
     private fun resetTo(newState: GameState) {
         previousSnake = newState.snake
-        state = newState
+        // Stamp the current "3D World" toggle onto the run so the model eases the
+        // pace and suppresses the redundant 3D food for the whole game.
+        state = newState.copy(threeDWorld = threeDWorldEnabled)
         tickTimeNanos = System.nanoTime()
         // Any reset (setup / new game / level stage) clears the hazard cinematic.
         threeDHazardActive = false

@@ -23,7 +23,4 @@ enum class GameMode(val displayName: String) {
 
     /** Ten shaped boards cycling forever, faster each cycle, with lives. */
     Levels("Campaign"),
-
-    /** Classic rules, but the whole game is played in the 3D chase-cam view. */
-    ThreeDWorld("3D World"),
 }

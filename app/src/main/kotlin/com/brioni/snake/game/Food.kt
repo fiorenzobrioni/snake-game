@@ -195,6 +195,7 @@ object FoodTable {
         specialAllowed: Boolean = true,
         specialFrequency: SpecialFrequency = SpecialFrequency.Standard,
         mode: GameMode = GameMode.Classic,
+        threeDWorld: Boolean = false,
     ): FoodSpec {
         val elapsedMs = elapsedTicks.toLong() * level.tickMillis
         val factor = levelGateFactor(level)
@@ -211,14 +212,14 @@ object FoodTable {
                 add(Weighted(6) { mysterySpec(random, FoodCategory.Shrink, maxiUnlocked) })
             }
             if (specialUnlocked && specialAllowed) {
-                add(Weighted(specialFrequency.spawnWeight) { specialSpec(random, hazardsEnabled, mode) })
+                add(Weighted(specialFrequency.spawnWeight) { specialSpec(random, hazardsEnabled, mode, threeDWorld) })
             }
         }
         return pick(entries, random)
     }
 
     /** Builds a maxi special, choosing a kind weighted by benefit, the toggle and the mode. */
-    private fun specialSpec(random: Random, hazardsEnabled: Boolean, mode: GameMode): FoodSpec {
+    private fun specialSpec(random: Random, hazardsEnabled: Boolean, mode: GameMode, threeDWorld: Boolean): FoodSpec {
         val choices = buildList<Weighted<FoodEffect>> {
             // Beneficial — always available.
             add(Weighted(20) { FoodEffect.Haste(HASTE_MS) })
@@ -231,7 +232,8 @@ object FoodTable {
                 add(Weighted(12) { FoodEffect.Burst(BURST_DEBRIS_MS) })
                 add(Weighted(14) { FoodEffect.Slow(SLOW_MS) })
                 // Pointless inside the always-on 3D World mode.
-                if (mode != GameMode.ThreeDWorld) add(Weighted(12) { FoodEffect.ThreeD(THREE_D_MS) })
+                // Redundant when the whole game is already in 3D.
+                if (!threeDWorld) add(Weighted(12) { FoodEffect.ThreeD(THREE_D_MS) })
             }
             // Time Attack only: the clock blocks. The penalty is a hazard.
             if (mode == GameMode.TimeAttack) {

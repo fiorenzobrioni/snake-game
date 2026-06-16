@@ -11,6 +11,24 @@ For the forward-looking plan, roadmap, active TODOs, bugs, and notes, see [`PLAN
 
 ---
 
+### 2026-06-16 - 3D World becomes an orthogonal Settings toggle (not a mode)
+
+- Replaced the `GameMode.ThreeDWorld` mode with a **3D World** Settings switch (`Settings.threeDWorld`,
+  DataStore-persisted, `setThreeDWorld`). When on, **any** mode (Classic / Endless / Time Attack /
+  Campaign) is played in the chase-cam, so the 3D view is now orthogonal to the mode rather than a
+  duplicate of Classic.
+- The toggle is carried into a run as a pure `GameState.threeDWorld` flag (stamped in
+  `GameViewModel.resetTo`, synced on the Ready screen), which the model reads only to ease the pace
+  (`THREED_FACTOR`) and suppress the redundant 3D food (threaded through `FoodTable.roll` /
+  `specialSpec`). `threeDActive = threeDWorldEnabled || threeDHazardActive` drives the renderer and the
+  relative controls; `GameScreen` holds `camBlend` at 1 while the toggle is on.
+- Added the toggle to the Settings screen (after the CRT filter) and the `settings_3d_world` string.
+  Docs (README / PLANNING) updated; the old `ThreeDWorld` enum value is gone (stale highscores under
+  that key are ignored by `ScoreKey.parse`).
+- Verified: `./gradlew test`, `lint`, `assembleDebug` pass.
+
+---
+
 ### 2026-06-16 - 3D walls extrude outward; README modes/features refresh
 
 - **Walls no longer overlap the snake**: the boundary wall box was centred on the edge line, so its

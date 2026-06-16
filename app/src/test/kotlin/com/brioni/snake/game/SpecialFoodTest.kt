@@ -202,16 +202,16 @@ class SpecialFoodTest {
 
     @Test
     fun threeDWorldSlowsAndUsesLevelPace() {
-        // 3D World is Classic-paced (level base) but eased by the same factor.
+        // The 3D World flag eases the level base pace by the same factor.
         val base = Level.Beginner.tickMillis
-        val state = runningState(mode = GameMode.ThreeDWorld)
+        val state = runningState().copy(threeDWorld = true)
         assertEquals((base * GameState.THREED_FACTOR).toLong(), state.tickIntervalMillis)
     }
 
     @Test
     fun threeDWorldDoesNotSpawnTheThreeDFood() {
         val rolls = (0 until 6000).map {
-            FoodTable.roll(Random(it.toLong()), 2000, Level.Beginner, mode = GameMode.ThreeDWorld)
+            FoodTable.roll(Random(it.toLong()), 2000, Level.Beginner, threeDWorld = true)
         }
         assertTrue("no 3D food in 3D World", rolls.none { it.effect is FoodEffect.ThreeD })
         // Other specials still appear (it is otherwise Classic-like).

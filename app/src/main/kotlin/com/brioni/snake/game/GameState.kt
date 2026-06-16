@@ -84,6 +84,9 @@ data class GameState(
     val lives: Int = 0,
     val levelFoodsEaten: Int = 0,
     val walls: Set<Position> = emptySet(),
+    /** When true, the run is played in the 3D chase-cam (a UI/settings flag the
+     *  model only consults to ease the pace and suppress the redundant 3D food). */
+    val threeDWorld: Boolean = false,
     val lastEvents: List<GameEvent> = emptyList(),
 ) {
     val head: Position get() = snake.first()
@@ -114,7 +117,7 @@ data class GameState(
             // The 3D chase-cam (timed hazard or the whole 3D World mode) eases the
             // pace a little so the perspective view stays playable; proportional,
             // so high levels stay fast in relative terms.
-            if (hasEffect(EffectKind.ThreeD) || mode == GameMode.ThreeDWorld) ms *= THREED_FACTOR
+            if (hasEffect(EffectKind.ThreeD) || threeDWorld) ms *= THREED_FACTOR
             return ms.toLong().coerceIn(MIN_TICK_MS, MAX_TICK_MS)
         }
 

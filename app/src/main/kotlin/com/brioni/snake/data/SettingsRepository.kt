@@ -36,6 +36,8 @@ data class Settings(
     val specialFrequency: SpecialFrequency = SpecialFrequency.Standard,
     val mode: GameMode = GameMode.Classic,
     val themeMode: ThemeMode = ThemeMode.Dark,
+    /** When true, every mode is played in the 3D chase-cam view. */
+    val threeDWorld: Boolean = false,
 )
 
 /** Default audio levels (also used as the in-memory fallback before load). */
@@ -67,6 +69,7 @@ class SettingsRepository(private val context: Context) {
             specialFrequency = prefs[SPECIAL_FREQUENCY].toEnum(SpecialFrequency::valueOf) ?: SpecialFrequency.Standard,
             mode = prefs[MODE].toEnum(GameMode::valueOf) ?: GameMode.Classic,
             themeMode = prefs[THEME_MODE].toEnum(ThemeMode::valueOf) ?: ThemeMode.Dark,
+            threeDWorld = prefs[THREE_D_WORLD] ?: false,
         )
     }
 
@@ -105,6 +108,9 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setThemeMode(themeMode: ThemeMode) =
         edit { it[THEME_MODE] = themeMode.name }
+
+    suspend fun setThreeDWorld(enabled: Boolean) =
+        edit { it[THREE_D_WORLD] = enabled }
 
     /** The stored best for a (mode × level × scale) slot (0 if none yet). */
     fun highScore(mode: GameMode, level: Level, scale: BoardScale): Flow<Int> =
@@ -188,6 +194,7 @@ class SettingsRepository(private val context: Context) {
         val SPECIAL_FREQUENCY = stringPreferencesKey("special_frequency")
         val MODE = stringPreferencesKey("game_mode")
         val THEME_MODE = stringPreferencesKey("theme_mode")
+        val THREE_D_WORLD = booleanPreferencesKey("three_d_world")
         val UNLOCKED_ACHIEVEMENTS = stringSetPreferencesKey("unlocked_achievements")
     }
 }

@@ -132,10 +132,10 @@ fun GameScreen(
     // cinematicId on tilt-in (effect started) and tilt-out (effect expired); we
     // animate the tilt then release the loop freeze it set.
     val camBlend = remember { Animatable(0f) }
-    // The timed hazard's tilt-in / tilt-out (other modes only; 3D World is driven
-    // permanently below).
+    // The timed hazard's tilt-in / tilt-out (only when 3D World is off; with it on
+    // the whole game stays in 3D, driven permanently below).
     LaunchedEffect(viewModel.cinematicId) {
-        if (viewModel.cinematicId == 0 || viewModel.mode == GameMode.ThreeDWorld) return@LaunchedEffect
+        if (viewModel.cinematicId == 0 || viewModel.threeDWorldEnabled) return@LaunchedEffect
         val entering = viewModel.state.hasEffect(EffectKind.ThreeD)
         camBlend.animateTo(
             targetValue = if (entering) 1f else 0f,
@@ -144,10 +144,10 @@ fun GameScreen(
         viewModel.endCinematicHold()
         if (!entering) viewModel.clearThreeD()
     }
-    // 3D World: the whole game is in the chase-cam. Tilt in once play starts and
-    // hold; the terminal/setup snap below drops back to flat for the overlays.
-    LaunchedEffect(viewModel.mode, state.status) {
-        if (viewModel.mode != GameMode.ThreeDWorld) return@LaunchedEffect
+    // 3D World setting: every mode is in the chase-cam. Tilt in once play starts
+    // and hold; the terminal/setup snap below drops back to flat for the overlays.
+    LaunchedEffect(viewModel.threeDWorldEnabled, state.status) {
+        if (!viewModel.threeDWorldEnabled) return@LaunchedEffect
         if (state.status == GameStatus.Running || state.status == GameStatus.Paused) {
             if (camBlend.value < 1f) {
                 camBlend.animateTo(1f, tween(durationMillis = 700, easing = FastOutSlowInEasing))

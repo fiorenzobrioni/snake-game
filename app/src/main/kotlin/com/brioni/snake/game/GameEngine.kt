@@ -317,6 +317,7 @@ class GameEngine(private val random: Random = Random.Default) {
                 specialAllowed = specialsOnBoard < MAX_SPECIALS_ON_BOARD && !freezeActive,
                 specialFrequency = specialFrequency,
                 mode = state.mode,
+                threeDWorld = state.threeDWorld,
             )
         }
 
@@ -529,13 +530,14 @@ class GameEngine(private val random: Random = Random.Default) {
         specialAllowed: Boolean = true,
         specialFrequency: SpecialFrequency = SpecialFrequency.Standard,
         mode: GameMode = GameMode.Classic,
+        threeDWorld: Boolean = false,
     ): List<Food> {
         var foods = existing
         while (foods.size < FOOD_COUNT) {
             // A special is allowed only while fewer than the cap are on the board.
             val allowSpecial = specialAllowed &&
                 foods.count { it.category == FoodCategory.Special } < MAX_SPECIALS_ON_BOARD
-            val food = spawnFood(board, snake, obstacles, walls, foods, elapsedTicks, level, hazardsEnabled, allowSpecial, specialFrequency, mode) ?: break
+            val food = spawnFood(board, snake, obstacles, walls, foods, elapsedTicks, level, hazardsEnabled, allowSpecial, specialFrequency, mode, threeDWorld) ?: break
             foods = foods + food
         }
         return foods
@@ -558,8 +560,9 @@ class GameEngine(private val random: Random = Random.Default) {
         specialAllowed: Boolean,
         specialFrequency: SpecialFrequency,
         mode: GameMode,
+        threeDWorld: Boolean,
     ): Food? {
-        val spec = FoodTable.roll(random, elapsedTicks, level, hazardsEnabled, specialAllowed, specialFrequency, mode)
+        val spec = FoodTable.roll(random, elapsedTicks, level, hazardsEnabled, specialAllowed, specialFrequency, mode, threeDWorld)
         val span = spec.size.cellSpan
         // Top-left cell range that keeps the whole square off the border.
         val maxX = board.width - span
