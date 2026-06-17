@@ -49,8 +49,7 @@ menus and replayability - and is **publishable on the Google Play Store** as a s
   is intentional - it keeps the app on a modern, premium-device baseline and lets AGSL shaders and
   other recent APIs be used without fallbacks.
 - **Persistence**: Preferences **DataStore** (settings, highscores).
-- **Effects**: hand-drawn particles on `Canvas`; **AGSL `RuntimeShader`** for glow/background on **API 33+**
-  with a graceful fallback below.
+- **Effects**: hand-drawn particles on `Canvas`; **AGSL `RuntimeShader`** for glow/background on **API 33+**.
 - **Audio**: `SoundPool` (SFX) + `MediaPlayer`/`ExoPlayer` (music).
 - **Assets**: free licenses only (CC0 / CC-BY / MIT), recorded in [`docs/CREDITS.md`](docs/CREDITS.md).
 
@@ -127,7 +126,7 @@ snake-game/
       full-screen `Surface`. Splash via `core-splashscreen`. Verify: the app launches to a colored screen.
 - [x] **Step 0.3** - Display: **portrait lock**, **edge-to-edge**, content respects **safe-area insets**.
       Verify: portrait, background draws under the bars, content stays clear of cutouts.
-- [x] **Step 0.4** - Adaptive-icon placeholder (+ legacy fallback for API 24–25) and `docs/CREDITS.md`.
+- [x] **Step 0.4** - Adaptive-icon placeholder and `docs/CREDITS.md`.
 
 > 🎯 **End of Phase 0**: an installable app that launches to a themed, edge-to-edge, portrait screen.
 
@@ -211,7 +210,7 @@ snake-game/
 - [x] **Step 3.1** - Orbitron (OFL) display font + a reusable Material 3 type scale.
 - [x] **Step 3.2** - Main menu (animated title, Play / Settings) with state-based navigation.
 - [x] **Step 3.3** - Settings screen (level, board scale, control scheme) persisted via **DataStore**.
-- [x] **Step 3.4** - Pause overlay with a **blur** (`Modifier.blur`) over the frozen board (API 31+, scrim fallback).
+- [x] **Step 3.4** - Pause overlay with a **blur** (`Modifier.blur`) over the frozen board.
 - [x] **Step 3.5** - Game-over screen + persistent **highscores per (level, scale)**.
 - [x] **Step 3.6** - Animated, rolling HUD score counter.
 - [x] **Step 3.7** - Fade scene transitions (`Crossfade`).
@@ -237,7 +236,7 @@ snake-game/
 > `null` pre-33). "Rare foods" maps onto the current food model - **maxi / mystery / huge** pieces -
 > since the v1.0.0 Gold/Mega types were replaced by the Phase 2.5 category/tier system.
 
-- [x] **Step 5.1** - `RuntimeShader` glow on the snake's head (API 33+), graceful fallback below.
+- [x] **Step 5.1** - `RuntimeShader` glow on the snake's head (API 33+).
 - [x] **Step 5.2** - Pulsing shader outline + halo on rare foods (maxi / mystery / huge).
 - [x] **Step 5.3** - Animated background shader (drifting glows + vignette over the gradient).
 - [x] **Step 5.4** - CRT / scanline filter, toggleable in Settings (API 33+).
@@ -400,11 +399,6 @@ snake-game/
   which is created once in `ui/App.kt` and released on the host's `onDispose`.
 - **Music backend is framework `MediaPlayer`** (two instances for the crossfade), chosen over
   ExoPlayer to keep the binary lean. `MusicManager` requests audio focus and ducks/pauses on loss.
-- **AGSL shaders require API 33+ and must stay optional**: `ui/game/Shaders.kt` holds the sources and
-  the `BoardShaders` holder (annotated `@RequiresApi(33)`). Construction and every `setFloatUniform`/
-  `setColorUniform` call must sit behind an explicit `Build.VERSION.SDK_INT >= TIRAMISU` check - lint
-  does **not** treat a `shaders != null` null-check as an API guard. Below 33 the holder is `null`
-  and the renderer uses the Canvas fallbacks. Keep both paths in sync when changing visuals.
 - **Shaders return premultiplied alpha** (Skia convention): the glow/halo shaders output `rgb * a`.
 - **The CRT filter is a `RenderEffect`** applied to the board's `graphicsLayer` (API 33+), gated by a
   persisted `crtEnabled` setting that is only surfaced in Settings when `Shaders.supported`.
