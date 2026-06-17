@@ -481,7 +481,9 @@ class GameEngine(private val random: Random = Random.Default) {
         board: BoardDimensions,
         snake: List<Position>,
     ): Set<Position> {
-        if (level.obstacleCount == 0) return emptySet()
+        // Scaled with the board's area so density stays constant across scales.
+        val obstacleCount = obstacleCountFor(level, board)
+        if (obstacleCount == 0) return emptySet()
 
         val w = board.width
         val h = board.height
@@ -500,7 +502,7 @@ class GameEngine(private val random: Random = Random.Default) {
         val snakeCells = snake.toHashSet()
         val obstacles = LinkedHashSet<Position>()
         val seedCells = ArrayList<Position>() // quadrant cells placed so far
-        val perQuadrant = (level.obstacleCount + 3) / 4 // ceil — four mirrors each
+        val perQuadrant = (obstacleCount + 3) / 4 // ceil — four mirrors each
         val targetCount = perQuadrant * 4
         var attempts = 0
         val maxAttempts = perQuadrant * 40

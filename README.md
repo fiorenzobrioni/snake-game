@@ -113,13 +113,17 @@ to manoeuvre. Eating either floats the amount of segments gained or lost (**+N**
 The **Level** sets only how many obstacles are placed; it no longer affects speed (see *Snake speed*
 below), so any level can be paired with any pace.
 
-| Level | Name        | Obstacles |
-|-------|-------------|-----------|
-| 1     | Beginner    | 0         |
-| 2     | Adventurer  | 8         |
-| 3     | Warrior     | 15        |
-| 4     | Champion    | 25        |
-| 5     | Legend      | 40        |
+| Level | Name        | Obstacles (Cozy) |
+|-------|-------------|------------------|
+| 1     | Beginner    | 0                |
+| 2     | Adventurer  | 8                |
+| 3     | Warrior     | 15               |
+| 4     | Champion    | 25               |
+| 5     | Legend      | 40               |
+
+The counts above are tuned for the smallest (Cozy) board; on larger board scales they are **scaled
+up with the board's area** so the obstacle density stays constant instead of thinning out (e.g. Epic,
+at ~2× the short side, gets ~4× the obstacles).
 
 Obstacles are laid out with **4-fold symmetry** (mirrored left/right and top/bottom), with a clear
 margin next to every wall and a clear zone around the snake's spawn. New blocks are biased towards

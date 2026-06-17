@@ -11,6 +11,19 @@ For the forward-looking plan, roadmap, active TODOs, bugs, and notes, see [`PLAN
 
 ---
 
+### 2026-06-17 - Obstacle count scales with board area; View becomes a 2D/3D selector
+
+- **Obstacle counts now scale with the board's area.** `Level.obstacleCount` stays tuned for the
+  smallest (Cozy) board; the new `obstacleCountFor(level, board)` (in `BoardLayout.kt`) multiplies it by
+  `(shortSide / OBSTACLE_REFERENCE_SHORT_SIDE)²` (reference 13), so obstacle density stays constant as
+  the board grows instead of a fixed handful looking sparse on large grids (Epic ~4×, Colossal ~7×).
+  `GameEngine.generateObstacles` uses it; added a `BoardLayoutTest` case and updated
+  `ObstacleSymmetryTest`'s exact-count assertion to the scaled target.
+- **Start-screen View** is now two mutually-exclusive chips (**2D** / **3D**) instead of a lone "3D
+  World" checkbox, matching the other selectors. Added `menu_view_2d` / `menu_view_3d`, dropped the
+  unused `menu_3d_world`.
+- Verified: `./gradlew testDebugUnitTest` (130 tests) and `assembleDebug` pass; docs updated.
+
 ### 2026-06-17 - Snake speed split from Level, new Colossal board scale, size-scaled item lifetimes
 
 - **Split `Level` into Level + `SnakeSpeed`.** `Level` now carries only `obstacleCount` (its

@@ -69,6 +69,26 @@ class BoardLayoutTest {
     }
 
     @Test
+    fun obstacleCountScalesWithBoardArea() {
+        // Beginner has no obstacles at any size.
+        BoardScale.entries.forEach { scale ->
+            assertEquals(0, obstacleCountFor(Level.Beginner, boardFor(scale, 0.6f)))
+        }
+        // The Cozy reference keeps the raw per-level count; bigger boards scale up
+        // with the square of the short side, so density stays constant.
+        val cozy = boardFor(BoardScale.Cozy, 0.6f)
+        assertEquals(Level.Legend.obstacleCount, obstacleCountFor(Level.Legend, cozy))
+
+        val epic = boardFor(BoardScale.Epic, 0.6f) // short side 27 vs 13
+        val expectedEpic = (Level.Legend.obstacleCount *
+            (27.0 / OBSTACLE_REFERENCE_SHORT_SIDE) * (27.0 / OBSTACLE_REFERENCE_SHORT_SIDE)).let {
+            kotlin.math.round(it).toInt()
+        }
+        assertEquals(expectedEpic, obstacleCountFor(Level.Legend, epic))
+        assertTrue("bigger board gets more obstacles", expectedEpic > Level.Legend.obstacleCount)
+    }
+
+    @Test
     fun cellsStayRoughlySquare() {
         // With rows solved from the aspect ratio, the grid ratio should track the
         // area ratio closely (within one row of rounding).
