@@ -3,7 +3,7 @@
 Plan to take Snake from a learning prototype to a **polished, Play-Store-ready Android game**, built
 **from scratch** in **Kotlin + Jetpack Compose**.
 
-Roadmap, work in progress, TODOs, known bugs, and ideas. For the history of development cycles and design notes, see [`DEVLOG.md`](DEVLOG.md).
+Roadmap, work in progress, TODOs, known bugs, and ideas. For the history of development cycles and design notes, see the [`devlog/`](devlog/) folder.
 
 > Status: `[x] Done` · `[-] In progress` · `[ ] To do`
 
@@ -23,8 +23,6 @@ Roadmap, work in progress, TODOs, known bugs, and ideas. For the history of deve
 ---
 
 ## Known Bugs
-
-> Reproducible issues found during testing. Remove entry once fixed (the fix will be documented in [`DEVLOG.md`](DEVLOG.md)).
 
 *None open.*
 
@@ -96,10 +94,11 @@ snake-game/
 │       │   ├── ui/               # Compose UI + theme
 │       │   └── data/             # DataStore persistence
 │       └── res/                  # themes, strings, colors, adaptive icon
+├── devlog/                       # development log
 ├── docs/CREDITS.md               # asset credits (CC0/CC-BY/MIT)
 ├── legacy/SnakeGame/             # frozen C#/.NET 10 GDI+ v1.0.0 (learning)
 ├── .github/workflows/            # release CI (Phase 7)
-└── CLAUDE.md  README.md  PLANNING.md  DEVLOG.md  LICENSE
+└── CLAUDE.md  README.md  PLANNING.md  LICENSE
 ```
 
 ---

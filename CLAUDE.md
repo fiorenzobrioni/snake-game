@@ -87,7 +87,7 @@ Everything lives in `legacy/SnakeGame/SnakeForm.cs` (single `SnakeForm` class): 
 
 ### Writing style
 
-When writing or editing any document in this repository (`README.md`, files under `docs/`, `DEVLOG.md`, `PLANNING.md`, etc.):
+When writing or editing any document in this repository (`README.md`, files under `docs/` or `devlog/`, `PLANNING.md`, etc.):
 
 - **Never use the em dash `—`**. Use a regular hyphen `-`, a colon `:`, a comma, or parentheses depending on context.
 - **Never use the middle dot `·`**. Use a regular hyphen `-` or a comma instead.
@@ -112,13 +112,13 @@ Update `PLANNING.md` when:
 - Adding or updating active TODOs, feature ideas, or known bugs.
 - Adding architectural notes or constraints that future contributors must follow.
 
-### `DEVLOG.md` - running implementation history (append-only, chronological)
+### `devlog/` - running implementation history (append-only, chronological)
 
-`DEVLOG.md` is purely a historical changelog of completed phases, steps, and refactors.
-New entries go **at the top of the Log section** (newest first).
+`devlog/` is purely a historical changelog of completed phases, steps, and refactors.
 
-Update `DEVLOG.md` when:
-- **Completing a step or phase**: add a dated log entry summarising what was implemented, how it was verified, and any notable decisions made.
+Update `devlog/` when **Completing a step or phase**: add a dated log entry summarising what was implemented, how it was verified, and any notable decisions made.
+
+Record completed work/design rationale in `devlog/YYYY.md` where `YYYY` is the current year (e.g. `devlog/2026.md`). Newest entry always on top. When the year changes, create a new `devlog/YYYY.md` using the template in `devlog/README.md`. If a year file exceeds ~1000 lines, split it into `YYYY-a.md` and `YYYY-b.md`.
 
 ---
 
@@ -134,6 +134,6 @@ Update `DEVLOG.md` when:
 | `docs/CREDITS.md` | Asset sources & licenses |
 | `README.md` | User documentation (English) |
 | `PLANNING.md` | Plan, roadmap, active TODOs, bugs, and design notes |
-| `DEVLOG.md` | Historical log of completed implementations |
+| `devlog/` | Development log for year YYYY; the file with the highest year is the active one. |
 | `legacy/SnakeGame/SnakeForm.cs` | Frozen v1.0.0 reference (game model) |
 | `.github/copilot-instructions.md` | Copilot instructions (aligned with this file) |
