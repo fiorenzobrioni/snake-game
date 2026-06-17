@@ -58,7 +58,7 @@ class BoardLayoutTest {
         val squished = boardFor(BoardScale.Epic, aspectRatio = 5f) // very wide
         assertTrue(squished.height >= 10)
         val skyscraper = boardFor(BoardScale.Cozy, aspectRatio = 0.05f) // absurdly tall
-        assertTrue(skyscraper.height <= 60)
+        assertTrue(skyscraper.height <= 80)
     }
 
     @Test

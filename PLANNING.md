@@ -357,8 +357,22 @@ snake-game/
   persisted fallback in `SettingsRepository`); the two-button relative scheme and the D-pad remain
   selectable in Settings (choice persisted via DataStore). Phase 3 had originally shipped two-button
   as the default; it was flipped to swipe per the original request.
-- The food spawn table is **time- and level-aware** (`FoodTable.roll(random, elapsedTicks, level)`);
-  early game is intentionally simple (grow only) and ramps up - keep this progression intact.
+- **Level and Snake speed are independent** (split out of the old combined `Level`): `Level` now
+  carries only `obstacleCount`; the pace lives in a separate `SnakeSpeed` enum (5 settings:
+  Relaxed→Turbo, the old per-level tick values), persisted via DataStore (`Settings.snakeSpeed`,
+  default `SnakeSpeed.DEFAULT = Relaxed`) and stamped onto `GameState.snakeSpeed`. The base tick is
+  read from `snakeSpeed.tickMillis` in `GameState.tickIntervalMillis` for Classic/Time Attack (Endless
+  and Campaign still override it). Both selectors sit on the start screen and in Settings (speed under
+  Level), and are disabled in the modes that ignore them. Highscores stay keyed on `(mode, level,
+  scale)` only - speed is **not** part of `ScoreKey`, so all speeds share a level/scale's best score.
+- **Item vanish times scale with board size**: in `GameEngine.tick` the regular/special vanish
+  lifetimes are multiplied by `shortSide / VANISH_REFERENCE_SHORT_SIDE` (19) so bigger boards (incl.
+  the `Colossal` 35-cell scale) give the snake proportionally more time to reach food/power-ups/hazards
+  across the longer distances.
+- The food spawn table is **time- and level-aware** (`FoodTable.roll(random, elapsedTicks, level, baseTickMillis)`);
+  early game is intentionally simple (grow only) and ramps up - keep this progression intact. The tick
+  count is converted to wall-clock ms via `baseTickMillis` (the snake's `SnakeSpeed` pace) so the
+  unlock gates track real seconds at any speed.
 - **Special spawn frequency** is a setting (`SpecialFrequency`) that scales both the special
   branch weight and its unlock gate in `FoodTable.roll`; it is independent of level and board size.
 - **Regular food auto-vanishes** after `GameEngine.VANISH_FOOD_MS` (~7 s at the level's base pace),
@@ -393,8 +407,8 @@ snake-game/
   (walls swapped, snake at spawn, transients cleared) inside `setup`/`tick` and lands on `LevelIntro`;
   the 3-second countdown itself is wall-clock UI and lives in `GameViewModel` (`introCountdown`),
   which then calls `GameEngine.beginLevel` to seed food and resume. `tick` stays deterministic.
-- **Levels mode pins the difficulty**: the selector is disabled (greyed out, not removed, so the
-  Ready overlay layout never reflows) and the ViewModel
+- **Levels mode pins the difficulty**: the Level (and Snake speed) selectors are disabled (greyed
+  out, not removed, so the Ready overlay layout never reflows) and the ViewModel
   compares settings against `LevelsMode.SCORE_LEVEL` (not `settings.level`) while the mode is active -
   otherwise the settings collector would endlessly reset the board. Scores stay on the existing
   `ScoreKey(mode, level, scale)` codec; the deepest run is stored separately

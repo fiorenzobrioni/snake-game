@@ -332,8 +332,13 @@ class GameEngineTest {
 
     // --- Auto-vanishing food ---------------------------------------------
 
-    /** Beginner pace: 7000 ms / 175 ms ≈ 40 ticks before a regular food times out. */
-    private val vanishTicks = (GameEngine.VANISH_FOOD_MS / Level.Beginner.tickMillis).toInt()
+    // The runningState board (18×26) is just under the reference short side (19),
+    // so the vanish lifetimes are scaled by 18/19, matching the engine's formula.
+    private val vanishScale = minOf(18, 26).toDouble() / GameEngine.VANISH_REFERENCE_SHORT_SIDE
+
+    /** Relaxed pace, scaled by the board: ~38 ticks before a regular food times out. */
+    private val vanishTicks =
+        (GameEngine.VANISH_FOOD_MS * vanishScale / SnakeSpeed.Relaxed.tickMillis).toInt()
 
     @Test
     fun ignoredRegularFoodVanishesAndIsReplaced() {
@@ -361,8 +366,9 @@ class GameEngineTest {
         assertTrue("the food is still there", next.foods.any { it.position == Position(10, 10) })
     }
 
-    /** Beginner pace: 14000 ms / 175 ms = 80 ticks before a special times out. */
-    private val specialVanishTicks = (GameEngine.VANISH_SPECIAL_MS / Level.Beginner.tickMillis).toInt()
+    /** Relaxed pace, scaled by the board: ~75 ticks before a special times out. */
+    private val specialVanishTicks =
+        (GameEngine.VANISH_SPECIAL_MS * vanishScale / SnakeSpeed.Relaxed.tickMillis).toInt()
 
     @Test
     fun specialsOutlastTheRegularTimeout() {

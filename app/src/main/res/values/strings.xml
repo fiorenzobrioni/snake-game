@@ -6,6 +6,7 @@
     <string name="game_title">SNAKE</string>
     <string name="menu_mode">Mode</string>
     <string name="menu_level">Level</string>
+    <string name="menu_snake_speed">Snake speed</string>
     <string name="menu_board_scale">Board scale</string>
     <string name="menu_view">View</string>
     <string name="menu_3d_world">3D World</string>
@@ -48,6 +49,7 @@
     <string name="settings_title">Settings</string>
     <string name="settings_control_scheme">Controls</string>
     <string name="settings_level">Level</string>
+    <string name="settings_snake_speed">Snake speed</string>
     <string name="settings_board_scale">Board scale</string>
     <string name="settings_master_volume">Master volume</string>
     <string name="settings_music_volume">Music volume</string>

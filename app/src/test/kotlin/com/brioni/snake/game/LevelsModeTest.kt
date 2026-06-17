@@ -157,8 +157,8 @@ class LevelsModeTest {
         assertEquals(LevelsMode.BASE_TICK_MS, levelsState().tickIntervalMillis)
         val cycle3 = levelsState(speedCycle = 3)
         assertEquals(LevelsMode.tickMillisFor(3), cycle3.tickIntervalMillis)
-        // The pinned difficulty level's own pace (175 ms) is never consulted.
-        assertFalse(cycle3.tickIntervalMillis == LevelsMode.SCORE_LEVEL.tickMillis)
+        // The snake-speed setting's own pace (175 ms) is never consulted here.
+        assertFalse(cycle3.tickIntervalMillis == SnakeSpeed.DEFAULT.tickMillis)
     }
 
     // --- Walls --------------------------------------------------------------

@@ -4,9 +4,9 @@ import kotlin.math.roundToInt
 
 /** Smallest/largest grids we allow, to keep cells tappable and the board sane. */
 private const val MIN_COLUMNS = 8
-private const val MAX_COLUMNS = 60
+private const val MAX_COLUMNS = 80
 private const val MIN_ROWS = 8
-private const val MAX_ROWS = 60
+private const val MAX_ROWS = 80
 
 /** Fallback aspect ratio (≈ a tall phone) used when none has been measured yet. */
 const val DEFAULT_ASPECT = 0.6f

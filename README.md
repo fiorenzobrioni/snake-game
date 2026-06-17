@@ -47,9 +47,13 @@ The classic Snake mechanics, extended with configurable features so every run fe
   around much longer (they're rare events worth reaching) but eventually time out too.
 - ✖️ **Combo multiplier** - eating in quick succession multiplies your score (up to ×5).
 - 🚧 **Obstacles** - symmetric blocks that tend to clump into larger shapes and raise the difficulty.
-- 🎚️ **Difficulty levels** - 5 levels (*Beginner* → *Legend*) tuning speed and obstacle count.
-- 📐 **Responsive board** - pick a granularity (*Cozy* / *Standard* / *Epic*); the grid is computed
-  from your device's screen so it fills the display with square cells in portrait.
+- 🎚️ **Levels & snake speed** - 5 obstacle layouts (*Beginner* → *Legend*) and 5 **independent**
+  speeds (*Relaxed* → *Turbo*), mixable freely: play the dense Legend field at a gentle pace, or an
+  open board flat out.
+- 📐 **Responsive board** - pick a granularity (*Cozy* / *Standard* / *Epic* / *Colossal*); the grid
+  is computed from your device's screen so it fills the display with square cells in portrait. Bigger
+  boards also give food, power-ups and hazards proportionally more time before they vanish, so the
+  snake can reach them across the longer distances.
 - 🎮 **Control schemes** - **swipe** by default, or a two-button *relative* steering / classic D-pad.
 - 🎨 **Skins** - four selectable looks (**Classic / Neon / Retro / Pixel**), each its own palette and
   cell shape (Pixel is flat & square, Neon bubbly), all available immediately in Settings.
@@ -86,8 +90,8 @@ The classic Snake mechanics, extended with configurable features so every run fe
   that repeat forever, one **speed step faster** each lap. Eat **12 foods** to clear a level; you
   start with **3 lives** (a crash respawns you in the same level, keeping score and progress) and a
   rare 2×2 **extra-life** piece with a snake-head icon can bank more (up to 5). Every transition
-  plays an animated *"Level x · Speed x"* banner with a 3-second countdown. The difficulty selector
-  is disabled here - the mode has its own pace - and the Records screen tracks both your best
+  plays an animated *"Level x · Speed x"* banner with a 3-second countdown. The Level and Snake speed
+  selectors are disabled here - the mode has its own layouts and pace - and the Records screen tracks both your best
   score and the deepest level you reached per board scale.
 - ⏸️ **Pause & menus** - pause overlay with a blur effect; restart or return to the main menu at any time. Highscores are kept per (mode, level, board scale).
 - 💎 **Polished navigation** - an **animated GPU background** behind the menus, a **decorated main menu** (a gliding snake that follows your selected skin), and **blur-dissolve** screen transitions.
@@ -104,20 +108,37 @@ The snake never shrinks below **3 segments**. Grow food drives the score (scaled
 multiplier); shrink food is a tactical tool - it gives only token points but lets you cut your length
 to manoeuvre. Eating either floats the amount of segments gained or lost (**+N** / **−N**) at the food.
 
-### ⚔️ Difficulty levels
+### ⚔️ Levels (obstacles)
 
-| Level | Name        | Obstacles | Tick (ms) |
-|-------|-------------|-----------|-----------|
-| 1     | Beginner    | 0         | 175       |
-| 2     | Adventurer  | 8         | 150       |
-| 3     | Warrior     | 15        | 125       |
-| 4     | Champion    | 25        | 100       |
-| 5     | Legend      | 40        | 75        |
+The **Level** sets only how many obstacles are placed; it no longer affects speed (see *Snake speed*
+below), so any level can be paired with any pace.
+
+| Level | Name        | Obstacles |
+|-------|-------------|-----------|
+| 1     | Beginner    | 0         |
+| 2     | Adventurer  | 8         |
+| 3     | Warrior     | 15        |
+| 4     | Champion    | 25        |
+| 5     | Legend      | 40        |
 
 Obstacles are laid out with **4-fold symmetry** (mirrored left/right and top/bottom), with a clear
 margin next to every wall and a clear zone around the snake's spawn. New blocks are biased towards
 growing next to ones already placed, so they tend to form larger clumped shapes instead of
 scattering as isolated cells.
+
+### 🏃 Snake speed
+
+A separate setting (shown under *Level* on the start screen and in Settings) controls the pace,
+independent of the obstacle layout. It applies to **Classic** and **Time Attack**; Endless ramps its
+own pace and Campaign uses its per-lap speed cycle.
+
+| Speed | Name    | Tick (ms) |
+|-------|---------|-----------|
+| 1     | Relaxed | 175       |
+| 2     | Steady  | 150       |
+| 3     | Brisk   | 125       |
+| 4     | Rapid   | 100       |
+| 5     | Turbo   | 75        |
 
 ### 📐 Board scale
 
@@ -126,11 +147,12 @@ aspect ratio so the board fills the screen with square cells. The preset count i
 to the **short side**, so the cell size - and the feel - stays consistent across different screen
 sizes (a tablet gets the same density as a phone, not a squashed few-row board).
 
-| Scale    | Cell size | Cells on short side |
-|----------|-----------|---------------------|
-| Cozy     | larger    | 13                  |
-| Standard | medium    | 19                  |
-| Epic     | smaller   | 27                  |
+| Scale    | Cell size  | Cells on short side |
+|----------|------------|---------------------|
+| Cozy     | larger     | 13                  |
+| Standard | medium     | 19                  |
+| Epic     | smaller    | 27                  |
+| Colossal | smallest   | 35                  |
 
 The counts are odd on purpose: the board gets a true middle column, so the snake's centred spawn
 lines up exactly with centred overlays (like the Campaign-mode countdown).

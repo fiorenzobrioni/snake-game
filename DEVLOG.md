@@ -11,6 +11,35 @@ For the forward-looking plan, roadmap, active TODOs, bugs, and notes, see [`PLAN
 
 ---
 
+### 2026-06-17 - Snake speed split from Level, new Colossal board scale, size-scaled item lifetimes
+
+- **Split `Level` into Level + `SnakeSpeed`.** `Level` now carries only `obstacleCount` (its
+  `tickMillis` was removed); the pace moved to a new `SnakeSpeed` enum with 5 settings (`Relaxed` 175 →
+  `Turbo` 75, the old per-level tick values) and `SnakeSpeed.DEFAULT = Relaxed`. So any obstacle layout
+  can be played at any pace (e.g. the dense Legend field at a relaxed pace). Persisted via DataStore
+  (`Settings.snakeSpeed`, `SettingsRepository.setSnakeSpeed`, key `snake_speed`) and stamped onto the
+  new `GameState.snakeSpeed`; `GameState.tickIntervalMillis` reads `snakeSpeed.tickMillis` for
+  Classic/Time Attack (Endless/Campaign keep their own pacing). `GameEngine.setup`/`newGame` gained a
+  `snakeSpeed` parameter; `GameViewModel` tracks it (`selectSnakeSpeed`, settings sync). Highscores keep
+  the `(mode, level, scale)` `ScoreKey` - speed is intentionally not part of the key, so speeds share a
+  slot's best score.
+- **New "Snake speed" selector** under Level on the start screen (`ReadyOverlay`) and in `SettingsScreen`,
+  disabled in the modes that ignore it (Endless / Campaign). Added `menu_snake_speed` /
+  `settings_snake_speed` strings.
+- **New `BoardScale.Colossal` (35 cells on the short side)**, the new largest after Epic (27). Raised the
+  `boardFor` dimension clamp from 60 to 80 so tall Colossal boards stay square instead of letterboxing.
+- **Item lifetimes now scale with board size.** `GameEngine.tick` multiplies the regular/special vanish
+  times by `shortSide / VANISH_REFERENCE_SHORT_SIDE` (19), so bigger boards give food / power-ups /
+  hazards proportionally more time before they vanish - the snake can cross the longer distances to
+  reach them. The tick->ms conversion (vanish + `FoodTable.roll` unlock gates) now uses the snake's
+  `SnakeSpeed` base tick (threaded through `refill`/`spawnFood`/`roll` as `baseTickMillis`) instead of
+  the removed `level.tickMillis`.
+- Verified: `./gradlew testDebugUnitTest` (128 tests) and `assembleDebug` pass; updated the affected
+  unit tests (`GameEngineTest`, `SpecialFoodTest`, `LevelsModeTest`, `BoardLayoutTest`) and the docs
+  (README / PLANNING).
+
+---
+
 ### 2026-06-16 - 3D World toggle moved to the start screen
 
 - Moved the **3D World** toggle from the Settings screen to the start screen, as a **"View"** chip in

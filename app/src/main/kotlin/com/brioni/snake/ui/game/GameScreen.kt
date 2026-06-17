@@ -277,10 +277,12 @@ fun GameScreen(
             GameStatus.Ready -> ReadyOverlay(
                 selectedMode = viewModel.mode,
                 selectedLevel = viewModel.level,
+                selectedSnakeSpeed = viewModel.snakeSpeed,
                 selectedScale = viewModel.scale,
                 threeDWorld = viewModel.threeDWorldEnabled,
                 onModeSelected = { viewModel.selectMode(it) },
                 onLevelSelected = { viewModel.selectLevel(it) },
+                onSnakeSpeedSelected = { viewModel.selectSnakeSpeed(it) },
                 onScaleSelected = { viewModel.selectScale(it) },
                 onThreeDWorldChanged = { viewModel.setThreeDWorld(it) },
                 onPlay = { viewModel.start() },

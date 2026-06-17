@@ -46,6 +46,7 @@ import com.brioni.snake.game.BoardScale
 import com.brioni.snake.game.ControlScheme
 import com.brioni.snake.game.Level
 import com.brioni.snake.game.Skin
+import com.brioni.snake.game.SnakeSpeed
 import com.brioni.snake.game.SpecialFrequency
 import com.brioni.snake.game.ThemeMode
 import com.brioni.snake.ui.game.paletteFor
@@ -99,6 +100,14 @@ fun SettingsScreen(
             selected = settings.level,
             label = { it.label },
             onSelected = { level -> scope.launch { repo.setLevel(level) } },
+        )
+
+        ChoiceSection(
+            title = stringResource(R.string.settings_snake_speed),
+            options = SnakeSpeed.entries,
+            selected = settings.snakeSpeed,
+            label = { it.label },
+            onSelected = { speed -> scope.launch { repo.setSnakeSpeed(speed) } },
         )
 
         ChoiceSection(
