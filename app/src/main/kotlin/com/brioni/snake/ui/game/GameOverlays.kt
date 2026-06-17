@@ -105,13 +105,19 @@ fun ReadyOverlay(
             }
         }
 
-        // 3D World is orthogonal to the mode: a single toggle chip that plays the
-        // chosen mode in the behind-the-head chase-cam instead of flat top-down.
+        // View is orthogonal to the mode: pick the flat top-down board (2D) or the
+        // behind-the-head chase-cam (3D). Two mutually-exclusive chips, so it reads
+        // and behaves like the other selectors instead of a lone checkbox.
         ChipSection(title = stringResource(R.string.menu_view)) {
             FilterChip(
+                selected = !threeDWorld,
+                onClick = { onThreeDWorldChanged(false) },
+                label = { Text(stringResource(R.string.menu_view_2d)) },
+            )
+            FilterChip(
                 selected = threeDWorld,
-                onClick = { onThreeDWorldChanged(!threeDWorld) },
-                label = { Text(stringResource(R.string.menu_3d_world)) },
+                onClick = { onThreeDWorldChanged(true) },
+                label = { Text(stringResource(R.string.menu_view_3d)) },
             )
         }
 

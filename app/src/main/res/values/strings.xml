@@ -9,7 +9,8 @@
     <string name="menu_snake_speed">Snake speed</string>
     <string name="menu_board_scale">Board scale</string>
     <string name="menu_view">View</string>
-    <string name="menu_3d_world">3D World</string>
+    <string name="menu_view_2d">2D</string>
+    <string name="menu_view_3d">3D</string>
     <string name="menu_play">Play</string>
     <string name="menu_records">Records</string>
     <string name="records_title">Records</string>

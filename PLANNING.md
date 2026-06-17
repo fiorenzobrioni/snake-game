@@ -345,8 +345,8 @@ snake-game/
   swipe uses a **single, never-swapped** `pointerInput` routed through `GameViewModel.onSwipe`, which
   picks relative-turn vs absolute steering from the current `threeDActive` (swapping the modifier on a
   state change left a stale gesture handler - do not reintroduce that).
-- **3D World** is a **start-screen "View" toggle** (the `ReadyOverlay` chip, via
-  `GameViewModel.setThreeDWorld`), persisted via DataStore (`Settings.threeDWorld`) and orthogonal to
+- **3D World** is a **start-screen "View" selector** (two mutually-exclusive `ReadyOverlay` chips,
+  **2D** / **3D**, via `GameViewModel.setThreeDWorld`), persisted via DataStore (`Settings.threeDWorld`) and orthogonal to
   the mode: any mode plays in the chase-cam when it is on. It is carried into a run as the pure
   `GameState.threeDWorld` flag (stamped in `GameViewModel.resetTo` + synced on the Ready screen), which
   the model consults only to ease the pace and suppress the redundant 3D food. `threeDActive`

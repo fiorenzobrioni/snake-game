@@ -83,9 +83,9 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - 🕹️ **Game modes** - **Classic**, **Endless** (speed ramps up the longer you survive),
   **Time Attack** (score as much as you can in 120s) and **Campaign** (see below), selectable on the
   start screen.
-- 🧊 **3D World** - a **View** toggle on the start screen that plays **any** mode entirely in the
-  behind-the-head 3D chase-cam (at a slightly eased pace, with relative left/right steering), instead
-  of the flat top-down board. The choice is remembered between sessions.
+- 🧊 **3D World** - a **View** selector on the start screen (**2D** / **3D**) that plays **any** mode
+  entirely in the behind-the-head 3D chase-cam (at a slightly eased pace, with relative left/right
+  steering), instead of the flat top-down board. The choice is remembered between sessions.
 - 🧩 **Campaign mode** - ten **designed board shapes** (cut corners, pillars, chambers, a vault…)
   that repeat forever, one **speed step faster** each lap. Eat **12 foods** to clear a level; you
   start with **3 lives** (a crash respawns you in the same level, keeping score and progress) and a
