@@ -365,6 +365,12 @@ snake-game/
   and Campaign still override it). Both selectors sit on the start screen and in Settings (speed under
   Level), and are disabled in the modes that ignore them. Highscores stay keyed on `(mode, level,
   scale)` only - speed is **not** part of `ScoreKey`, so all speeds share a level/scale's best score.
+- **Back-during-play behaviour is a setting** (`BackBehavior`: `Pause` (default) / `KeepPlaying`,
+  persisted as `back_behavior`): it only affects a **Running** game (paused / game-over / Ready always
+  return to the menu). `GameScreen` uses a `PredictiveBackHandler` (not `BackHandler`) so that in
+  `KeepPlaying` + Swipe controls the back gesture's `BackEventCompat.swipeEdge` (EDGE_LEFT→Right,
+  EDGE_RIGHT→Left) is fed to `GameViewModel.onSwipe`; a Back *button* press has no edge and is just
+  ignored. Do not regress the non-running exit path.
 - **Obstacle counts scale with board area**: `Level.obstacleCount` is tuned for the smallest (Cozy)
   board; `obstacleCountFor(level, board)` (in `BoardLayout.kt`) scales it by `(shortSide /
   OBSTACLE_REFERENCE_SHORT_SIDE)²` (reference 13) so density stays constant as the board grows, instead

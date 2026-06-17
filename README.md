@@ -93,7 +93,7 @@ The classic Snake mechanics, extended with configurable features so every run fe
   plays an animated *"Level x · Speed x"* banner with a 3-second countdown. The Level and Snake speed
   selectors are disabled here - the mode has its own layouts and pace - and the Records screen tracks both your best
   score and the deepest level you reached per board scale.
-- ⏸️ **Pause & menus** - pause overlay with a blur effect; restart or return to the main menu at any time. Highscores are kept per (mode, level, board scale).
+- ⏸️ **Pause & menus** - pause overlay with a blur effect; restart or return to the main menu at any time. Highscores are kept per (mode, level, board scale). A **Back during play** setting chooses what the system Back gesture does mid-game: **Pause** (default) or **Keep playing** (Back is ignored, and a swipe-back is fed to the snake as a turn when using swipe controls).
 - 💎 **Polished navigation** - an **animated GPU background** behind the menus, a **decorated main menu** (a gliding snake that follows your selected skin), and **blur-dissolve** screen transitions.
 - 📜 **Credits screen** - an in-app **Credits / About** page (author, license and asset attribution), reachable from the main menu.
 

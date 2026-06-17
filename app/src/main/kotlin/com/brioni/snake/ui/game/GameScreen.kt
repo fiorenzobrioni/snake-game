@@ -2,7 +2,8 @@ package com.brioni.snake.ui.game
 
 import android.graphics.RenderEffect
 import android.graphics.RuntimeShader
-import androidx.activity.compose.BackHandler
+import androidx.activity.BackEventCompat
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
@@ -53,8 +54,10 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.brioni.snake.R
 import com.brioni.snake.audio.GameAudio
+import com.brioni.snake.game.BackBehavior
 import com.brioni.snake.game.ControlScheme
 import com.brioni.snake.game.DEFAULT_ASPECT
+import com.brioni.snake.game.Direction
 import com.brioni.snake.game.EffectKind
 import com.brioni.snake.game.GameMode
 import com.brioni.snake.game.GameStatus
@@ -81,14 +84,41 @@ fun GameScreen(
     val playing = state.status == GameStatus.Running || state.status == GameStatus.Paused
     val textMeasurer = rememberTextMeasurer()
 
-    // Back (incl. accidental edge-swipe gestures during play) pauses a running
-    // game instead of dropping to the menu with the loop still ticking; from any
-    // other state it returns to the menu, stopping the loop cleanly.
-    BackHandler {
-        if (state.status == GameStatus.Running) {
-            audio.playPause(); viewModel.togglePause()
-        } else {
-            viewModel.toSetup(); onExitToMenu()
+    // Back handling during a *running* game depends on the Back-during-play
+    // setting; from any other state Back always returns to the menu, stopping the
+    // loop cleanly. We use a predictive handler so that, when "Keep playing" is on
+    // and the player steers by swipe, the back gesture's edge (left/right) can be
+    // fed to the snake as a turn instead of being lost. The last gesture event is
+    // captured to read that edge; a Back *button* press carries no edge and is
+    // simply ignored while keeping play going.
+    PredictiveBackHandler { progress ->
+        var lastEvent: BackEventCompat? = null
+        try {
+            progress.collect { lastEvent = it }
+            // Back committed.
+            if (state.status == GameStatus.Running) {
+                if (viewModel.backBehavior == BackBehavior.KeepPlaying) {
+                    if (viewModel.controlScheme == ControlScheme.Swipe) {
+                        lastEvent?.let { event ->
+                            // Left-edge gesture swipes inward (rightward) → steer Right;
+                            // right-edge gesture swipes leftward → steer Left.
+                            val direction = if (event.swipeEdge == BackEventCompat.EDGE_LEFT) {
+                                Direction.Right
+                            } else {
+                                Direction.Left
+                            }
+                            viewModel.onSwipe(direction)
+                        }
+                    }
+                    // Otherwise: ignore the Back entirely and keep playing.
+                } else {
+                    audio.playPause(); viewModel.togglePause()
+                }
+            } else {
+                viewModel.toSetup(); onExitToMenu()
+            }
+        } catch (_: kotlin.coroutines.cancellation.CancellationException) {
+            // The back gesture was cancelled (swiped partway then released): do nothing.
         }
     }
 

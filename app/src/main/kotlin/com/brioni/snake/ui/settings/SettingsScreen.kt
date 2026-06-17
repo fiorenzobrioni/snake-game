@@ -42,6 +42,7 @@ import com.brioni.snake.R
 import com.brioni.snake.audio.GameAudio
 import com.brioni.snake.data.Settings
 import com.brioni.snake.data.SettingsRepository
+import com.brioni.snake.game.BackBehavior
 import com.brioni.snake.game.BoardScale
 import com.brioni.snake.game.ControlScheme
 import com.brioni.snake.game.Level
@@ -170,6 +171,14 @@ fun SettingsScreen(
             title = stringResource(R.string.settings_crt_filter),
             checked = settings.crtEnabled,
             onCheckedChange = { enabled -> scope.launch { repo.setCrtEnabled(enabled) } },
+        )
+
+        ChoiceSection(
+            title = stringResource(R.string.settings_back_behavior),
+            options = BackBehavior.entries,
+            selected = settings.backBehavior,
+            label = { it.displayName },
+            onSelected = { behavior -> scope.launch { repo.setBackBehavior(behavior) } },
         )
 
         Button(

@@ -13,6 +13,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.brioni.snake.audio.GameSfx
 import com.brioni.snake.data.SettingsRepository
 import com.brioni.snake.game.Achievement
+import com.brioni.snake.game.BackBehavior
 import com.brioni.snake.game.BoardDimensions
 import com.brioni.snake.game.BoardScale
 import com.brioni.snake.game.ControlScheme
@@ -90,6 +91,10 @@ class GameViewModel(
 
     /** Active steering scheme (loaded from settings). */
     var controlScheme by mutableStateOf(DEFAULT_CONTROL)
+        private set
+
+    /** What the Back gesture does during active play (loaded from settings). */
+    var backBehavior by mutableStateOf(BackBehavior.DEFAULT)
         private set
 
     /** Whether the retro CRT post-filter is enabled (loaded from settings). */
@@ -231,6 +236,7 @@ class GameViewModel(
         viewModelScope.launch {
             repo.settings.collect { settings ->
                 controlScheme = settings.controlScheme
+                backBehavior = settings.backBehavior
                 crtEnabled = settings.crtEnabled
                 skin = settings.skin
                 hazardsEnabled = settings.hazardsEnabled

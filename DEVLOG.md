@@ -11,6 +11,21 @@ For the forward-looking plan, roadmap, active TODOs, bugs, and notes, see [`PLAN
 
 ---
 
+### 2026-06-17 - "Back during play" setting (Pause vs Keep playing)
+
+- Added a **Back during play** Settings section (at the end) with two options: **Pause** (default,
+  unchanged behaviour) and **Keep playing**. New `BackBehavior` enum (model, DataStore-persisted as
+  `back_behavior`); surfaced on `GameViewModel.backBehavior` (set unconditionally in the settings
+  collector, since it is read mid-run).
+- `GameScreen` now uses a `PredictiveBackHandler` instead of `BackHandler` so that in **Keep playing**
+  mode with **Swipe** controls the back gesture is not lost: its `BackEventCompat.swipeEdge`
+  (EDGE_LEFT→Right, EDGE_RIGHT→Left) is fed to `GameViewModel.onSwipe` as a turn. A Back *button* press
+  (no edge) is simply ignored while play continues. Non-running states (paused / game-over / Ready)
+  still return to the menu exactly as before.
+- Verified: `./gradlew testDebugUnitTest` (130 tests) and `assembleDebug` pass; docs updated.
+
+---
+
 ### 2026-06-17 - Obstacle count scales with board area; View becomes a 2D/3D selector
 
 - **Obstacle counts now scale with the board's area.** `Level.obstacleCount` stays tuned for the
