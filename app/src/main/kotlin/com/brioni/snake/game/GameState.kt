@@ -63,6 +63,7 @@ enum class GameStatus {
 data class GameState(
     val board: BoardDimensions,
     val level: Level,
+    val snakeSpeed: SnakeSpeed = SnakeSpeed.DEFAULT,
     val snake: List<Position>,
     val direction: Direction,
     val pendingDirection: Direction,
@@ -98,9 +99,9 @@ data class GameState(
 
     /**
      * The wall-clock delay until the next tick, after applying speed effects.
-     * The game loop reads this instead of [Level.tickMillis] so Lightning/Snail/
-     * Freeze actually change the pace; effect timers are aged by the same value,
-     * keeping every power-up's real duration stable.
+     * The game loop reads this instead of [SnakeSpeed.tickMillis] so Lightning/
+     * Snail/Freeze actually change the pace; effect timers are aged by the same
+     * value, keeping every power-up's real duration stable.
      */
     val tickIntervalMillis: Long
         get() {
@@ -109,7 +110,7 @@ data class GameState(
             var ms = when (mode) {
                 GameMode.Endless -> endlessBaseMs(elapsedTicks)
                 GameMode.Levels -> LevelsMode.tickMillisFor(speedCycle).toDouble()
-                else -> level.tickMillis.toDouble()
+                else -> snakeSpeed.tickMillis.toDouble()
             }
             if (hasEffect(EffectKind.Haste)) ms *= HASTE_FACTOR
             if (hasEffect(EffectKind.Slow)) ms *= SLOW_FACTOR

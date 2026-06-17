@@ -20,12 +20,18 @@ class GameEngine(private val random: Random = Random.Default) {
      * [GameMode.Levels] the random obstacles are replaced by the first level's
      * designed wall shape and the lives stock is filled.
      */
-    fun setup(level: Level, board: BoardDimensions, mode: GameMode = GameMode.Classic): GameState {
+    fun setup(
+        level: Level,
+        board: BoardDimensions,
+        mode: GameMode = GameMode.Classic,
+        snakeSpeed: SnakeSpeed = SnakeSpeed.DEFAULT,
+    ): GameState {
         val snake = startingSnake(board)
         val isLevels = mode == GameMode.Levels
         return GameState(
             board = board,
             level = level,
+            snakeSpeed = snakeSpeed,
             snake = snake,
             direction = Direction.Up,
             pendingDirection = Direction.Up,
@@ -51,7 +57,8 @@ class GameEngine(private val random: Random = Random.Default) {
         return state.copy(
             foods = refill(
                 state.board, state.snake, state.obstacles, state.walls, emptyList(),
-                elapsedTicks = 0, level = state.level, mode = state.mode,
+                elapsedTicks = 0, level = state.level, baseTickMillis = state.snakeSpeed.tickMillis,
+                mode = state.mode,
             ),
             status = GameStatus.Running,
         )
@@ -66,7 +73,8 @@ class GameEngine(private val random: Random = Random.Default) {
         return state.copy(
             foods = refill(
                 state.board, state.snake, state.obstacles, state.walls, emptyList(),
-                elapsedTicks = state.elapsedTicks, level = state.level, mode = state.mode,
+                elapsedTicks = state.elapsedTicks, level = state.level,
+                baseTickMillis = state.snakeSpeed.tickMillis, mode = state.mode,
             ),
             status = GameStatus.Running,
         )
@@ -84,8 +92,13 @@ class GameEngine(private val random: Random = Random.Default) {
     }
 
     /** Convenience: a fresh, already-running game. */
-    fun newGame(level: Level, board: BoardDimensions, mode: GameMode = GameMode.Classic): GameState =
-        start(setup(level, board, mode))
+    fun newGame(
+        level: Level,
+        board: BoardDimensions,
+        mode: GameMode = GameMode.Classic,
+        snakeSpeed: SnakeSpeed = SnakeSpeed.DEFAULT,
+    ): GameState =
+        start(setup(level, board, mode, snakeSpeed))
 
     /**
      * Buffers a direction change for the next tick. A 180° reversal of the
@@ -295,8 +308,14 @@ class GameEngine(private val random: Random = Random.Default) {
         // regular food (they are rare events worth waiting for) but no longer stay
         // forever. One per tick keeps the bursts staggered and avoids both foods
         // popping at once when they were seeded on the same tick.
-        val regularVanishTicks = (VANISH_FOOD_MS / state.level.tickMillis).toInt().coerceAtLeast(1)
-        val specialVanishTicks = (VANISH_SPECIAL_MS / state.level.tickMillis).toInt().coerceAtLeast(1)
+        //
+        // Bigger boards give items proportionally more time before they vanish, so
+        // the snake can cross the extra distance to reach them: the base lifetimes
+        // are scaled by the board's short side relative to the reference board.
+        val vanishScale = minOf(board.width, board.height).toDouble() / VANISH_REFERENCE_SHORT_SIDE
+        val baseTickMs = state.snakeSpeed.tickMillis
+        val regularVanishTicks = (VANISH_FOOD_MS * vanishScale / baseTickMs).toInt().coerceAtLeast(1)
+        val specialVanishTicks = (VANISH_SPECIAL_MS * vanishScale / baseTickMs).toInt().coerceAtLeast(1)
         fun vanishTicksFor(f: Food): Int =
             if (f.category == FoodCategory.Special) specialVanishTicks else regularVanishTicks
         val stale = foods
@@ -313,6 +332,7 @@ class GameEngine(private val random: Random = Random.Default) {
             val specialsOnBoard = foods.count { it.category == FoodCategory.Special }
             foods = refill(
                 board, body, state.obstacles, state.walls, foods, elapsedTicks, state.level,
+                baseTickMillis = baseTickMs,
                 hazardsEnabled = hazardsEnabled,
                 specialAllowed = specialsOnBoard < MAX_SPECIALS_ON_BOARD && !freezeActive,
                 specialFrequency = specialFrequency,
@@ -461,7 +481,9 @@ class GameEngine(private val random: Random = Random.Default) {
         board: BoardDimensions,
         snake: List<Position>,
     ): Set<Position> {
-        if (level.obstacleCount == 0) return emptySet()
+        // Scaled with the board's area so density stays constant across scales.
+        val obstacleCount = obstacleCountFor(level, board)
+        if (obstacleCount == 0) return emptySet()
 
         val w = board.width
         val h = board.height
@@ -480,7 +502,7 @@ class GameEngine(private val random: Random = Random.Default) {
         val snakeCells = snake.toHashSet()
         val obstacles = LinkedHashSet<Position>()
         val seedCells = ArrayList<Position>() // quadrant cells placed so far
-        val perQuadrant = (level.obstacleCount + 3) / 4 // ceil — four mirrors each
+        val perQuadrant = (obstacleCount + 3) / 4 // ceil — four mirrors each
         val targetCount = perQuadrant * 4
         var attempts = 0
         val maxAttempts = perQuadrant * 40
@@ -526,6 +548,7 @@ class GameEngine(private val random: Random = Random.Default) {
         existing: List<Food>,
         elapsedTicks: Int,
         level: Level,
+        baseTickMillis: Long = SnakeSpeed.DEFAULT.tickMillis,
         hazardsEnabled: Boolean = true,
         specialAllowed: Boolean = true,
         specialFrequency: SpecialFrequency = SpecialFrequency.Standard,
@@ -537,7 +560,7 @@ class GameEngine(private val random: Random = Random.Default) {
             // A special is allowed only while fewer than the cap are on the board.
             val allowSpecial = specialAllowed &&
                 foods.count { it.category == FoodCategory.Special } < MAX_SPECIALS_ON_BOARD
-            val food = spawnFood(board, snake, obstacles, walls, foods, elapsedTicks, level, hazardsEnabled, allowSpecial, specialFrequency, mode, threeDWorld) ?: break
+            val food = spawnFood(board, snake, obstacles, walls, foods, elapsedTicks, level, baseTickMillis, hazardsEnabled, allowSpecial, specialFrequency, mode, threeDWorld) ?: break
             foods = foods + food
         }
         return foods
@@ -556,13 +579,14 @@ class GameEngine(private val random: Random = Random.Default) {
         existing: List<Food>,
         elapsedTicks: Int,
         level: Level,
+        baseTickMillis: Long,
         hazardsEnabled: Boolean,
         specialAllowed: Boolean,
         specialFrequency: SpecialFrequency,
         mode: GameMode,
         threeDWorld: Boolean,
     ): Food? {
-        val spec = FoodTable.roll(random, elapsedTicks, level, hazardsEnabled, specialAllowed, specialFrequency, mode, threeDWorld)
+        val spec = FoodTable.roll(random, elapsedTicks, level, baseTickMillis, hazardsEnabled, specialAllowed, specialFrequency, mode, threeDWorld)
         val span = spec.size.cellSpan
         // Top-left cell range that keeps the whole square off the border.
         val maxX = board.width - span
@@ -663,6 +687,13 @@ class GameEngine(private val random: Random = Random.Default) {
          * the player should have a fair chance to reach — but no longer infinite.
          */
         const val VANISH_SPECIAL_MS = 14_000L
+
+        /**
+         * The board short-side (in cells) the base vanish times are tuned for
+         * (the Standard scale). Larger boards scale the lifetimes up in
+         * proportion to their short side so items stay reachable.
+         */
+        const val VANISH_REFERENCE_SHORT_SIDE = 19
 
         /** Lifetime of the lethal debris scattered by an earthquake. */
         const val QUAKE_DEBRIS_MS = 5_000L

@@ -43,6 +43,7 @@ import com.brioni.snake.R
 import com.brioni.snake.game.BoardScale
 import com.brioni.snake.game.GameMode
 import com.brioni.snake.game.Level
+import com.brioni.snake.game.SnakeSpeed
 
 /** Translucent full-screen scrim shared by every overlay. */
 @Composable
@@ -76,10 +77,12 @@ private fun OverlayScrim(
 fun ReadyOverlay(
     selectedMode: GameMode,
     selectedLevel: Level,
+    selectedSnakeSpeed: SnakeSpeed,
     selectedScale: BoardScale,
     threeDWorld: Boolean,
     onModeSelected: (GameMode) -> Unit,
     onLevelSelected: (Level) -> Unit,
+    onSnakeSpeedSelected: (SnakeSpeed) -> Unit,
     onScaleSelected: (BoardScale) -> Unit,
     onThreeDWorldChanged: (Boolean) -> Unit,
     onPlay: () -> Unit,
@@ -102,13 +105,19 @@ fun ReadyOverlay(
             }
         }
 
-        // 3D World is orthogonal to the mode: a single toggle chip that plays the
-        // chosen mode in the behind-the-head chase-cam instead of flat top-down.
+        // View is orthogonal to the mode: pick the flat top-down board (2D) or the
+        // behind-the-head chase-cam (3D). Two mutually-exclusive chips, so it reads
+        // and behaves like the other selectors instead of a lone checkbox.
         ChipSection(title = stringResource(R.string.menu_view)) {
             FilterChip(
+                selected = !threeDWorld,
+                onClick = { onThreeDWorldChanged(false) },
+                label = { Text(stringResource(R.string.menu_view_2d)) },
+            )
+            FilterChip(
                 selected = threeDWorld,
-                onClick = { onThreeDWorldChanged(!threeDWorld) },
-                label = { Text(stringResource(R.string.menu_3d_world)) },
+                onClick = { onThreeDWorldChanged(true) },
+                label = { Text(stringResource(R.string.menu_view_3d)) },
             )
         }
 
@@ -123,6 +132,21 @@ fun ReadyOverlay(
                     onClick = { onLevelSelected(level) },
                     label = { Text(level.label) },
                     enabled = levelSelectable,
+                )
+            }
+        }
+
+        // Snake speed is independent of the level's obstacle layout. Endless ramps
+        // its own pace and Levels paces by its speed cycle, so the selector is
+        // disabled (and ignored) in those modes - the layout never reflows.
+        val speedSelectable = selectedMode == GameMode.Classic || selectedMode == GameMode.TimeAttack
+        ChipSection(title = stringResource(R.string.menu_snake_speed), enabled = speedSelectable) {
+            SnakeSpeed.entries.forEach { speed ->
+                FilterChip(
+                    selected = speed == selectedSnakeSpeed,
+                    onClick = { onSnakeSpeedSelected(speed) },
+                    label = { Text(speed.label) },
+                    enabled = speedSelectable,
                 )
             }
         }

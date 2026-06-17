@@ -139,7 +139,7 @@ class SpecialFoodTest {
 
     @Test
     fun speedEffectsScaleTheTickInterval() {
-        val base = Level.Beginner.tickMillis
+        val base = SnakeSpeed.Relaxed.tickMillis
         assertEquals(base, runningState().tickIntervalMillis)
         val haste = runningState(effectTimers = listOf(ActiveEffect(EffectKind.Haste, 6_000, 6_000)))
         assertTrue(haste.tickIntervalMillis < base)
@@ -194,7 +194,7 @@ class SpecialFoodTest {
     @Test
     fun threeDSlowsTheTickIntervalProportionally() {
         // The 3D view eases the pace by THREED_FACTOR (proportional to the base).
-        val base = Level.Beginner.tickMillis
+        val base = SnakeSpeed.Relaxed.tickMillis
         val state = runningState(effectTimers = listOf(ActiveEffect(EffectKind.ThreeD, 6_000, 11_000)))
         assertTrue(state.tickIntervalMillis > base)
         assertEquals((base * GameState.THREED_FACTOR).toLong(), state.tickIntervalMillis)
@@ -203,7 +203,7 @@ class SpecialFoodTest {
     @Test
     fun threeDWorldSlowsAndUsesLevelPace() {
         // The 3D World flag eases the level base pace by the same factor.
-        val base = Level.Beginner.tickMillis
+        val base = SnakeSpeed.Relaxed.tickMillis
         val state = runningState().copy(threeDWorld = true)
         assertEquals((base * GameState.THREED_FACTOR).toLong(), state.tickIntervalMillis)
     }
@@ -464,7 +464,7 @@ class SpecialFoodTest {
     fun frenzyUnlocksSpecialsEarlierThanStandard() {
         // At a tick where the standard gate hasn't opened yet, Frenzy's lower
         // gate factor already lets specials through.
-        // Beginner tickMillis = 175; gate (Standard) = 60_000 ms ≈ 343 ticks.
+        // Relaxed tickMillis = 175; gate (Standard) = 60_000 ms ≈ 343 ticks.
         val earlyTicks = 150
         val standardEarly = specialCount(SpecialFrequency.Standard, earlyTicks)
         val frenzyEarly = specialCount(SpecialFrequency.Frenzy, earlyTicks)

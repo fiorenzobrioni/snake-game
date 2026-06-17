@@ -75,10 +75,11 @@ class ObstacleSymmetryTest {
     @Test
     fun obstacleCountMatchesTheLevelTarget() {
         // On a roomy even-sized board nothing collapses onto the centre axes,
-        // so the full ceil(count / 4) * 4 cells must be placed.
+        // so the full ceil(count / 4) * 4 cells must be placed. The count is the
+        // area-scaled target for the board, not the raw per-level base.
         val board = BoardDimensions(26, 40)
         Level.entries.filter { it.obstacleCount > 0 }.forEach { level ->
-            val expected = (level.obstacleCount + 3) / 4 * 4
+            val expected = (obstacleCountFor(level, board) + 3) / 4 * 4
             (0L until 20L).forEach { seed ->
                 assertEquals(
                     "wrong count for $level (seed $seed)",

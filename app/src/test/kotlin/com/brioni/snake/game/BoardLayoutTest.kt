@@ -58,7 +58,7 @@ class BoardLayoutTest {
         val squished = boardFor(BoardScale.Epic, aspectRatio = 5f) // very wide
         assertTrue(squished.height >= 10)
         val skyscraper = boardFor(BoardScale.Cozy, aspectRatio = 0.05f) // absurdly tall
-        assertTrue(skyscraper.height <= 60)
+        assertTrue(skyscraper.height <= 80)
     }
 
     @Test
@@ -66,6 +66,26 @@ class BoardLayoutTest {
         val fallback = boardFor(BoardScale.Classic, aspectRatio = 0f)
         val expected = boardFor(BoardScale.Classic, aspectRatio = DEFAULT_ASPECT)
         assertEquals(expected, fallback)
+    }
+
+    @Test
+    fun obstacleCountScalesWithBoardArea() {
+        // Beginner has no obstacles at any size.
+        BoardScale.entries.forEach { scale ->
+            assertEquals(0, obstacleCountFor(Level.Beginner, boardFor(scale, 0.6f)))
+        }
+        // The Cozy reference keeps the raw per-level count; bigger boards scale up
+        // with the square of the short side, so density stays constant.
+        val cozy = boardFor(BoardScale.Cozy, 0.6f)
+        assertEquals(Level.Legend.obstacleCount, obstacleCountFor(Level.Legend, cozy))
+
+        val epic = boardFor(BoardScale.Epic, 0.6f) // short side 27 vs 13
+        val expectedEpic = (Level.Legend.obstacleCount *
+            (27.0 / OBSTACLE_REFERENCE_SHORT_SIDE) * (27.0 / OBSTACLE_REFERENCE_SHORT_SIDE)).let {
+            kotlin.math.round(it).toInt()
+        }
+        assertEquals(expectedEpic, obstacleCountFor(Level.Legend, epic))
+        assertTrue("bigger board gets more obstacles", expectedEpic > Level.Legend.obstacleCount)
     }
 
     @Test

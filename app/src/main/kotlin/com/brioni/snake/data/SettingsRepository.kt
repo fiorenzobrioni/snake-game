@@ -11,11 +11,13 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.brioni.snake.game.BoardScale
+import com.brioni.snake.game.BackBehavior
 import com.brioni.snake.game.ControlScheme
 import com.brioni.snake.game.GameMode
 import com.brioni.snake.game.Level
 import com.brioni.snake.game.ScoreKey
 import com.brioni.snake.game.Skin
+import com.brioni.snake.game.SnakeSpeed
 import com.brioni.snake.game.SpecialFrequency
 import com.brioni.snake.game.ThemeMode
 import kotlinx.coroutines.flow.Flow
@@ -27,6 +29,8 @@ data class Settings(
     val level: Level,
     val scale: BoardScale,
     val controlScheme: ControlScheme,
+    val backBehavior: BackBehavior = BackBehavior.DEFAULT,
+    val snakeSpeed: SnakeSpeed = SnakeSpeed.DEFAULT,
     val masterVolume: Float = DEFAULT_MASTER_VOLUME,
     val musicVolume: Float = DEFAULT_MUSIC_VOLUME,
     val sfxVolume: Float = DEFAULT_SFX_VOLUME,
@@ -60,6 +64,8 @@ class SettingsRepository(private val context: Context) {
             level = prefs[LEVEL].toEnum(Level::valueOf) ?: Level.Beginner,
             scale = prefs[SCALE].toEnum(BoardScale::valueOf) ?: BoardScale.Classic,
             controlScheme = prefs[CONTROL].toEnum(ControlScheme::valueOf) ?: ControlScheme.Swipe,
+            backBehavior = prefs[BACK_BEHAVIOR].toEnum(BackBehavior::valueOf) ?: BackBehavior.DEFAULT,
+            snakeSpeed = prefs[SNAKE_SPEED].toEnum(SnakeSpeed::valueOf) ?: SnakeSpeed.DEFAULT,
             masterVolume = prefs[MASTER_VOLUME] ?: DEFAULT_MASTER_VOLUME,
             musicVolume = prefs[MUSIC_VOLUME] ?: DEFAULT_MUSIC_VOLUME,
             sfxVolume = prefs[SFX_VOLUME] ?: DEFAULT_SFX_VOLUME,
@@ -76,11 +82,17 @@ class SettingsRepository(private val context: Context) {
     suspend fun setLevel(level: Level) =
         edit { it[LEVEL] = level.name }
 
+    suspend fun setSnakeSpeed(speed: SnakeSpeed) =
+        edit { it[SNAKE_SPEED] = speed.name }
+
     suspend fun setScale(scale: BoardScale) =
         edit { it[SCALE] = scale.name }
 
     suspend fun setControlScheme(scheme: ControlScheme) =
         edit { it[CONTROL] = scheme.name }
+
+    suspend fun setBackBehavior(behavior: BackBehavior) =
+        edit { it[BACK_BEHAVIOR] = behavior.name }
 
     suspend fun setMasterVolume(volume: Float) =
         edit { it[MASTER_VOLUME] = volume.coerceIn(0f, 1f) }
@@ -183,8 +195,10 @@ class SettingsRepository(private val context: Context) {
 
     private companion object {
         val LEVEL = stringPreferencesKey("level")
+        val SNAKE_SPEED = stringPreferencesKey("snake_speed")
         val SCALE = stringPreferencesKey("board_scale")
         val CONTROL = stringPreferencesKey("control_scheme")
+        val BACK_BEHAVIOR = stringPreferencesKey("back_behavior")
         val MASTER_VOLUME = floatPreferencesKey("master_volume")
         val MUSIC_VOLUME = floatPreferencesKey("music_volume")
         val SFX_VOLUME = floatPreferencesKey("sfx_volume")

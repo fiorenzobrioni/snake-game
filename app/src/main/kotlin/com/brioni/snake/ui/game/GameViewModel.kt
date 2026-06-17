@@ -13,6 +13,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.brioni.snake.audio.GameSfx
 import com.brioni.snake.data.SettingsRepository
 import com.brioni.snake.game.Achievement
+import com.brioni.snake.game.BackBehavior
 import com.brioni.snake.game.BoardDimensions
 import com.brioni.snake.game.BoardScale
 import com.brioni.snake.game.ControlScheme
@@ -30,6 +31,7 @@ import com.brioni.snake.game.LevelsMode
 import com.brioni.snake.game.Position
 import com.brioni.snake.game.RunStats
 import com.brioni.snake.game.Skin
+import com.brioni.snake.game.SnakeSpeed
 import com.brioni.snake.game.SpecialFrequency
 import com.brioni.snake.game.boardFor
 import kotlinx.coroutines.Job
@@ -83,8 +85,16 @@ class GameViewModel(
     var scale by mutableStateOf(DEFAULT_SCALE)
         private set
 
+    /** The selected snake pace (loaded from settings); drives the tick interval. */
+    var snakeSpeed by mutableStateOf(SnakeSpeed.DEFAULT)
+        private set
+
     /** Active steering scheme (loaded from settings). */
     var controlScheme by mutableStateOf(DEFAULT_CONTROL)
+        private set
+
+    /** What the Back gesture does during active play (loaded from settings). */
+    var backBehavior by mutableStateOf(BackBehavior.DEFAULT)
         private set
 
     /** Whether the retro CRT post-filter is enabled (loaded from settings). */
@@ -226,6 +236,7 @@ class GameViewModel(
         viewModelScope.launch {
             repo.settings.collect { settings ->
                 controlScheme = settings.controlScheme
+                backBehavior = settings.backBehavior
                 crtEnabled = settings.crtEnabled
                 skin = settings.skin
                 hazardsEnabled = settings.hazardsEnabled
@@ -242,10 +253,17 @@ class GameViewModel(
                     val targetLevel = if (settings.mode == GameMode.Levels) LevelsMode.SCORE_LEVEL else settings.level
                     val levelChanged = targetLevel != state.level
                     val modeChanged = settings.mode != mode
+                    val speedChanged = settings.snakeSpeed != snakeSpeed
                     mode = settings.mode
                     scale = settings.scale
+                    snakeSpeed = settings.snakeSpeed
                     if (levelChanged || modeChanged) {
-                        resetTo(engine.setup(targetLevel, boardFor(scale, lastAspect), mode))
+                        resetTo(engine.setup(targetLevel, boardFor(scale, lastAspect), mode, snakeSpeed))
+                    } else if (speedChanged) {
+                        // Pace only: no board/obstacle rebuild needed, just restamp
+                        // the speed so the loop reads it from the next tick on.
+                        state = state.copy(snakeSpeed = snakeSpeed)
+                        reconfigureBoard()
                     } else {
                         reconfigureBoard()
                     }
@@ -259,8 +277,16 @@ class GameViewModel(
         if (state.status != GameStatus.Ready) return
         if (mode == GameMode.Levels) return // the selector is disabled and ignored
         viewModelScope.launch { repo.setLevel(level) }
-        resetTo(engine.setup(level, state.board, mode))
+        resetTo(engine.setup(level, state.board, mode, snakeSpeed))
         refreshBest()
+    }
+
+    fun selectSnakeSpeed(speed: SnakeSpeed) {
+        if (state.status != GameStatus.Ready) return
+        snakeSpeed = speed
+        viewModelScope.launch { repo.setSnakeSpeed(speed) }
+        // Pace is read live from the state each tick, so a restamp is enough.
+        state = state.copy(snakeSpeed = speed)
     }
 
     fun selectMode(newMode: GameMode) {
@@ -270,7 +296,7 @@ class GameViewModel(
         // Levels pins its score level; leaving it, the settings collector
         // restores the user's persisted difficulty right after this reset.
         val level = if (newMode == GameMode.Levels) LevelsMode.SCORE_LEVEL else state.level
-        resetTo(engine.setup(level, state.board, newMode))
+        resetTo(engine.setup(level, state.board, newMode, snakeSpeed))
         refreshBest()
     }
 
@@ -306,7 +332,7 @@ class GameViewModel(
 
     private fun reconfigureBoard() {
         val dims = boardFor(scale, lastAspect)
-        if (dims != state.board) resetTo(engine.setup(state.level, dims, mode))
+        if (dims != state.board) resetTo(engine.setup(state.level, dims, mode, snakeSpeed))
     }
 
     fun start() {
@@ -337,7 +363,7 @@ class GameViewModel(
     }
 
     fun playAgain() {
-        resetTo(engine.newGame(state.level, state.board, mode))
+        resetTo(engine.newGame(state.level, state.board, mode, snakeSpeed))
         isNewBest = false
         beginRun()
         afterReset()
@@ -399,7 +425,7 @@ class GameViewModel(
     fun toSetup() {
         stopLoop()
         cancelIntro()
-        resetTo(engine.setup(state.level, state.board, mode))
+        resetTo(engine.setup(state.level, state.board, mode, snakeSpeed))
         refreshBest()
     }
 

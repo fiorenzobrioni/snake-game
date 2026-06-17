@@ -145,7 +145,7 @@ data class FoodSpec(
 object FoodTable {
 
     // Elapsed in-game time (ms) before each kind of food unlocks, at the
-    // easiest level. Compared against elapsedTicks * level.tickMillis.
+    // easiest level. Compared against elapsedTicks * the snake's base pace.
     const val GATE_SHRINK_MS = 15_000L
     const val GATE_MAXI_MS = 30_000L
     const val GATE_MYSTERY_MS = 45_000L
@@ -177,6 +177,9 @@ object FoodTable {
     /**
      * Rolls the next food to spawn.
      *
+     * @param baseTickMillis the snake's base pace (a [SnakeSpeed] tick), used to
+     *        convert [elapsedTicks] into the wall-clock time the unlock gates are
+     *        measured in, so progression tracks real seconds at any speed.
      * @param hazardsEnabled when false, harmful specials (Earthquake / Explosion /
      *        Snail) are never produced — only beneficial power-ups can appear.
      * @param specialAllowed when false (a special is already on the board, or a
@@ -191,13 +194,14 @@ object FoodTable {
         random: Random,
         elapsedTicks: Int,
         level: Level,
+        baseTickMillis: Long = SnakeSpeed.DEFAULT.tickMillis,
         hazardsEnabled: Boolean = true,
         specialAllowed: Boolean = true,
         specialFrequency: SpecialFrequency = SpecialFrequency.Standard,
         mode: GameMode = GameMode.Classic,
         threeDWorld: Boolean = false,
     ): FoodSpec {
-        val elapsedMs = elapsedTicks.toLong() * level.tickMillis
+        val elapsedMs = elapsedTicks.toLong() * baseTickMillis
         val factor = levelGateFactor(level)
         val shrinkUnlocked = elapsedMs >= (GATE_SHRINK_MS * factor)
         val maxiUnlocked = elapsedMs >= (GATE_MAXI_MS * factor)
