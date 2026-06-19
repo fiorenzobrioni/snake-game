@@ -44,6 +44,7 @@ import com.brioni.snake.game.BoardScale
 import com.brioni.snake.game.GameMode
 import com.brioni.snake.game.Level
 import com.brioni.snake.game.SnakeSpeed
+import com.brioni.snake.game.ViewMode
 
 /** Translucent full-screen scrim shared by every overlay. */
 @Composable
@@ -79,12 +80,12 @@ fun ReadyOverlay(
     selectedLevel: Level,
     selectedSnakeSpeed: SnakeSpeed,
     selectedScale: BoardScale,
-    threeDWorld: Boolean,
+    viewMode: ViewMode,
     onModeSelected: (GameMode) -> Unit,
     onLevelSelected: (Level) -> Unit,
     onSnakeSpeedSelected: (SnakeSpeed) -> Unit,
     onScaleSelected: (BoardScale) -> Unit,
-    onThreeDWorldChanged: (Boolean) -> Unit,
+    onViewModeChanged: (ViewMode) -> Unit,
     onPlay: () -> Unit,
 ) {
     OverlayScrim(alpha = 0.55f) {
@@ -105,19 +106,24 @@ fun ReadyOverlay(
             }
         }
 
-        // View is orthogonal to the mode: pick the flat top-down board (2D) or the
-        // behind-the-head chase-cam (3D). Two mutually-exclusive chips, so it reads
-        // and behaves like the other selectors instead of a lone checkbox.
+        // View is orthogonal to the mode: a flat top-down board (2D), the chase-cam
+        // that follows the heading (3D), or a north-locked panoramic view (3D Fixed).
+        // Mutually-exclusive chips, so it reads like the other selectors.
         ChipSection(title = stringResource(R.string.menu_view)) {
             FilterChip(
-                selected = !threeDWorld,
-                onClick = { onThreeDWorldChanged(false) },
+                selected = viewMode == ViewMode.TwoD,
+                onClick = { onViewModeChanged(ViewMode.TwoD) },
                 label = { Text(stringResource(R.string.menu_view_2d)) },
             )
             FilterChip(
-                selected = threeDWorld,
-                onClick = { onThreeDWorldChanged(true) },
+                selected = viewMode == ViewMode.ThreeD,
+                onClick = { onViewModeChanged(ViewMode.ThreeD) },
                 label = { Text(stringResource(R.string.menu_view_3d)) },
+            )
+            FilterChip(
+                selected = viewMode == ViewMode.ThreeDFixed,
+                onClick = { onViewModeChanged(ViewMode.ThreeDFixed) },
+                label = { Text(stringResource(R.string.menu_view_3d_fixed)) },
             )
         }
 

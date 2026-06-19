@@ -2,8 +2,8 @@ package com.brioni.snake.game
 
 /**
  * The timed power-up effects that can be running on the snake. Instantaneous
- * specials (Earthquake, Explosion, Jackpot) are *not* here — they apply once and
- * are done; only effects with a duration become an [ActiveEffect].
+ * specials (Explosion, Jackpot) are *not* here — they apply once and are done;
+ * only effects with a duration become an [ActiveEffect].
  */
 enum class EffectKind {
     /** Lightning: faster ticks. */
@@ -20,6 +20,9 @@ enum class EffectKind {
 
     /** 3D (hazard): chase-cam view from behind the head with relative controls; no rule or speed change. */
     ThreeD,
+
+    /** Earthquake (hazard): a sustained screen shake; no rule or speed change. */
+    Quake,
 }
 
 /**

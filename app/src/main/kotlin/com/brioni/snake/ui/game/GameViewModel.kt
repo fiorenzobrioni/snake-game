@@ -33,6 +33,7 @@ import com.brioni.snake.game.RunStats
 import com.brioni.snake.game.Skin
 import com.brioni.snake.game.SnakeSpeed
 import com.brioni.snake.game.SpecialFrequency
+import com.brioni.snake.game.ViewMode
 import com.brioni.snake.game.boardFor
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -113,9 +114,12 @@ class GameViewModel(
     var specialFrequency by mutableStateOf(SpecialFrequency.Standard)
         private set
 
-    /** When true, every mode is played in the 3D chase-cam view (setting). */
-    var threeDWorldEnabled by mutableStateOf(false)
+    /** The board presentation (setting): flat 2D, follow chase-cam, or fixed-north. */
+    var viewMode by mutableStateOf(ViewMode.TwoD)
         private set
+
+    /** True while either 3D view is selected as the standing setting. */
+    val threeDWorldEnabled: Boolean get() = viewMode.is3D
 
     /** Active play mode; highscores are tracked per (mode, level, scale). */
     var mode by mutableStateOf(GameMode.Classic)
@@ -218,6 +222,7 @@ class GameViewModel(
     private var runMaxLevel = 1
     private var runMaxCycle = 1
     private var runExtraLives = 0
+    private var runMaxLength = 0
 
     private var loop: Job? = null
     private var bestJob: Job? = null
@@ -241,7 +246,7 @@ class GameViewModel(
                 skin = settings.skin
                 hazardsEnabled = settings.hazardsEnabled
                 specialFrequency = settings.specialFrequency
-                threeDWorldEnabled = settings.threeDWorld
+                viewMode = settings.viewMode
                 if (state.status == GameStatus.Ready) {
                     // Keep the not-yet-started board's 3D flag in sync with the
                     // toggle so the pace/spawn rules match before play begins.
@@ -308,14 +313,14 @@ class GameViewModel(
         refreshBest()
     }
 
-    /** Start-screen toggle: play the chosen mode in 3D (persisted across runs). */
-    fun setThreeDWorld(enabled: Boolean) {
+    /** Start-screen selector: the board view (persisted across runs). */
+    fun selectViewMode(mode: ViewMode) {
         if (state.status != GameStatus.Ready) return
-        threeDWorldEnabled = enabled
+        viewMode = mode
         // Reflect immediately so the not-yet-started board carries the flag; the
         // settings collector will re-apply the same value once DataStore emits.
-        state = state.copy(threeDWorld = enabled)
-        viewModelScope.launch { repo.setThreeDWorld(enabled) }
+        state = state.copy(threeDWorld = mode.is3D)
+        viewModelScope.launch { repo.setViewMode(mode) }
     }
 
     /**
@@ -414,6 +419,7 @@ class GameViewModel(
         runMaxLevel = 1
         runMaxCycle = 1
         runExtraLives = 0
+        runMaxLength = state.snake.size
         newlyUnlocked = emptyList()
     }
 
@@ -460,6 +466,7 @@ class GameViewModel(
     private fun advance() {
         val before = state
         val after = engine.tick(before, hazardsEnabled, specialFrequency)
+        runMaxLength = max(runMaxLength, after.snake.size)
 
         var threeDStarted = false
         var threeDExpired = false
@@ -490,13 +497,6 @@ class GameViewModel(
                     deathEventId++
                     sfx.died()
                     onGameOver(after.score)
-                }
-                is GameEvent.Quaked -> {
-                    // Earthquake: implode burst at the head + a board shake.
-                    eatEvent = EatEvent(after.head, 1, palette.foodColor(event.food), BurstStyle.Implode)
-                    eatEventId++
-                    shakeEventId++
-                    sfx.special(event.food)
                 }
                 is GameEvent.Exploded -> {
                     // Explosion: outward burst at the blast + a board shake.
@@ -644,6 +644,7 @@ class GameViewModel(
             maxLevelReached = if (mode == GameMode.Levels) runMaxLevel else 0,
             maxSpeedCycle = runMaxCycle,
             extraLivesGained = runExtraLives,
+            maxSnakeLength = runMaxLength,
         )
         // Persist; the bestJob collector reflects the new value back into state.
         viewModelScope.launch { repo.submitScore(mode, state.level, scale, score) }

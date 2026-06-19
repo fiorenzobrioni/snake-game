@@ -248,9 +248,13 @@ snake-game/
       and surfaced through the existing `GameEvent` channel + HUD timers. They add `FoodCategory.Special`,
       new `FoodEffect` cases, and `GameState` fields `debris: List<Debris>` + `effectTimers`. A Settings
       toggle disables the harmful ones (Earthquake / Explosion / Snail) for a calmer run.
-  - [x] **Earthquake** - eats a chunk of the snake's tail; reuses the death screen-shake.
-  - [x] **Explosion** - splits the snake in two; the detached tail stays on the board as **lethal,
-        time-limited debris** (crashing into it kills) that **auto-clears** after a timer.
+  - [x] **Earthquake** - a pure-disruption **malus**: a **sustained screen shake** (timed
+        `EffectKind.Quake`, a few seconds) that makes the board hard to read. It leaves **no debris**
+        and does **not** change the snake's length (reworked in Step 6.7; it previously bit the tail
+        and scattered debris).
+  - [x] **Explosion** - severs the **last third** of the snake (keeps two-thirds); the detached tail
+        stays on the board as **lethal debris** (crashing into it kills) that **auto-clears** after a
+        long timer (~9 s) so it is a real obstacle, not a quick free shortening (tuned in Step 6.7).
   - [x] **Lightning / Snail** - temporary speed boost / slow-down (scales the tick interval) with a HUD timer.
   - [x] **Star** - brief invincibility / ghost (pass through walls, obstacles and self) with a HUD timer.
   - [x] **Freeze** - temporarily freezes special spawns / slows time - a strategic breather.
@@ -265,10 +269,28 @@ snake-game/
         `t=0` stays pixel-identical to the 2D renderer). Steering becomes **relative** while active
         (swipe = horizontal turn, every other scheme → two-button). Gated by the **Hazards** toggle.
         The chase-cam view also raises **boundary walls** so the arena reads clearly in 3D.
-  - [x] **3D World** - a **start-screen "View" toggle** (not a mode) that plays *any* mode entirely in
-        the chase-cam (+ the 3D slowdown). Reuses the same renderer/controls; suppresses the
-        now-redundant 3D food. Persisted via DataStore (`Settings.threeDWorld`) and carried into the run
-        as the `GameState.threeDWorld` flag.
+  - [x] **3D World** - a **start-screen "View" selector** (not a mode) that plays *any* mode entirely in
+        a perspective view (+ the 3D slowdown). Reuses the same renderer/controls; suppresses the
+        now-redundant 3D food. As of Step 6.7 it is a three-way **`ViewMode`** (2D / 3D / 3D Fixed)
+        persisted via DataStore (`Settings.viewMode`, with legacy `threeDWorld` boolean fallback) and
+        still carried into the run as the boolean `GameState.threeDWorld` flag (both 3D variants set it).
+- [x] **Step 6.7** - **3D refinements & rebalance**:
+  - **3D Fixed view** - a new **north-locked, panoramic** `ViewMode.ThreeDFixed`: the camera frames
+    the whole board from a fixed angle and **does not rotate** with the snake (anchored on the board
+    centre, yaw stays north), so the view stays readable in every direction. `blendedCam` grew a
+    `fixedNorth` branch (`ChaseCam.kt`); `GameBoard.draw3DScene`/`GameScreen` thread the flag through.
+  - **More panoramic chase-cam** - the follow chase-cam sits higher and further back (`CAM_BACK`/
+    `CAM_HEIGHT`/`FOCAL_CHASE`).
+  - **Solid 3D objects** - food renders as **beveled cubes** spanning their footprint (maxi = one 2×2
+    cube); boundary walls and interior obstacles get top-lit shading + seam texture; the floor is a
+    filled dark gradient under the grid (stays black-leaning, on-brand with the dark theme).
+  - **Earthquake / Explosion rebalance** - see Step 6.2 bullets above (sustained-shake malus; 1/3 split
+    with longer-lived debris).
+  - **Length-scaled scoring** - grow-food points scale with the current snake length (×1 short → ×5 cap,
+    `GameEngine.lengthScoreFactor`), so the same bite is worth far more late in a run.
+  - **HUD length** - the current snake length is shown in the fixed-height HUD second row.
+  - **Length achievements** - three new max-length achievements (`LongHaul` 25 / `Anaconda` 50 /
+    `Titanoboa` 90), tracked via `RunStats.maxSnakeLength`.
 - [x] **Step 6.3** - Highscore tables per (level × size), per mode, in a "Records" screen.
 - [x] **Step 6.4** - Local achievements.
 - [x] **Step 6.5** - Extra modes: Endless, Time Attack.
@@ -343,14 +365,19 @@ snake-game/
   swipe uses a **single, never-swapped** `pointerInput` routed through `GameViewModel.onSwipe`, which
   picks relative-turn vs absolute steering from the current `threeDActive` (swapping the modifier on a
   state change left a stale gesture handler - do not reintroduce that).
-- **3D World** is a **start-screen "View" selector** (two mutually-exclusive `ReadyOverlay` chips,
-  **2D** / **3D**, via `GameViewModel.setThreeDWorld`), persisted via DataStore (`Settings.threeDWorld`) and orthogonal to
-  the mode: any mode plays in the chase-cam when it is on. It is carried into a run as the pure
-  `GameState.threeDWorld` flag (stamped in `GameViewModel.resetTo` + synced on the Ready screen), which
-  the model consults only to ease the pace and suppress the redundant 3D food. `threeDActive`
+- **3D World** is a **start-screen "View" selector** (three mutually-exclusive `ReadyOverlay` chips -
+  **2D** / **3D** / **3D Fixed** - via `GameViewModel.selectViewMode`), a three-way **`ViewMode`** enum
+  persisted via DataStore (`Settings.viewMode`, falling back from the legacy `threeDWorld` boolean) and
+  orthogonal to the mode: any mode plays in a perspective view when one is picked. **3D** follows the
+  snake's heading (the camera rotates); **3D Fixed** is **north-locked and panoramic** (camera anchored
+  on the board centre, never rotates - `blendedCam(fixedNorth = true)`), so it stays readable in every
+  direction. It is carried into a run as the boolean `GameState.threeDWorld` flag (set by both 3D
+  variants, stamped in `GameViewModel.resetTo` + synced on the Ready screen), which the model consults
+  only to ease the pace and suppress the redundant 3D food. `threeDActive`
   (`threeDWorldEnabled || threeDHazardActive`) drives the renderer + relative controls; `GameScreen`
-  holds `camBlend` at 1 while the toggle is on. It was briefly a `GameMode` (`ThreeDWorld`); that was
-  removed in favour of the orthogonal toggle - do not reintroduce it as a mode.
+  holds `camBlend` at 1 while a 3D view is on and passes `viewMode.fixedNorth` to `GameBoard`. It was
+  briefly a `GameMode` (`ThreeDWorld`); that was removed in favour of the orthogonal selector - do not
+  reintroduce it as a mode.
 - **Control scheme**: the default is **Swipe** (set in `GameViewModel.DEFAULT_CONTROL` and the
   persisted fallback in `SettingsRepository`); the two-button relative scheme and the D-pad remain
   selectable in Settings (choice persisted via DataStore). Phase 3 had originally shipped two-button

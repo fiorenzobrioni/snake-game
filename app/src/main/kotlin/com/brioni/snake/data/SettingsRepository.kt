@@ -20,6 +20,7 @@ import com.brioni.snake.game.Skin
 import com.brioni.snake.game.SnakeSpeed
 import com.brioni.snake.game.SpecialFrequency
 import com.brioni.snake.game.ThemeMode
+import com.brioni.snake.game.ViewMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlin.math.max
@@ -40,8 +41,8 @@ data class Settings(
     val specialFrequency: SpecialFrequency = SpecialFrequency.Standard,
     val mode: GameMode = GameMode.Classic,
     val themeMode: ThemeMode = ThemeMode.Dark,
-    /** When true, every mode is played in the 3D chase-cam view. */
-    val threeDWorld: Boolean = false,
+    /** The board presentation: flat 2D, follow chase-cam 3D, or fixed-north 3D. */
+    val viewMode: ViewMode = ViewMode.TwoD,
 )
 
 /** Default audio levels (also used as the in-memory fallback before load). */
@@ -75,7 +76,10 @@ class SettingsRepository(private val context: Context) {
             specialFrequency = prefs[SPECIAL_FREQUENCY].toEnum(SpecialFrequency::valueOf) ?: SpecialFrequency.Standard,
             mode = prefs[MODE].toEnum(GameMode::valueOf) ?: GameMode.Classic,
             themeMode = prefs[THEME_MODE].toEnum(ThemeMode::valueOf) ?: ThemeMode.Dark,
-            threeDWorld = prefs[THREE_D_WORLD] ?: false,
+            viewMode = prefs[VIEW_MODE].toEnum(ViewMode::valueOf)
+                // Fall back from the legacy boolean: a stored "true" maps to the
+                // follow chase-cam, anything else (or unset) to flat 2D.
+                ?: if (prefs[THREE_D_WORLD] == true) ViewMode.ThreeD else ViewMode.TwoD,
         )
     }
 
@@ -121,8 +125,8 @@ class SettingsRepository(private val context: Context) {
     suspend fun setThemeMode(themeMode: ThemeMode) =
         edit { it[THEME_MODE] = themeMode.name }
 
-    suspend fun setThreeDWorld(enabled: Boolean) =
-        edit { it[THREE_D_WORLD] = enabled }
+    suspend fun setViewMode(mode: ViewMode) =
+        edit { it[VIEW_MODE] = mode.name }
 
     /** The stored best for a (mode × level × scale) slot (0 if none yet). */
     fun highScore(mode: GameMode, level: Level, scale: BoardScale): Flow<Int> =
@@ -209,6 +213,7 @@ class SettingsRepository(private val context: Context) {
         val MODE = stringPreferencesKey("game_mode")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val THREE_D_WORLD = booleanPreferencesKey("three_d_world")
+        val VIEW_MODE = stringPreferencesKey("view_mode")
         val UNLOCKED_ACHIEVEMENTS = stringSetPreferencesKey("unlocked_achievements")
     }
 }

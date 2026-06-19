@@ -34,8 +34,12 @@ sealed interface FoodEffect {
 
     // --- Phase 6.2 specials. Beneficial unless noted as a hazard. ---
 
-    /** Earthquake (hazard): bites [segments] off the tail and shakes the screen. */
-    data class Quake(val segments: Int) : FoodEffect
+    /**
+     * Earthquake (hazard): shakes the screen for [durationMs]. A pure disruption
+     * malus - it leaves no debris and does not change the snake's length; the
+     * sustained shake just makes the board hard to read while it lasts.
+     */
+    data class Quake(val durationMs: Long) : FoodEffect
 
     /**
      * Explosion (hazard): splits the snake, leaving the detached tail on the
@@ -162,7 +166,15 @@ object FoodTable {
     // Star is the "save me" power: long enough to actually escape a tight spot.
     private const val GHOST_MS = 9_000L
     private const val FREEZE_MS = 8_000L
-    private const val BURST_DEBRIS_MS = 4_000L
+
+    /** Earthquake shake duration: long enough to genuinely disturb the player. */
+    private const val QUAKE_MS = 3_500L
+
+    /**
+     * How long the tail severed by an Explosion lingers as lethal debris. Kept
+     * long so the detached chunk is a real obstacle, not a quick free shortening.
+     */
+    private const val BURST_DEBRIS_MS = 9_000L
 
     /** 3D lasts long enough to read the perspective and play a few turns in it. */
     private const val THREE_D_MS = 11_000L
@@ -232,7 +244,7 @@ object FoodTable {
             add(Weighted(10) { FoodEffect.Jackpot(bonus = random.nextInt(150, 401), growth = random.nextInt(2, 6)) })
             // Harmful — only when hazards are enabled.
             if (hazardsEnabled) {
-                add(Weighted(16) { FoodEffect.Quake(random.nextInt(3, 7)) })
+                add(Weighted(16) { FoodEffect.Quake(QUAKE_MS) })
                 add(Weighted(12) { FoodEffect.Burst(BURST_DEBRIS_MS) })
                 add(Weighted(14) { FoodEffect.Slow(SLOW_MS) })
                 // Pointless inside the always-on 3D World mode.

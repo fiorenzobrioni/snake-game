@@ -46,6 +46,8 @@ The classic Snake mechanics, extended with configurable features so every run fe
   and reappears elsewhere, so looping around without eating won't stall the run. Special pieces stick
   around much longer (they're rare events worth reaching) but eventually time out too.
 - ✖️ **Combo multiplier** - eating in quick succession multiplies your score (up to ×5).
+- 📏 **Live snake length** - the HUD shows your current length as you play; longer snakes also score more
+  per grow (and unlock dedicated length achievements).
 - 🚧 **Obstacles** - symmetric blocks that tend to clump into larger shapes and raise the difficulty.
 - 🎚️ **Levels & snake speed** - 5 obstacle layouts (*Beginner* → *Legend*) and 5 **independent**
   speeds (*Relaxed* → *Turbo*), mixable freely: play the dense Legend field at a gentle pace, or an
@@ -67,8 +69,9 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - ⚡ **Power-ups & hazards** - rare maxi pieces that appear later in a run: **Lightning** (speed up),
   **Snail** (slow down), **Star** (invincible pass-through; the snake blinks faster as it runs out),
   **Freeze**, **Jackpot** (big bonus),
-  plus the hazards **Earthquake** (bites a chunk off your tail and scatters those segments across the
-  board as lethal, fading debris), **Explosion** (splits the snake, leaving lethal debris) and **3D**
+  plus the hazards **Earthquake** (a sustained screen shake for a few seconds that makes the board hard
+  to read - no debris, your length is untouched), **Explosion** (severs the last third of the snake,
+  leaving the detached tail as lethal debris that lingers for several seconds) and **3D**
   (the board tilts into a behind-the-head chase-cam and you play in perspective for the duration, with
   the steering switched to relative left/right turns). Active
   effects show countdown chips; up to **two specials** can share the board at once. Toggle **Hazards**
@@ -78,14 +81,18 @@ The classic Snake mechanics, extended with configurable features so every run fe
   penalty, each with a floating callout.
 - 🏆 **Records screen** - a best-score table per difficulty × board scale (and per mode), reachable
   from the main menu.
-- 🎖️ **Achievements** - eighteen local milestones (combos, scores, endurance, eating sprees, using power-ups…)
-  that unlock as you play, with a dedicated screen and an unlock banner on the game-over screen.
+- 🎖️ **Achievements** - twenty-one local milestones (combos, scores, endurance, eating sprees, using
+  power-ups, growing a very long snake…) that unlock as you play, with a dedicated screen and an unlock
+  banner on the game-over screen.
 - 🕹️ **Game modes** - **Classic**, **Endless** (speed ramps up the longer you survive),
   **Time Attack** (score as much as you can in 120s) and **Campaign** (see below), selectable on the
   start screen.
-- 🧊 **3D World** - a **View** selector on the start screen (**2D** / **3D**) that plays **any** mode
-  entirely in the behind-the-head 3D chase-cam (at a slightly eased pace, with relative left/right
-  steering), instead of the flat top-down board. The choice is remembered between sessions.
+- 🧊 **3D views** - a **View** selector on the start screen (**2D** / **3D** / **3D Fixed**) that plays
+  **any** mode in perspective instead of the flat top-down board (at a slightly eased pace, with relative
+  left/right steering). **3D** is a behind-the-head chase-cam that follows your heading; **3D Fixed** is a
+  north-locked, panoramic view that never rotates, so it stays readable in every direction. Food renders
+  as solid beveled cubes and the arena walls/obstacles read as solid 3D blocks. The choice is remembered
+  between sessions.
 - 🧩 **Campaign mode** - ten **designed board shapes** (cut corners, pillars, chambers, a vault…)
   that repeat forever, one **speed step faster** each lap. Eat **12 foods** to clear a level; you
   start with **3 lives** (a crash respawns you in the same level, keeping score and progress) and a
@@ -101,12 +108,14 @@ The classic Snake mechanics, extended with configurable features so every run fe
 
 | Category | Tiers (standard growth/shrink) | Maxi (2×2) | Mystery "?" | Score |
 |----------|-------------------------------|------------|-------------|-------|
-| 🟢 **Grow**   | +2 / +4 / +6 / +8 | doubles the amount | random +2…+24 | `+10 × growth × combo` |
+| 🟢 **Grow**   | +2 / +4 / +6 / +8 | doubles the amount | random +2…+24 | `+10 × growth × combo × length bonus` |
 | 🟠 **Shrink** | −2 / −3 / −5      | doubles the amount | random −2…−14 | small symbolic bonus (5 / 10 maxi) |
 
-The snake never shrinks below **3 segments**. Grow food drives the score (scaled by the combo
-multiplier); shrink food is a tactical tool - it gives only token points but lets you cut your length
-to manoeuvre. Eating either floats the amount of segments gained or lost (**+N** / **−N**) at the food.
+The snake never shrinks below **3 segments**. Grow food drives the score, scaled by the combo
+multiplier **and by your current length** - the longer the snake, the more each bite is worth (up to
+about ×5 for a very long snake), so growing pays off more and more as a run goes on. Shrink food is a
+tactical tool - it gives only token points but lets you cut your length to manoeuvre. Eating either
+floats the amount of segments gained or lost (**+N** / **−N**) at the food.
 
 ### ⚔️ Levels (obstacles)
 
@@ -225,19 +234,23 @@ lives, an exclusive 2×2 extra-life piece, and a speed-up every completed lap - 
 *Level x · Speed x*, your hearts and the foods still to go). Your best score is tracked per mode,
 level and board scale; check the **Records** screen from the main menu.
 
-**3D World:** on the start screen, switch the **View** to **3D World** to play *any* mode entirely in
-the behind-the-head 3D chase-cam - the board tilts into perspective as the run starts, the pace is
-eased a little for playability, and steering becomes relative left/right turns (swipe horizontally, or
-the two-button control). Switch it back off for the classic flat top-down board. Your choice is
+**3D views:** on the start screen, switch the **View** to **3D** or **3D Fixed** to play *any* mode in
+perspective - the board tilts in as the run starts, the pace is eased a little for playability, and
+steering becomes relative left/right turns (swipe horizontally, or the two-button control). **3D** is a
+behind-the-head chase-cam that turns to follow your heading; **3D Fixed** is a north-locked, panoramic
+view that never rotates, so the board stays readable however the snake moves (handy when you head toward
+the bottom of the screen). In both, food appears as solid beveled cubes and the arena walls/obstacles
+read as solid 3D blocks. Switch back to **2D** for the classic flat top-down board. Your choice is
 remembered between sessions.
 
 **Power-ups & hazards:** as a run progresses, rare special pieces start appearing on the board.
 Power-ups help: **Lightning** speeds the snake up, **Snail** slows it down, **Star** grants brief
 invincibility (you can pass through walls, obstacles and your own body - the snake blinks as the
 effect fades), **Freeze** pauses further specials for a strategic breather, and **Jackpot** grants a
-large score bonus. Hazards hinder: **Earthquake** bites a chunk off your tail and flings those
-segments across the board as lethal debris (it fades after a few seconds); **Explosion** splits the
-snake in two - the detached segment turns into lethal debris until it auto-clears; and **3D** briefly
+large score bonus. Hazards hinder: **Earthquake** sets off a sustained screen shake for a few seconds
+that makes the board hard to read (it leaves no debris and your length is untouched); **Explosion**
+severs the last third of the snake - the detached tail turns into lethal debris that lingers for several
+seconds before it auto-clears; and **3D** briefly
 freezes the action while the board tilts forward into a chase-cam mounted behind and above the snake's
 head, then hands play back in that perspective view for the duration (steering becomes relative
 left/right turns) before tilting back to the flat top-down. Active effects show
@@ -246,8 +259,8 @@ a countdown chip in the HUD. **Time Attack** also has two clock-only pieces - a 
 penalty), or raise **Special blocks** to *Frenzy* for constant chaos.
 
 **Achievements:** milestones unlock automatically as you play - high combos, long runs, using
-power-ups, and more. A banner appears on the game-over screen when one unlocks; browse the full list
-from the main menu.
+power-ups, growing a very long snake, and more. A banner appears on the game-over screen when one
+unlocks; browse the full list from the main menu.
 
 ---
 
