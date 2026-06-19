@@ -320,7 +320,7 @@ fun GameScreen(
                 ControlRegion(
                     scheme = viewModel.controlScheme,
                     viewModel = viewModel,
-                    forceRelative = viewModel.threeDActive,
+                    forceRelative = viewModel.relativeSteering,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp, vertical = 12.dp),

@@ -95,15 +95,16 @@ private const val FOCAL_CHASE = 0.95f // lower focal = wider field of view
 private val FLAT_YAW = (-PI / 2).toFloat() // "Up": screen-up = world -y, matching 2D
 
 // Fixed-north panoramic pose: the camera is parked behind (south of) the board
-// centre, high and far enough to frame the whole board - including the near
-// (bottom) edge - so the view stays readable whatever way the snake travels.
-// Tunable; sized relative to the board height so it adapts to every board scale.
+// centre, looking north at a fixed tilt so the view never rotates with the snake.
+// Distances are sized relative to the board height (adapts to every board scale).
+// Kept fairly close so the board reads large; it may extend past the top edge
+// rather than framing the whole board small. Tunable.
 private const val FIXED_PITCH = 0.85f // ~49° down: a clear panoramic tilt
-private const val FIXED_BACK_FACTOR = 0.62f
-private const val FIXED_BACK_PAD = 2.5f
-private const val FIXED_HEIGHT_FACTOR = 0.75f
-private const val FIXED_HEIGHT_PAD = 3.0f
-private const val FOCAL_FIXED = 0.8f // wide FOV so the whole board fits
+private const val FIXED_BACK_FACTOR = 0.31f
+private const val FIXED_BACK_PAD = 1.25f
+private const val FIXED_HEIGHT_FACTOR = 0.38f
+private const val FIXED_HEIGHT_PAD = 1.5f
+private const val FOCAL_FIXED = 0.8f // wide FOV
 
 /** Raised top-face height (cells) used to give snake/obstacle quads some bulk. */
 const val ZTOP = 0.42f

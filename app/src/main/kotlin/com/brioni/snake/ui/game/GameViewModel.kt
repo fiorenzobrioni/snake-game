@@ -179,6 +179,14 @@ class GameViewModel(
     val threeDActive: Boolean get() = threeDWorldEnabled || threeDHazardActive
 
     /**
+     * Whether steering should be heading-relative (left/right turns) rather than
+     * absolute. True for the rotating perspective views (chase-cam hazard or the
+     * "3D" follow view), but **false** for the north-locked "3D Fixed" view, whose
+     * board never rotates - there swipe/D-pad behave exactly like the flat 2D board.
+     */
+    val relativeSteering: Boolean get() = threeDActive && !viewMode.fixedNorth
+
+    /**
      * Bumped when the 3D cinematic should play (tilt-in on start, tilt-out on
      * expiry). The screen observes it to drive the camera-blend animation, the
      * same id-counter pattern as [deathEventId] / [shakeEventId].
@@ -609,13 +617,14 @@ class GameViewModel(
     }
 
     /**
-     * Routes a board swipe. In the 3D view a horizontal swipe is a heading-relative
-     * turn (left/right) and vertical swipes are ignored; otherwise it steers by the
-     * swiped absolute [direction]. Reading [threeDActive] here (not at wiring time)
-     * keeps a single, never-swapped gesture detector correct in both views.
+     * Routes a board swipe. In a rotating 3D view a horizontal swipe is a heading-
+     * relative turn (left/right) and vertical swipes are ignored; otherwise (2D or
+     * the north-locked 3D Fixed view) it steers by the swiped absolute [direction].
+     * Reading [relativeSteering] here (not at wiring time) keeps a single, never-
+     * swapped gesture detector correct in every view.
      */
     fun onSwipe(direction: Direction) {
-        if (threeDActive) {
+        if (relativeSteering) {
             when (direction) {
                 Direction.Left -> turnLeft()
                 Direction.Right -> turnRight()
