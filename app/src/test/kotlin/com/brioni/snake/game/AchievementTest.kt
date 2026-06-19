@@ -72,11 +72,11 @@ class AchievementTest {
 
     @Test
     fun `length achievements gate on max snake length`() {
-        assertTrue(Achievement.LongHaul.test(stats(maxSnakeLength = 25)))
-        assertFalse(Achievement.LongHaul.test(stats(maxSnakeLength = 24)))
-        assertTrue(Achievement.Anaconda.test(stats(maxSnakeLength = 50)))
-        assertFalse(Achievement.Anaconda.test(stats(maxSnakeLength = 49)))
-        assertTrue(Achievement.Titanoboa.test(stats(maxSnakeLength = 90)))
-        assertFalse(Achievement.Titanoboa.test(stats(maxSnakeLength = 89)))
+        assertTrue(Achievement.LongHaul.test(stats(maxSnakeLength = 50)))
+        assertFalse(Achievement.LongHaul.test(stats(maxSnakeLength = 49)))
+        assertTrue(Achievement.Anaconda.test(stats(maxSnakeLength = 100)))
+        assertFalse(Achievement.Anaconda.test(stats(maxSnakeLength = 99)))
+        assertTrue(Achievement.Titanoboa.test(stats(maxSnakeLength = 180)))
+        assertFalse(Achievement.Titanoboa.test(stats(maxSnakeLength = 179)))
     }
 }

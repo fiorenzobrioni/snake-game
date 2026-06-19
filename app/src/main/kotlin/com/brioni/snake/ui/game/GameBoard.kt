@@ -276,7 +276,7 @@ fun GameBoard(
                 drawObstacle(cell, originX + obstacle.x * cell, originY + obstacle.y * cell, palette)
             }
             state.debris.forEach { d ->
-                drawDebris(cell, originX + d.cell.x * cell, originY + d.cell.y * cell, d.life)
+                drawDebris(cell, originX + d.cell.x * cell, originY + d.cell.y * cell, d.life, palette)
             }
             state.foods.forEach { food ->
                 drawFood(food, cell, originX, originY, pulse, textMeasurer, palette, shaders, time)
@@ -761,28 +761,32 @@ private fun DrawScope.drawCrack(cx: Float, cy: Float, r: Float, color: Color) {
     }
 }
 
-/** A lethal, time-limited explosion block; fades as its timer runs down. */
-private fun DrawScope.drawDebris(cell: Float, left: Float, top: Float, life: Float) {
-    val inset = cell * 0.08f
-    val side = cell - 2 * inset
-    val color = SpecialVisuals.ExplosionColor
+/**
+ * The severed tail left behind by an Explosion: drawn as a block in the very
+ * same style as a normal snake-body segment (so it reads as the detached tail,
+ * not a stray pellet). Still lethal and time-limited, so it fades out as its
+ * timer runs down.
+ */
+private fun DrawScope.drawDebris(cell: Float, left: Float, top: Float, life: Float, palette: SkinPalette) {
     val alpha = 0.35f + 0.55f * life
-    val radius = CornerRadius(cell * 0.18f, cell * 0.18f)
+    val inset = cell * 0.06f
+    val side = cell - 2 * inset
+    val topLeft = Offset(left + inset, top + inset)
+    val corner = cell * palette.cornerFactor
+    val radius = CornerRadius(corner, corner)
     drawRoundRect(
-        color = color.copy(alpha = alpha),
-        topLeft = Offset(left + inset, top + inset),
+        color = palette.snakeBody.copy(alpha = alpha),
+        topLeft = topLeft,
         size = Size(side, side),
         cornerRadius = radius,
     )
     drawRoundRect(
-        color = Color.Black.copy(alpha = 0.35f * life),
-        topLeft = Offset(left + inset, top + inset),
+        color = palette.snakeOutline.copy(alpha = alpha),
+        topLeft = topLeft,
         size = Size(side, side),
         cornerRadius = radius,
-        style = Stroke(width = cell * 0.05f),
+        style = Stroke(width = cell * 0.06f),
     )
-    // A small crack mark.
-    drawCrack(left + cell / 2f, top + cell / 2f, side * 0.32f, Color.Black.copy(alpha = 0.4f * life))
 }
 
 private fun DrawScope.drawSnakeSegment(
@@ -1121,13 +1125,10 @@ private fun DrawScope.draw3DScene(
     }
 
     state.debris.forEach { d ->
-        val cc = cam.cameraSpace(Vec3(d.cell.x + 0.5f, d.cell.y + 0.5f, 0f))
-        if (cc.z <= Cam.NEAR) return@forEach
-        val p = cam.projectCamera(cc)
-        if (!p.visible) return@forEach
-        val r = (scaleAt(cc.z) * 0.34f).coerceAtLeast(2f)
+        // The severed tail: a raised block in the snake-body style (matching the
+        // top-down view), fading out with its timer, rather than a floating ball.
         val alpha = 0.35f + 0.55f * d.life
-        items.add(cc.z to { drawCircle(SpecialVisuals.ExplosionColor.copy(alpha = alpha), r, toPixel(p)) })
+        addRaisedQuad(d.cell.x + 0.5f, d.cell.y + 0.5f, palette.snakeBody, palette.snakeOutline, ZTOP, alpha)
     }
 
     state.foods.forEach { food ->
