@@ -275,10 +275,12 @@ snake-game/
         persisted via DataStore (`Settings.viewMode`, with legacy `threeDWorld` boolean fallback) and
         still carried into the run as the boolean `GameState.threeDWorld` flag (both 3D variants set it).
 - [x] **Step 6.7** - **3D refinements & rebalance**:
-  - **3D Fixed view** - a new **north-locked, panoramic** `ViewMode.ThreeDFixed`: the camera frames
-    the whole board from a fixed angle and **does not rotate** with the snake (anchored on the board
-    centre, yaw stays north), so the view stays readable in every direction. `blendedCam` grew a
-    `fixedNorth` branch (`ChaseCam.kt`); `GameBoard.draw3DScene`/`GameScreen` thread the flag through.
+  - **3D Fixed view** - a new **north-locked, panoramic** `ViewMode.ThreeDFixed`: like the chase-cam it
+    **follows the head** (keeping it centred while the board scrolls underneath) but **never rotates**
+    (yaw stays north), so the view stays readable in every direction. It is higher/more overhead and
+    wider than the chase-cam (panoramic bird's-eye). `blendedCam` grew a `fixedNorth` branch
+    (`ChaseCam.kt`); `GameBoard.draw3DScene`/`GameScreen` thread the flag through. Steering reverts to
+    **absolute** (2D-style) there via `GameViewModel.relativeSteering` since the board is fixed.
   - **More panoramic chase-cam** - the follow chase-cam sits higher and further back (`CAM_BACK`/
     `CAM_HEIGHT`/`FOCAL_CHASE`).
   - **Solid 3D objects** - food renders as **beveled cubes** spanning their footprint (maxi = one 2×2
@@ -369,9 +371,11 @@ snake-game/
   **2D** / **3D** / **3D Fixed** - via `GameViewModel.selectViewMode`), a three-way **`ViewMode`** enum
   persisted via DataStore (`Settings.viewMode`, falling back from the legacy `threeDWorld` boolean) and
   orthogonal to the mode: any mode plays in a perspective view when one is picked. **3D** follows the
-  snake's heading (the camera rotates); **3D Fixed** is **north-locked and panoramic** (camera anchored
-  on the board centre, never rotates - `blendedCam(fixedNorth = true)`), so it stays readable in every
-  direction. It is carried into a run as the boolean `GameState.threeDWorld` flag (set by both 3D
+  snake's heading (the camera rotates); **3D Fixed** is **north-locked and panoramic** -
+  `blendedCam(fixedNorth = true)` still **follows the head** (centred, board scrolls underneath) but
+  never rotates, so it stays readable in every direction. Steering there is **absolute** (2D-style) via
+  `GameViewModel.relativeSteering` (`threeDActive && !viewMode.fixedNorth`). It is carried into a run as
+  the boolean `GameState.threeDWorld` flag (set by both 3D
   variants, stamped in `GameViewModel.resetTo` + synced on the Ready screen), which the model consults
   only to ease the pace and suppress the redundant 3D food. `threeDActive`
   (`threeDWorldEnabled || threeDHazardActive`) drives the renderer + relative controls; `GameScreen`
