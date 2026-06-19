@@ -14,6 +14,7 @@ import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -42,8 +43,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalDensity
@@ -242,6 +247,7 @@ fun GameScreen(
                 timeLabel = timeLabel,
                 lives = if (inLevels && onBoard) state.lives else 0,
                 length = if (onBoard) state.snake.size else 0,
+                palette = viewModel.palette,
                 showPause = state.status == GameStatus.Running,
                 onPause = { audio.playPause(); viewModel.togglePause() },
             )
@@ -489,6 +495,7 @@ private fun Hud(
     timeLabel: String?,
     lives: Int,
     length: Int,
+    palette: SkinPalette,
     showPause: Boolean,
     onPause: () -> Unit,
 ) {
@@ -540,16 +547,33 @@ private fun Hud(
                 modifier = Modifier.weight(1f),
             )
             if (length > 0) {
-                // Current snake length. Single line, slotted into the fixed-height
-                // second row so it never grows or reflows the HUD.
-                Text(
-                    text = stringResource(R.string.hud_length, length),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.85f),
-                    maxLines = 1,
-                    modifier = Modifier.padding(start = 8.dp),
-                )
+                // Current snake length: a small snake glyph (head + a tail block in
+                // the active skin) followed by the count, replacing the old "Len"
+                // label. The glyph is capped to the text line height so it never
+                // grows the fixed-height second row - and so never steals space
+                // from the board below.
+                val lengthDescription = stringResource(R.string.hud_length, length)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .padding(start = 8.dp)
+                        .semantics { contentDescription = lengthDescription },
+                ) {
+                    SnakeLengthGlyph(
+                        palette = palette,
+                        modifier = Modifier
+                            .height(14.dp)
+                            .width(30.dp),
+                    )
+                    Text(
+                        text = length.toString(),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.85f),
+                        maxLines = 1,
+                        modifier = Modifier.padding(start = 4.dp),
+                    )
+                }
             }
             if (lives > 0) {
                 // Levels mode: the remaining snakes/lives. The row pops briefly
@@ -585,6 +609,52 @@ private fun Hud(
                     modifier = Modifier.padding(start = 12.dp),
                 )
             }
+        }
+    }
+}
+
+/**
+ * A tiny two-segment snake - a tail block followed by an eyed head, facing right
+ * - drawn in the active [palette]'s colours in the same block style as the board
+ * snake. Used as the HUD length glyph in place of a "Len" label. It draws inside
+ * whatever bounds the caller gives it (sized to the text line height), so it
+ * never enlarges the HUD or shrinks the board.
+ */
+@Composable
+private fun SnakeLengthGlyph(palette: SkinPalette, modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val h = size.height
+        val cell = h // each segment is a square the height of the glyph
+        val gap = h * 0.12f
+
+        fun block(left: Float, color: Color) {
+            val inset = cell * 0.08f
+            val side = cell - 2 * inset
+            val topLeft = Offset(left + inset, (h - side) / 2f)
+            val corner = CornerRadius(cell * palette.cornerFactor, cell * palette.cornerFactor)
+            drawRoundRect(color = color, topLeft = topLeft, size = Size(side, side), cornerRadius = corner)
+            drawRoundRect(
+                color = palette.snakeOutline,
+                topLeft = topLeft,
+                size = Size(side, side),
+                cornerRadius = corner,
+                style = Stroke(width = cell * 0.08f),
+            )
+        }
+
+        block(0f, palette.snakeBody)
+        val headLeft = cell + gap
+        block(headLeft, palette.snakeHead)
+
+        // Two eyes on the head, looking right (the snake's heading).
+        val cx = headLeft + cell / 2f
+        val cy = h / 2f
+        val eyeRadius = cell * 0.11f
+        for (sign in intArrayOf(-1, 1)) {
+            val ex = cx + cell * 0.16f
+            val ey = cy + sign * cell * 0.18f
+            drawCircle(Color.White, eyeRadius, Offset(ex, ey))
+            drawCircle(palette.snakeEye, eyeRadius * 0.5f, Offset(ex + cell * 0.04f, ey))
         }
     }
 }
