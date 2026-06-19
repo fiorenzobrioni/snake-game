@@ -6,6 +6,7 @@ import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
+import kotlin.math.tan
 
 /**
  * Pure-Kotlin perspective camera for the 3D (chase-cam) hazard. No Android /
@@ -88,19 +89,35 @@ fun yawFor(dir: Direction): Float = atan2(dir.dy.toFloat(), dir.dx.toFloat())
 // 2D renderer; "chase" sits behind and above the head looking along the heading.
 private const val FLAT_PITCH = 1.4835f // ~85° down (avoids the 90° basis singularity)
 private const val CHASE_PITCH = 0.70f // ~40° down (compensates for the higher camera)
-private const val CAM_BACK = 3.2f // cells behind the head centre (a bit further back)
-private const val CAM_HEIGHT = 2.9f // cells above the plane (higher, more panoramic)
+private const val CAM_BACK = 4.2f // cells behind the head centre (further back, more panoramic)
+private const val CAM_HEIGHT = 3.8f // cells above the plane (higher, more panoramic)
 private const val FOCAL_FLAT = 1.0f
-private const val FOCAL_CHASE = 1.05f // lower focal = wider field of view
+private const val FOCAL_CHASE = 0.95f // lower focal = wider field of view
 private val FLAT_YAW = (-PI / 2).toFloat() // "Up": screen-up = world -y, matching 2D
+
+// Fixed-north pose: like the chase-cam it follows the head (keeping it centred and
+// scrolling the board underneath), but the yaw stays north so the view never
+// rotates with the snake. Higher, more overhead and wider than the chase-cam, so
+// it reads as a panoramic bird's-eye rather than a dramatic behind-the-head shot.
+// Tunable.
+private const val FIXED_PITCH = 0.95f // ~54° down: more overhead = more panoramic
+private const val FIXED_HEIGHT = 5.5f // cells above the plane (well above the chase-cam)
+private const val FOCAL_FIXED = 0.85f // a touch narrower than the chase for a slight zoom-in
+// Camera distance that puts the followed head at screen centre (back = height/tan).
+private val FIXED_BACK = FIXED_HEIGHT / tan(FIXED_PITCH)
 
 /** Raised top-face height (cells) used to give snake/obstacle quads some bulk. */
 const val ZTOP = 0.42f
 
 /**
  * Builds the camera for blend [blend] in [0, 1]: 0 = flat top-down framing the
- * whole board, 1 = chase-cam behind the head at [yawTarget]. Smoothstepped so the
- * tilt eases in and out. [headX]/[headY] are the head's cell centre.
+ * whole board, 1 = the target perspective. Smoothstepped so the tilt eases in and
+ * out. [headX]/[headY] are the head's cell centre.
+ *
+ * When [fixedNorth] is false the target is the follow chase-cam behind the head at
+ * [yawTarget]. When true the target is a north-locked panoramic pose that still
+ * follows the head (keeping it centred while the board scrolls underneath) but
+ * never rotates: [yawTarget] is ignored and the camera always looks north.
  */
 fun blendedCam(
     headX: Float,
@@ -110,16 +127,30 @@ fun blendedCam(
     yawTarget: Float,
     blend: Float,
     aspect: Float,
+    fixedNorth: Boolean = false,
 ): Cam {
     val t = smoothstep(blend)
+    // Height that frames the board vertically at the flat pose (focal*boardH/2).
+    val flatHeight = FOCAL_FLAT * boardH / 2f
+    if (fixedNorth) {
+        // Anchor eases from the board centre (flat overlays) to the head (in play),
+        // so the head is held at screen centre and the board scrolls under it. Yaw
+        // stays north: the camera follows but never rotates.
+        val anchorX = lerpF(boardW / 2f, headX, t)
+        val anchorY = lerpF(boardH / 2f, headY, t)
+        val pitch = lerpF(FLAT_PITCH, FIXED_PITCH, t)
+        val back = lerpF(0f, FIXED_BACK, t)
+        val focal = lerpF(FOCAL_FLAT, FOCAL_FIXED, t)
+        val height = lerpF(flatHeight, FIXED_HEIGHT, t)
+        return chaseCam(anchorX, anchorY, FLAT_YAW, pitch, back, height, focal, aspect)
+    }
     val anchorX = lerpF(boardW / 2f, headX, t)
     val anchorY = lerpF(boardH / 2f, headY, t)
     val yaw = lerpAngle(FLAT_YAW, yawTarget, t)
     val pitch = lerpF(FLAT_PITCH, CHASE_PITCH, t)
     val back = lerpF(0f, CAM_BACK, t)
     val focal = lerpF(FOCAL_FLAT, FOCAL_CHASE, t)
-    // Height that frames the board vertically at the flat pose (focal*boardH/2).
-    val height = lerpF(FOCAL_FLAT * boardH / 2f, CAM_HEIGHT, t)
+    val height = lerpF(flatHeight, CAM_HEIGHT, t)
     return chaseCam(anchorX, anchorY, yaw, pitch, back, height, focal, aspect)
 }
 

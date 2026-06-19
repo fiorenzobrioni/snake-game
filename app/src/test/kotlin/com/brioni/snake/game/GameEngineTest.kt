@@ -119,6 +119,23 @@ class GameEngineTest {
     }
 
     @Test
+    fun growScoreScalesWithSnakeLength() {
+        // A long (24-cell) column heading down eats a grow food just past its head.
+        val column = (24 downTo 1).map { Position(5, it) } // head at (5,24)
+        val state = runningState(Direction.Down).copy(
+            snake = column,
+            pendingDirection = Direction.Down,
+            foods = listOf(
+                Food(Position(5, 25), FoodCategory.Grow, FoodTier.Medium, FoodSize.Standard, FoodEffect.Grow(4)),
+            ),
+        )
+        val next = engine.tick(state)
+        // Body length at the bite = 25 → factor 1 + (25-5)/19 ≈ 2.05; 4*10*1*2.05 = 82.
+        assertEquals(82, next.score)
+        assertTrue(next.score > 4 * 10) // strictly more than the short-snake baseline
+    }
+
+    @Test
     fun shrinkTrimsTailButNeverBelowFloor() {
         // A 6-cell snake eating Shrink(2): head added (7), two tail cells dropped.
         val longSnake = listOf(

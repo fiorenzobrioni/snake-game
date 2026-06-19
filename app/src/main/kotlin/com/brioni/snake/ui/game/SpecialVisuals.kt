@@ -47,5 +47,6 @@ object SpecialVisuals {
         EffectKind.Ghost -> StarColor
         EffectKind.Freeze -> FreezeColor
         EffectKind.ThreeD -> ThreeDColor
+        EffectKind.Quake -> QuakeColor
     }
 }

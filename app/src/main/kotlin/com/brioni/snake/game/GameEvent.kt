@@ -23,12 +23,6 @@ sealed interface GameEvent {
 
     // --- Phase 6.2 specials. ---
 
-    /**
-     * Earthquake eaten: [removed] tail cells were bitten off (drives the shake)
-     * and scattered onto the board as the lethal [debris] cells listed here.
-     */
-    data class Quaked(val food: Food, val removed: Int, val debris: List<Position>) : GameEvent
-
     /** Explosion eaten: the snake split, leaving [debris] lethal blocks behind. */
     data class Exploded(val food: Food, val debris: List<Position>) : GameEvent
 

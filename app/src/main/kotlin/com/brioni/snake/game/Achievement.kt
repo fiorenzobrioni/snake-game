@@ -19,6 +19,8 @@ data class RunStats(
     val maxSpeedCycle: Int = 1,
     /** Levels mode: extra lives banked during the run. */
     val extraLivesGained: Int = 0,
+    /** The greatest snake length reached at any point during the run. */
+    val maxSnakeLength: Int = 0,
 )
 
 /**
@@ -49,6 +51,9 @@ enum class Achievement(
     Climber("Climber", "Reach Level 5 in Campaign mode", { it.mode == GameMode.Levels && it.maxLevelReached >= 5 }),
     TowerTopper("Tower Topper", "Reach Level 10 in Campaign mode", { it.mode == GameMode.Levels && it.maxLevelReached >= 10 }),
     FullCircle("Full Circle", "Clear all ten levels and start Speed 2", { it.mode == GameMode.Levels && it.maxSpeedCycle >= 2 }),
+    LongHaul("Long Haul", "Grow the snake to 25 segments", { it.maxSnakeLength >= 25 }),
+    Anaconda("Anaconda", "Grow the snake to 50 segments", { it.maxSnakeLength >= 50 }),
+    Titanoboa("Titanoboa", "Grow the snake to 90 segments", { it.maxSnakeLength >= 90 }),
     ;
 
     companion object {

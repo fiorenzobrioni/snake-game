@@ -18,9 +18,10 @@ class AchievementTest {
         usedJackpot: Boolean = false,
         maxLevelReached: Int = 0,
         maxSpeedCycle: Int = 1,
+        maxSnakeLength: Int = 0,
     ) = RunStats(
         mode, score, maxCombo, durationMs, foodsEaten, usedExplosion, usedStar, usedJackpot,
-        maxLevelReached = maxLevelReached, maxSpeedCycle = maxSpeedCycle,
+        maxLevelReached = maxLevelReached, maxSpeedCycle = maxSpeedCycle, maxSnakeLength = maxSnakeLength,
     )
 
     @Test
@@ -67,5 +68,15 @@ class AchievementTest {
         assertFalse(Achievement.TowerTopper.test(stats(mode = GameMode.Levels, maxLevelReached = 9)))
         assertTrue(Achievement.FullCircle.test(stats(mode = GameMode.Levels, maxSpeedCycle = 2)))
         assertFalse(Achievement.FullCircle.test(stats(mode = GameMode.Levels, maxSpeedCycle = 1)))
+    }
+
+    @Test
+    fun `length achievements gate on max snake length`() {
+        assertTrue(Achievement.LongHaul.test(stats(maxSnakeLength = 25)))
+        assertFalse(Achievement.LongHaul.test(stats(maxSnakeLength = 24)))
+        assertTrue(Achievement.Anaconda.test(stats(maxSnakeLength = 50)))
+        assertFalse(Achievement.Anaconda.test(stats(maxSnakeLength = 49)))
+        assertTrue(Achievement.Titanoboa.test(stats(maxSnakeLength = 90)))
+        assertFalse(Achievement.Titanoboa.test(stats(maxSnakeLength = 89)))
     }
 }

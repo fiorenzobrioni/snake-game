@@ -64,58 +64,48 @@ class SpecialFoodTest {
     // --- Earthquake -------------------------------------------------------
 
     @Test
-    fun quakeBitesTailAndEmitsEvent() {
-        val state = runningState(snake = longSnake, foods = listOf(specialAt(Position(6, 5), FoodEffect.Quake(3))))
+    fun quakeStartsTimedEffectAndKeepsLength() {
+        val state = runningState(snake = longSnake, foods = listOf(specialAt(Position(6, 5), FoodEffect.Quake(3_500))))
         val next = engine.tick(state)
-        // 8 cells + head (9) − 3 bitten = 6.
-        assertEquals(6, next.snake.size)
-        val quake = next.lastEvents.filterIsInstance<GameEvent.Quaked>().single()
-        assertEquals(3, quake.removed)
+        // Pure-disruption malus: length is unchanged (no tail bite).
+        assertEquals(longSnake.size, next.snake.size)
+        assertTrue(next.hasEffect(EffectKind.Quake))
+        assertTrue(
+            next.lastEvents.filterIsInstance<GameEvent.EffectStarted>()
+                .any { it.kind == EffectKind.Quake },
+        )
     }
 
     @Test
-    fun quakeNeverDropsBelowFloor() {
-        val short = listOf(Position(5, 5), Position(4, 5), Position(3, 5))
-        val next = engine.tick(runningState(snake = short, foods = listOf(specialAt(Position(6, 5), FoodEffect.Quake(9)))))
-        assertEquals(GameEngine.MIN_SNAKE_LENGTH, next.snake.size)
-    }
-
-    @Test
-    fun quakeScattersBittenTailAsLethalDebris() {
-        val state = runningState(snake = longSnake, foods = listOf(specialAt(Position(6, 5), FoodEffect.Quake(3))))
+    fun quakeLeavesNoDebris() {
+        val state = runningState(snake = longSnake, foods = listOf(specialAt(Position(6, 5), FoodEffect.Quake(3_500))))
         val next = engine.tick(state)
-        // The 3 bitten cells reappear as the same number of debris blocks.
-        assertEquals(3, next.debris.size)
-        val quake = next.lastEvents.filterIsInstance<GameEvent.Quaked>().single()
-        assertEquals(3, quake.removed)
-        assertEquals(3, quake.debris.size)
-        // Every scattered cell lands on a free square (no snake / obstacle / food).
-        val blocked = next.snake.toSet() + next.obstacles + next.foods.flatMap { it.cells() }
-        assertTrue(next.debris.none { it.cell in blocked })
-        // And they are unique cells.
-        assertEquals(next.debris.size, next.debris.map { it.cell }.toSet().size)
+        assertTrue(next.debris.isEmpty())
     }
 
     @Test
-    fun quakeScatterCountMatchesActuallyRemoved() {
-        // A short snake can only shed one cell before the floor; scatter matches.
-        val short = listOf(Position(5, 5), Position(4, 5), Position(3, 5))
-        val next = engine.tick(runningState(snake = short, foods = listOf(specialAt(Position(6, 5), FoodEffect.Quake(9)))))
-        val quake = next.lastEvents.filterIsInstance<GameEvent.Quaked>().single()
-        assertEquals(quake.removed, next.debris.size)
+    fun quakeAgesDownAndExpiresWithEvent() {
+        // 50ms remaining < one interval → expires this tick.
+        val state = runningState(effectTimers = listOf(ActiveEffect(EffectKind.Quake, 50, 3_500)))
+        val next = engine.tick(state)
+        assertFalse(next.hasEffect(EffectKind.Quake))
+        assertTrue(
+            next.lastEvents.filterIsInstance<GameEvent.EffectExpired>()
+                .any { it.kind == EffectKind.Quake },
+        )
     }
 
     // --- Explosion --------------------------------------------------------
 
     @Test
-    fun burstSplitsSnakeAndLeavesLethalDebris() {
-        val state = runningState(snake = longSnake, foods = listOf(specialAt(Position(6, 5), FoodEffect.Burst(4_000))))
+    fun burstSeversLastThirdAsLethalDebris() {
+        val state = runningState(snake = longSnake, foods = listOf(specialAt(Position(6, 5), FoodEffect.Burst(9_000))))
         val next = engine.tick(state)
-        // Body after head add = 9; split at 9/2 = 4 → front keeps 4, 5 become debris.
-        assertEquals(4, next.snake.size)
-        assertEquals(5, next.debris.size)
+        // Body after head add = 9; split at 9*2/3 = 6 → front keeps 6, 3 become debris.
+        assertEquals(6, next.snake.size)
+        assertEquals(3, next.debris.size)
         val exploded = next.lastEvents.filterIsInstance<GameEvent.Exploded>().single()
-        assertEquals(5, exploded.debris.size)
+        assertEquals(3, exploded.debris.size)
     }
 
     @Test

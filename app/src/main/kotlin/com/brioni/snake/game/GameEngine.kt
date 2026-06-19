@@ -205,7 +205,9 @@ class GameEngine(private val random: Random = Random.Default) {
                     // A fresh streak, or extend the running one if still in time.
                     combo = if (elapsedTicks <= comboDeadlineTick) combo + 1 else 1
                     comboDeadlineTick = elapsedTicks + COMBO_WINDOW_TICKS
-                    val points = effect.segments * 10 * combo.coerceAtMost(MAX_COMBO)
+                    // Longer snakes earn proportionally more per bite (up to a cap),
+                    // so the same food is worth far more late in a run than early on.
+                    val points = (effect.segments * 10 * combo.coerceAtMost(MAX_COMBO) * lengthScoreFactor(body.size)).toInt()
                     score += points
                     pendingGrowth += effect.segments - 1 // head already added this tick
                     events.add(GameEvent.Ate(eaten, points, combo.coerceAtMost(MAX_COMBO)))
@@ -220,27 +222,20 @@ class GameEngine(private val random: Random = Random.Default) {
                     events.add(GameEvent.Shrunk(eaten, removed, points))
                 }
                 is FoodEffect.Quake -> {
-                    // Earthquake: bite a chunk off the tail, scatter the bitten
-                    // segments across the board as lethal debris, and shake the
-                    // screen. The snake's remaining tail keeps retracting normally.
-                    pendingGrowth = 0
-                    val removed = trimTail(body, effect.segments)
-                    val occupied = HashSet<Position>().apply {
-                        addAll(body)
-                        addAll(state.obstacles)
-                        addAll(state.walls)
-                        foods.forEach { addAll(it.cells()) }
-                        debris.forEach { add(it.cell) }
-                    }
-                    val scattered = scatterCells(board, removed, occupied)
-                    debris = debris + scattered.map { Debris(it, QUAKE_DEBRIS_MS, QUAKE_DEBRIS_MS) }
-                    events.add(GameEvent.Quaked(eaten, removed, scattered))
+                    // Earthquake: a pure-disruption malus. No tail bite and no
+                    // debris - just a sustained screen shake (a timed effect the
+                    // UI reads) that makes the board hard to read while it runs.
+                    body.removeAt(body.lastIndex) // pure effect: keep length
+                    effectTimers = addOrRefresh(effectTimers, EffectKind.Quake, effect.durationMs)
+                    events.add(GameEvent.EffectStarted(EffectKind.Quake, eaten))
                 }
                 is FoodEffect.Burst -> {
                     // Explosion: split the snake; the detached tail becomes lethal
                     // debris that auto-clears after its timer.
                     pendingGrowth = 0
-                    val splitIndex = (body.size / 2).coerceIn(MIN_SNAKE_LENGTH, body.size)
+                    // Sever only the last third: the snake keeps two-thirds, and
+                    // the detached tail lingers as lethal debris (long timer).
+                    val splitIndex = (body.size * 2 / 3).coerceIn(MIN_SNAKE_LENGTH, body.size)
                     val detached = if (splitIndex < body.size) body.subList(splitIndex, body.size).toList() else emptyList()
                     body = ArrayList(body.subList(0, splitIndex))
                     debris = debris + detached.map { Debris(it, effect.debrisMs, effect.debrisMs) }
@@ -450,6 +445,14 @@ class GameEngine(private val random: Random = Random.Default) {
         return removed
     }
 
+    /**
+     * Grow-score multiplier from the current snake [length]. Ramps from 1x for a
+     * short snake up to [MAX_LENGTH_FACTOR] for a very long one, so a bite is
+     * worth a lot more late in a run than at the start.
+     */
+    private fun lengthScoreFactor(length: Int): Float =
+        (1f + (length - LENGTH_FACTOR_START) / LENGTH_FACTOR_STEP).coerceIn(1f, MAX_LENGTH_FACTOR)
+
     /** Restarts a [kind] timer at its full [durationMs] (one instance per kind). */
     private fun addOrRefresh(timers: List<ActiveEffect>, kind: EffectKind, durationMs: Long): List<ActiveEffect> =
         timers.filter { it.kind != kind } + ActiveEffect(kind, durationMs, durationMs)
@@ -615,45 +618,6 @@ class GameEngine(private val random: Random = Random.Default) {
         return null
     }
 
-    /**
-     * Finds up to [count] free single cells (never on the border) avoiding every
-     * cell already in [occupied], which is mutated to claim each chosen cell so
-     * the same square is never returned twice. Mirrors [spawnFood]'s strategy:
-     * random attempts first (for a natural scatter), then a deterministic scan so
-     * a packed board can't loop forever. Returns fewer than [count] only if the
-     * board genuinely has no more room.
-     */
-    private fun scatterCells(
-        board: BoardDimensions,
-        count: Int,
-        occupied: MutableSet<Position>,
-    ): List<Position> {
-        if (count <= 0) return emptyList()
-        val maxX = board.width - 1
-        val maxY = board.height - 1
-        if (maxX <= 1 || maxY <= 1) return emptyList()
-
-        val chosen = ArrayList<Position>(count)
-        fun claim(p: Position): Boolean {
-            if (p in occupied) return false
-            occupied.add(p)
-            chosen.add(p)
-            return true
-        }
-
-        repeat(MAX_SPAWN_ATTEMPTS) {
-            if (chosen.size >= count) return chosen
-            claim(Position(random.nextInt(1, maxX), random.nextInt(1, maxY)))
-        }
-        for (y in 1 until maxY) {
-            for (x in 1 until maxX) {
-                if (chosen.size >= count) return chosen
-                claim(Position(x, y))
-            }
-        }
-        return chosen
-    }
-
     companion object {
         /** Foods kept on the board at once. */
         const val FOOD_COUNT = 3
@@ -675,6 +639,15 @@ class GameEngine(private val random: Random = Random.Default) {
         const val SHRINK_POINTS_MAXI = 10
 
         /**
+         * Grow-score length scaling: the multiplier is 1x at [LENGTH_FACTOR_START]
+         * segments and climbs by 1 per [LENGTH_FACTOR_STEP] extra segments, capped
+         * at [MAX_LENGTH_FACTOR] (reached around length 81 with these values).
+         */
+        const val LENGTH_FACTOR_START = 5f
+        const val LENGTH_FACTOR_STEP = 19f
+        const val MAX_LENGTH_FACTOR = 5f
+
+        /**
          * How long an uneaten *regular* food survives before it vanishes and is
          * replaced elsewhere. Measured at the level's base pace (converted to
          * ticks per level), so it stays ~7 s regardless of board size.
@@ -694,9 +667,6 @@ class GameEngine(private val random: Random = Random.Default) {
          * proportion to their short side so items stay reachable.
          */
         const val VANISH_REFERENCE_SHORT_SIDE = 19
-
-        /** Lifetime of the lethal debris scattered by an earthquake. */
-        const val QUAKE_DEBRIS_MS = 5_000L
 
         private const val MAX_SPAWN_ATTEMPTS = 200
 

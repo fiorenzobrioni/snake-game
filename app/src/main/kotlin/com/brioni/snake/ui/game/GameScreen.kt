@@ -8,7 +8,11 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -63,6 +67,7 @@ import com.brioni.snake.game.GameMode
 import com.brioni.snake.game.GameStatus
 import com.brioni.snake.game.LevelsMode
 import kotlin.math.roundToInt
+import kotlin.math.cos
 import kotlin.math.sin
 
 /**
@@ -140,6 +145,22 @@ fun GameScreen(
     }
     val amplitudePx = with(LocalDensity.current) { 10.dp.toPx() }
     val quakeAmpPx = with(LocalDensity.current) { 7.dp.toPx() }
+    // The earthquake hazard is a *sustained* shake: while its timed effect runs the
+    // board jitters continuously, easing in/out at the edges of the effect. This is
+    // the malus - it makes the board hard to read for the whole duration.
+    val quakeActive = state.status == GameStatus.Running && state.hasEffect(EffectKind.Quake)
+    val sustainedAmp by animateFloatAsState(
+        targetValue = if (quakeActive) quakeAmpPx else 0f,
+        animationSpec = tween(durationMillis = 250),
+        label = "quakeSustain",
+    )
+    val quakeWobble = rememberInfiniteTransition(label = "quakeWobble")
+    val wobble by quakeWobble.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(durationMillis = 1000, easing = LinearEasing)),
+        label = "wobble",
+    )
     val shakeT = shake.value
     val damp = 1f - shakeT
     val quakeT = quake.value
@@ -148,9 +169,11 @@ fun GameScreen(
     // board shifted ~17dp down when idle, pushing its bottom off-screen on the
     // first game until a death animation drove the damping term to zero).
     val shakeX = sin(shakeT * Math.PI * 10).toFloat() * amplitudePx * damp +
-        sin(quakeT * Math.PI * 14).toFloat() * quakeAmpPx * quakeDamp
+        sin(quakeT * Math.PI * 14).toFloat() * quakeAmpPx * quakeDamp +
+        sin(wobble * 2 * Math.PI * 12).toFloat() * sustainedAmp
     val shakeY = sin(shakeT * Math.PI * 9).toFloat() * amplitudePx * damp +
-        sin(quakeT * Math.PI * 13).toFloat() * quakeAmpPx * quakeDamp
+        sin(quakeT * Math.PI * 13).toFloat() * quakeAmpPx * quakeDamp +
+        cos(wobble * 2 * Math.PI * 11).toFloat() * sustainedAmp
 
     // Pause blur (step 3.4): blurs the frozen board behind the overlay scrim.
     val blurRadius by animateDpAsState(
@@ -218,6 +241,7 @@ fun GameScreen(
                 boardLabel = "${viewModel.scale.displayName} · ${state.board.width}×${state.board.height}",
                 timeLabel = timeLabel,
                 lives = if (inLevels && onBoard) state.lives else 0,
+                length = if (onBoard) state.snake.size else 0,
                 showPause = state.status == GameStatus.Running,
                 onPause = { audio.playPause(); viewModel.togglePause() },
             )
@@ -287,6 +311,7 @@ fun GameScreen(
                     borderColor = boardBorderColor,
                     outsideColor = MaterialTheme.colorScheme.background,
                     cameraBlend = camBlend.value,
+                    fixedNorth = viewModel.viewMode.fixedNorth,
                     modifier = boardModifier,
                 )
             }
@@ -295,7 +320,7 @@ fun GameScreen(
                 ControlRegion(
                     scheme = viewModel.controlScheme,
                     viewModel = viewModel,
-                    forceRelative = viewModel.threeDActive,
+                    forceRelative = viewModel.relativeSteering,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp, vertical = 12.dp),
@@ -309,12 +334,12 @@ fun GameScreen(
                 selectedLevel = viewModel.level,
                 selectedSnakeSpeed = viewModel.snakeSpeed,
                 selectedScale = viewModel.scale,
-                threeDWorld = viewModel.threeDWorldEnabled,
+                viewMode = viewModel.viewMode,
                 onModeSelected = { viewModel.selectMode(it) },
                 onLevelSelected = { viewModel.selectLevel(it) },
                 onSnakeSpeedSelected = { viewModel.selectSnakeSpeed(it) },
                 onScaleSelected = { viewModel.selectScale(it) },
-                onThreeDWorldChanged = { viewModel.setThreeDWorld(it) },
+                onViewModeChanged = { viewModel.selectViewMode(it) },
                 onPlay = { viewModel.start() },
             )
 
@@ -380,6 +405,7 @@ private fun EffectChip(effect: com.brioni.snake.game.ActiveEffect) {
         com.brioni.snake.game.EffectKind.Ghost -> stringResource(R.string.effect_star)
         com.brioni.snake.game.EffectKind.Freeze -> stringResource(R.string.effect_freeze)
         com.brioni.snake.game.EffectKind.ThreeD -> stringResource(R.string.effect_threed)
+        com.brioni.snake.game.EffectKind.Quake -> stringResource(R.string.effect_quake)
     }
     Column(
         modifier = Modifier
@@ -462,6 +488,7 @@ private fun Hud(
     boardLabel: String,
     timeLabel: String?,
     lives: Int,
+    length: Int,
     showPause: Boolean,
     onPause: () -> Unit,
 ) {
@@ -512,6 +539,18 @@ private fun Hud(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
+            if (length > 0) {
+                // Current snake length. Single line, slotted into the fixed-height
+                // second row so it never grows or reflows the HUD.
+                Text(
+                    text = stringResource(R.string.hud_length, length),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.85f),
+                    maxLines = 1,
+                    modifier = Modifier.padding(start = 8.dp),
+                )
+            }
             if (lives > 0) {
                 // Levels mode: the remaining snakes/lives. The row pops briefly
                 // when a heart is banked so an extra life never goes unnoticed.

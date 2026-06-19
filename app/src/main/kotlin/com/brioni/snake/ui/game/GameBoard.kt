@@ -74,6 +74,31 @@ private fun brighten(c: Color, f: Float): Color = Color(
     alpha = 1f,
 )
 
+/** Darkens [c] toward black by fraction [f] (0 = unchanged, 1 = black). */
+private fun darken(c: Color, f: Float): Color = Color(
+    red = c.red * (1f - f),
+    green = c.green * (1f - f),
+    blue = c.blue * (1f - f),
+    alpha = c.alpha,
+)
+
+/** Linear interpolation between two screen points. */
+private fun lerpOffset(a: Offset, b: Offset, t: Float): Offset =
+    Offset(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)
+
+/** Fills a polygon (screen-space [px]) with a top-to-bottom vertical gradient. */
+private fun DrawScope.fillFace(px: List<Offset>, top: Color, bottom: Color) {
+    val path = Path().apply {
+        moveTo(px[0].x, px[0].y)
+        for (i in 1 until px.size) lineTo(px[i].x, px[i].y)
+        close()
+    }
+    drawPath(
+        path,
+        brush = Brush.verticalGradient(listOf(top, bottom), startY = px.minOf { it.y }, endY = px.maxOf { it.y }),
+    )
+}
+
 @Composable
 fun GameBoard(
     state: GameState,
@@ -90,6 +115,7 @@ fun GameBoard(
     borderColor: Color = palette.boardBorder,
     outsideColor: Color = Color.Black,
     cameraBlend: Float = 0f,
+    fixedNorth: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val particles: SnapshotStateList<Particle> = remember { emptyList<Particle>().toMutableStateList() }
@@ -213,6 +239,7 @@ fun GameBoard(
                 f = f,
                 cameraBlend = cameraBlend,
                 yaw = yawAnim.value,
+                fixedNorth = fixedNorth,
                 cell = cell,
                 originX = originX,
                 originY = originY,
@@ -848,6 +875,7 @@ private fun DrawScope.draw3DScene(
     f: Float,
     cameraBlend: Float,
     yaw: Float,
+    fixedNorth: Boolean,
     cell: Float,
     originX: Float,
     originY: Float,
@@ -873,7 +901,7 @@ private fun DrawScope.draw3DScene(
     val hy = lerp(headFrom.y.toFloat(), headTo.y.toFloat(), f) + 0.5f
 
     val aspect = boardWidth / boardHeight
-    val cam = blendedCam(hx, hy, board.width.toFloat(), board.height.toFloat(), yaw, cameraBlend, aspect)
+    val cam = blendedCam(hx, hy, board.width.toFloat(), board.height.toFloat(), yaw, cameraBlend, aspect, fixedNorth)
 
     val centerX = originX + boardWidth / 2f
     val centerY = originY + boardHeight / 2f
@@ -911,7 +939,36 @@ private fun DrawScope.draw3DScene(
         drawLine(color, toPixel(pa), toPixel(pb), width)
     }
 
-    // Receding floor grid.
+    // Solid floor: fill the board plane with the dark board gradient so the ground
+    // reads as a real surface (corposità) rather than a bare wireframe, while
+    // staying black-leaning and on-brand with the dark theme. Drawn only when the
+    // whole quad is in front of the camera (otherwise the receding grid carries it).
+    run {
+        val floor = listOf(
+            cam.project(Vec3(0f, 0f, 0f)),
+            cam.project(Vec3(board.width.toFloat(), 0f, 0f)),
+            cam.project(Vec3(board.width.toFloat(), board.height.toFloat(), 0f)),
+            cam.project(Vec3(0f, board.height.toFloat(), 0f)),
+        )
+        if (floor.all { it.visible }) {
+            val pix = floor.map { toPixel(it) }
+            val path = Path().apply {
+                moveTo(pix[0].x, pix[0].y)
+                for (i in 1 until pix.size) lineTo(pix[i].x, pix[i].y)
+                close()
+            }
+            drawPath(
+                path,
+                brush = Brush.verticalGradient(
+                    colors = listOf(palette.boardBottom, palette.boardTop),
+                    startY = pix.minOf { it.y },
+                    endY = pix.maxOf { it.y },
+                ),
+            )
+        }
+    }
+
+    // Receding floor grid (over the solid floor for a subtle surface texture).
     val gridColor = palette.gridLine.copy(alpha = (palette.gridLine.alpha * (0.5f + 0.5f * t)).coerceIn(0f, 1f))
     for (x in 0..board.width) worldLine(x.toFloat(), 0f, x.toFloat(), board.height.toFloat(), 0f, gridColor, 1f)
     for (y in 0..board.height) worldLine(0f, y.toFloat(), board.width.toFloat(), y.toFloat(), 0f, gridColor, 1f)
@@ -963,14 +1020,24 @@ private fun DrawScope.draw3DScene(
                     for (i in 1 until pix.size) lineTo(pix[i].x, pix[i].y)
                     close()
                 }
+                // Stronger top-lit shading for solidity: bright near the top edge,
+                // darkening toward the base.
                 drawPath(
                     path,
                     brush = Brush.verticalGradient(
-                        colors = listOf(color.copy(alpha = 0.95f), borderColor.copy(alpha = 0.5f)),
+                        colors = listOf(brighten(color, 0.12f), darken(color, 0.45f)),
                         startY = pix.minOf { it.y },
                         endY = pix.maxOf { it.y },
                     ),
                 )
+                // Horizontal seam lines give the vertical side faces a masonry-like
+                // texture (skipped on the flat top cap).
+                if (color != capColor) {
+                    val seam = darken(color, 0.6f).copy(alpha = 0.5f)
+                    for (hf in listOf(0.38f, 0.68f)) {
+                        drawLine(seam, lerpOffset(pix[0], pix[3], hf), lerpOffset(pix[1], pix[2], hf), 1.5f)
+                    }
+                }
             }
             // Bright rail along the inner top edge (the side facing the player).
             drawLine(railColor, toPixel(cam.projectCamera(aInT)), toPixel(cam.projectCamera(bInT)), edgeWidth)
@@ -995,7 +1062,7 @@ private fun DrawScope.draw3DScene(
         boundary.forEach { e -> addWall(e.x1, e.y1, e.x2, e.y2, e.nx, e.ny) }
     }
 
-    fun addRaisedQuad(cx: Float, cy: Float, fill: Color, outline: Color, height: Float, alpha: Float) {
+    fun addRaisedQuad(cx: Float, cy: Float, fill: Color, outline: Color, height: Float, alpha: Float, banded: Boolean = false) {
         val cc = cam.cameraSpace(Vec3(cx, cy, height))
         if (cc.z <= Cam.NEAR) return
         val m = 0.06f
@@ -1013,18 +1080,30 @@ private fun DrawScope.draw3DScene(
             cam.project(Vec3(cx - 0.5f + m, cy + 0.5f - m, 0f)),
         )
         items.add(cc.z to {
-            // Side faces give the tile some bulk.
+            // Side faces give the tile some bulk. Banded blocks (obstacles) get a
+            // stronger top-to-base shade plus a seam line for a solid, textured read.
             if (base.all { it.visible }) {
                 for (i in 0 until 4) {
                     val j = (i + 1) % 4
+                    val bp = toPixel(base[i]); val bq = toPixel(base[j])
+                    val tp = toPixel(top[i]); val tq = toPixel(top[j])
                     val face = Path().apply {
-                        moveTo(toPixel(base[i]).x, toPixel(base[i]).y)
-                        lineTo(toPixel(base[j]).x, toPixel(base[j]).y)
-                        lineTo(toPixel(top[j]).x, toPixel(top[j]).y)
-                        lineTo(toPixel(top[i]).x, toPixel(top[i]).y)
-                        close()
+                        moveTo(bp.x, bp.y); lineTo(bq.x, bq.y); lineTo(tq.x, tq.y); lineTo(tp.x, tp.y); close()
                     }
-                    drawPath(face, fill.copy(alpha = 0.5f * alpha))
+                    if (banded) {
+                        drawPath(
+                            face,
+                            brush = Brush.verticalGradient(
+                                colors = listOf(fill.copy(alpha = 0.85f * alpha), darken(fill, 0.5f).copy(alpha = 0.85f * alpha)),
+                                startY = minOf(tp.y, tq.y),
+                                endY = maxOf(bp.y, bq.y),
+                            ),
+                        )
+                        val seam = darken(fill, 0.6f).copy(alpha = 0.5f * alpha)
+                        drawLine(seam, lerpOffset(bp, tp, 0.55f), lerpOffset(bq, tq, 0.55f), 1.5f)
+                    } else {
+                        drawPath(face, fill.copy(alpha = 0.5f * alpha))
+                    }
                 }
             }
             val face = Path().apply {
@@ -1032,13 +1111,13 @@ private fun DrawScope.draw3DScene(
                 for (i in 1 until 4) lineTo(toPixel(top[i]).x, toPixel(top[i]).y)
                 close()
             }
-            drawPath(face, fill.copy(alpha = alpha))
+            drawPath(face, if (banded) brighten(fill, 0.08f).copy(alpha = alpha) else fill.copy(alpha = alpha))
             drawPath(face, outline.copy(alpha = alpha), style = Stroke(width = (scaleAt(cc.z) * 0.04f).coerceAtLeast(1f)))
         })
     }
 
     state.obstacles.forEach { o ->
-        addRaisedQuad(o.x + 0.5f, o.y + 0.5f, palette.obstacle, palette.obstacleHighlight, ZTOP * 1.2f, 1f)
+        addRaisedQuad(o.x + 0.5f, o.y + 0.5f, palette.obstacle, palette.obstacleHighlight, ZTOP * 1.2f, 1f, banded = true)
     }
 
     state.debris.forEach { d ->
@@ -1052,25 +1131,64 @@ private fun DrawScope.draw3DScene(
     }
 
     state.foods.forEach { food ->
-        val cx = food.position.x + food.span / 2f
-        val cy = food.position.y + food.span / 2f
-        val cc = cam.cameraSpace(Vec3(cx, cy, ZTOP * 0.7f))
+        // Render food as a beveled cube occupying its whole footprint (1×1 or the
+        // 2×2 maxi), so it reads as a solid 3D object and the cells it covers are
+        // obvious. A small outer inset keeps it clear of the grid lines.
+        val om = 0.08f
+        val x0 = food.position.x + om
+        val y0 = food.position.y + om
+        val x1 = food.position.x + food.span - om
+        val y1 = food.position.y + food.span - om
+        val cxc = (x0 + x1) / 2f
+        val cyc = (y0 + y1) / 2f
+        val height = ZTOP * (0.9f + 0.35f * (food.span - 1))
+        val cc = cam.cameraSpace(Vec3(cxc, cyc, height))
         if (cc.z <= Cam.NEAR) return@forEach
-        val p = cam.projectCamera(cc)
-        if (!p.visible) return@forEach
-        val center = toPixel(p)
-        val rad = (scaleAt(cc.z) * 0.42f * food.span).coerceAtLeast(2f)
+        val capP = cam.projectCamera(cc)
+        if (!capP.visible) return@forEach
+        val center = toPixel(capP)
         val color = if (food.category == FoodCategory.Special) SpecialVisuals.accent(food.effect) else palette.foodColor(food)
+        val bevel = (x1 - x0).coerceAtMost(y1 - y0) * 0.2f
+        val shoulder = height * 0.8f
+        fun pr(x: Float, y: Float, z: Float) = cam.project(Vec3(x, y, z))
+        val baseC = listOf(pr(x0, y0, 0f), pr(x1, y0, 0f), pr(x1, y1, 0f), pr(x0, y1, 0f))
+        val shC = listOf(pr(x0, y0, shoulder), pr(x1, y0, shoulder), pr(x1, y1, shoulder), pr(x0, y1, shoulder))
+        val capC = listOf(
+            pr(x0 + bevel, y0 + bevel, height), pr(x1 - bevel, y0 + bevel, height),
+            pr(x1 - bevel, y1 - bevel, height), pr(x0 + bevel, y1 - bevel, height),
+        )
+        if ((baseC + shC + capC).any { !it.visible }) return@forEach
+        val rad = (scaleAt(cc.z) * 0.5f * food.span).coerceAtLeast(2f)
+        val outline = brighten(color, 0.4f)
         items.add(cc.z to {
+            // Glow halo behind the cube.
             drawCircle(
-                brush = Brush.radialGradient(listOf(color.copy(alpha = 0.5f), Color.Transparent), center = center, radius = rad * 2f),
-                radius = rad * 2f,
+                brush = Brush.radialGradient(listOf(color.copy(alpha = 0.45f), Color.Transparent), center = center, radius = rad * 2.2f),
+                radius = rad * 2.2f,
                 center = center,
             )
-            drawCircle(color, rad, center)
+            // Vertical body faces (base -> shoulder), shaded for solidity.
+            for (i in 0 until 4) {
+                val j = (i + 1) % 4
+                fillFace(listOf(baseC[i], baseC[j], shC[j], shC[i]).map { toPixel(it) }, darken(color, 0.12f), darken(color, 0.5f))
+            }
+            // Chamfer faces (shoulder -> cap) give the smoothed-corner look.
+            for (i in 0 until 4) {
+                val j = (i + 1) % 4
+                fillFace(listOf(shC[i], shC[j], capC[j], capC[i]).map { toPixel(it) }, brighten(color, 0.18f), darken(color, 0.05f))
+            }
+            // Top cap.
+            val capPix = capC.map { toPixel(it) }
+            val capPath = Path().apply {
+                moveTo(capPix[0].x, capPix[0].y)
+                for (i in 1 until 4) lineTo(capPix[i].x, capPix[i].y)
+                close()
+            }
+            drawPath(capPath, brighten(color, 0.28f))
+            drawPath(capPath, outline, style = Stroke(width = (scaleAt(cc.z) * 0.04f).coerceAtLeast(1f)))
             when {
-                food.category == FoodCategory.Special -> drawSpecialSymbol(food.effect, center.x, center.y, rad * 0.9f, Color(0xFF10151C), textMeasurer)
-                food.isMystery -> drawGlyph(textMeasurer, "?", center.x, center.y, rad * 1.2f, Color.White)
+                food.category == FoodCategory.Special -> drawSpecialSymbol(food.effect, center.x, center.y, rad * 0.8f, Color(0xFF10151C), textMeasurer)
+                food.isMystery -> drawGlyph(textMeasurer, "?", center.x, center.y, rad * 1.0f, Color.White)
             }
         })
     }
