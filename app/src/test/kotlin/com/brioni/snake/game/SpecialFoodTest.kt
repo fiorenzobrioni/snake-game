@@ -191,11 +191,12 @@ class SpecialFoodTest {
     }
 
     @Test
-    fun threeDWorldSlowsAndUsesLevelPace() {
-        // The 3D World flag eases the level base pace by the same factor.
+    fun threeDWorldKeepsTheFlatPace() {
+        // The standing 3D / 3D Fixed view modes run at the exact 2D pace: the
+        // threeDWorld flag must not alter the tick interval.
         val base = SnakeSpeed.Relaxed.tickMillis
         val state = runningState().copy(threeDWorld = true)
-        assertEquals((base * GameState.THREED_FACTOR).toLong(), state.tickIntervalMillis)
+        assertEquals(base, state.tickIntervalMillis)
     }
 
     @Test

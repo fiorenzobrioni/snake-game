@@ -240,10 +240,10 @@ fun GameScreen(
                 combo = state.combo,
                 levelLabel = when {
                     inLevels -> stringResource(R.string.hud_level_speed, state.levelIndex, state.speedCycle)
-                    state.mode == GameMode.Classic -> state.level.displayName
-                    else -> state.mode.displayName
+                    state.mode == GameMode.Classic -> state.level.abbreviation
+                    else -> state.mode.abbreviation
                 },
-                boardLabel = "${viewModel.scale.displayName} · ${state.board.width}×${state.board.height}",
+                boardLabel = "${viewModel.scale.abbreviation} · ${state.board.width}×${state.board.height}",
                 timeLabel = timeLabel,
                 lives = if (inLevels && onBoard) state.lives else 0,
                 length = if (onBoard) state.snake.size else 0,
@@ -532,7 +532,13 @@ private fun Hud(
                 enabled = showPause,
                 modifier = Modifier.alpha(if (showPause) 1f else 0f),
             ) {
-                Text(stringResource(R.string.action_pause), maxLines = 1)
+                Text(
+                    text = stringResource(R.string.action_pause),
+                    // Match the Score's branded Orbitron font (titleSmall keeps the
+                    // button-sized scale while sharing the Score's typeface).
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 1,
+                )
             }
         }
         Row(

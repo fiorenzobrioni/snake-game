@@ -115,10 +115,11 @@ data class GameState(
             if (hasEffect(EffectKind.Haste)) ms *= HASTE_FACTOR
             if (hasEffect(EffectKind.Slow)) ms *= SLOW_FACTOR
             if (hasEffect(EffectKind.Freeze)) ms *= FREEZE_FACTOR
-            // The 3D chase-cam (timed hazard or the whole 3D World mode) eases the
-            // pace a little so the perspective view stays playable; proportional,
-            // so high levels stay fast in relative terms.
-            if (hasEffect(EffectKind.ThreeD) || threeDWorld) ms *= THREED_FACTOR
+            // The timed 3D chase-cam *hazard* eases the pace a little so the sudden
+            // perspective tilt stays playable; proportional, so high levels stay
+            // fast in relative terms. The standing 3D / 3D Fixed view modes keep the
+            // exact 2D pace - they match the flat board at the same level/speed.
+            if (hasEffect(EffectKind.ThreeD)) ms *= THREED_FACTOR
             return ms.toLong().coerceIn(MIN_TICK_MS, MAX_TICK_MS)
         }
 

@@ -89,7 +89,7 @@ The classic Snake mechanics, extended with configurable features so every run fe
   **Time Attack** (score as much as you can in 120s) and **Campaign** (see below), selectable on the
   start screen.
 - 🧊 **3D views** - a **View** selector on the start screen (**2D** / **3D** / **3D Fixed**) that plays
-  **any** mode in perspective instead of the flat top-down board (at a slightly eased pace, with relative
+  **any** mode in perspective instead of the flat top-down board (at the same pace as 2D, with relative
   left/right steering). **3D** is a behind-the-head chase-cam that follows your heading; **3D Fixed** is a
   north-locked, panoramic view that never rotates, so it stays readable in every direction. Food renders
   as solid beveled cubes, the obstacles read as solid 3D blocks, and the arena is bounded by a luminous,
@@ -236,8 +236,9 @@ lives, an exclusive 2×2 extra-life piece, and a speed-up every completed lap - 
 level and board scale; check the **Records** screen from the main menu.
 
 **3D views:** on the start screen, switch the **View** to **3D** or **3D Fixed** to play *any* mode in
-perspective - the board tilts in as the run starts, the pace is eased a little for playability, and
-steering becomes relative left/right turns (swipe horizontally, or the two-button control). **3D** is a
+perspective - the board tilts in as the run starts, the pace matches the flat 2D board at the same
+level/speed, and steering becomes relative left/right turns (swipe horizontally, or the two-button
+control). **3D** is a
 behind-the-head chase-cam that turns to follow your heading; **3D Fixed** is a north-locked, panoramic
 view that never rotates, so the board stays readable however the snake moves (handy when you head toward
 the bottom of the screen). In both, food appears as solid beveled cubes, obstacles read as solid 3D

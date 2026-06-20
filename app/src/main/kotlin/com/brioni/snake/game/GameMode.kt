@@ -10,17 +10,20 @@ package com.brioni.snake.game
  * Constant names double as DataStore keys (the saved mode preference and
  * [ScoreKey.storageName]), so they must stay stable even when a mode's
  * user-facing [displayName] changes — hence [Levels] is shown as "Campaign".
+ *
+ * [abbreviation] is a fixed 3-letter, upper-case tag used by the compact in-game
+ * HUD so the mode/level/scale row never overflows or ellipsizes.
  */
-enum class GameMode(val displayName: String) {
+enum class GameMode(val displayName: String, val abbreviation: String) {
     /** The standard game at the selected level. */
-    Classic("Classic"),
+    Classic("Classic", "CLS"),
 
     /** Speed ramps up the longer you survive; runs until you die. */
-    Endless("Endless"),
+    Endless("Endless", "END"),
 
     /** Score as much as possible before a fixed time runs out. */
-    TimeAttack("Time Attack"),
+    TimeAttack("Time Attack", "TME"),
 
     /** Ten shaped boards cycling forever, faster each cycle, with lives. */
-    Levels("Campaign"),
+    Levels("Campaign", "CMP"),
 }
