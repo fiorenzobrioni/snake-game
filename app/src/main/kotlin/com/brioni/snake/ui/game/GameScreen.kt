@@ -318,6 +318,7 @@ fun GameScreen(
                     outsideColor = MaterialTheme.colorScheme.background,
                     cameraBlend = camBlend.value,
                     fixedNorth = viewModel.viewMode.fixedNorth,
+                    electricField = viewModel.electricWalls,
                     modifier = boardModifier,
                 )
             }

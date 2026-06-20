@@ -63,9 +63,10 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - 🔊 **Music & sound effects** - looping background music that crossfades between the menu and
   gameplay, plus SFX for eating, shrinking, mystery pieces, game over and UI. Independent
   **master / music / SFX** volume sliders in Settings; audio pauses when the app is backgrounded.
-- ✨ **GPU shader effects** - an animated background, a glowing snake head and pulsing
-  halos on rare foods, all via **AGSL** `RuntimeShader`s, plus an optional **retro CRT filter**
-  toggle in Settings.
+- ✨ **GPU shader effects** - an animated background, a glowing snake head, pulsing
+  halos on rare foods and a perspective-mapped electric/plasma flow on the 3D arena barrier,
+  all via **AGSL** `RuntimeShader`s, plus optional **retro CRT filter** and **electric 3D walls**
+  toggles in Settings.
 - ⚡ **Power-ups & hazards** - rare maxi pieces that appear later in a run: **Lightning** (speed up),
   **Snail** (slow down), **Star** (invincible pass-through; the snake blinks faster as it runs out),
   **Freeze**, **Jackpot** (big bonus),

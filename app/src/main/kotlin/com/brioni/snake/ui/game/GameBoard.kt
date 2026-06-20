@@ -41,6 +41,7 @@ import com.brioni.snake.game.FoodTier
 import com.brioni.snake.game.GameState
 import com.brioni.snake.game.Position
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
@@ -86,6 +87,51 @@ private fun darken(c: Color, f: Float): Color = Color(
 private fun lerpOffset(a: Offset, b: Offset, t: Float): Offset =
     Offset(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)
 
+/**
+ * The screen->UV homography for a projected quad whose corners [p0]..[p3] are the
+ * images of UV (0,0), (1,0), (1,1), (0,1). Returns the 3x3 (row-major, 9 floats)
+ * mapping a homogeneous screen point to homogeneous UV, or null if degenerate. Lets
+ * the wall shader flow its energy *along the wall* in correct perspective. Built via
+ * Heckbert's square->quad map, then inverted.
+ */
+private fun screenToUvHomography(p0: Offset, p1: Offset, p2: Offset, p3: Offset): FloatArray? {
+    val dx1 = p1.x - p2.x
+    val dx2 = p3.x - p2.x
+    val dy1 = p1.y - p2.y
+    val dy2 = p3.y - p2.y
+    val sx = p0.x - p1.x + p2.x - p3.x
+    val sy = p0.y - p1.y + p2.y - p3.y
+    val denom = dx1 * dy2 - dx2 * dy1
+    if (abs(denom) < 1e-6f) return null
+    val g = (sx * dy2 - dx2 * sy) / denom
+    val h = (dx1 * sy - sx * dy1) / denom
+    // M maps homogeneous UV -> homogeneous screen; invert it for screen -> UV.
+    val m = floatArrayOf(
+        p1.x - p0.x + g * p1.x, p3.x - p0.x + h * p3.x, p0.x,
+        p1.y - p0.y + g * p1.y, p3.y - p0.y + h * p3.y, p0.y,
+        g, h, 1f,
+    )
+    return invert3x3(m)
+}
+
+/** Inverse of a row-major 3x3, or null when (near-)singular. */
+private fun invert3x3(m: FloatArray): FloatArray? {
+    val a = m[0]; val b = m[1]; val c = m[2]
+    val d = m[3]; val e = m[4]; val f = m[5]
+    val g = m[6]; val h = m[7]; val i = m[8]
+    val ca = e * i - f * h
+    val cb = -(d * i - f * g)
+    val cc = d * h - e * g
+    val det = a * ca + b * cb + c * cc
+    if (abs(det) < 1e-9f) return null
+    val inv = 1f / det
+    return floatArrayOf(
+        ca * inv, (c * h - b * i) * inv, (b * f - c * e) * inv,
+        cb * inv, (a * i - c * g) * inv, (c * d - a * f) * inv,
+        cc * inv, (b * g - a * h) * inv, (a * e - b * d) * inv,
+    )
+}
+
 /** Fills a polygon (screen-space [px]) with a top-to-bottom vertical gradient. */
 private fun DrawScope.fillFace(px: List<Offset>, top: Color, bottom: Color) {
     val path = Path().apply {
@@ -116,6 +162,7 @@ fun GameBoard(
     outsideColor: Color = Color.Black,
     cameraBlend: Float = 0f,
     fixedNorth: Boolean = false,
+    electricField: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val particles: SnapshotStateList<Particle> = remember { emptyList<Particle>().toMutableStateList() }
@@ -254,6 +301,7 @@ fun GameBoard(
                 time = time,
                 textMeasurer = textMeasurer,
                 borderColor = borderColor,
+                electricField = electricField,
             )
             return@Canvas
         }
@@ -970,6 +1018,7 @@ private fun DrawScope.draw3DScene(
     time: Float,
     textMeasurer: TextMeasurer,
     borderColor: Color,
+    electricField: Boolean,
 ) {
     val board = state.board
     val snake = state.snake
@@ -1102,7 +1151,10 @@ private fun DrawScope.draw3DScene(
         if (field.size < 3) return
         val sortKey = field.map { it.z }.average().toFloat()
         items.add(sortKey to {
-            // Translucent energy field: brighter toward the top edge, fading down.
+            // Translucent energy field. The base is always a faint vertical gradient;
+            // when the electric effect is on (and the whole quad is in front of the
+            // camera, so its perspective UV is well-defined) an AGSL plasma flow is
+            // layered on top, mapped along the wall via a screen->UV homography.
             val pix = field.map { toPixel(cam.projectCamera(it)) }
             val path = Path().apply {
                 moveTo(pix[0].x, pix[0].y)
@@ -1117,6 +1169,19 @@ private fun DrawScope.draw3DScene(
                     endY = pix.maxOf { it.y },
                 ),
             )
+            val wallShader = shaders.wallField
+            val wallBrush = shaders.wallFieldBrush
+            if (electricField && wallShader != null && wallBrush != null && wallTop > 0.06f && field.size == 4) {
+                screenToUvHomography(pix[0], pix[1], pix[2], pix[3])?.let { hg ->
+                    wallShader.setFloatUniform("h0", hg[0], hg[1], hg[2])
+                    wallShader.setFloatUniform("h1", hg[3], hg[4], hg[5])
+                    wallShader.setFloatUniform("h2", hg[6], hg[7], hg[8])
+                    wallShader.setFloatUniform("time", time)
+                    wallShader.setFloatUniform("intensity", t)
+                    wallShader.setColorUniform("fieldColor", neon.toArgb())
+                    drawPath(path, brush = wallBrush)
+                }
+            }
             // Glowing rails: top edge (brightest), floor edge, and the vertical ends
             // (corner posts). Adjacent runs share the corner verticals exactly, so the
             // overlap is identical geometry - it reads as one crisp post, no flicker.
