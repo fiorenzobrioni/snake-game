@@ -377,6 +377,19 @@ fun GameBoard(
     }
 }
 
+/**
+ * A single near-clipped face of an extruded 3D wall segment: its camera-space
+ * polygon ready to project, its fill [color], and (for the vertical side faces)
+ * the bottom->top corner pair of each side edge so masonry seams can be drawn and
+ * clipped independently of the face. Cap faces leave the seam edges null.
+ */
+private data class WallFace(
+    val poly: List<Vec3>,
+    val color: Color,
+    val seamA: Pair<Vec3, Vec3>?,
+    val seamB: Pair<Vec3, Vec3>?,
+)
+
 /** One edge (in cell units) between a playable cell and a wall / out-of-board. */
 private data class BoundaryEdge(
     val x1: Float,
@@ -948,14 +961,19 @@ private fun DrawScope.draw3DScene(
     // staying black-leaning and on-brand with the dark theme. Drawn only when the
     // whole quad is in front of the camera (otherwise the receding grid carries it).
     run {
-        val floor = listOf(
-            cam.project(Vec3(0f, 0f, 0f)),
-            cam.project(Vec3(board.width.toFloat(), 0f, 0f)),
-            cam.project(Vec3(board.width.toFloat(), board.height.toFloat(), 0f)),
-            cam.project(Vec3(0f, board.height.toFloat(), 0f)),
+        // Clip the floor quad to the near plane (rather than dropping it whenever a
+        // corner falls behind the camera) so the ground stays a continuous filled
+        // surface as the camera sweeps over it.
+        val floorCam = cam.clipPolygonNear(
+            listOf(
+                cam.cameraSpace(Vec3(0f, 0f, 0f)),
+                cam.cameraSpace(Vec3(board.width.toFloat(), 0f, 0f)),
+                cam.cameraSpace(Vec3(board.width.toFloat(), board.height.toFloat(), 0f)),
+                cam.cameraSpace(Vec3(0f, board.height.toFloat(), 0f)),
+            ),
         )
-        if (floor.all { it.visible }) {
-            val pix = floor.map { toPixel(it) }
+        if (floorCam.size >= 3) {
+            val pix = floorCam.map { toPixel(cam.projectCamera(it)) }
             val path = Path().apply {
                 moveTo(pix[0].x, pix[0].y)
                 for (i in 1 until pix.size) lineTo(pix[i].x, pix[i].y)
@@ -991,6 +1009,16 @@ private fun DrawScope.draw3DScene(
     // [nx]/[ny] is the unit outward normal: the wall is extruded entirely to the
     // outside of the play area (inner face flush with the boundary line), so it
     // never overlaps the snake when it runs along the edge.
+    // One extruded wall face: its (camera-space) polygon, fill colour, and the
+    // bottom/top corner pair of each vertical edge, used to draw masonry seams that
+    // survive near-plane clipping. Cap faces carry no seam edges.
+    fun wallFace(
+        poly: List<Vec3>,
+        color: Color,
+        seamA: Pair<Vec3, Vec3>? = null,
+        seamB: Pair<Vec3, Vec3>? = null,
+    ) = WallFace(cam.clipPolygonNear(poly), color, seamA, seamB)
+
     fun addWall(ax: Float, ay: Float, bx: Float, by: Float, nx: Float, ny: Float) {
         val ox = nx * WALL_THICKNESS
         val oy = ny * WALL_THICKNESS
@@ -1004,21 +1032,21 @@ private fun DrawScope.draw3DScene(
         val bInT = cs(bx, by, wallTop)
         val aOutT = cs(ax + ox, ay + oy, wallTop)
         val bOutT = cs(bx + ox, by + oy, wallTop)
-        val corners = listOf(aInB, bInB, aOutB, bOutB, aInT, bInT, aOutT, bOutT)
-        // Cull the whole segment if any corner is behind the near plane (segments
-        // are unit-length, so at most the cell straddling the camera drops).
-        if (corners.any { it.z <= Cam.NEAR }) return
-        // Inner & outer side faces + the top cap, each tagged with its fill colour.
-        // Painted far -> near inside the lambda so the box occludes itself.
+        // Inner & outer side faces + the top cap. Each face is clipped to the near
+        // plane so a wall cell straddling the camera is trimmed, not dropped - the
+        // arena wall stays continuous (no gaps) as the camera sweeps along it.
         val faces = listOf(
-            listOf(aInB, bInB, bInT, aInT) to faceColor,
-            listOf(aOutB, bOutB, bOutT, aOutT) to faceColor,
-            listOf(aInT, bInT, bOutT, aOutT) to capColor,
-        )
-        val centroidZ = corners.map { it.z }.average().toFloat()
-        items.add(centroidZ to {
-            faces.sortedByDescending { (pts, _) -> pts.sumOf { it.z.toDouble() } }.forEach { (pts, color) ->
-                val pix = pts.map { toPixel(cam.projectCamera(it)) }
+            wallFace(listOf(aInB, bInB, bInT, aInT), faceColor, aInB to aInT, bInB to bInT),
+            wallFace(listOf(aOutB, bOutB, bOutT, aOutT), faceColor, aOutB to aOutT, bOutB to bOutT),
+            wallFace(listOf(aInT, bInT, bOutT, aOutT), capColor),
+        ).filter { it.poly.size >= 3 }
+        if (faces.isEmpty()) return
+        // Sort key from the surviving (in-front) geometry so the trimmed segment
+        // still orders sensibly against the rest of the scene.
+        val sortZ = faces.flatMap { it.poly }.map { it.z }.average().toFloat()
+        items.add(sortZ to {
+            faces.sortedByDescending { fc -> fc.poly.sumOf { it.z.toDouble() } / fc.poly.size }.forEach { fc ->
+                val pix = fc.poly.map { toPixel(cam.projectCamera(it)) }
                 val path = Path().apply {
                     moveTo(pix[0].x, pix[0].y)
                     for (i in 1 until pix.size) lineTo(pix[i].x, pix[i].y)
@@ -1029,22 +1057,33 @@ private fun DrawScope.draw3DScene(
                 drawPath(
                     path,
                     brush = Brush.verticalGradient(
-                        colors = listOf(brighten(color, 0.12f), darken(color, 0.45f)),
+                        colors = listOf(brighten(fc.color, 0.12f), darken(fc.color, 0.45f)),
                         startY = pix.minOf { it.y },
                         endY = pix.maxOf { it.y },
                     ),
                 )
                 // Horizontal seam lines give the vertical side faces a masonry-like
-                // texture (skipped on the flat top cap).
-                if (color != capColor) {
-                    val seam = darken(color, 0.6f).copy(alpha = 0.5f)
+                // texture. Drawn from the original edge corners (clipped per-line) so
+                // they line up even when the face itself was trimmed.
+                if (fc.seamA != null && fc.seamB != null) {
+                    val seam = darken(fc.color, 0.6f).copy(alpha = 0.5f)
                     for (hf in listOf(0.38f, 0.68f)) {
-                        drawLine(seam, lerpOffset(pix[0], pix[3], hf), lerpOffset(pix[1], pix[2], hf), 1.5f)
+                        val s0 = lerpVec(fc.seamA.first, fc.seamA.second, hf)
+                        val s1 = lerpVec(fc.seamB.first, fc.seamB.second, hf)
+                        val clip = cam.clipNear(s0, s1) ?: continue
+                        val pa = cam.projectCamera(clip.first)
+                        val pb = cam.projectCamera(clip.second)
+                        if (pa.visible && pb.visible) drawLine(seam, toPixel(pa), toPixel(pb), 1.5f)
                     }
                 }
             }
-            // Bright rail along the inner top edge (the side facing the player).
-            drawLine(railColor, toPixel(cam.projectCamera(aInT)), toPixel(cam.projectCamera(bInT)), edgeWidth)
+            // Bright rail along the inner top edge (the side facing the player),
+            // clipped so it never streaks to the screen corner near the camera.
+            cam.clipNear(aInT, bInT)?.let { clip ->
+                val pa = cam.projectCamera(clip.first)
+                val pb = cam.projectCamera(clip.second)
+                if (pa.visible && pb.visible) drawLine(railColor, toPixel(pa), toPixel(pb), edgeWidth)
+            }
         })
     }
     if (boundary.isEmpty()) {
