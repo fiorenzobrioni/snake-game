@@ -36,6 +36,8 @@ data class Settings(
     val musicVolume: Float = DEFAULT_MUSIC_VOLUME,
     val sfxVolume: Float = DEFAULT_SFX_VOLUME,
     val crtEnabled: Boolean = false,
+    /** Vibration feedback for gameplay events and near-misses (default on). */
+    val hapticsEnabled: Boolean = true,
     /** Animated electric/plasma flow on the 3D boundary barrier (default on). */
     val electricWallsEnabled: Boolean = true,
     val skin: Skin = Skin.Classic,
@@ -73,6 +75,7 @@ class SettingsRepository(private val context: Context) {
             musicVolume = prefs[MUSIC_VOLUME] ?: DEFAULT_MUSIC_VOLUME,
             sfxVolume = prefs[SFX_VOLUME] ?: DEFAULT_SFX_VOLUME,
             crtEnabled = prefs[CRT_ENABLED] ?: false,
+            hapticsEnabled = prefs[HAPTICS_ENABLED] ?: true,
             electricWallsEnabled = prefs[ELECTRIC_WALLS] ?: true,
             skin = prefs[SKIN].toEnum(Skin::valueOf) ?: Skin.Classic,
             hazardsEnabled = prefs[HAZARDS_ENABLED] ?: true,
@@ -112,6 +115,9 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setCrtEnabled(enabled: Boolean) =
         edit { it[CRT_ENABLED] = enabled }
+
+    suspend fun setHapticsEnabled(enabled: Boolean) =
+        edit { it[HAPTICS_ENABLED] = enabled }
 
     suspend fun setElectricWallsEnabled(enabled: Boolean) =
         edit { it[ELECTRIC_WALLS] = enabled }
@@ -213,6 +219,7 @@ class SettingsRepository(private val context: Context) {
         val MUSIC_VOLUME = floatPreferencesKey("music_volume")
         val SFX_VOLUME = floatPreferencesKey("sfx_volume")
         val CRT_ENABLED = booleanPreferencesKey("crt_enabled")
+        val HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
         val ELECTRIC_WALLS = booleanPreferencesKey("electric_walls")
         val SKIN = stringPreferencesKey("skin")
         val HAZARDS_ENABLED = booleanPreferencesKey("hazards_enabled")

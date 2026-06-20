@@ -10,6 +10,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.brioni.snake.audio.GameHaptics
 import com.brioni.snake.audio.GameSfx
 import com.brioni.snake.data.SettingsRepository
 import com.brioni.snake.game.Achievement
@@ -78,6 +79,7 @@ data class FloatingTextEvent(val cell: Position, val span: Int, val text: String
 class GameViewModel(
     private val repo: SettingsRepository,
     private val sfx: GameSfx = GameSfx.None,
+    private val haptics: GameHaptics = GameHaptics.None,
 ) : ViewModel() {
 
     private val engine = GameEngine()
@@ -222,6 +224,9 @@ class GameViewModel(
 
     /** Set by Quick Play: start the run as soon as the board has been measured. */
     private var pendingQuickStart = false
+
+    /** Wall-clock of the last near-miss haptic, for throttling (see [NEAR_MISS_MIN_GAP_NANOS]). */
+    private var lastNearMissNanos = 0L
 
     val level: Level get() = state.level
     val board: BoardDimensions get() = state.board
@@ -471,6 +476,7 @@ class GameViewModel(
                         floatingTextId++
                     }
                     sfx.ate(event.food, event.combo)
+                    haptics.eat()
                     runFoodsEaten++
                     runMaxCombo = max(runMaxCombo, event.combo)
                 }
@@ -482,11 +488,21 @@ class GameViewModel(
                         floatingTextId++
                     }
                     sfx.shrunk(event.food)
+                    haptics.eat()
                 }
                 GameEvent.Died -> {
                     deathEventId++
                     sfx.died()
+                    haptics.death()
                     onGameOver(after.score)
+                }
+                GameEvent.NearMiss -> {
+                    // Throttled so hugging an edge gives an occasional tick, not a buzz.
+                    val now = System.nanoTime()
+                    if (now - lastNearMissNanos >= NEAR_MISS_MIN_GAP_NANOS) {
+                        haptics.nearMiss()
+                        lastNearMissNanos = now
+                    }
                 }
                 is GameEvent.Exploded -> {
                     // Explosion: outward burst at the blast + a board shake.
@@ -494,12 +510,14 @@ class GameViewModel(
                     eatEventId++
                     shakeEventId++
                     sfx.special(event.food)
+                    haptics.special()
                     runUsedExplosion = true
                 }
                 is GameEvent.JackpotHit -> {
                     eatEvent = EatEvent(event.food.position, event.food.span, palette.foodColor(event.food), BurstStyle.Eat)
                     eatEventId++
                     sfx.special(event.food)
+                    haptics.special()
                     runUsedJackpot = true
                     runFoodsEaten++
                 }
@@ -510,6 +528,7 @@ class GameViewModel(
                     floatingText = FloatingTextEvent(event.food.position, event.food.span, "+${event.seconds}s", SpecialVisuals.TimeBonusColor)
                     floatingTextId++
                     sfx.special(event.food)
+                    haptics.special()
                 }
                 is GameEvent.TimeLost -> {
                     // Time Attack: a red implosion + a "-Ns" callout + a sting shake.
@@ -519,6 +538,7 @@ class GameViewModel(
                     floatingTextId++
                     shakeEventId++
                     sfx.special(event.food)
+                    haptics.special()
                 }
                 is GameEvent.FoodVanished -> {
                     // An ignored food timed out: a quiet upward fade, no sound.
@@ -527,11 +547,13 @@ class GameViewModel(
                 }
                 is GameEvent.EffectStarted -> {
                     sfx.special(event.food)
+                    haptics.special()
                     if (event.kind == EffectKind.Ghost) runUsedStar = true
                 }
                 is GameEvent.EffectExpired -> Unit
                 is GameEvent.LevelAdvanced -> {
                     sfx.levelUp()
+                    haptics.levelUp()
                     runMaxLevel = max(runMaxLevel, event.levelIndex)
                     runMaxCycle = max(runMaxCycle, event.speedCycle)
                     runMaxDepth = max(runMaxDepth, levelDepth(event.levelIndex, event.speedCycle))
@@ -542,6 +564,7 @@ class GameViewModel(
                     // A non-final crash: the lighter quake shake, not the death one.
                     shakeEventId++
                     sfx.lifeLost()
+                    haptics.lifeLost()
                     runLivesLost++
                 }
                 is GameEvent.LifeGained -> {
@@ -551,6 +574,7 @@ class GameViewModel(
                     floatingText = FloatingTextEvent(event.food.position, event.food.span, text, SpecialVisuals.ExtraLifeColor)
                     floatingTextId++
                     sfx.lifeGained()
+                    haptics.special()
                     if (!event.capped) runExtraLives++
                 }
             }
@@ -664,8 +688,15 @@ class GameViewModel(
         /** Levels mode: seconds counted down by the intro overlay. */
         private const val INTRO_SECONDS = 3
 
-        fun factory(repo: SettingsRepository, sfx: GameSfx = GameSfx.None) = viewModelFactory {
-            initializer { GameViewModel(repo, sfx) }
+        fun factory(
+            repo: SettingsRepository,
+            sfx: GameSfx = GameSfx.None,
+            haptics: GameHaptics = GameHaptics.None,
+        ) = viewModelFactory {
+            initializer { GameViewModel(repo, sfx, haptics) }
         }
+
+        /** Minimum gap between near-miss haptics, so riding an edge does not buzz every tick. */
+        private const val NEAR_MISS_MIN_GAP_NANOS = 220_000_000L
     }
 }

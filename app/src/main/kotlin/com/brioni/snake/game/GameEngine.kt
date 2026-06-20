@@ -371,6 +371,12 @@ class GameEngine(private val random: Random = Random.Default) {
         val dead = crashed || timeUp
         if (dead) events.add(GameEvent.Died)
 
+        // Near-miss: the head survived but is grazing a static hazard. Skipped
+        // while invincible (Ghost passes through everything anyway).
+        if (!dead && !ghost && isNearMiss(newHead, board, state.obstacles, state.walls, debris)) {
+            events.add(GameEvent.NearMiss)
+        }
+
         return state.copy(
             snake = body,
             direction = direction,
@@ -453,6 +459,22 @@ class GameEngine(private val random: Random = Random.Default) {
 
     private fun isOutOfBounds(cell: Position, board: BoardDimensions): Boolean =
         cell.x < 0 || cell.x >= board.width || cell.y < 0 || cell.y >= board.height
+
+    /**
+     * True when any orthogonal neighbour of [head] is a static lethal cell - the
+     * board edge, an obstacle, a level wall or lingering debris. The snake's own
+     * body is intentionally not considered (coiling beside yourself is normal).
+     */
+    private fun isNearMiss(
+        head: Position,
+        board: BoardDimensions,
+        obstacles: Set<Position>,
+        walls: Set<Position>,
+        debris: List<Debris>,
+    ): Boolean = Direction.entries.any { dir ->
+        val n = head.step(dir)
+        isOutOfBounds(n, board) || n in obstacles || n in walls || debris.any { it.cell == n }
+    }
 
     /** The head (index 0) hitting any other body cell. */
     private fun collidesWithBody(head: Position, body: List<Position>): Boolean {

@@ -177,6 +177,12 @@ fun SettingsScreen(
         )
 
         ToggleSection(
+            title = stringResource(R.string.settings_haptics),
+            checked = settings.hapticsEnabled,
+            onCheckedChange = { enabled -> scope.launch { repo.setHapticsEnabled(enabled) } },
+        )
+
+        ToggleSection(
             title = stringResource(R.string.settings_crt_filter),
             checked = settings.crtEnabled,
             onCheckedChange = { enabled -> scope.launch { repo.setCrtEnabled(enabled) } },

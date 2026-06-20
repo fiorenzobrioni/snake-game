@@ -30,6 +30,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.brioni.snake.audio.GameAudio
+import com.brioni.snake.audio.HapticController
 import com.brioni.snake.audio.MusicTrack
 import com.brioni.snake.data.SettingsRepository
 import com.brioni.snake.ui.game.GameScreen
@@ -58,7 +59,8 @@ private enum class Screen { Intro, Menu, Game, Settings, Records, Achievements, 
 fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val audio = remember(context) { GameAudio(context.applicationContext, repo) }
-    val gameViewModel: GameViewModel = viewModel(factory = GameViewModel.factory(repo, audio))
+    val haptics = remember(context) { HapticController(context.applicationContext, repo) }
+    val gameViewModel: GameViewModel = viewModel(factory = GameViewModel.factory(repo, audio, haptics))
 
     var ordinal by rememberSaveable { mutableIntStateOf(Screen.Intro.ordinal) }
     val screen = Screen.entries[ordinal]
@@ -83,6 +85,7 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
             audio.release()
+            haptics.release()
         }
     }
 

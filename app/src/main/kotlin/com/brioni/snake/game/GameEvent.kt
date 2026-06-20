@@ -21,6 +21,15 @@ sealed interface GameEvent {
     /** The snake died on this tick. */
     data object Died : GameEvent
 
+    /**
+     * The head survived this tick but is orthogonally adjacent to a static hazard
+     * (a wall, an obstacle, the board edge, or lingering debris) - a near miss.
+     * Self-body adjacency is excluded (coiling next to yourself is not a graze).
+     * Drives a light haptic "tick"; emitted at most once per tick, throttled by
+     * the UI so riding an edge does not buzz continuously.
+     */
+    data object NearMiss : GameEvent
+
     // --- Phase 6.2 specials. ---
 
     /** Explosion eaten: the snake split, leaving [debris] lethal blocks behind. */
