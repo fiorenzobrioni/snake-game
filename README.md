@@ -21,7 +21,7 @@ on the way to a polished, **Google-Play-publishable** title with animation, part
     <td align="center"><img src="docs/screenshots/screenshot_settings.jpg" width="220"/><br/><sub>Settings</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/screenshots/screenshot_gameplay.jpg" width="220"/><br/><sub>Classic gameplay</sub></td>
+    <td align="center"><img src="docs/screenshots/screenshot_gameplay.jpg" width="220"/><br/><sub>Gameplay</sub></td>
     <td align="center"><img src="docs/screenshots/screenshot_gameplay_powerups.jpg" width="220"/><br/><sub>Power-ups &amp; hazards</sub></td>
     <td align="center"><img src="docs/screenshots/screenshot_campaign.jpg" width="220"/><br/><sub>Campaign - Level 4</sub></td>
   </tr>
@@ -57,12 +57,23 @@ The classic Snake mechanics, extended with configurable features so every run fe
   boards also give food, power-ups and hazards proportionally more time before they vanish, so the
   snake can reach them across the longer distances.
 - 🎮 **Control schemes** - **swipe** by default, or a two-button *relative* steering / classic D-pad.
+  A forgiving **coyote frame** makes a beat-late turn still count: the first lethal step makes the head
+  hesitate one tick (instead of dying), giving you a moment to turn away - re-armed by your next safe move.
 - 🎨 **Skins** - four selectable looks (**Classic / Neon / Retro / Pixel**), each its own palette and
   cell shape (Pixel is flat & square, Neon bubbly), all available immediately in Settings.
 - 🌗 **Theme** - choose **Light**, **Dark** or **System** (follows the device) in Settings.
 - 🔊 **Music & sound effects** - looping background music that crossfades between the menu and
   gameplay, plus SFX for eating, shrinking, mystery pieces, game over and UI. Independent
   **master / music / SFX** volume sliders in Settings; audio pauses when the app is backgrounded.
+- 📳 **Haptics & near-miss feedback** - vibration cues scaled by event (a light tap on eating, a
+  firmer click on power-ups, the strongest buzz on death) plus a faint **near-miss** tick and a brief
+  on-screen **danger flash** whenever the head grazes a wall, obstacle or debris without crashing.
+  Toggle it off with **Vibration feedback** in Settings.
+- 🔥 **Combo "juice"** - chain bites for a multiplier and the HUD counter punches in and warms through a
+  colour ramp while the snake's head **catches fire** (its glow heats from your skin's colour toward a
+  fiery orange-red) as the streak climbs.
+- ♿ **Reduce motion & flashing** - an accessibility toggle in Settings that damps the screen shake, the
+  particle bursts and the near-miss flash for a calmer, flash-free board.
 - ✨ **GPU shader effects** - an animated background, a glowing snake head, pulsing
   halos on rare foods and a perspective-mapped electric/plasma flow on the 3D arena barrier,
   all via **AGSL** `RuntimeShader`s, plus optional **retro CRT filter** and **electric 3D walls**
@@ -71,10 +82,8 @@ The classic Snake mechanics, extended with configurable features so every run fe
   **Snail** (slow down), **Star** (invincible pass-through; the snake blinks faster as it runs out),
   **Freeze**, **Jackpot** (big bonus),
   plus the hazards **Earthquake** (a sustained screen shake for a few seconds that makes the board hard
-  to read - no debris, your length is untouched), **Explosion** (severs the last third of the snake,
-  leaving the detached tail as lethal debris that lingers for several seconds) and **3D**
-  (the board tilts into a behind-the-head chase-cam and you play in perspective for the duration, with
-  the steering switched to relative left/right turns). Active
+  to read - no debris, your length is untouched) and **Explosion** (severs the last third of the snake,
+  leaving the detached tail as lethal debris that lingers for several seconds). Active
   effects show countdown chips; up to **two specials** can share the board at once. Toggle **Hazards**
   off in Settings for a calmer run, or dial how often specials appear with the **Special blocks**
   setting (*Standard / Frequent / Frenzy*) - the higher tiers also bring specials online earlier in a
@@ -85,10 +94,19 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - 🎖️ **Achievements** - twenty-five local milestones (combos, scores, endurance, eating sprees, using
   power-ups, growing a very long snake…) that unlock as you play, with a dedicated screen and an unlock
   banner on the game-over screen.
-- 🕹️ **Game modes** - **Classic**, **Endless** (speed ramps up the longer you survive),
+- ▶️ **Quick Play** - the main menu's **Play** button drops you straight into a run with your last-used
+  settings; a separate **Custom** entry opens the full pre-game setup (mode, level, snake speed, board
+  scale) when you want to tweak everything.
+- 📅 **Daily Challenge** - a date-seeded run with the same mode, level, board and **daily twist** for
+  everyone that day (the twist rotates through Bonus Rush, Frenzy and Compact Arena; the obstacle layout
+  and food sequence come from the day's seed). Beat your **best today** and build a **day streak**.
+  Reached from the main menu.
+- 🎲 **Random Challenge** - a one-off surprise run for variety: **Shuffle** for a fresh mode / level /
+  board / twist mix, then play. Nothing is recorded - it's pure fun.
+- 🕹️ **Game modes** - **Endless** (speed ramps up the longer you survive; the default),
   **Time Attack** (score as much as you can in 120s) and **Campaign** (see below), selectable on the
-  start screen.
-- 🧊 **3D views** - a **View** selector on the start screen (**2D** / **3D** / **3D Fixed**) that plays
+  **Custom** setup screen.
+- 🧊 **3D views** - a **View** setting (**2D** / **3D** / **3D Fixed**) that plays
   **any** mode in perspective instead of the flat top-down board (at the same pace as 2D, with relative
   left/right steering). **3D** is a behind-the-head chase-cam that follows your heading; **3D Fixed** is a
   north-locked, panoramic view that never rotates, so it stays readable in every direction. Food renders
@@ -142,9 +160,9 @@ scattering as isolated cells.
 
 ### 🏃 Snake speed
 
-A separate setting (shown under *Level* on the start screen and in Settings) controls the pace,
-independent of the obstacle layout. It applies to **Classic** and **Time Attack**; Endless ramps its
-own pace and Campaign uses its per-lap speed cycle.
+A separate setting (shown under *Level* on the **Custom** setup screen and in Settings) controls the
+pace, independent of the obstacle layout. It applies to **Time Attack**; Endless ramps its own pace
+and Campaign uses its per-lap speed cycle.
 
 | Speed | Name    | Tick (ms) |
 |-------|---------|-----------|
@@ -219,23 +237,24 @@ when the board gets tight (you never drop below 3 segments).
 **Controls (touch):** by default you **swipe** anywhere on the board to change direction. Prefer
 buttons? Switch in **Settings** to a **two-button** scheme (turn left / right relative to the snake's
 heading) or the classic **D-pad** - your choice is saved. 180° reversals are blocked, so you can't
-instantly fold back into your own body. Pick a level and board scale on the start screen; pause and
-restart from the in-game controls. Your best score is kept per (level, scale).
+instantly fold back into your own body. Tap **Play** on the main menu to start instantly with your
+last-used settings, or **Custom** to pick the mode, level, snake speed and board scale first; pause and
+restart from the in-game controls. Your best score is kept per (mode, level, scale).
 
 **Audio:** the game plays looping background music (it crossfades between the menu and gameplay) and
 sound effects for eating, shrinking, mystery pieces, game over and button taps. Tune the **master**,
 **music** and **SFX** volumes independently in **Settings** (set any to zero to mute); the music
 automatically pauses when you leave the app and yields to other apps' audio.
 
-**Game modes:** choose your mode on the start screen - **Classic** (survive as long as you can),
-**Endless** (the snake keeps accelerating the longer you survive), **Time Attack** (score as much
+**Game modes:** choose your mode on the **Custom** setup screen -
+**Endless** (the snake keeps accelerating the longer you survive; the default), **Time Attack** (score as much
 as possible in 120 seconds - watch for the exclusive **+5s** / **−3s** clock pieces that stretch or
 shave your remaining time), **Campaign** (clear ten shaped boards by eating 12 foods each, with 3
 lives, an exclusive 2×2 extra-life piece, and a speed-up every completed lap - the HUD shows
 *Level x · Speed x*, your hearts and the foods still to go). Your best score is tracked per mode,
 level and board scale; check the **Records** screen from the main menu.
 
-**3D views:** on the start screen, switch the **View** to **3D** or **3D Fixed** to play *any* mode in
+**3D views:** in **Settings**, switch the **View** to **3D** or **3D Fixed** to play *any* mode in
 perspective - the board tilts in as the run starts, the pace matches the flat 2D board at the same
 level/speed, and steering becomes relative left/right turns (swipe horizontally, or the two-button
 control). **3D** is a

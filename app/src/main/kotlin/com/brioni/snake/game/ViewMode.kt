@@ -11,10 +11,10 @@ package com.brioni.snake.game
  *                  whole board from a fixed angle and never rotates, so the view
  *                  stays readable whatever direction the snake travels.
  */
-enum class ViewMode {
-    TwoD,
-    ThreeD,
-    ThreeDFixed,
+enum class ViewMode(val displayName: String) {
+    TwoD("2D"),
+    ThreeD("3D"),
+    ThreeDFixed("3D Fixed"),
     ;
 
     /** True for both perspective views (the model only needs the on/off bit). */

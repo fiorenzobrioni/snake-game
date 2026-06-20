@@ -30,19 +30,22 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.brioni.snake.audio.GameAudio
+import com.brioni.snake.audio.HapticController
 import com.brioni.snake.audio.MusicTrack
 import com.brioni.snake.data.SettingsRepository
 import com.brioni.snake.ui.game.GameScreen
 import com.brioni.snake.ui.game.GameViewModel
 import com.brioni.snake.ui.achievements.AchievementsScreen
 import com.brioni.snake.ui.credits.CreditsScreen
+import com.brioni.snake.ui.daily.DailyChallengeScreen
+import com.brioni.snake.ui.daily.RandomChallengeScreen
 import com.brioni.snake.ui.intro.BrandIntroScreen
 import com.brioni.snake.ui.menu.MainMenuScreen
 import com.brioni.snake.ui.records.RecordsScreen
 import com.brioni.snake.ui.settings.SettingsScreen
 
 /** The top-level destinations. [Intro] is the cold-launch brand splash. */
-private enum class Screen { Intro, Menu, Game, Settings, Records, Achievements, Credits }
+private enum class Screen { Intro, Menu, Game, Daily, Random, Settings, Records, Achievements, Credits }
 
 /**
  * Root of the UI. Hosts a lightweight, state-based navigation between the main
@@ -58,7 +61,8 @@ private enum class Screen { Intro, Menu, Game, Settings, Records, Achievements, 
 fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val audio = remember(context) { GameAudio(context.applicationContext, repo) }
-    val gameViewModel: GameViewModel = viewModel(factory = GameViewModel.factory(repo, audio))
+    val haptics = remember(context) { HapticController(context.applicationContext, repo) }
+    val gameViewModel: GameViewModel = viewModel(factory = GameViewModel.factory(repo, audio, haptics))
 
     var ordinal by rememberSaveable { mutableIntStateOf(Screen.Intro.ordinal) }
     val screen = Screen.entries[ordinal]
@@ -83,6 +87,7 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
             audio.release()
+            haptics.release()
         }
     }
 
@@ -122,7 +127,14 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
 
                     Screen.Menu -> MainMenuScreen(
                         repo = repo,
-                        onPlay = { navigate(Screen.Game) },
+                        // Quick Play: launch straight into a run with the current
+                        // settings; the game screen starts it once it has measured
+                        // the board (see GameViewModel.requestQuickStart).
+                        onPlay = { gameViewModel.requestQuickStart(); navigate(Screen.Game) },
+                        // Custom: open the game screen's setup overlay instead.
+                        onCustom = { navigate(Screen.Game) },
+                        onDaily = { navigate(Screen.Daily) },
+                        onRandom = { navigate(Screen.Random) },
                         onRecords = { navigate(Screen.Records) },
                         onAchievements = { navigate(Screen.Achievements) },
                         onSettings = { navigate(Screen.Settings) },
@@ -146,6 +158,27 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
+
+                    Screen.Daily -> DailyChallengeScreen(
+                        repo = repo,
+                        // Launch the seeded run; the game screen starts it once the
+                        // board is measured (see GameViewModel.requestDailyStart).
+                        onPlay = { epochDay ->
+                            gameViewModel.requestDailyStart(epochDay)
+                            navigate(Screen.Game)
+                        },
+                        onBack = { navigate(Screen.Menu) },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+
+                    Screen.Random -> RandomChallengeScreen(
+                        onPlay = { challenge ->
+                            gameViewModel.requestRandomStart(challenge)
+                            navigate(Screen.Game)
+                        },
+                        onBack = { navigate(Screen.Menu) },
+                        modifier = Modifier.fillMaxSize(),
+                    )
 
                     Screen.Settings -> SettingsScreen(
                         repo = repo,

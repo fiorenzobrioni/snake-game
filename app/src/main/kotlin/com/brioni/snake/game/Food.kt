@@ -59,13 +59,6 @@ sealed interface FoodEffect {
     /** Freeze: slows time and suspends special spawns for [durationMs]. */
     data class Freeze(val durationMs: Long) : FoodEffect
 
-    /**
-     * 3D (hazard): tilts the board into a chase-cam view from behind the snake's
-     * head for [durationMs]. A pure render/controls effect — it does not change
-     * any gameplay rule or the tick speed.
-     */
-    data class ThreeD(val durationMs: Long) : FoodEffect
-
     /** Jackpot: a large score [bonus] plus a [growth] of segments. */
     data class Jackpot(val bonus: Int, val growth: Int) : FoodEffect
 
@@ -82,8 +75,7 @@ sealed interface FoodEffect {
 /** True for the [FoodEffect]s that make the game harder (gated by the hazards toggle). */
 val FoodEffect.isHazard: Boolean
     get() = this is FoodEffect.Quake || this is FoodEffect.Burst ||
-        this is FoodEffect.Slow || this is FoodEffect.TimePenalty ||
-        this is FoodEffect.ThreeD
+        this is FoodEffect.Slow || this is FoodEffect.TimePenalty
 
 /**
  * A food item on the board.
@@ -176,9 +168,6 @@ object FoodTable {
      */
     private const val BURST_DEBRIS_MS = 9_000L
 
-    /** 3D lasts long enough to read the perspective and play a few turns in it. */
-    private const val THREE_D_MS = 11_000L
-
     /** Seconds the Time Attack clock blocks add / remove (tuned for a 120 s run). */
     const val TIME_BONUS_SECONDS = 5
     const val TIME_PENALTY_SECONDS = 3
@@ -210,8 +199,7 @@ object FoodTable {
         hazardsEnabled: Boolean = true,
         specialAllowed: Boolean = true,
         specialFrequency: SpecialFrequency = SpecialFrequency.Standard,
-        mode: GameMode = GameMode.Classic,
-        threeDWorld: Boolean = false,
+        mode: GameMode = GameMode.Endless,
     ): FoodSpec {
         val elapsedMs = elapsedTicks.toLong() * baseTickMillis
         val factor = levelGateFactor(level)
@@ -228,28 +216,27 @@ object FoodTable {
                 add(Weighted(6) { mysterySpec(random, FoodCategory.Shrink, maxiUnlocked) })
             }
             if (specialUnlocked && specialAllowed) {
-                add(Weighted(specialFrequency.spawnWeight) { specialSpec(random, hazardsEnabled, mode, threeDWorld) })
+                add(Weighted(specialFrequency.spawnWeight) { specialSpec(random, hazardsEnabled, mode) })
             }
         }
         return pick(entries, random)
     }
 
     /** Builds a maxi special, choosing a kind weighted by benefit, the toggle and the mode. */
-    private fun specialSpec(random: Random, hazardsEnabled: Boolean, mode: GameMode, threeDWorld: Boolean): FoodSpec {
+    private fun specialSpec(random: Random, hazardsEnabled: Boolean, mode: GameMode): FoodSpec {
         val choices = buildList<Weighted<FoodEffect>> {
-            // Beneficial — always available.
+            // Beneficial — always available (total weight 58).
             add(Weighted(20) { FoodEffect.Haste(HASTE_MS) })
             add(Weighted(14) { FoodEffect.Ghost(GHOST_MS) })
             add(Weighted(14) { FoodEffect.Freeze(FREEZE_MS) })
             add(Weighted(10) { FoodEffect.Jackpot(bonus = random.nextInt(150, 401), growth = random.nextInt(2, 6)) })
-            // Harmful — only when hazards are enabled.
+            // Harmful — only when hazards are enabled (total weight 54). These absorb
+            // the weight freed by removing the old 3D hazard, so the overall
+            // benefit/hazard balance stays as it was before that removal.
             if (hazardsEnabled) {
-                add(Weighted(16) { FoodEffect.Quake(QUAKE_MS) })
-                add(Weighted(12) { FoodEffect.Burst(BURST_DEBRIS_MS) })
-                add(Weighted(14) { FoodEffect.Slow(SLOW_MS) })
-                // Pointless inside the always-on 3D World mode.
-                // Redundant when the whole game is already in 3D.
-                if (!threeDWorld) add(Weighted(12) { FoodEffect.ThreeD(THREE_D_MS) })
+                add(Weighted(20) { FoodEffect.Quake(QUAKE_MS) })
+                add(Weighted(16) { FoodEffect.Burst(BURST_DEBRIS_MS) })
+                add(Weighted(18) { FoodEffect.Slow(SLOW_MS) })
             }
             // Time Attack only: the clock blocks. The penalty is a hazard.
             if (mode == GameMode.TimeAttack) {

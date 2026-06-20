@@ -10,7 +10,7 @@ data class ScoreKey(
     val level: Level,
     val scale: BoardScale,
 ) {
-    /** The DataStore preference name for this slot, e.g. `highscore_Classic_Beginner_Cozy`. */
+    /** The DataStore preference name for this slot, e.g. `highscore_Endless_Beginner_Cozy`. */
     fun storageName(): String = "$PREFIX${mode.name}_${level.name}_${scale.name}"
 
     companion object {

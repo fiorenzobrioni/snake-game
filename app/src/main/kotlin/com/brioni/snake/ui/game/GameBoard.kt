@@ -163,6 +163,7 @@ fun GameBoard(
     cameraBlend: Float = 0f,
     fixedNorth: Boolean = false,
     electricField: Boolean = true,
+    reduceMotion: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val particles: SnapshotStateList<Particle> = remember { emptyList<Particle>().toMutableStateList() }
@@ -208,7 +209,8 @@ fun GameBoard(
 
     LaunchedEffect(eatEventId) {
         val event = eatEvent
-        if (eatEventId > 0 && event != null) {
+        // Reduce-motion suppresses the particle bursts (the floating "+N" labels stay).
+        if (eatEventId > 0 && event != null && !reduceMotion) {
             val cx = event.cell.x + event.span / 2f
             val cy = event.cell.y + event.span / 2f
             when (event.style) {
@@ -351,6 +353,7 @@ fun GameBoard(
                     alpha = if (k == 0) (snakeAlpha + 0.2f).coerceAtMost(1f) else snakeAlpha,
                     shaders = shaders,
                     time = time,
+                    headGlow = hotGlow(palette.headGlow, state.combo),
                 )
             }
             particles.forEach { p ->
@@ -741,27 +744,8 @@ private fun DrawScope.drawSpecialSymbol(
         is FoodEffect.TimeBonus -> drawClock(cx, cy, r, color, plus = true)
         is FoodEffect.TimePenalty -> drawClock(cx, cy, r, color, plus = false)
         is FoodEffect.ExtraLife -> drawSnakeHeadIcon(cx, cy, r, color)
-        is FoodEffect.ThreeD -> drawCube(cx, cy, r, color)
         else -> Unit
     }
-}
-
-/** A small wireframe cube — the 3D hazard icon. */
-private fun DrawScope.drawCube(cx: Float, cy: Float, r: Float, color: Color) {
-    val s = r * 0.96f // square side
-    val d = r * 0.5f // depth offset to the back face
-    val sw = r * 0.15f
-    val stroke = Stroke(width = sw, cap = StrokeCap.Round)
-    val fx = cx - s / 2f - d / 2f // front face, top-left
-    val fy = cy - s / 2f + d / 2f
-    val bx = fx + d // back face, shifted up-right
-    val by = fy - d
-    drawRect(color, topLeft = Offset(fx, fy), size = Size(s, s), style = stroke)
-    drawRect(color, topLeft = Offset(bx, by), size = Size(s, s), style = stroke)
-    drawLine(color, Offset(fx, fy), Offset(bx, by), sw)
-    drawLine(color, Offset(fx + s, fy), Offset(bx + s, by), sw)
-    drawLine(color, Offset(fx, fy + s), Offset(bx, by + s), sw)
-    drawLine(color, Offset(fx + s, fy + s), Offset(bx + s, by + s), sw)
 }
 
 /** A tiny snake head (rounded square + upward eyes) — the extra-life bonus icon. */
@@ -913,6 +897,24 @@ private fun DrawScope.drawDebris(cell: Float, left: Float, top: Float, life: Flo
     )
 }
 
+/** A fiery accent the head glow blends toward as the combo climbs. */
+private val ComboHotGlow = Color(0xFFFF5722)
+
+/**
+ * Heats the head [base] glow toward [ComboHotGlow] as the eat-[combo] climbs:
+ * unchanged up to x2, ramping to fully fiery around x8 - the "on fire" cue.
+ */
+private fun hotGlow(base: Color, combo: Int): Color {
+    val heat = ((combo - 2) / 6f).coerceIn(0f, 1f)
+    if (heat <= 0f) return base
+    return Color(
+        red = base.red + (ComboHotGlow.red - base.red) * heat,
+        green = base.green + (ComboHotGlow.green - base.green) * heat,
+        blue = base.blue + (ComboHotGlow.blue - base.blue) * heat,
+        alpha = base.alpha,
+    )
+}
+
 private fun DrawScope.drawSnakeSegment(
     isHead: Boolean,
     left: Float,
@@ -923,6 +925,7 @@ private fun DrawScope.drawSnakeSegment(
     alpha: Float,
     shaders: BoardShaders,
     time: Float,
+    headGlow: Color = palette.headGlow,
 ) {
     val centerX = left + cell / 2f
     val centerY = top + cell / 2f
@@ -933,7 +936,7 @@ private fun DrawScope.drawSnakeSegment(
         shaders.glow.setFloatUniform("center", centerX, centerY)
         shaders.glow.setFloatUniform("radius", glowRadius)
         shaders.glow.setFloatUniform("time", time)
-        shaders.glow.setColorUniform("glowColor", palette.headGlow.toArgb())
+        shaders.glow.setColorUniform("glowColor", headGlow.toArgb())
         drawCircle(brush = shaders.glowBrush, radius = glowRadius, center = Offset(centerX, centerY))
     }
 
@@ -1346,7 +1349,7 @@ private fun DrawScope.draw3DScene(
                         shaders.glow.setFloatUniform("center", center.x, center.y)
                         shaders.glow.setFloatUniform("radius", gr)
                         shaders.glow.setFloatUniform("time", time)
-                        shaders.glow.setColorUniform("glowColor", palette.headGlow.toArgb())
+                        shaders.glow.setColorUniform("glowColor", hotGlow(palette.headGlow, state.combo).toArgb())
                         drawCircle(brush = shaders.glowBrush, radius = gr, center = center)
                     })
                 }

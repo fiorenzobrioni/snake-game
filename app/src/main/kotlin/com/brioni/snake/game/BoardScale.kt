@@ -14,13 +14,11 @@ package com.brioni.snake.game
 enum class BoardScale(
     val displayName: String,
     val cellsOnShortSide: Int,
-    /** Fixed 3-letter, upper-case tag for the compact in-game HUD. */
-    val abbreviation: String,
 ) {
-    Cozy("Cozy", 13, "COZ"),
-    Classic("Standard", 19, "STD"),
-    Epic("Epic", 27, "EPC"),
-    Colossal("Colossal", 35, "COL");
+    Cozy("Cozy", 13),
+    Classic("Standard", 19),
+    Epic("Epic", 27),
+    Colossal("Colossal", 35);
 
     /** Human-readable label for menus. */
     val label: String get() = displayName

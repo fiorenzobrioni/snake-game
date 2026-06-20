@@ -13,9 +13,11 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -173,12 +175,27 @@ fun GameScreen(
     // Use sin on both axes so the offset is exactly 0 at rest (cos(0)=1 left the
     // board shifted ~17dp down when idle, pushing its bottom off-screen on the
     // first game until a death animation drove the damping term to zero).
-    val shakeX = sin(shakeT * Math.PI * 10).toFloat() * amplitudePx * damp +
-        sin(quakeT * Math.PI * 14).toFloat() * quakeAmpPx * quakeDamp +
-        sin(wobble * 2 * Math.PI * 12).toFloat() * sustainedAmp
-    val shakeY = sin(shakeT * Math.PI * 9).toFloat() * amplitudePx * damp +
-        sin(quakeT * Math.PI * 13).toFloat() * quakeAmpPx * quakeDamp +
-        cos(wobble * 2 * Math.PI * 11).toFloat() * sustainedAmp
+    // Accessibility: reduce-motion flattens every board shake to zero.
+    val motionScale = if (viewModel.reduceMotion) 0f else 1f
+    val shakeX = (
+        sin(shakeT * Math.PI * 10).toFloat() * amplitudePx * damp +
+            sin(quakeT * Math.PI * 14).toFloat() * quakeAmpPx * quakeDamp +
+            sin(wobble * 2 * Math.PI * 12).toFloat() * sustainedAmp
+        ) * motionScale
+    val shakeY = (
+        sin(shakeT * Math.PI * 9).toFloat() * amplitudePx * damp +
+            sin(quakeT * Math.PI * 13).toFloat() * quakeAmpPx * quakeDamp +
+            cos(wobble * 2 * Math.PI * 11).toFloat() * sustainedAmp
+        ) * motionScale
+
+    // A brief danger flash on a near-miss / grace dodge (suppressed by reduce-motion).
+    val nearMissFlash = remember { Animatable(0f) }
+    LaunchedEffect(viewModel.nearMissEventId) {
+        if (viewModel.nearMissEventId > 0 && !viewModel.reduceMotion) {
+            nearMissFlash.snapTo(0.7f)
+            nearMissFlash.animateTo(0f, tween(durationMillis = 320, easing = LinearEasing))
+        }
+    }
 
     // Pause blur (step 3.4): blurs the frozen board behind the overlay scrim.
     val blurRadius by animateDpAsState(
@@ -186,22 +203,9 @@ fun GameScreen(
         label = "pauseBlur",
     )
 
-    // 3D hazard camera blend: 0 = flat top-down, 1 = full chase-cam. The VM bumps
-    // cinematicId on tilt-in (effect started) and tilt-out (effect expired); we
-    // animate the tilt then release the loop freeze it set.
+    // 3D camera blend: 0 = flat top-down, 1 = full chase-cam. Driven by the
+    // standing "3D" / "3D Fixed" view setting below.
     val camBlend = remember { Animatable(0f) }
-    // The timed hazard's tilt-in / tilt-out (only when 3D World is off; with it on
-    // the whole game stays in 3D, driven permanently below).
-    LaunchedEffect(viewModel.cinematicId) {
-        if (viewModel.cinematicId == 0 || viewModel.threeDWorldEnabled) return@LaunchedEffect
-        val entering = viewModel.state.hasEffect(EffectKind.ThreeD)
-        camBlend.animateTo(
-            targetValue = if (entering) 1f else 0f,
-            animationSpec = tween(durationMillis = 700, easing = FastOutSlowInEasing),
-        )
-        viewModel.endCinematicHold()
-        if (!entering) viewModel.clearThreeD()
-    }
     // 3D World setting: every mode is in the chase-cam. Tilt in once play starts
     // and hold; the terminal/setup snap below drops back to flat for the overlays.
     LaunchedEffect(viewModel.threeDWorldEnabled, state.status) {
@@ -238,17 +242,29 @@ fun GameScreen(
             Hud(
                 score = state.score,
                 combo = state.combo,
-                levelLabel = when {
-                    inLevels -> stringResource(R.string.hud_level_speed, state.levelIndex, state.speedCycle)
-                    state.mode == GameMode.Classic -> state.level.abbreviation
-                    else -> state.mode.abbreviation
+                statusLabel = buildString {
+                    if (viewModel.activeChallenge != null) {
+                        val tag = if (viewModel.isDailyChallenge) {
+                            stringResource(R.string.daily_hud_prefix)
+                        } else {
+                            stringResource(R.string.random_hud_prefix)
+                        }
+                        append(tag).append(" · ")
+                    }
+                    append(
+                        when {
+                            inLevels -> stringResource(R.string.hud_level_speed, state.levelIndex, state.speedCycle) +
+                                " · " + viewModel.scale.displayName
+                            else -> "${state.mode.displayName} · ${state.level.displayName} · ${viewModel.scale.displayName}"
+                        },
+                    )
                 },
-                boardLabel = "${viewModel.scale.abbreviation} · ${state.board.width}×${state.board.height}",
                 timeLabel = timeLabel,
                 lives = if (inLevels && onBoard) state.lives else 0,
                 length = if (onBoard) state.snake.size else 0,
                 palette = viewModel.palette,
                 showPause = state.status == GameStatus.Running,
+                reduceMotion = viewModel.reduceMotion,
                 onPause = { audio.playPause(); viewModel.togglePause() },
             )
 
@@ -319,8 +335,22 @@ fun GameScreen(
                     cameraBlend = camBlend.value,
                     fixedNorth = viewModel.viewMode.fixedNorth,
                     electricField = viewModel.electricWalls,
+                    reduceMotion = viewModel.reduceMotion,
                     modifier = boardModifier,
                 )
+                // Danger frame flash, tracking the board's shake offset.
+                if (nearMissFlash.value > 0f) {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .offset { IntOffset(shakeX.roundToInt(), shakeY.roundToInt()) }
+                            .border(
+                                width = 3.dp,
+                                color = NearMissFlashColor.copy(alpha = nearMissFlash.value),
+                                shape = RoundedCornerShape(14.dp),
+                            ),
+                    )
+                }
             }
 
             if (playing) {
@@ -341,12 +371,10 @@ fun GameScreen(
                 selectedLevel = viewModel.level,
                 selectedSnakeSpeed = viewModel.snakeSpeed,
                 selectedScale = viewModel.scale,
-                viewMode = viewModel.viewMode,
                 onModeSelected = { viewModel.selectMode(it) },
                 onLevelSelected = { viewModel.selectLevel(it) },
                 onSnakeSpeedSelected = { viewModel.selectSnakeSpeed(it) },
                 onScaleSelected = { viewModel.selectScale(it) },
-                onViewModeChanged = { viewModel.selectViewMode(it) },
                 onPlay = { viewModel.start() },
             )
 
@@ -368,6 +396,8 @@ fun GameScreen(
                 score = state.score,
                 bestScore = viewModel.bestScore,
                 isNewBest = viewModel.isNewBest,
+                // A Random challenge is a one-off: no best to show.
+                showBest = !viewModel.isRandomChallenge,
                 unlocked = viewModel.newlyUnlocked.map { it.title },
                 onPlayAgain = { viewModel.playAgain() },
                 onSetup = { viewModel.toSetup() },
@@ -386,6 +416,18 @@ fun GameScreen(
  * row would appear/disappear with each power-up and visibly resize the board,
  * making the snake seem to jump.
  */
+/** The warning colour used by the near-miss / grace-dodge danger flash. */
+private val NearMissFlashColor = Color(0xFFFF6E40)
+
+/** The combo multiplier's colour, warming through tiers as the streak climbs. */
+@Composable
+private fun comboTierColor(combo: Int): Color = when {
+    combo >= 8 -> Color(0xFFFF5252)
+    combo >= 5 -> Color(0xFFFFA000)
+    combo >= 3 -> Color(0xFFFFD54F)
+    else -> MaterialTheme.colorScheme.tertiary
+}
+
 private val EffectTimersRowHeight = 34.dp
 
 /** A row of countdown chips for the timed effects currently running. */
@@ -411,7 +453,6 @@ private fun EffectChip(effect: com.brioni.snake.game.ActiveEffect) {
         com.brioni.snake.game.EffectKind.Slow -> stringResource(R.string.effect_snail)
         com.brioni.snake.game.EffectKind.Ghost -> stringResource(R.string.effect_star)
         com.brioni.snake.game.EffectKind.Freeze -> stringResource(R.string.effect_freeze)
-        com.brioni.snake.game.EffectKind.ThreeD -> stringResource(R.string.effect_threed)
         com.brioni.snake.game.EffectKind.Quake -> stringResource(R.string.effect_quake)
     }
     Column(
@@ -491,13 +532,13 @@ private fun ControlRegion(
 private fun Hud(
     score: Int,
     combo: Int,
-    levelLabel: String,
-    boardLabel: String,
+    statusLabel: String,
     timeLabel: String?,
     lives: Int,
     length: Int,
     palette: SkinPalette,
     showPause: Boolean,
+    reduceMotion: Boolean,
     onPause: () -> Unit,
 ) {
     // Rolling score counter (step 3.6).
@@ -518,13 +559,24 @@ private fun Hud(
                 modifier = Modifier.weight(1f),
             )
             if (combo > 1) {
+                // Combo "juice": the multiplier punches in on each bump and warms
+                // through a colour ramp (white → gold → orange → red) as it climbs.
+                val pulse = remember { Animatable(1f) }
+                LaunchedEffect(combo) {
+                    if (!reduceMotion) {
+                        pulse.snapTo(1.3f)
+                        pulse.animateTo(1f, spring(dampingRatio = 0.42f))
+                    }
+                }
                 Text(
                     text = stringResource(R.string.hud_combo, combo),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.tertiary,
+                    color = comboTierColor(combo),
                     maxLines = 1,
-                    modifier = Modifier.padding(end = 8.dp),
+                    modifier = Modifier
+                        .padding(end = 8.dp)
+                        .graphicsLayer { scaleX = pulse.value; scaleY = pulse.value },
                 )
             }
             TextButton(
@@ -546,7 +598,7 @@ private fun Hud(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "$levelLabel · $boardLabel",
+                text = statusLabel,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                 maxLines = 1,

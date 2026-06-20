@@ -17,7 +17,9 @@ Roadmap, work in progress, TODOs, known bugs, and ideas. For the history of deve
 - [ ] Write unit tests for `GameEngine` edge-cases: wall collision on all four sides, body self-collision, 180° reversal block
 - [ ] Verify smooth-motion interpolation on low-end devices
 - [ ] Verify the mystery "?" glyph renders crisply on small cells (dense boards)
-- [ ] Re-tune the food spawn weights / time gates after playtesting on a device
+- [ ] Re-tune the food spawn weights / time gates after playtesting on a device (special weights were
+  rebalanced when the 3D hazard was removed - its freed weight went back to the other hazards to keep
+  the original benefit/hazard mix; the time gates are still pending a device pass)
 - [ ] Optionally enrich the synthesized SFX before Play release (background music is now Gemini-generated)
 
 ---
@@ -306,6 +308,87 @@ snake-game/
       The difficulty selector is hidden/ignored (scores pinned to one level per scale; a "best level"
       record is also kept); three new achievements (Climber / Tower Topper / Full Circle).
 
+### Phase 6.9 - Feel, accessibility & retention (pre-launch polish)
+
+> A grab-bag of polish, depth and retention ideas to tackle **before** the Play Store phase. Each step is
+> self-contained and can be picked up in its own chat. Already shipped in this band: a **coyote/grace
+> tick**, **haptics + near-miss feedback**, a **Daily Challenge** (with per-day modifiers), **combo
+> "juice"** (head-on-fire + animated multiplier), a **near-miss visual flash**, and a **Reduce motion &
+> flashing** accessibility toggle. The remaining steps below are still open.
+
+**Game feel & telegraphing**
+
+- [ ] **Step 6.9.1 - Telegraph hazards before they strike.** Explosion/Earthquake currently fire with no
+      warning, so they can feel arbitrary. Add a 1-tick "tell": flash the about-to-trigger special (or its
+      blast cells) and a short pre-haptic the tick before the effect lands. Impl: emit a `GameEvent`
+      (e.g. `HazardImminent`) one tick early from `GameEngine.tick`, or animate the special's on-board
+      glyph as its timeout nears; gate the flash under **Reduce motion**.
+
+- [ ] **Step 6.9.2 - Richer game-over summary.** Replace the bare "Final score" with a short run recap:
+      foods eaten, max combo, run duration, max length (and for Campaign: deepest level). The data already
+      exists on the per-run accumulators in `GameViewModel` (`runFoodsEaten`, `runMaxCombo`, `runMaxLength`,
+      `runStartMs`, `runMaxDepth`); surface them via a small stats object to `GameOverOverlay`.
+
+**Accessibility & controls**
+
+- [ ] **Step 6.9.3 - Swipe sensitivity + tap-to-turn.** Add a swipe-distance threshold setting and an
+      optional "tap a screen half to turn" scheme (left half = turn left, right half = turn right) for
+      comfortable one-handed play. Impl: new `ControlScheme.TapTurn` (or a sensitivity slider in Settings)
+      wired through `GameControls` / `swipeToSteer`; persist via `SettingsRepository`.
+
+- [ ] **Step 6.9.4 - Auto-pause on focus loss.** When the app is backgrounded mid-run, auto-pause instead
+      of letting the loop keep ticking unseen. Impl: observe the host lifecycle (the `App` `DisposableEffect`
+      already watches `ON_STOP`/`ON_START`) and call `GameViewModel.togglePause()` when a run is Running.
+
+**Depth / objectives**
+
+- [ ] **Step 6.9.5 - Rotating objectives / missions.** Beyond the static achievements, show 2-3 rotating
+      per-run goals ("eat 3 maxi foods", "reach a x5 combo", "survive 90s") that refresh daily/weekly and
+      give a sense of purpose to a single run. Impl: a pure-Kotlin `Mission` model evaluated against the
+      existing `RunStats`; persist completion + a small reward (points/cosmetic) in `SettingsRepository`;
+      surface progress on the menu or game-over screen.
+
+- [ ] **Step 6.9.6 - Player-activated power-up (one slot).** A single chargeable ability the player
+      triggers on demand (e.g. a one-shot **Dash** that skips a few cells, or a **Bomb** that clears nearby
+      debris/obstacles), instead of only random pickups - adds a tactical decision. Impl: a `GameState`
+      "charge" field filled by play (e.g. by combos), a HUD button, and an engine action; respect
+      determinism so it stays test-friendly.
+
+- [ ] **Step 6.9.7 - Environmental hazards in Campaign.** The level shapes are already procedural, so they
+      lend themselves to **moving walls** (gates that open/close on a cycle) and **teleport pads** (enter
+      one, exit its pair). Impl: extend `LevelsMode`/the wall set with time-phased cells and a teleport map;
+      apply in `GameEngine.tick`; cover with `LevelShapesTest`-style connectivity/lethality tests.
+
+**Retention & social**
+
+- [ ] **Step 6.9.8 - Daily streak achievements & rewards.** Tie achievements (and maybe an unlockable skin)
+      to the Daily Challenge streak ("7-day streak", "30-day streak"). Impl: the streak already lives in
+      `SettingsRepository` (`dailyStreak`); add `Achievement` entries that read it, and gate a `Skin` behind a
+      milestone.
+
+- [ ] **Step 6.9.9 - Unlockable skins.** The four skins are all available immediately; gate some behind
+      achievements / streaks / score milestones to give long-term goals. Impl: an "unlocked skins" set in
+      `SettingsRepository`, a lock state in the Settings skin picker, and unlock triggers on game-over.
+
+- [ ] **Step 6.9.10 - Weekly challenge / local Daily history.** A small screen showing the last 7 days'
+      Daily results (best per day) and a "this week" aggregate. Impl: the per-day bests are already stored
+      (`daily_best_<epochDay>`); add a bulk read over the last N days and a simple table view.
+
+- [ ] **Step 6.9.11 - Share your score.** From the game-over (and Daily) screen, render a small score card
+      and open the Android share sheet (`ACTION_SEND` with a generated image). Impl: draw the card to a
+      `Bitmap`, save to cache via a `FileProvider`, and launch a share `Intent`.
+
+- [ ] **Step 6.9.12 - Ghost replay of your best run.** Re-play a translucent "ghost" snake of your best run
+      alongside the live one. The interpolation + per-tick state machinery already exists; record the best
+      run's input/positions and render the ghost from the same `previousSnake`/`tickTimeNanos` path. Impl:
+      capture a compact per-tick position log on a best run, persist it, and add a ghost layer to `GameBoard`.
+
+**Onboarding & polish**
+
+- [ ] **Step 6.9.13 - First-run onboarding / tutorial.** A brief, skippable intro on first launch (controls
+      + objective), so new players aren't dropped cold. Impl: a one-time flag in `SettingsRepository`; a
+      lightweight overlay or a 2-3 card pager shown before the first game.
+
 ### Phase 7 - Play Store distribution & cleanup
 
 - [x] **Step 7.1** - Final app icon / adaptive icon + branded **SplashScreen API**; set `versionCode`/`versionName`.
@@ -338,6 +421,7 @@ snake-game/
 | **M2 - Pretty** | End of Phases 2–3 | Polished graphics, menus, professional look |
 | **M3 - Alive** | End of Phases 4–5 | Audio + AGSL shaders, "premium arcade" feel |
 | **M4 - Deep** | End of Phase 6 | Skins, power-ups, achievements, extra modes |
+| **M4.5 - Felt** | End of Phase 6.9 | Game feel, accessibility & retention polish |
 | **M5 - Published** | End of Phase 7 | Signed AAB on the Google Play Store, legacy archived |
 
 ---
@@ -355,30 +439,25 @@ snake-game/
 - **Mystery foods are resolved at spawn, not at eat**: `FoodTable.roll` rolls the concealed amount and
   stores the final `FoodEffect`, so `GameEngine.tick` consumes no randomness and stays deterministic.
 - **Special power-ups / hazards** shipped in **Phase 6.2** (earthquake, explosion + lethal debris,
-  Lightning/Snail, Star/ghost, Freeze, Jackpot, and the **3D** chase-cam hazard) via
+  Lightning/Snail, Star/ghost, Freeze, Jackpot) via
   `FoodCategory.Special`, the extra `FoodEffect` cases and `GameState.debris`/`effectTimers`. Effect
   durations are stored in **ms** and aged by the effective interval each tick; the loop reads
   `GameState.tickIntervalMillis` (never `level.tickMillis`) so speed effects actually change the pace.
-  Keep that invariant. The 3D view eases the pace by `THREED_FACTOR` (proportional, applied when the
-  3D hazard is active or the **3D World** setting is on) so the perspective stays playable. The 3D *camera* is
-  otherwise rendering-only: the `game/` package is unaware of it (besides the speed factor), the
-  cinematic freeze is a transient UI flag (`GameViewModel.cinematicHold`), and all perspective math
+  Keep that invariant. The standing 3D views run at the exact 2D pace. The 3D *camera* is
+  rendering-only: the `game/` package is unaware of it, and all perspective math
   lives in `ui/game/ChaseCam.kt` + `GameBoard.draw3DScene` behind a single `camBlend` blend. The board
   swipe uses a **single, never-swapped** `pointerInput` routed through `GameViewModel.onSwipe`, which
   picks relative-turn vs absolute steering from the current `threeDActive` (swapping the modifier on a
   state change left a stale gesture handler - do not reintroduce that).
-- **3D World** is a **start-screen "View" selector** (three mutually-exclusive `ReadyOverlay` chips -
-  **2D** / **3D** / **3D Fixed** - via `GameViewModel.selectViewMode`), a three-way **`ViewMode`** enum
+- **3D World** is a **Settings "View" selector** (a `ViewMode` `ChoiceSection` - **2D** / **3D** /
+  **3D Fixed**, written via `SettingsRepository.setViewMode`), a three-way **`ViewMode`** enum
   persisted via DataStore (`Settings.viewMode`, falling back from the legacy `threeDWorld` boolean) and
   orthogonal to the mode: any mode plays in a perspective view when one is picked. **3D** follows the
   snake's heading (the camera rotates); **3D Fixed** is **north-locked and panoramic** -
   `blendedCam(fixedNorth = true)` still **follows the head** (centred, board scrolls underneath) but
   never rotates, so it stays readable in every direction. Steering there is **absolute** (2D-style) via
-  `GameViewModel.relativeSteering` (`threeDActive && !viewMode.fixedNorth`). It is carried into a run as
-  the boolean `GameState.threeDWorld` flag (set by both 3D
-  variants, stamped in `GameViewModel.resetTo` + synced on the Ready screen), which the model consults
-  only to ease the pace and suppress the redundant 3D food. `threeDActive`
-  (`threeDWorldEnabled || threeDHazardActive`) drives the renderer + relative controls; `GameScreen`
+  `GameViewModel.relativeSteering` (`threeDActive && !viewMode.fixedNorth`). `threeDActive`
+  (`= threeDWorldEnabled`, derived from `viewMode`) drives the renderer + relative controls; `GameScreen`
   holds `camBlend` at 1 while a 3D view is on and passes `viewMode.fixedNorth` to `GameBoard`. It was
   briefly a `GameMode` (`ThreeDWorld`); that was removed in favour of the orthogonal selector - do not
   reintroduce it as a mode.
@@ -390,9 +469,9 @@ snake-game/
   carries only `obstacleCount`; the pace lives in a separate `SnakeSpeed` enum (5 settings:
   Relaxed→Turbo, the old per-level tick values), persisted via DataStore (`Settings.snakeSpeed`,
   default `SnakeSpeed.DEFAULT = Relaxed`) and stamped onto `GameState.snakeSpeed`. The base tick is
-  read from `snakeSpeed.tickMillis` in `GameState.tickIntervalMillis` for Classic/Time Attack (Endless
-  and Campaign still override it). Both selectors sit on the start screen and in Settings (speed under
-  Level), and are disabled in the modes that ignore them. Highscores stay keyed on `(mode, level,
+  read from `snakeSpeed.tickMillis` in `GameState.tickIntervalMillis` for Time Attack (Endless and
+  Campaign still override it). Both selectors sit on the **Custom** setup screen and in Settings (speed
+  under Level), and are disabled in the modes that ignore them. Highscores stay keyed on `(mode, level,
   scale)` only - speed is **not** part of `ScoreKey`, so all speeds share a level/scale's best score.
 - **Back-during-play behaviour is a setting** (`BackBehavior`: `Pause` (default) / `KeepPlaying`,
   persisted as `back_behavior`): it only affects a **Running** game (paused / game-over / Ready always

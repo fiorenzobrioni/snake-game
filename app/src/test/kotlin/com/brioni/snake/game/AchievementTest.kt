@@ -8,7 +8,7 @@ import org.junit.Test
 class AchievementTest {
 
     private fun stats(
-        mode: GameMode = GameMode.Classic,
+        mode: GameMode = GameMode.Endless,
         score: Int = 0,
         maxCombo: Int = 0,
         durationMs: Long = 0,
@@ -52,7 +52,7 @@ class AchievementTest {
 
     @Test
     fun `speed runner requires time attack mode`() {
-        assertFalse(Achievement.SpeedRunner.test(stats(mode = GameMode.Classic, score = 700)))
+        assertFalse(Achievement.SpeedRunner.test(stats(mode = GameMode.Endless, score = 700)))
         assertTrue(Achievement.SpeedRunner.test(stats(mode = GameMode.TimeAttack, score = 600)))
     }
 
@@ -70,7 +70,7 @@ class AchievementTest {
     fun `levels achievements gate on mode and depth`() {
         assertTrue(Achievement.Climber.test(stats(mode = GameMode.Levels, maxLevelReached = 5)))
         assertFalse(Achievement.Climber.test(stats(mode = GameMode.Levels, maxLevelReached = 4)))
-        assertFalse(Achievement.Climber.test(stats(mode = GameMode.Classic, maxLevelReached = 5)))
+        assertFalse(Achievement.Climber.test(stats(mode = GameMode.Endless, maxLevelReached = 5)))
         assertTrue(Achievement.TowerTopper.test(stats(mode = GameMode.Levels, maxLevelReached = 10)))
         assertFalse(Achievement.TowerTopper.test(stats(mode = GameMode.Levels, maxLevelReached = 9)))
     }
@@ -81,7 +81,7 @@ class AchievementTest {
         assertTrue(Achievement.FullCircle.test(stats(mode = GameMode.Levels, flawlessLap = true)))
         // Reaching Speed 2 but having lost a life does not count (flawlessLap stays false).
         assertFalse(Achievement.FullCircle.test(stats(mode = GameMode.Levels, maxSpeedCycle = 2, flawlessLap = false)))
-        assertFalse(Achievement.FullCircle.test(stats(mode = GameMode.Classic, flawlessLap = true)))
+        assertFalse(Achievement.FullCircle.test(stats(mode = GameMode.Endless, flawlessLap = true)))
     }
 
     @Test
@@ -89,7 +89,7 @@ class AchievementTest {
         // Level 10 at Speed 2 is depth 20; Level 10 at Speed 3 is depth 30.
         assertTrue(Achievement.TowerMaster.test(stats(mode = GameMode.Levels, maxLevelDepth = 20)))
         assertFalse(Achievement.TowerMaster.test(stats(mode = GameMode.Levels, maxLevelDepth = 19)))
-        assertFalse(Achievement.TowerMaster.test(stats(mode = GameMode.Classic, maxLevelDepth = 20)))
+        assertFalse(Achievement.TowerMaster.test(stats(mode = GameMode.Endless, maxLevelDepth = 20)))
         assertTrue(Achievement.TowerSovereign.test(stats(mode = GameMode.Levels, maxLevelDepth = 30)))
         assertFalse(Achievement.TowerSovereign.test(stats(mode = GameMode.Levels, maxLevelDepth = 29)))
         // Reaching only Level 10 of Speed 1 (depth 10) earns neither.

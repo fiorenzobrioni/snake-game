@@ -50,6 +50,7 @@ import com.brioni.snake.game.Skin
 import com.brioni.snake.game.SnakeSpeed
 import com.brioni.snake.game.SpecialFrequency
 import com.brioni.snake.game.ThemeMode
+import com.brioni.snake.game.ViewMode
 import com.brioni.snake.ui.game.paletteFor
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -119,6 +120,14 @@ fun SettingsScreen(
             onSelected = { scale -> scope.launch { repo.setScale(scale) } },
         )
 
+        ChoiceSection(
+            title = stringResource(R.string.settings_view),
+            options = ViewMode.entries,
+            selected = settings.viewMode,
+            label = { it.displayName },
+            onSelected = { view -> scope.launch { repo.setViewMode(view) } },
+        )
+
         SkinSection(
             selected = settings.skin,
             onSelected = { skin -> scope.launch { repo.setSkin(skin) } },
@@ -165,6 +174,18 @@ fun SettingsScreen(
             value = settings.sfxVolume,
             onPreview = { audio.previewVolumes(settings.masterVolume, settings.musicVolume, it) },
             onCommit = { scope.launch { repo.setSfxVolume(it) } },
+        )
+
+        ToggleSection(
+            title = stringResource(R.string.settings_haptics),
+            checked = settings.hapticsEnabled,
+            onCheckedChange = { enabled -> scope.launch { repo.setHapticsEnabled(enabled) } },
+        )
+
+        ToggleSection(
+            title = stringResource(R.string.settings_reduce_motion),
+            checked = settings.reduceMotion,
+            onCheckedChange = { enabled -> scope.launch { repo.setReduceMotion(enabled) } },
         )
 
         ToggleSection(

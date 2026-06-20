@@ -10,6 +10,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.brioni.snake.audio.GameHaptics
 import com.brioni.snake.audio.GameSfx
 import com.brioni.snake.data.SettingsRepository
 import com.brioni.snake.game.Achievement
@@ -17,6 +18,7 @@ import com.brioni.snake.game.BackBehavior
 import com.brioni.snake.game.BoardDimensions
 import com.brioni.snake.game.BoardScale
 import com.brioni.snake.game.ControlScheme
+import com.brioni.snake.game.Challenge
 import com.brioni.snake.game.EffectKind
 import com.brioni.snake.game.DEFAULT_ASPECT
 import com.brioni.snake.game.Direction
@@ -39,6 +41,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlin.random.Random
 import kotlin.math.max
 
 /** Which particle burst the renderer should spawn for an [EatEvent]. */
@@ -78,9 +81,10 @@ data class FloatingTextEvent(val cell: Position, val span: Int, val text: String
 class GameViewModel(
     private val repo: SettingsRepository,
     private val sfx: GameSfx = GameSfx.None,
+    private val haptics: GameHaptics = GameHaptics.None,
 ) : ViewModel() {
 
-    private val engine = GameEngine()
+    private var engine = GameEngine()
 
     /** The selected granularity preset; concrete dims derive from it + the aspect. */
     var scale by mutableStateOf(DEFAULT_SCALE)
@@ -106,6 +110,10 @@ class GameViewModel(
     var electricWalls by mutableStateOf(true)
         private set
 
+    /** Accessibility: damp screen shake, particle bursts and near-miss flashes (setting). */
+    var reduceMotion by mutableStateOf(false)
+        private set
+
     /** Active visual skin (loaded from settings); drives the renderer [palette]. */
     var skin by mutableStateOf(Skin.Classic)
         private set
@@ -126,7 +134,7 @@ class GameViewModel(
     val threeDWorldEnabled: Boolean get() = viewMode.is3D
 
     /** Active play mode; highscores are tracked per (mode, level, scale). */
-    var mode by mutableStateOf(GameMode.Classic)
+    var mode by mutableStateOf(GameMode.Endless)
         private set
 
     /** The colour palette + style flags for the active [skin]. */
@@ -167,44 +175,24 @@ class GameViewModel(
     var shakeEventId by mutableIntStateOf(0)
         private set
 
-    /**
-     * True while the 3D (chase-cam) *hazard* is on screen — from the tilt-in until
-     * the tilt-out completes. Distinct from the effect timer so it can bracket the
-     * cinematic. The whole 3D World mode is handled separately via [threeDActive].
-     */
-    var threeDHazardActive by mutableStateOf(false)
+    /** Bumped on a near-miss / grace dodge so the UI can flash a brief danger cue. */
+    var nearMissEventId by mutableIntStateOf(0)
         private set
 
     /**
-     * Whether the board should render (and steer) in the 3D chase-cam: the timed
-     * hazard, or the "3D World" setting that plays every mode in 3D. Gates the
-     * relative-controls override and the perspective renderer.
+     * Whether the board should render (and steer) in the 3D chase-cam: the
+     * "3D" / "3D Fixed" view setting that plays every mode in perspective. Gates
+     * the relative-controls override and the perspective renderer.
      */
-    val threeDActive: Boolean get() = threeDWorldEnabled || threeDHazardActive
+    val threeDActive: Boolean get() = threeDWorldEnabled
 
     /**
      * Whether steering should be heading-relative (left/right turns) rather than
-     * absolute. True for the rotating perspective views (chase-cam hazard or the
-     * "3D" follow view), but **false** for the north-locked "3D Fixed" view, whose
-     * board never rotates - there swipe/D-pad behave exactly like the flat 2D board.
+     * absolute. True for the rotating "3D" follow view, but **false** for the
+     * north-locked "3D Fixed" view, whose board never rotates - there swipe/D-pad
+     * behave exactly like the flat 2D board.
      */
     val relativeSteering: Boolean get() = threeDActive && !viewMode.fixedNorth
-
-    /**
-     * Bumped when the 3D cinematic should play (tilt-in on start, tilt-out on
-     * expiry). The screen observes it to drive the camera-blend animation, the
-     * same id-counter pattern as [deathEventId] / [shakeEventId].
-     */
-    var cinematicId by mutableIntStateOf(0)
-        private set
-
-    /**
-     * Transient, UI-only freeze of the tick loop while a 3D tilt animation plays.
-     * Not [GameStatus.Paused] (no overlay/blur) and not a model field — the model
-     * stays unaware of the camera. Holding the loop also pauses the effect-timer
-     * aging, so the 3D duration counts only real play time.
-     */
-    private var cinematicHold = false
 
     /** Best score for the current (level, scale), and whether the last run beat it. */
     var bestScore by mutableIntStateOf(0)
@@ -244,6 +232,32 @@ class GameViewModel(
     private var introJob: Job? = null
     private var lastAspect = DEFAULT_ASPECT
 
+    /** Set by Quick Play: start the run as soon as the board has been measured. */
+    private var pendingQuickStart = false
+
+    /**
+     * Non-null while a seeded **challenge** run (Daily or Random) is configured
+     * (vs a normal run): it pins the mode/level/scale and seeds the engine. The
+     * settings sync is suspended and the score routing adapts. Cleared by [toSetup].
+     */
+    var activeChallenge by mutableStateOf<Challenge?>(null)
+        private set
+
+    /** For a Daily challenge only: the epoch day, used to route the score + best. */
+    private var dailyEpochDay: Long? = null
+
+    /** True while the active challenge is a one-off Random run (no stored best). */
+    val isRandomChallenge: Boolean get() = activeChallenge != null && dailyEpochDay == null
+
+    /** True while the active challenge is the date-seeded Daily run. */
+    val isDailyChallenge: Boolean get() = dailyEpochDay != null
+
+    /** Set by [requestDailyStart] / [requestRandomStart]; consumed once measured. */
+    private var pendingChallenge: Challenge? = null
+
+    /** Wall-clock of the last near-miss haptic, for throttling (see [NEAR_MISS_MIN_GAP_NANOS]). */
+    private var lastNearMissNanos = 0L
+
     val level: Level get() = state.level
     val board: BoardDimensions get() = state.board
 
@@ -258,17 +272,19 @@ class GameViewModel(
                 controlScheme = settings.controlScheme
                 backBehavior = settings.backBehavior
                 crtEnabled = settings.crtEnabled
+                reduceMotion = settings.reduceMotion
                 electricWalls = settings.electricWallsEnabled
                 skin = settings.skin
-                hazardsEnabled = settings.hazardsEnabled
-                specialFrequency = settings.specialFrequency
                 viewMode = settings.viewMode
-                if (state.status == GameStatus.Ready) {
-                    // Keep the not-yet-started board's 3D flag in sync with the
-                    // toggle so the pace/spawn rules match before play begins.
-                    if (state.threeDWorld != threeDWorldEnabled) {
-                        state = state.copy(threeDWorld = threeDWorldEnabled)
-                    }
+                // The Daily Challenge pins the spawn-affecting toggles so the run is
+                // identical for everyone; only sync them from settings outside it.
+                if (activeChallenge == null) {
+                    hazardsEnabled = settings.hazardsEnabled
+                    specialFrequency = settings.specialFrequency
+                }
+                // While a challenge is configured its fixed mode/level/scale must
+                // stick, so skip the persisted-settings sync below.
+                if (state.status == GameStatus.Ready && activeChallenge == null) {
                     // Levels mode ignores the difficulty selector: it is pinned
                     // to its score level so this collector can't keep resetting.
                     val targetLevel = if (settings.mode == GameMode.Levels) LevelsMode.SCORE_LEVEL else settings.level
@@ -329,26 +345,81 @@ class GameViewModel(
         refreshBest()
     }
 
-    /** Start-screen selector: the board view (persisted across runs). */
-    fun selectViewMode(mode: ViewMode) {
-        if (state.status != GameStatus.Ready) return
-        viewMode = mode
-        // Reflect immediately so the not-yet-started board carries the flag; the
-        // settings collector will re-apply the same value once DataStore emits.
-        state = state.copy(threeDWorld = mode.is3D)
-        viewModelScope.launch { repo.setViewMode(mode) }
-    }
-
     /**
      * Called by the UI when the play area is (re)measured. Resizes the board to
      * fill it, but only while [GameStatus.Ready]; ignored once a game starts so
      * dimensions stay locked during play. Idempotent against measurement jitter.
+     * Also the gate for a pending Quick Play start: the run only launches once the
+     * board has been fitted to the device.
      */
     fun onPlayAreaMeasured(aspectRatio: Float) {
         if (state.status != GameStatus.Ready) return
-        if (aspectRatio <= 0f || aspectRatio == lastAspect) return
-        lastAspect = aspectRatio
-        reconfigureBoard()
+        if (aspectRatio > 0f && aspectRatio != lastAspect) {
+            lastAspect = aspectRatio
+            reconfigureBoard()
+        }
+        val challenge = pendingChallenge
+        if (challenge != null) {
+            pendingChallenge = null
+            startChallenge(challenge)
+            return
+        }
+        if (pendingQuickStart) {
+            pendingQuickStart = false
+            start()
+        }
+    }
+
+    /**
+     * Menu "Play" (Quick Play): launch with the current persisted settings,
+     * skipping the Custom setup overlay. Deferred until [onPlayAreaMeasured] so the
+     * board fits the device before the run locks its dimensions.
+     */
+    fun requestQuickStart() {
+        if (state.status == GameStatus.Ready) pendingQuickStart = true
+    }
+
+    /**
+     * Launch [epochDay]'s **Daily** Challenge: the score and best are routed to the
+     * per-day daily store. Deferred to [onPlayAreaMeasured] so the board is fitted
+     * to the device first.
+     */
+    fun requestDailyStart(epochDay: Long) {
+        if (state.status != GameStatus.Ready) return
+        dailyEpochDay = epochDay
+        activeChallenge = Challenge.forDay(epochDay)
+        pendingChallenge = activeChallenge
+    }
+
+    /**
+     * Launch a one-off **Random** challenge ([challenge] generated by the screen):
+     * same pinning/seeding as the daily, but no stored best or streak.
+     */
+    fun requestRandomStart(challenge: Challenge) {
+        if (state.status != GameStatus.Ready) return
+        dailyEpochDay = null
+        activeChallenge = challenge
+        pendingChallenge = challenge
+    }
+
+    /** Reseeds the engine and starts the [challenge] run on the measured board. */
+    private fun startChallenge(challenge: Challenge) {
+        // A fresh seeded engine makes the obstacle layout and the food sequence
+        // the challenge's (for a given board size).
+        engine = GameEngine(Random(challenge.seed))
+        mode = challenge.mode
+        scale = challenge.scale
+        snakeSpeed = SnakeSpeed.DEFAULT
+        // Pin the spawn-affecting toggles so a seeded run is reproducible,
+        // applying the modifier (Bonus Rush, Frenzy, ...) on top.
+        hazardsEnabled = challenge.modifier.hazardsOverride ?: true
+        specialFrequency = challenge.modifier.specialFrequencyOverride ?: SpecialFrequency.Standard
+        resetTo(engine.setup(challenge.level, boardFor(scale, lastAspect), mode, snakeSpeed))
+        resetTo(engine.start(state))
+        isNewBest = false
+        refreshBest()
+        beginRun()
+        afterReset()
     }
 
     private fun reconfigureBoard() {
@@ -384,6 +455,9 @@ class GameViewModel(
     }
 
     fun playAgain() {
+        // A Daily Challenge replays the exact same seeded run (retry for a better
+        // score); a normal run just starts a fresh game with the current config.
+        activeChallenge?.let { startChallenge(it); return }
         resetTo(engine.newGame(state.level, state.board, mode, snakeSpeed))
         isNewBest = false
         beginRun()
@@ -450,6 +524,29 @@ class GameViewModel(
     fun toSetup() {
         stopLoop()
         cancelIntro()
+        pendingQuickStart = false
+        pendingChallenge = null
+        if (activeChallenge != null) {
+            // Leaving a challenge run: drop the seeded engine and restore the player's
+            // persisted Custom setup (the settings collector won't re-emit on its own).
+            activeChallenge = null
+            dailyEpochDay = null
+            engine = GameEngine()
+            viewModelScope.launch {
+                val s = repo.settings.first()
+                mode = s.mode
+                scale = s.scale
+                snakeSpeed = s.snakeSpeed
+                // Restore the spawn toggles the daily had pinned (the settings
+                // collector only re-emits on an actual change).
+                hazardsEnabled = s.hazardsEnabled
+                specialFrequency = s.specialFrequency
+                val level = if (mode == GameMode.Levels) LevelsMode.SCORE_LEVEL else s.level
+                resetTo(engine.setup(level, boardFor(scale, lastAspect), mode, snakeSpeed))
+                refreshBest()
+            }
+            return
+        }
         resetTo(engine.setup(state.level, state.board, mode, snakeSpeed))
         refreshBest()
     }
@@ -457,13 +554,8 @@ class GameViewModel(
     /** Replaces the state and resets interpolation bookkeeping to it. */
     private fun resetTo(newState: GameState) {
         previousSnake = newState.snake
-        // Stamp the current "3D World" toggle onto the run so the model eases the
-        // pace and suppresses the redundant 3D food for the whole game.
-        state = newState.copy(threeDWorld = threeDWorldEnabled)
+        state = newState
         tickTimeNanos = System.nanoTime()
-        // Any reset (setup / new game / level stage) clears the hazard cinematic.
-        threeDHazardActive = false
-        cinematicHold = false
     }
 
     private fun runLoop() {
@@ -473,10 +565,7 @@ class GameViewModel(
                 // Read the *effective* interval each iteration so Lightning/Snail/
                 // Freeze actually change the pace mid-run.
                 delay(state.tickIntervalMillis)
-                // The loop keeps spinning during a 3D tilt cinematic but skips the
-                // simulation, so the snake and the effect timers freeze until the
-                // camera has settled (see [endCinematicHold]).
-                if (state.status == GameStatus.Running && !cinematicHold) advance()
+                if (state.status == GameStatus.Running) advance()
             }
         }
     }
@@ -487,8 +576,6 @@ class GameViewModel(
         val after = engine.tick(before, hazardsEnabled, specialFrequency)
         runMaxLength = max(runMaxLength, after.snake.size)
 
-        var threeDStarted = false
-        var threeDExpired = false
         after.lastEvents.forEach { event ->
             when (event) {
                 is GameEvent.Ate -> {
@@ -500,6 +587,7 @@ class GameViewModel(
                         floatingTextId++
                     }
                     sfx.ate(event.food, event.combo)
+                    haptics.eat()
                     runFoodsEaten++
                     runMaxCombo = max(runMaxCombo, event.combo)
                 }
@@ -511,11 +599,29 @@ class GameViewModel(
                         floatingTextId++
                     }
                     sfx.shrunk(event.food)
+                    haptics.eat()
                 }
                 GameEvent.Died -> {
                     deathEventId++
                     sfx.died()
+                    haptics.death()
                     onGameOver(after.score)
+                }
+                GameEvent.NearMiss -> {
+                    // Throttled so hugging an edge gives an occasional tick/flash, not a buzz.
+                    val now = System.nanoTime()
+                    if (now - lastNearMissNanos >= NEAR_MISS_MIN_GAP_NANOS) {
+                        haptics.nearMiss()
+                        nearMissEventId++
+                        lastNearMissNanos = now
+                    }
+                }
+                GameEvent.GraceDodge -> {
+                    // A whisker from death: a firmer cue and a flash sell the save.
+                    // Suppress the near-miss tick that would otherwise pile on right after.
+                    haptics.special()
+                    nearMissEventId++
+                    lastNearMissNanos = System.nanoTime()
                 }
                 is GameEvent.Exploded -> {
                     // Explosion: outward burst at the blast + a board shake.
@@ -523,12 +629,14 @@ class GameViewModel(
                     eatEventId++
                     shakeEventId++
                     sfx.special(event.food)
+                    haptics.special()
                     runUsedExplosion = true
                 }
                 is GameEvent.JackpotHit -> {
                     eatEvent = EatEvent(event.food.position, event.food.span, palette.foodColor(event.food), BurstStyle.Eat)
                     eatEventId++
                     sfx.special(event.food)
+                    haptics.special()
                     runUsedJackpot = true
                     runFoodsEaten++
                 }
@@ -539,6 +647,7 @@ class GameViewModel(
                     floatingText = FloatingTextEvent(event.food.position, event.food.span, "+${event.seconds}s", SpecialVisuals.TimeBonusColor)
                     floatingTextId++
                     sfx.special(event.food)
+                    haptics.special()
                 }
                 is GameEvent.TimeLost -> {
                     // Time Attack: a red implosion + a "-Ns" callout + a sting shake.
@@ -548,6 +657,7 @@ class GameViewModel(
                     floatingTextId++
                     shakeEventId++
                     sfx.special(event.food)
+                    haptics.special()
                 }
                 is GameEvent.FoodVanished -> {
                     // An ignored food timed out: a quiet upward fade, no sound.
@@ -556,14 +666,13 @@ class GameViewModel(
                 }
                 is GameEvent.EffectStarted -> {
                     sfx.special(event.food)
+                    haptics.special()
                     if (event.kind == EffectKind.Ghost) runUsedStar = true
-                    if (event.kind == EffectKind.ThreeD) threeDStarted = true
                 }
-                is GameEvent.EffectExpired -> {
-                    if (event.kind == EffectKind.ThreeD) threeDExpired = true
-                }
+                is GameEvent.EffectExpired -> Unit
                 is GameEvent.LevelAdvanced -> {
                     sfx.levelUp()
+                    haptics.levelUp()
                     runMaxLevel = max(runMaxLevel, event.levelIndex)
                     runMaxCycle = max(runMaxCycle, event.speedCycle)
                     runMaxDepth = max(runMaxDepth, levelDepth(event.levelIndex, event.speedCycle))
@@ -574,6 +683,7 @@ class GameViewModel(
                     // A non-final crash: the lighter quake shake, not the death one.
                     shakeEventId++
                     sfx.lifeLost()
+                    haptics.lifeLost()
                     runLivesLost++
                 }
                 is GameEvent.LifeGained -> {
@@ -583,6 +693,7 @@ class GameViewModel(
                     floatingText = FloatingTextEvent(event.food.position, event.food.span, text, SpecialVisuals.ExtraLifeColor)
                     floatingTextId++
                     sfx.lifeGained()
+                    haptics.special()
                     if (!event.capped) runExtraLives++
                 }
             }
@@ -602,33 +713,6 @@ class GameViewModel(
         previousSnake = before.snake
         state = after
         tickTimeNanos = System.nanoTime()
-
-        // 3D cinematic brackets. Enter only on the rising edge (a second 3D eaten
-        // while already active just refreshes the timer — no re-tilt). Both edges
-        // freeze the loop until the screen's blend animation calls back.
-        if (threeDStarted && !threeDHazardActive) {
-            threeDHazardActive = true
-            cinematicHold = true
-            cinematicId++
-        }
-        if (threeDExpired) {
-            cinematicHold = true
-            cinematicId++
-        }
-    }
-
-    /**
-     * Called by the screen when a 3D tilt animation finishes: releases the loop
-     * freeze so play resumes. Safe to call after the game already left Running
-     * (the loop has stopped; the flag is simply cleared for the next run).
-     */
-    fun endCinematicHold() {
-        cinematicHold = false
-    }
-
-    /** Clears the 3D hazard state once the tilt-out has restored the flat view. */
-    fun clearThreeD() {
-        threeDHazardActive = false
     }
 
     /**
@@ -651,10 +735,6 @@ class GameViewModel(
     }
 
     private fun onGameOver(score: Int) {
-        // Death during 3D: drop the cinematic state so the game-over overlay shows
-        // the flat board (the screen snaps the camera blend back to 0 on status).
-        threeDHazardActive = false
-        cinematicHold = false
         isNewBest = score > bestScore
         val stats = RunStats(
             mode = mode,
@@ -673,11 +753,20 @@ class GameViewModel(
             maxSnakeLength = runMaxLength,
         )
         // Persist; the bestJob collector reflects the new value back into state.
-        viewModelScope.launch { repo.submitScore(mode, state.level, scale, score) }
-        if (mode == GameMode.Levels) {
-            // Levels: also track how deep the run got, for the Records screen.
-            val completed = (state.speedCycle - 1) * LevelsMode.LEVEL_COUNT + (state.levelIndex - 1)
-            viewModelScope.launch { repo.submitLevelsProgress(scale, completed) }
+        // The Daily keeps its own per-day best (and streak); a Random challenge is
+        // a one-off and stores nothing; a normal run uses the (mode, level, scale) records.
+        val epochDay = dailyEpochDay
+        when {
+            epochDay != null -> viewModelScope.launch { repo.submitDailyScore(epochDay, score) }
+            activeChallenge != null -> Unit // Random challenge: not recorded.
+            else -> {
+                viewModelScope.launch { repo.submitScore(mode, state.level, scale, score) }
+                if (mode == GameMode.Levels) {
+                    // Levels: also track how deep the run got, for the Records screen.
+                    val completed = (state.speedCycle - 1) * LevelsMode.LEVEL_COUNT + (state.levelIndex - 1)
+                    viewModelScope.launch { repo.submitLevelsProgress(scale, completed) }
+                }
+            }
         }
         // Evaluate achievements against the run and surface any new unlocks.
         viewModelScope.launch {
@@ -690,14 +779,23 @@ class GameViewModel(
         }
     }
 
-    /** Tracks the best score for the current (level, scale) via a single collector. */
+    /**
+     * Tracks the best score for the current run: a Daily reads its per-day best, a
+     * Random challenge has none (0), else the (mode, level, scale) record.
+     */
     private fun refreshBest() {
         bestJob?.cancel()
+        val epochDay = dailyEpochDay
+        val randomChallenge = isRandomChallenge
         val level = state.level
         val currentScale = scale
         val currentMode = mode
         bestJob = viewModelScope.launch {
-            repo.highScore(currentMode, level, currentScale).collect { bestScore = it }
+            when {
+                epochDay != null -> repo.dailyBest(epochDay).collect { bestScore = it }
+                randomChallenge -> bestScore = 0
+                else -> repo.highScore(currentMode, level, currentScale).collect { bestScore = it }
+            }
         }
     }
 
@@ -727,8 +825,15 @@ class GameViewModel(
         /** Levels mode: seconds counted down by the intro overlay. */
         private const val INTRO_SECONDS = 3
 
-        fun factory(repo: SettingsRepository, sfx: GameSfx = GameSfx.None) = viewModelFactory {
-            initializer { GameViewModel(repo, sfx) }
+        fun factory(
+            repo: SettingsRepository,
+            sfx: GameSfx = GameSfx.None,
+            haptics: GameHaptics = GameHaptics.None,
+        ) = viewModelFactory {
+            initializer { GameViewModel(repo, sfx, haptics) }
         }
+
+        /** Minimum gap between near-miss haptics, so riding an edge does not buzz every tick. */
+        private const val NEAR_MISS_MIN_GAP_NANOS = 220_000_000L
     }
 }

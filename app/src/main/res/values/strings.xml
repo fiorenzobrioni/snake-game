@@ -8,12 +8,32 @@
     <string name="menu_level">Level</string>
     <string name="menu_snake_speed">Snake speed</string>
     <string name="menu_board_scale">Board scale</string>
-    <string name="menu_view">View</string>
-    <string name="menu_view_2d">2D</string>
-    <string name="menu_view_3d">3D</string>
-    <string name="menu_view_3d_fixed">3D Fixed</string>
     <string name="menu_play">Play</string>
+    <string name="menu_custom">Custom</string>
+    <string name="menu_daily">Daily Challenge</string>
+    <string name="menu_random">Random Challenge</string>
     <string name="menu_records">Records</string>
+
+    <!-- Daily Challenge -->
+    <string name="daily_title">Daily Challenge</string>
+    <string name="daily_subtitle">A fresh seeded run every day - the same mode, level and board for everyone. Beat your best!</string>
+    <string name="daily_hud_prefix">Daily</string>
+    <string name="daily_row_twist">Twist</string>
+    <string name="daily_row_mode">Mode</string>
+    <string name="daily_row_level">Level</string>
+    <string name="daily_row_board">Board</string>
+    <string name="daily_best_label">Best today</string>
+    <string name="daily_streak_label">Day streak</string>
+    <string name="daily_streak_value">%1$d</string>
+    <string name="daily_play">Play</string>
+    <string name="daily_play_again">Play again</string>
+
+    <!-- Random Challenge -->
+    <string name="random_title">Random Challenge</string>
+    <string name="random_subtitle">A surprise one-off run for variety. Shuffle for a new mix, then play - nothing is recorded.</string>
+    <string name="random_hud_prefix">Random</string>
+    <string name="random_shuffle">Shuffle</string>
+    <string name="random_play">Play</string>
     <string name="records_title">Records</string>
     <string name="menu_achievements">Achievements</string>
     <string name="achievements_title">Achievements</string>
@@ -53,11 +73,14 @@
     <string name="settings_level">Level</string>
     <string name="settings_snake_speed">Snake speed</string>
     <string name="settings_board_scale">Board scale</string>
+    <string name="settings_view">View</string>
     <string name="settings_master_volume">Master volume</string>
     <string name="settings_music_volume">Music volume</string>
     <string name="settings_sfx_volume">Sound effects</string>
     <!-- "<label>: <percent>%", e.g. "Master volume: 80%" -->
     <string name="settings_volume_label">%1$s: %2$d%%</string>
+    <string name="settings_haptics">Vibration feedback</string>
+    <string name="settings_reduce_motion">Reduce motion &amp; flashing</string>
     <string name="settings_crt_filter">Retro CRT filter</string>
     <string name="settings_electric_walls">Electric 3D walls</string>
     <string name="settings_back_behavior">Back during play</string>
@@ -69,8 +92,8 @@
     <!-- HUD -->
     <string name="hud_score">Score: %1$d</string>
     <string name="hud_combo">x%1$d</string>
-    <!-- Campaign mode HUD: "LVL 3 · SPD 2" (abbreviated to match the compact status row) -->
-    <string name="hud_level_speed">LVL %1$d · SPD %2$d</string>
+    <!-- Campaign mode HUD: "Level 3 · Speed 2" -->
+    <string name="hud_level_speed">Level %1$d · Speed %2$d</string>
     <string name="hud_next_level">Next: %1$d</string>
     <string name="hud_lives">Lives: %1$d</string>
     <string name="hud_length">Len %1$d</string>
@@ -79,7 +102,6 @@
     <string name="effect_snail">Snail</string>
     <string name="effect_star">Star</string>
     <string name="effect_freeze">Freeze</string>
-    <string name="effect_threed">3D</string>
     <string name="effect_quake">Quake</string>
     <string name="action_pause">Pause</string>
     <string name="action_resume">Resume</string>

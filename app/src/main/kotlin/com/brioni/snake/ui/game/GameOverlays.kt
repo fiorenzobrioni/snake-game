@@ -44,7 +44,6 @@ import com.brioni.snake.game.BoardScale
 import com.brioni.snake.game.GameMode
 import com.brioni.snake.game.Level
 import com.brioni.snake.game.SnakeSpeed
-import com.brioni.snake.game.ViewMode
 
 /** Translucent full-screen scrim shared by every overlay. */
 @Composable
@@ -80,12 +79,10 @@ fun ReadyOverlay(
     selectedLevel: Level,
     selectedSnakeSpeed: SnakeSpeed,
     selectedScale: BoardScale,
-    viewMode: ViewMode,
     onModeSelected: (GameMode) -> Unit,
     onLevelSelected: (Level) -> Unit,
     onSnakeSpeedSelected: (SnakeSpeed) -> Unit,
     onScaleSelected: (BoardScale) -> Unit,
-    onViewModeChanged: (ViewMode) -> Unit,
     onPlay: () -> Unit,
 ) {
     OverlayScrim(alpha = 0.55f) {
@@ -106,27 +103,6 @@ fun ReadyOverlay(
             }
         }
 
-        // View is orthogonal to the mode: a flat top-down board (2D), the chase-cam
-        // that follows the heading (3D), or a north-locked panoramic view (3D Fixed).
-        // Mutually-exclusive chips, so it reads like the other selectors.
-        ChipSection(title = stringResource(R.string.menu_view)) {
-            FilterChip(
-                selected = viewMode == ViewMode.TwoD,
-                onClick = { onViewModeChanged(ViewMode.TwoD) },
-                label = { Text(stringResource(R.string.menu_view_2d)) },
-            )
-            FilterChip(
-                selected = viewMode == ViewMode.ThreeD,
-                onClick = { onViewModeChanged(ViewMode.ThreeD) },
-                label = { Text(stringResource(R.string.menu_view_3d)) },
-            )
-            FilterChip(
-                selected = viewMode == ViewMode.ThreeDFixed,
-                onClick = { onViewModeChanged(ViewMode.ThreeDFixed) },
-                label = { Text(stringResource(R.string.menu_view_3d_fixed)) },
-            )
-        }
-
         // Campaign mode has its own speed curve and shaped boards: the difficulty
         // selector stays in place but is disabled (and ignored by the ViewModel)
         // while it is active, so the menu layout never reflows.
@@ -145,7 +121,7 @@ fun ReadyOverlay(
         // Snake speed is independent of the level's obstacle layout. Endless ramps
         // its own pace and Levels paces by its speed cycle, so the selector is
         // disabled (and ignored) in those modes - the layout never reflows.
-        val speedSelectable = selectedMode == GameMode.Classic || selectedMode == GameMode.TimeAttack
+        val speedSelectable = selectedMode == GameMode.TimeAttack
         ChipSection(title = stringResource(R.string.menu_snake_speed), enabled = speedSelectable) {
             SnakeSpeed.entries.forEach { speed ->
                 FilterChip(
@@ -350,6 +326,7 @@ fun GameOverOverlay(
     onPlayAgain: () -> Unit,
     onSetup: () -> Unit,
     onMenu: () -> Unit,
+    showBest: Boolean = true,
 ) {
     OverlayScrim {
         Text(
@@ -365,18 +342,20 @@ fun GameOverOverlay(
             color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(top = 12.dp),
         )
-        Text(
-            text = if (isNewBest) {
-                stringResource(R.string.new_highscore)
-            } else {
-                stringResource(R.string.highscore_label, bestScore)
-            },
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = if (isNewBest) FontWeight.Bold else FontWeight.Normal,
-            color = if (isNewBest) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-            modifier = Modifier.padding(top = 6.dp),
-        )
+        if (showBest) {
+            Text(
+                text = if (isNewBest) {
+                    stringResource(R.string.new_highscore)
+                } else {
+                    stringResource(R.string.highscore_label, bestScore)
+                },
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = if (isNewBest) FontWeight.Bold else FontWeight.Normal,
+                color = if (isNewBest) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        }
         if (unlocked.isNotEmpty()) {
             Column(
                 modifier = Modifier

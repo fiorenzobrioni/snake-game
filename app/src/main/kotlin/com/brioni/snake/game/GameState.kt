@@ -72,7 +72,7 @@ data class GameState(
     val score: Int,
     val pendingGrowth: Int,
     val status: GameStatus,
-    val mode: GameMode = GameMode.Classic,
+    val mode: GameMode = GameMode.Endless,
     val elapsedTicks: Int = 0,
     val playedMs: Long = 0,
     val combo: Int = 0,
@@ -85,9 +85,14 @@ data class GameState(
     val lives: Int = 0,
     val levelFoodsEaten: Int = 0,
     val walls: Set<Position> = emptySet(),
-    /** When true, the run is played in the 3D chase-cam (a UI/settings flag the
-     *  model only consults to ease the pace and suppress the redundant 3D food). */
-    val threeDWorld: Boolean = false,
+    /**
+     * A "coyote" dodge banked by staying alive: the first lethal step spends it on
+     * a one-tick freeze (the head hesitates against the hazard) instead of dying,
+     * buying a beat to turn away. Re-banked by the next safe move. Granted by
+     * [GameEngine.setup] / level staging; defaults false so a bare state still dies
+     * on contact (keeps the engine's collision tests immediate).
+     */
+    val graceAvailable: Boolean = false,
     val lastEvents: List<GameEvent> = emptyList(),
 ) {
     val head: Position get() = snake.first()
@@ -115,11 +120,6 @@ data class GameState(
             if (hasEffect(EffectKind.Haste)) ms *= HASTE_FACTOR
             if (hasEffect(EffectKind.Slow)) ms *= SLOW_FACTOR
             if (hasEffect(EffectKind.Freeze)) ms *= FREEZE_FACTOR
-            // The timed 3D chase-cam *hazard* eases the pace a little so the sudden
-            // perspective tilt stays playable; proportional, so high levels stay
-            // fast in relative terms. The standing 3D / 3D Fixed view modes keep the
-            // exact 2D pace - they match the flat board at the same level/speed.
-            if (hasEffect(EffectKind.ThreeD)) ms *= THREED_FACTOR
             return ms.toLong().coerceIn(MIN_TICK_MS, MAX_TICK_MS)
         }
 
@@ -131,9 +131,6 @@ data class GameState(
         const val HASTE_FACTOR = 0.6
         const val SLOW_FACTOR = 1.6
         const val FREEZE_FACTOR = 1.4
-
-        /** 3D view pace multiplier (>1 = a touch slower, for playability). */
-        const val THREED_FACTOR = 1.4
 
         /** Clamp so stacked effects can't make the game unplayably fast/slow. */
         const val MIN_TICK_MS = 40L

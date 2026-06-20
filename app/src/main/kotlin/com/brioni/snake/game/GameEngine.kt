@@ -23,7 +23,7 @@ class GameEngine(private val random: Random = Random.Default) {
     fun setup(
         level: Level,
         board: BoardDimensions,
-        mode: GameMode = GameMode.Classic,
+        mode: GameMode = GameMode.Endless,
         snakeSpeed: SnakeSpeed = SnakeSpeed.DEFAULT,
     ): GameState {
         val snake = startingSnake(board)
@@ -43,6 +43,7 @@ class GameEngine(private val random: Random = Random.Default) {
             mode = mode,
             lives = if (isLevels) LevelsMode.START_LIVES else 0,
             walls = if (isLevels) LevelsMode.shapeFor(1, board) else emptySet(),
+            graceAvailable = true,
         )
     }
 
@@ -95,7 +96,7 @@ class GameEngine(private val random: Random = Random.Default) {
     fun newGame(
         level: Level,
         board: BoardDimensions,
-        mode: GameMode = GameMode.Classic,
+        mode: GameMode = GameMode.Endless,
         snakeSpeed: SnakeSpeed = SnakeSpeed.DEFAULT,
     ): GameState =
         start(setup(level, board, mode, snakeSpeed))
@@ -261,11 +262,6 @@ class GameEngine(private val random: Random = Random.Default) {
                     effectTimers = addOrRefresh(effectTimers, EffectKind.Freeze, effect.durationMs)
                     events.add(GameEvent.EffectStarted(EffectKind.Freeze, eaten))
                 }
-                is FoodEffect.ThreeD -> {
-                    body.removeAt(body.lastIndex) // pure effect: keep length, no rule/speed change
-                    effectTimers = addOrRefresh(effectTimers, EffectKind.ThreeD, effect.durationMs)
-                    events.add(GameEvent.EffectStarted(EffectKind.ThreeD, eaten))
-                }
                 is FoodEffect.Jackpot -> {
                     score += effect.bonus
                     pendingGrowth += effect.growth
@@ -332,7 +328,6 @@ class GameEngine(private val random: Random = Random.Default) {
                 specialAllowed = specialsOnBoard < MAX_SPECIALS_ON_BOARD && !freezeActive,
                 specialFrequency = specialFrequency,
                 mode = state.mode,
-                threeDWorld = state.threeDWorld,
             )
         }
 
@@ -362,6 +357,30 @@ class GameEngine(private val random: Random = Random.Default) {
                 debris.any { it.cell == newHead }
             )
 
+        // Coyote / grace tick: a banked dodge turns the first lethal step into a
+        // one-tick freeze - the head hesitates against the hazard instead of dying
+        // - so a beat-late turn at speed can still save the run. The dodge is spent
+        // here and re-banked by the next safe move; a second lethal step with none
+        // banked is fatal. The move is cancelled (the snake holds), while time,
+        // effects, debris and food upkeep still advance.
+        if (crashed && state.graceAvailable) {
+            return state.copy(
+                foods = foods,
+                direction = direction,
+                pendingDirection = direction,
+                elapsedTicks = elapsedTicks,
+                playedMs = playedMs,
+                combo = combo,
+                comboDeadlineTick = comboDeadlineTick,
+                debris = debris,
+                effectTimers = effectTimers,
+                timeAdjustMs = timeAdjustMs,
+                graceAvailable = false,
+                lastEvents = listOf(GameEvent.GraceDodge),
+                status = GameStatus.Running,
+            )
+        }
+
         // Levels: a crash with lives to spare consumes one and restages the
         // same level (score and food progress kept) instead of ending the run.
         if (crashed && state.mode == GameMode.Levels && lives > 1) {
@@ -376,6 +395,12 @@ class GameEngine(private val random: Random = Random.Default) {
 
         val dead = crashed || timeUp
         if (dead) events.add(GameEvent.Died)
+
+        // Near-miss: the head survived but is grazing a static hazard. Skipped
+        // while invincible (Ghost passes through everything anyway).
+        if (!dead && !ghost && isNearMiss(newHead, board, state.obstacles, state.walls, debris)) {
+            events.add(GameEvent.NearMiss)
+        }
 
         return state.copy(
             snake = body,
@@ -392,6 +417,8 @@ class GameEngine(private val random: Random = Random.Default) {
             timeAdjustMs = timeAdjustMs,
             lives = if (dead && crashed && state.mode == GameMode.Levels) 0 else lives,
             levelFoodsEaten = levelFoodsEaten,
+            // A safe move re-banks the coyote dodge for the next near-death moment.
+            graceAvailable = true,
             lastEvents = events,
             status = if (dead) GameStatus.GameOver else GameStatus.Running,
         )
@@ -433,6 +460,7 @@ class GameEngine(private val random: Random = Random.Default) {
         lives = lives,
         levelFoodsEaten = levelFoodsEaten,
         walls = LevelsMode.shapeFor(levelIndex, state.board),
+        graceAvailable = true,
         lastEvents = events,
         status = GameStatus.LevelIntro,
     )
@@ -459,6 +487,22 @@ class GameEngine(private val random: Random = Random.Default) {
 
     private fun isOutOfBounds(cell: Position, board: BoardDimensions): Boolean =
         cell.x < 0 || cell.x >= board.width || cell.y < 0 || cell.y >= board.height
+
+    /**
+     * True when any orthogonal neighbour of [head] is a static lethal cell - the
+     * board edge, an obstacle, a level wall or lingering debris. The snake's own
+     * body is intentionally not considered (coiling beside yourself is normal).
+     */
+    private fun isNearMiss(
+        head: Position,
+        board: BoardDimensions,
+        obstacles: Set<Position>,
+        walls: Set<Position>,
+        debris: List<Debris>,
+    ): Boolean = Direction.entries.any { dir ->
+        val n = head.step(dir)
+        isOutOfBounds(n, board) || n in obstacles || n in walls || debris.any { it.cell == n }
+    }
 
     /** The head (index 0) hitting any other body cell. */
     private fun collidesWithBody(head: Position, body: List<Position>): Boolean {
@@ -555,15 +599,14 @@ class GameEngine(private val random: Random = Random.Default) {
         hazardsEnabled: Boolean = true,
         specialAllowed: Boolean = true,
         specialFrequency: SpecialFrequency = SpecialFrequency.Standard,
-        mode: GameMode = GameMode.Classic,
-        threeDWorld: Boolean = false,
+        mode: GameMode = GameMode.Endless,
     ): List<Food> {
         var foods = existing
         while (foods.size < FOOD_COUNT) {
             // A special is allowed only while fewer than the cap are on the board.
             val allowSpecial = specialAllowed &&
                 foods.count { it.category == FoodCategory.Special } < MAX_SPECIALS_ON_BOARD
-            val food = spawnFood(board, snake, obstacles, walls, foods, elapsedTicks, level, baseTickMillis, hazardsEnabled, allowSpecial, specialFrequency, mode, threeDWorld) ?: break
+            val food = spawnFood(board, snake, obstacles, walls, foods, elapsedTicks, level, baseTickMillis, hazardsEnabled, allowSpecial, specialFrequency, mode) ?: break
             foods = foods + food
         }
         return foods
@@ -587,9 +630,8 @@ class GameEngine(private val random: Random = Random.Default) {
         specialAllowed: Boolean,
         specialFrequency: SpecialFrequency,
         mode: GameMode,
-        threeDWorld: Boolean,
     ): Food? {
-        val spec = FoodTable.roll(random, elapsedTicks, level, baseTickMillis, hazardsEnabled, specialAllowed, specialFrequency, mode, threeDWorld)
+        val spec = FoodTable.roll(random, elapsedTicks, level, baseTickMillis, hazardsEnabled, specialAllowed, specialFrequency, mode)
         val span = spec.size.cellSpan
         // Top-left cell range that keeps the whole square off the border.
         val maxX = board.width - span
