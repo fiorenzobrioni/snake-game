@@ -60,11 +60,11 @@ import kotlin.math.sin
 /** Final window of a Ghost (Star) effect over which the warning blink ramps up. */
 private const val GHOST_WARN_MS = 2_000f
 
-/** Height (cells) of the raised boundary walls in the 3D chase-cam view. */
+/**
+ * Height (cells) of the luminous boundary barrier in the 3D views. Tunable: this is
+ * the only knob for how tall the neon border energy-field stands above the floor.
+ */
 private const val WALL_HEIGHT = 0.7f
-
-/** Thickness (cells) of the boundary walls, giving them obstacle-like depth. */
-private const val WALL_THICKNESS = 0.28f
 
 /** Mixes [c] toward white by [f] (0..1), forcing full opacity — for bright rails. */
 private fun brighten(c: Color, f: Float): Color = Color(
@@ -427,22 +427,22 @@ private fun boundaryEdges(walls: Set<Position>, board: BoardDimensions): List<Bo
 }
 
 /**
- * The continuous wall runs to extrude for the 3D view. For a plain rectangular board
- * (no [boundary]) this is the four edges, each extended at both ends by one wall
- * thickness so the corners seal into solid posts. For a shaped (Levels mode) board
- * the unit [boundary] edges are merged into maximal straight runs (same line + same
- * outward normal, contiguous), so each straight stretch is one seam-free strip.
+ * The continuous wall runs to draw for the 3D view. For a plain rectangular board
+ * (no [boundary]) this is the four edges, corner to corner (the barrier has no
+ * thickness, so adjacent edges meet exactly at the corner line - no overlap). For a
+ * shaped (Levels mode) board the unit [boundary] edges are merged into maximal
+ * straight runs (same line + same outward normal, contiguous), so each straight
+ * stretch is one continuous barrier.
  */
 private fun wallRuns(boundary: List<BoundaryEdge>, board: BoardDimensions): List<WallRun> {
     if (boundary.isEmpty()) {
         val w = board.width.toFloat()
         val h = board.height.toFloat()
-        val t = WALL_THICKNESS
         return listOf(
-            WallRun(-t, 0f, w + t, 0f, 0f, -1f), // top
-            WallRun(-t, h, w + t, h, 0f, 1f), // bottom
-            WallRun(0f, -t, 0f, h + t, -1f, 0f), // left
-            WallRun(w, -t, w, h + t, 1f, 0f), // right
+            WallRun(0f, 0f, w, 0f, 0f, -1f), // top
+            WallRun(0f, h, w, h, 0f, 1f), // bottom
+            WallRun(0f, 0f, 0f, h, -1f, 0f), // left
+            WallRun(w, 0f, w, h, 1f, 0f), // right
         )
     }
     val runs = ArrayList<WallRun>()
@@ -1061,80 +1061,73 @@ private fun DrawScope.draw3DScene(
     // Depth-sorted scene items (drawn far -> near).
     val items = ArrayList<Pair<Float, DrawScope.() -> Unit>>()
 
-    // Raised boundary walls. Each side of the arena is drawn as a SINGLE continuous
-    // extruded strip (a box: inner face, outer face, top cap and the two end caps),
-    // not as one box per cell. A planar quad projects exactly under perspective, so
-    // a single strip has no inter-cell seams, no per-cell depth-sort flicker and a
-    // uniform shade along its length - the previous per-cell boxes broke up into
-    // separate leaning blocks with gaps as the camera moved.
-    val edgeWidth = (cell * 0.12f).coerceAtLeast(2f) * (0.6f + 0.4f * t)
-    val wallTop = lerpF(0f, WALL_HEIGHT, t) // grows with the tilt; flat stays flat
-    // Flat per-face tones (cap brightest, inner mid, outer/ends darker) give a clean,
-    // consistent low-poly read of a solid wall with real thickness.
-    val innerColor = brighten(borderColor, 0.34f)
-    val outerColor = darken(brighten(borderColor, 0.30f), 0.34f)
-    val capColor = brighten(borderColor, 0.55f)
-    val endColor = darken(brighten(borderColor, 0.30f), 0.20f)
-    val railColor = brighten(borderColor, 0.70f)
+    // Luminous boundary barrier. Each arena side is a single translucent "energy
+    // field" quad (boundary line up to WALL_HEIGHT) with glowing neon rails along the
+    // floor edge, the top edge and the two vertical ends. The barrier has no
+    // thickness, so: (1) it never hides the snake/food behind the back edges - you
+    // see through it; (2) perpendicular sides meet at a corner *line* with no area
+    // overlap, killing the corner z-fighting/flicker of the old solid boxes; and
+    // (3) a double-sided filled quad reads correctly from every angle (no "hollow"
+    // look). WALL_HEIGHT is the single height knob.
+    val wallTop = lerpF(0f, WALL_HEIGHT, t) // grows with the tilt; flat collapses to the outline
+    val coreWidth = (cell * 0.05f).coerceAtLeast(1.5f) * (0.6f + 0.4f * t)
+    // Lift the (often dark) skin border to a vivid neon so the barrier glows on every
+    // skin, and add a gentle breathing pulse for the energy-field feel.
+    val neon = brighten(borderColor, 0.55f)
+    val pulse = 0.86f + 0.14f * (sin(time * 1.6f) * 0.5f + 0.5f)
+    val fieldAlpha = 0.16f * t
 
-    // Draws one continuous wall run from (ax,ay) to (bx,by) along a board edge,
-    // extruded outward by WALL_THICKNESS along its unit normal (nx,ny). The five
-    // faces are clipped to the near plane (so a run straddling the camera is trimmed,
-    // never dropped), depth-sorted among themselves, and emitted as one scene item.
-    fun addWallRun(ax: Float, ay: Float, bx: Float, by: Float, nx: Float, ny: Float) {
-        val ox = nx * WALL_THICKNESS
-        val oy = ny * WALL_THICKNESS
+    // Draws a glowing neon line between two world points: a soft wide halo, the
+    // coloured core and a hot near-white centre (cheap additive-looking bloom). The
+    // segment is near-clipped so it never streaks to a screen corner near the camera.
+    fun glowLine(a: Vec3, b: Vec3, width: Float, intensity: Float) {
+        val clip = cam.clipNear(a, b) ?: return
+        val pa = cam.projectCamera(clip.first)
+        val pb = cam.projectCamera(clip.second)
+        if (!pa.visible || !pb.visible) return
+        val p0 = toPixel(pa)
+        val p1 = toPixel(pb)
+        drawLine(neon.copy(alpha = 0.10f * intensity), p0, p1, width * 4.5f, cap = StrokeCap.Round)
+        drawLine(neon.copy(alpha = 0.22f * intensity), p0, p1, width * 2.3f, cap = StrokeCap.Round)
+        drawLine(neon.copy(alpha = 0.95f * intensity), p0, p1, width, cap = StrokeCap.Round)
+        drawLine(Color.White.copy(alpha = 0.6f * intensity), p0, p1, width * 0.4f, cap = StrokeCap.Round)
+    }
+
+    // Draws one continuous barrier run from (ax,ay) to (bx,by) along a board edge.
+    fun addWallRun(ax: Float, ay: Float, bx: Float, by: Float) {
         fun cs(x: Float, y: Float, z: Float) = cam.cameraSpace(Vec3(x, y, z))
-        // i* = inner (boundary line, play side); o* = outer (pushed out). 0 = base, 1 = top.
-        val iA0 = cs(ax, ay, 0f); val iB0 = cs(bx, by, 0f)
-        val iA1 = cs(ax, ay, wallTop); val iB1 = cs(bx, by, wallTop)
-        val oA0 = cs(ax + ox, ay + oy, 0f); val oB0 = cs(bx + ox, by + oy, 0f)
-        val oA1 = cs(ax + ox, ay + oy, wallTop); val oB1 = cs(bx + ox, by + oy, wallTop)
-        val rawFaces = listOf(
-            listOf(iA0, iB0, iB1, iA1) to innerColor, // inner (player-facing)
-            listOf(oB0, oA0, oA1, oB1) to outerColor, // outer
-            listOf(iA1, iB1, oB1, oA1) to capColor, // top cap
-            listOf(oA0, iA0, iA1, oA1) to endColor, // end at A
-            listOf(iB0, oB0, oB1, iB1) to endColor, // end at B
-        )
-        val faces = rawFaces.mapNotNull { (poly, color) ->
-            val c = cam.clipPolygonNear(poly)
-            if (c.size < 3) null else c to color
-        }
-        if (faces.isEmpty()) return
-        // Order the faces of THIS box far -> near so the box occludes itself correctly.
-        val ordered = faces.sortedByDescending { (poly, _) -> poly.sumOf { it.z.toDouble() } / poly.size }
-        val sortKey = faces.flatMap { it.first }.map { it.z }.average().toFloat()
+        val a0 = cs(ax, ay, 0f); val b0 = cs(bx, by, 0f) // floor edge
+        val a1 = cs(ax, ay, wallTop); val b1 = cs(bx, by, wallTop) // top edge
+        val field = cam.clipPolygonNear(listOf(a0, b0, b1, a1))
+        if (field.size < 3) return
+        val sortKey = field.map { it.z }.average().toFloat()
         items.add(sortKey to {
-            ordered.forEach { (poly, color) ->
-                val pix = poly.map { toPixel(cam.projectCamera(it)) }
-                val path = Path().apply {
-                    moveTo(pix[0].x, pix[0].y)
-                    for (i in 1 until pix.size) lineTo(pix[i].x, pix[i].y)
-                    close()
-                }
-                // Gentle ambient shade around the flat tone (lighter top, darker base)
-                // for depth without breaking the uniform look.
-                drawPath(
-                    path,
-                    brush = Brush.verticalGradient(
-                        colors = listOf(brighten(color, 0.10f), darken(color, 0.16f)),
-                        startY = pix.minOf { it.y },
-                        endY = pix.maxOf { it.y },
-                    ),
-                )
+            // Translucent energy field: brighter toward the top edge, fading down.
+            val pix = field.map { toPixel(cam.projectCamera(it)) }
+            val path = Path().apply {
+                moveTo(pix[0].x, pix[0].y)
+                for (i in 1 until pix.size) lineTo(pix[i].x, pix[i].y)
+                close()
             }
-            // Bright rail along the inner top edge (the side facing the player),
-            // clipped so it never streaks to the screen corner near the camera.
-            cam.clipNear(iA1, iB1)?.let { clip ->
-                val pa = cam.projectCamera(clip.first)
-                val pb = cam.projectCamera(clip.second)
-                if (pa.visible && pb.visible) drawLine(railColor, toPixel(pa), toPixel(pb), edgeWidth)
-            }
+            drawPath(
+                path,
+                brush = Brush.verticalGradient(
+                    colors = listOf(neon.copy(alpha = fieldAlpha * 1.4f), neon.copy(alpha = fieldAlpha * 0.4f)),
+                    startY = pix.minOf { it.y },
+                    endY = pix.maxOf { it.y },
+                ),
+            )
+            // Glowing rails: top edge (brightest), floor edge, and the vertical ends
+            // (corner posts). Adjacent runs share the corner verticals exactly, so the
+            // overlap is identical geometry - it reads as one crisp post, no flicker.
+            glowLine(a1, b1, coreWidth, pulse) // top rail
+            glowLine(a0, b0, coreWidth * 0.85f, 0.7f * pulse) // floor rail (dimmer)
+            glowLine(a0, a1, coreWidth * 0.85f, 0.9f * pulse) // vertical end A
+            glowLine(b0, b1, coreWidth * 0.85f, 0.9f * pulse) // vertical end B
         })
     }
 
-    wallRuns(boundary, board).forEach { r -> addWallRun(r.ax, r.ay, r.bx, r.by, r.nx, r.ny) }
+    wallRuns(boundary, board).forEach { r -> addWallRun(r.ax, r.ay, r.bx, r.by) }
 
     fun addRaisedQuad(cx: Float, cy: Float, fill: Color, outline: Color, height: Float, alpha: Float, banded: Boolean = false) {
         val cc = cam.cameraSpace(Vec3(cx, cy, height))
