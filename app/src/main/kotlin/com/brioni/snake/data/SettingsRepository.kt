@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -188,6 +189,39 @@ class SettingsRepository(private val context: Context) {
         return best
     }
 
+    /** The stored Daily Challenge best for [epochDay] (0 if not played yet). */
+    fun dailyBest(epochDay: Long): Flow<Int> =
+        context.dataStore.data.map { it[dailyBestKey(epochDay)] ?: 0 }
+
+    /** The current Daily Challenge streak (consecutive days played). */
+    fun dailyStreak(): Flow<Int> =
+        context.dataStore.data.map { it[DAILY_STREAK] ?: 0 }
+
+    /** The last epoch day on which a Daily Challenge was played (null if never). */
+    fun dailyLastPlayedDay(): Flow<Long?> =
+        context.dataStore.data.map { it[DAILY_LAST_DAY] }
+
+    /**
+     * Records [score] for [epochDay]'s daily iff it beats the stored best, and
+     * advances the streak on the first play of a new day (consecutive day → +1,
+     * otherwise reset to 1). Returns the resulting best.
+     */
+    suspend fun submitDailyScore(epochDay: Long, score: Int): Int {
+        var best = score
+        context.dataStore.edit { prefs ->
+            val key = dailyBestKey(epochDay)
+            best = max(prefs[key] ?: 0, score)
+            prefs[key] = best
+            val last = prefs[DAILY_LAST_DAY]
+            if (last != epochDay) {
+                val streak = prefs[DAILY_STREAK] ?: 0
+                prefs[DAILY_STREAK] = if (last != null && epochDay == last + 1) streak + 1 else 1
+                prefs[DAILY_LAST_DAY] = epochDay
+            }
+        }
+        return best
+    }
+
     /** The set of unlocked achievement ids (enum names). */
     fun unlockedAchievements(): Flow<Set<String>> =
         context.dataStore.data.map { it[UNLOCKED_ACHIEVEMENTS] ?: emptySet() }
@@ -209,6 +243,9 @@ class SettingsRepository(private val context: Context) {
     private fun levelsProgressKey(scale: BoardScale) =
         intPreferencesKey("levels_progress_${scale.name}")
 
+    private fun dailyBestKey(epochDay: Long) =
+        intPreferencesKey("daily_best_$epochDay")
+
     private companion object {
         val LEVEL = stringPreferencesKey("level")
         val SNAKE_SPEED = stringPreferencesKey("snake_speed")
@@ -229,5 +266,7 @@ class SettingsRepository(private val context: Context) {
         val THREE_D_WORLD = booleanPreferencesKey("three_d_world")
         val VIEW_MODE = stringPreferencesKey("view_mode")
         val UNLOCKED_ACHIEVEMENTS = stringSetPreferencesKey("unlocked_achievements")
+        val DAILY_STREAK = intPreferencesKey("daily_streak")
+        val DAILY_LAST_DAY = longPreferencesKey("daily_last_day")
     }
 }

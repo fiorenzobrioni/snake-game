@@ -57,6 +57,8 @@ The classic Snake mechanics, extended with configurable features so every run fe
   boards also give food, power-ups and hazards proportionally more time before they vanish, so the
   snake can reach them across the longer distances.
 - 🎮 **Control schemes** - **swipe** by default, or a two-button *relative* steering / classic D-pad.
+  A forgiving **coyote frame** makes a beat-late turn still count: the first lethal step makes the head
+  hesitate one tick (instead of dying), giving you a moment to turn away - re-armed by your next safe move.
 - 🎨 **Skins** - four selectable looks (**Classic / Neon / Retro / Pixel**), each its own palette and
   cell shape (Pixel is flat & square, Neon bubbly), all available immediately in Settings.
 - 🌗 **Theme** - choose **Light**, **Dark** or **System** (follows the device) in Settings.
@@ -90,6 +92,9 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - ▶️ **Quick Play** - the main menu's **Play** button drops you straight into a run with your last-used
   settings; a separate **Custom** entry opens the full pre-game setup (mode, level, snake speed, board
   scale) when you want to tweak everything.
+- 📅 **Daily Challenge** - a date-seeded run with the same mode, level and board for everyone that day
+  (the obstacle layout and food sequence come from the day's seed). Beat your **best today** and build a
+  **day streak**. Reached from the main menu.
 - 🕹️ **Game modes** - **Endless** (speed ramps up the longer you survive; the default),
   **Time Attack** (score as much as you can in 120s) and **Campaign** (see below), selectable on the
   **Custom** setup screen.

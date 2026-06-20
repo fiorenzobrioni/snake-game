@@ -225,10 +225,15 @@ fun GameScreen(
             Hud(
                 score = state.score,
                 combo = state.combo,
-                statusLabel = when {
-                    inLevels -> stringResource(R.string.hud_level_speed, state.levelIndex, state.speedCycle) +
-                        " · " + viewModel.scale.displayName
-                    else -> "${state.mode.displayName} · ${state.level.displayName} · ${viewModel.scale.displayName}"
+                statusLabel = buildString {
+                    if (viewModel.dailyChallenge != null) append(stringResource(R.string.daily_hud_prefix)).append(" · ")
+                    append(
+                        when {
+                            inLevels -> stringResource(R.string.hud_level_speed, state.levelIndex, state.speedCycle) +
+                                " · " + viewModel.scale.displayName
+                            else -> "${state.mode.displayName} · ${state.level.displayName} · ${viewModel.scale.displayName}"
+                        },
+                    )
                 },
                 timeLabel = timeLabel,
                 lives = if (inLevels && onBoard) state.lives else 0,

@@ -41,6 +41,7 @@ fun MainMenuScreen(
     repo: SettingsRepository,
     onPlay: () -> Unit,
     onCustom: () -> Unit,
+    onDaily: () -> Unit,
     onRecords: () -> Unit,
     onAchievements: () -> Unit,
     onSettings: () -> Unit,
@@ -88,6 +89,12 @@ fun MainMenuScreen(
                 modifier = Modifier.padding(top = 12.dp).widthIn(min = 220.dp),
             ) {
                 Text(stringResource(R.string.menu_custom))
+            }
+            OutlinedButton(
+                onClick = onDaily,
+                modifier = Modifier.padding(top = 12.dp).widthIn(min = 220.dp),
+            ) {
+                Text(stringResource(R.string.menu_daily))
             }
             OutlinedButton(
                 onClick = onRecords,

@@ -18,6 +18,7 @@ import com.brioni.snake.game.BackBehavior
 import com.brioni.snake.game.BoardDimensions
 import com.brioni.snake.game.BoardScale
 import com.brioni.snake.game.ControlScheme
+import com.brioni.snake.game.DailyChallenge
 import com.brioni.snake.game.EffectKind
 import com.brioni.snake.game.DEFAULT_ASPECT
 import com.brioni.snake.game.Direction
@@ -40,6 +41,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlin.random.Random
 import kotlin.math.max
 
 /** Which particle burst the renderer should spawn for an [EatEvent]. */
@@ -82,7 +84,7 @@ class GameViewModel(
     private val haptics: GameHaptics = GameHaptics.None,
 ) : ViewModel() {
 
-    private val engine = GameEngine()
+    private var engine = GameEngine()
 
     /** The selected granularity preset; concrete dims derive from it + the aspect. */
     var scale by mutableStateOf(DEFAULT_SCALE)
@@ -225,6 +227,17 @@ class GameViewModel(
     /** Set by Quick Play: start the run as soon as the board has been measured. */
     private var pendingQuickStart = false
 
+    /**
+     * Non-null while a date-seeded Daily Challenge run is configured (vs a normal
+     * run): it pins the mode/level/scale, seeds the engine and routes the score to
+     * the daily store. Cleared by [toSetup] when leaving the run.
+     */
+    var dailyChallenge by mutableStateOf<DailyChallenge?>(null)
+        private set
+
+    /** Set by [requestDailyStart]; consumed once the board has been measured. */
+    private var pendingDaily: DailyChallenge? = null
+
     /** Wall-clock of the last near-miss haptic, for throttling (see [NEAR_MISS_MIN_GAP_NANOS]). */
     private var lastNearMissNanos = 0L
 
@@ -244,10 +257,16 @@ class GameViewModel(
                 crtEnabled = settings.crtEnabled
                 electricWalls = settings.electricWallsEnabled
                 skin = settings.skin
-                hazardsEnabled = settings.hazardsEnabled
-                specialFrequency = settings.specialFrequency
                 viewMode = settings.viewMode
-                if (state.status == GameStatus.Ready) {
+                // The Daily Challenge pins the spawn-affecting toggles so the run is
+                // identical for everyone; only sync them from settings outside it.
+                if (dailyChallenge == null) {
+                    hazardsEnabled = settings.hazardsEnabled
+                    specialFrequency = settings.specialFrequency
+                }
+                // While a Daily Challenge is configured its fixed mode/level/scale
+                // must stick, so skip the persisted-settings sync below.
+                if (state.status == GameStatus.Ready && dailyChallenge == null) {
                     // Levels mode ignores the difficulty selector: it is pinned
                     // to its score level so this collector can't keep resetting.
                     val targetLevel = if (settings.mode == GameMode.Levels) LevelsMode.SCORE_LEVEL else settings.level
@@ -321,6 +340,12 @@ class GameViewModel(
             lastAspect = aspectRatio
             reconfigureBoard()
         }
+        val daily = pendingDaily
+        if (daily != null) {
+            pendingDaily = null
+            startDaily(daily)
+            return
+        }
         if (pendingQuickStart) {
             pendingQuickStart = false
             start()
@@ -334,6 +359,36 @@ class GameViewModel(
      */
     fun requestQuickStart() {
         if (state.status == GameStatus.Ready) pendingQuickStart = true
+    }
+
+    /**
+     * Launch today's Daily Challenge: pins its mode/level/scale, marks daily mode
+     * (so the settings sync and score routing adapt) and defers the seeded start to
+     * [onPlayAreaMeasured], so the board is fitted to the device first.
+     */
+    fun requestDailyStart(challenge: DailyChallenge) {
+        if (state.status != GameStatus.Ready) return
+        dailyChallenge = challenge
+        pendingDaily = challenge
+    }
+
+    /** Reseeds the engine and starts the [challenge] run on the measured board. */
+    private fun startDaily(challenge: DailyChallenge) {
+        // A fresh engine seeded by the day makes the obstacle layout and the food
+        // sequence the same for everyone (for a given board size).
+        engine = GameEngine(Random(challenge.seed))
+        mode = challenge.mode
+        scale = challenge.scale
+        snakeSpeed = SnakeSpeed.DEFAULT
+        // Pin the spawn-affecting toggles so the seeded run matches for everyone.
+        hazardsEnabled = true
+        specialFrequency = SpecialFrequency.Standard
+        resetTo(engine.setup(challenge.level, boardFor(scale, lastAspect), mode, snakeSpeed))
+        resetTo(engine.start(state))
+        isNewBest = false
+        refreshBest()
+        beginRun()
+        afterReset()
     }
 
     private fun reconfigureBoard() {
@@ -369,6 +424,9 @@ class GameViewModel(
     }
 
     fun playAgain() {
+        // A Daily Challenge replays the exact same seeded run (retry for a better
+        // score); a normal run just starts a fresh game with the current config.
+        dailyChallenge?.let { startDaily(it); return }
         resetTo(engine.newGame(state.level, state.board, mode, snakeSpeed))
         isNewBest = false
         beginRun()
@@ -436,6 +494,27 @@ class GameViewModel(
         stopLoop()
         cancelIntro()
         pendingQuickStart = false
+        pendingDaily = null
+        if (dailyChallenge != null) {
+            // Leaving a Daily run: drop the seeded engine and restore the player's
+            // persisted Custom setup (the settings collector won't re-emit on its own).
+            dailyChallenge = null
+            engine = GameEngine()
+            viewModelScope.launch {
+                val s = repo.settings.first()
+                mode = s.mode
+                scale = s.scale
+                snakeSpeed = s.snakeSpeed
+                // Restore the spawn toggles the daily had pinned (the settings
+                // collector only re-emits on an actual change).
+                hazardsEnabled = s.hazardsEnabled
+                specialFrequency = s.specialFrequency
+                val level = if (mode == GameMode.Levels) LevelsMode.SCORE_LEVEL else s.level
+                resetTo(engine.setup(level, boardFor(scale, lastAspect), mode, snakeSpeed))
+                refreshBest()
+            }
+            return
+        }
         resetTo(engine.setup(state.level, state.board, mode, snakeSpeed))
         refreshBest()
     }
@@ -640,11 +719,18 @@ class GameViewModel(
             maxSnakeLength = runMaxLength,
         )
         // Persist; the bestJob collector reflects the new value back into state.
-        viewModelScope.launch { repo.submitScore(mode, state.level, scale, score) }
-        if (mode == GameMode.Levels) {
-            // Levels: also track how deep the run got, for the Records screen.
-            val completed = (state.speedCycle - 1) * LevelsMode.LEVEL_COUNT + (state.levelIndex - 1)
-            viewModelScope.launch { repo.submitLevelsProgress(scale, completed) }
+        // A Daily Challenge keeps its own per-day best (and streak), separate from
+        // the normal per-(mode, level, scale) records.
+        val daily = dailyChallenge
+        if (daily != null) {
+            viewModelScope.launch { repo.submitDailyScore(daily.epochDay, score) }
+        } else {
+            viewModelScope.launch { repo.submitScore(mode, state.level, scale, score) }
+            if (mode == GameMode.Levels) {
+                // Levels: also track how deep the run got, for the Records screen.
+                val completed = (state.speedCycle - 1) * LevelsMode.LEVEL_COUNT + (state.levelIndex - 1)
+                viewModelScope.launch { repo.submitLevelsProgress(scale, completed) }
+            }
         }
         // Evaluate achievements against the run and surface any new unlocks.
         viewModelScope.launch {
@@ -657,14 +743,19 @@ class GameViewModel(
         }
     }
 
-    /** Tracks the best score for the current (level, scale) via a single collector. */
+    /** Tracks the best score for the current run (daily per-day, else (mode, level, scale)). */
     private fun refreshBest() {
         bestJob?.cancel()
+        val daily = dailyChallenge
         val level = state.level
         val currentScale = scale
         val currentMode = mode
         bestJob = viewModelScope.launch {
-            repo.highScore(currentMode, level, currentScale).collect { bestScore = it }
+            if (daily != null) {
+                repo.dailyBest(daily.epochDay).collect { bestScore = it }
+            } else {
+                repo.highScore(currentMode, level, currentScale).collect { bestScore = it }
+            }
         }
     }
 

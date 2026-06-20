@@ -10,7 +10,21 @@
     <string name="menu_board_scale">Board scale</string>
     <string name="menu_play">Play</string>
     <string name="menu_custom">Custom</string>
+    <string name="menu_daily">Daily Challenge</string>
     <string name="menu_records">Records</string>
+
+    <!-- Daily Challenge -->
+    <string name="daily_title">Daily Challenge</string>
+    <string name="daily_subtitle">A fresh seeded run every day - the same mode, level and board for everyone. Beat your best!</string>
+    <string name="daily_hud_prefix">Daily</string>
+    <string name="daily_row_mode">Mode</string>
+    <string name="daily_row_level">Level</string>
+    <string name="daily_row_board">Board</string>
+    <string name="daily_best_label">Best today</string>
+    <string name="daily_streak_label">Day streak</string>
+    <string name="daily_streak_value">%1$d</string>
+    <string name="daily_play">Play</string>
+    <string name="daily_play_again">Play again</string>
     <string name="records_title">Records</string>
     <string name="menu_achievements">Achievements</string>
     <string name="achievements_title">Achievements</string>
