@@ -24,6 +24,11 @@ data class RunStats(
      * monotone position, so "reach Level 10 at Speed 2" is exactly `>= 20`.
      */
     val maxLevelDepth: Int = 0,
+    /**
+     * Levels mode: true when the player completed a full first lap - cleared all
+     * ten levels and reached Speed 2 - without ever losing a life along the way.
+     */
+    val flawlessLap: Boolean = false,
     /** Levels mode: extra lives banked during the run. */
     val extraLivesGained: Int = 0,
     /** The greatest snake length reached at any point during the run. */
@@ -59,7 +64,7 @@ enum class Achievement(
     Grandmaster("Grandmaster", "Score 5000 in a single run", { it.score >= 5000 }),
     Climber("Climber", "Reach Level 5 in Campaign mode", { it.mode == GameMode.Levels && it.maxLevelReached >= 5 }),
     TowerTopper("Tower Topper", "Reach Level 10 in Campaign mode", { it.mode == GameMode.Levels && it.maxLevelReached >= 10 }),
-    FullCircle("Full Circle", "Loop the campaign: clear all ten levels to reach Speed 2", { it.mode == GameMode.Levels && it.maxSpeedCycle >= 2 }),
+    FullCircle("Full Circle", "Clear all ten levels and reach Speed 2 without losing a life", { it.mode == GameMode.Levels && it.flawlessLap }),
     TowerMaster("Tower Master", "Reach Level 10 at Speed 2 in Campaign", { it.mode == GameMode.Levels && it.maxLevelDepth >= 20 }),
     TowerSovereign("Tower Sovereign", "Reach Level 10 at Speed 3 in Campaign", { it.mode == GameMode.Levels && it.maxLevelDepth >= 30 }),
     LongHaul("Long Haul", "Grow the snake to 50 segments", { it.maxSnakeLength >= 50 }),

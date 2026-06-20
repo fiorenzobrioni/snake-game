@@ -19,11 +19,12 @@ class AchievementTest {
         maxLevelReached: Int = 0,
         maxSpeedCycle: Int = 1,
         maxLevelDepth: Int = 0,
+        flawlessLap: Boolean = false,
         maxSnakeLength: Int = 0,
     ) = RunStats(
         mode, score, maxCombo, durationMs, foodsEaten, usedExplosion, usedStar, usedJackpot,
         maxLevelReached = maxLevelReached, maxSpeedCycle = maxSpeedCycle, maxLevelDepth = maxLevelDepth,
-        maxSnakeLength = maxSnakeLength,
+        flawlessLap = flawlessLap, maxSnakeLength = maxSnakeLength,
     )
 
     @Test
@@ -72,8 +73,15 @@ class AchievementTest {
         assertFalse(Achievement.Climber.test(stats(mode = GameMode.Classic, maxLevelReached = 5)))
         assertTrue(Achievement.TowerTopper.test(stats(mode = GameMode.Levels, maxLevelReached = 10)))
         assertFalse(Achievement.TowerTopper.test(stats(mode = GameMode.Levels, maxLevelReached = 9)))
-        assertTrue(Achievement.FullCircle.test(stats(mode = GameMode.Levels, maxSpeedCycle = 2)))
-        assertFalse(Achievement.FullCircle.test(stats(mode = GameMode.Levels, maxSpeedCycle = 1)))
+    }
+
+    @Test
+    fun `full circle needs a flawless first lap`() {
+        // A full lap (reach Speed 2) cleared without losing a life.
+        assertTrue(Achievement.FullCircle.test(stats(mode = GameMode.Levels, flawlessLap = true)))
+        // Reaching Speed 2 but having lost a life does not count (flawlessLap stays false).
+        assertFalse(Achievement.FullCircle.test(stats(mode = GameMode.Levels, maxSpeedCycle = 2, flawlessLap = false)))
+        assertFalse(Achievement.FullCircle.test(stats(mode = GameMode.Classic, flawlessLap = true)))
     }
 
     @Test
