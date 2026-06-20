@@ -17,7 +17,9 @@ Roadmap, work in progress, TODOs, known bugs, and ideas. For the history of deve
 - [ ] Write unit tests for `GameEngine` edge-cases: wall collision on all four sides, body self-collision, 180° reversal block
 - [ ] Verify smooth-motion interpolation on low-end devices
 - [ ] Verify the mystery "?" glyph renders crisply on small cells (dense boards)
-- [ ] Re-tune the food spawn weights / time gates after playtesting on a device
+- [ ] Re-tune the food spawn weights / time gates after playtesting on a device (special weights were
+  rebalanced when the 3D hazard was removed - its freed weight went back to the other hazards to keep
+  the original benefit/hazard mix; the time gates are still pending a device pass)
 - [ ] Optionally enrich the synthesized SFX before Play release (background music is now Gemini-generated)
 
 ---

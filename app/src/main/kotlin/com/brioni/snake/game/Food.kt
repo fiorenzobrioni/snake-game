@@ -225,16 +225,18 @@ object FoodTable {
     /** Builds a maxi special, choosing a kind weighted by benefit, the toggle and the mode. */
     private fun specialSpec(random: Random, hazardsEnabled: Boolean, mode: GameMode): FoodSpec {
         val choices = buildList<Weighted<FoodEffect>> {
-            // Beneficial — always available.
+            // Beneficial — always available (total weight 58).
             add(Weighted(20) { FoodEffect.Haste(HASTE_MS) })
             add(Weighted(14) { FoodEffect.Ghost(GHOST_MS) })
             add(Weighted(14) { FoodEffect.Freeze(FREEZE_MS) })
             add(Weighted(10) { FoodEffect.Jackpot(bonus = random.nextInt(150, 401), growth = random.nextInt(2, 6)) })
-            // Harmful — only when hazards are enabled.
+            // Harmful — only when hazards are enabled (total weight 54). These absorb
+            // the weight freed by removing the old 3D hazard, so the overall
+            // benefit/hazard balance stays as it was before that removal.
             if (hazardsEnabled) {
-                add(Weighted(16) { FoodEffect.Quake(QUAKE_MS) })
-                add(Weighted(12) { FoodEffect.Burst(BURST_DEBRIS_MS) })
-                add(Weighted(14) { FoodEffect.Slow(SLOW_MS) })
+                add(Weighted(20) { FoodEffect.Quake(QUAKE_MS) })
+                add(Weighted(16) { FoodEffect.Burst(BURST_DEBRIS_MS) })
+                add(Weighted(18) { FoodEffect.Slow(SLOW_MS) })
             }
             // Time Attack only: the clock blocks. The penalty is a hazard.
             if (mode == GameMode.TimeAttack) {
