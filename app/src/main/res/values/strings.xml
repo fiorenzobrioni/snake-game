@@ -69,8 +69,8 @@
     <!-- HUD -->
     <string name="hud_score">Score: %1$d</string>
     <string name="hud_combo">x%1$d</string>
-    <!-- Campaign mode HUD: "Level 3 · Speed 2", the foods left in the level, lives -->
-    <string name="hud_level_speed">Level %1$d · Speed %2$d</string>
+    <!-- Campaign mode HUD: "LVL 3 · SPD 2" (abbreviated to match the compact status row) -->
+    <string name="hud_level_speed">LVL %1$d · SPD %2$d</string>
     <string name="hud_next_level">Next: %1$d</string>
     <string name="hud_lives">Lives: %1$d</string>
     <string name="hud_length">Len %1$d</string>
