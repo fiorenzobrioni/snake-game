@@ -15,23 +15,29 @@ data class DailyChallenge(
     val mode: GameMode,
     val level: Level,
     val scale: BoardScale,
+    val modifier: DailyModifier,
 ) {
     companion object {
         /** Modes the daily rotates through (Campaign excluded). */
         private val MODES = listOf(GameMode.Endless, GameMode.TimeAttack)
 
-        /** A fixed board granularity, so the daily is the same size for everyone. */
+        /** The default board granularity, unless the modifier overrides it. */
         private val SCALE = BoardScale.Classic
 
         /** The challenge for a given [epochDay]. Stable: same day → same result. */
-        fun forDay(epochDay: Long): DailyChallenge = DailyChallenge(
-            epochDay = epochDay,
-            seed = mix(epochDay),
-            // Alternate the mode by day; pick the level from a decorrelated hash.
-            mode = MODES[epochDay.mod(MODES.size.toLong()).toInt()],
-            level = Level.entries[mix(epochDay + 1).mod(Level.entries.size.toLong()).toInt()],
-            scale = SCALE,
-        )
+        fun forDay(epochDay: Long): DailyChallenge {
+            // Alternate the mode by day; pick the level and modifier from
+            // decorrelated hashes so they vary independently of the seed.
+            val modifier = DailyModifier.entries[mix(epochDay + 2).mod(DailyModifier.entries.size.toLong()).toInt()]
+            return DailyChallenge(
+                epochDay = epochDay,
+                seed = mix(epochDay),
+                mode = MODES[epochDay.mod(MODES.size.toLong()).toInt()],
+                level = Level.entries[mix(epochDay + 1).mod(Level.entries.size.toLong()).toInt()],
+                scale = modifier.scaleOverride ?: SCALE,
+                modifier = modifier,
+            )
+        }
 
         /** SplitMix64 finalizer: a cheap, well-mixed hash so adjacent days differ a lot. */
         private fun mix(value: Long): Long {

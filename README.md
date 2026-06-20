@@ -66,9 +66,14 @@ The classic Snake mechanics, extended with configurable features so every run fe
   gameplay, plus SFX for eating, shrinking, mystery pieces, game over and UI. Independent
   **master / music / SFX** volume sliders in Settings; audio pauses when the app is backgrounded.
 - 📳 **Haptics & near-miss feedback** - vibration cues scaled by event (a light tap on eating, a
-  firmer click on power-ups, the strongest buzz on death) and a faint **near-miss** tick whenever the
-  head grazes a wall, obstacle or debris without crashing. Toggle it off with **Vibration feedback** in
-  Settings.
+  firmer click on power-ups, the strongest buzz on death) plus a faint **near-miss** tick and a brief
+  on-screen **danger flash** whenever the head grazes a wall, obstacle or debris without crashing.
+  Toggle it off with **Vibration feedback** in Settings.
+- 🔥 **Combo "juice"** - chain bites for a multiplier and the HUD counter punches in and warms through a
+  colour ramp while the snake's head **catches fire** (its glow heats from your skin's colour toward a
+  fiery orange-red) as the streak climbs.
+- ♿ **Reduce motion & flashing** - an accessibility toggle in Settings that damps the screen shake, the
+  particle bursts and the near-miss flash for a calmer, flash-free board.
 - ✨ **GPU shader effects** - an animated background, a glowing snake head, pulsing
   halos on rare foods and a perspective-mapped electric/plasma flow on the 3D arena barrier,
   all via **AGSL** `RuntimeShader`s, plus optional **retro CRT filter** and **electric 3D walls**
@@ -92,9 +97,10 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - ▶️ **Quick Play** - the main menu's **Play** button drops you straight into a run with your last-used
   settings; a separate **Custom** entry opens the full pre-game setup (mode, level, snake speed, board
   scale) when you want to tweak everything.
-- 📅 **Daily Challenge** - a date-seeded run with the same mode, level and board for everyone that day
-  (the obstacle layout and food sequence come from the day's seed). Beat your **best today** and build a
-  **day streak**. Reached from the main menu.
+- 📅 **Daily Challenge** - a date-seeded run with the same mode, level, board and **daily twist** for
+  everyone that day (the twist rotates through Bonus Rush, Frenzy and Compact Arena; the obstacle layout
+  and food sequence come from the day's seed). Beat your **best today** and build a **day streak**.
+  Reached from the main menu.
 - 🕹️ **Game modes** - **Endless** (speed ramps up the longer you survive; the default),
   **Time Attack** (score as much as you can in 120s) and **Campaign** (see below), selectable on the
   **Custom** setup screen.

@@ -183,6 +183,12 @@ fun SettingsScreen(
         )
 
         ToggleSection(
+            title = stringResource(R.string.settings_reduce_motion),
+            checked = settings.reduceMotion,
+            onCheckedChange = { enabled -> scope.launch { repo.setReduceMotion(enabled) } },
+        )
+
+        ToggleSection(
             title = stringResource(R.string.settings_crt_filter),
             checked = settings.crtEnabled,
             onCheckedChange = { enabled -> scope.launch { repo.setCrtEnabled(enabled) } },

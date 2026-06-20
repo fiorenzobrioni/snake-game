@@ -25,7 +25,9 @@ class DailyChallengeTest {
             assertEquals(day, c.epochDay)
             assertNotEquals("Campaign is excluded from the daily rotation", GameMode.Levels, c.mode)
             assertTrue(c.level in Level.entries)
-            assertEquals(BoardScale.Classic, c.scale)
+            assertTrue(c.modifier in DailyModifier.entries)
+            // The board is the daily default, unless the modifier overrides it.
+            assertEquals(c.modifier.scaleOverride ?: BoardScale.Classic, c.scale)
         }
     }
 

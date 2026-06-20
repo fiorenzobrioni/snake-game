@@ -97,6 +97,7 @@ fun DailyChallengeScreen(
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(bottom = 16.dp),
                 )
+                ConfigRow(stringResource(R.string.daily_row_twist), challenge.modifier.displayName)
                 ConfigRow(stringResource(R.string.daily_row_mode), challenge.mode.displayName)
                 ConfigRow(stringResource(R.string.daily_row_level), challenge.level.displayName)
                 ConfigRow(stringResource(R.string.daily_row_board), challenge.scale.displayName)

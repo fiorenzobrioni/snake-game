@@ -110,6 +110,10 @@ class GameViewModel(
     var electricWalls by mutableStateOf(true)
         private set
 
+    /** Accessibility: damp screen shake, particle bursts and near-miss flashes (setting). */
+    var reduceMotion by mutableStateOf(false)
+        private set
+
     /** Active visual skin (loaded from settings); drives the renderer [palette]. */
     var skin by mutableStateOf(Skin.Classic)
         private set
@@ -169,6 +173,10 @@ class GameViewModel(
 
     /** Bumped on earthquake/explosion so the UI can shake the board mid-game. */
     var shakeEventId by mutableIntStateOf(0)
+        private set
+
+    /** Bumped on a near-miss / grace dodge so the UI can flash a brief danger cue. */
+    var nearMissEventId by mutableIntStateOf(0)
         private set
 
     /**
@@ -255,6 +263,7 @@ class GameViewModel(
                 controlScheme = settings.controlScheme
                 backBehavior = settings.backBehavior
                 crtEnabled = settings.crtEnabled
+                reduceMotion = settings.reduceMotion
                 electricWalls = settings.electricWallsEnabled
                 skin = settings.skin
                 viewMode = settings.viewMode
@@ -380,9 +389,10 @@ class GameViewModel(
         mode = challenge.mode
         scale = challenge.scale
         snakeSpeed = SnakeSpeed.DEFAULT
-        // Pin the spawn-affecting toggles so the seeded run matches for everyone.
-        hazardsEnabled = true
-        specialFrequency = SpecialFrequency.Standard
+        // Pin the spawn-affecting toggles so the seeded run matches for everyone,
+        // applying the day's modifier (Bonus Rush, Frenzy, ...) on top.
+        hazardsEnabled = challenge.modifier.hazardsOverride ?: true
+        specialFrequency = challenge.modifier.specialFrequencyOverride ?: SpecialFrequency.Standard
         resetTo(engine.setup(challenge.level, boardFor(scale, lastAspect), mode, snakeSpeed))
         resetTo(engine.start(state))
         isNewBest = false
@@ -576,17 +586,19 @@ class GameViewModel(
                     onGameOver(after.score)
                 }
                 GameEvent.NearMiss -> {
-                    // Throttled so hugging an edge gives an occasional tick, not a buzz.
+                    // Throttled so hugging an edge gives an occasional tick/flash, not a buzz.
                     val now = System.nanoTime()
                     if (now - lastNearMissNanos >= NEAR_MISS_MIN_GAP_NANOS) {
                         haptics.nearMiss()
+                        nearMissEventId++
                         lastNearMissNanos = now
                     }
                 }
                 GameEvent.GraceDodge -> {
-                    // A whisker from death: a firmer cue sells the save. Suppress the
-                    // near-miss tick that would otherwise pile on right after.
+                    // A whisker from death: a firmer cue and a flash sell the save.
+                    // Suppress the near-miss tick that would otherwise pile on right after.
                     haptics.special()
+                    nearMissEventId++
                     lastNearMissNanos = System.nanoTime()
                 }
                 is GameEvent.Exploded -> {

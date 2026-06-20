@@ -163,6 +163,7 @@ fun GameBoard(
     cameraBlend: Float = 0f,
     fixedNorth: Boolean = false,
     electricField: Boolean = true,
+    reduceMotion: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val particles: SnapshotStateList<Particle> = remember { emptyList<Particle>().toMutableStateList() }
@@ -208,7 +209,8 @@ fun GameBoard(
 
     LaunchedEffect(eatEventId) {
         val event = eatEvent
-        if (eatEventId > 0 && event != null) {
+        // Reduce-motion suppresses the particle bursts (the floating "+N" labels stay).
+        if (eatEventId > 0 && event != null && !reduceMotion) {
             val cx = event.cell.x + event.span / 2f
             val cy = event.cell.y + event.span / 2f
             when (event.style) {
@@ -351,6 +353,7 @@ fun GameBoard(
                     alpha = if (k == 0) (snakeAlpha + 0.2f).coerceAtMost(1f) else snakeAlpha,
                     shaders = shaders,
                     time = time,
+                    headGlow = hotGlow(palette.headGlow, state.combo),
                 )
             }
             particles.forEach { p ->
@@ -894,6 +897,24 @@ private fun DrawScope.drawDebris(cell: Float, left: Float, top: Float, life: Flo
     )
 }
 
+/** A fiery accent the head glow blends toward as the combo climbs. */
+private val ComboHotGlow = Color(0xFFFF5722)
+
+/**
+ * Heats the head [base] glow toward [ComboHotGlow] as the eat-[combo] climbs:
+ * unchanged up to x2, ramping to fully fiery around x8 - the "on fire" cue.
+ */
+private fun hotGlow(base: Color, combo: Int): Color {
+    val heat = ((combo - 2) / 6f).coerceIn(0f, 1f)
+    if (heat <= 0f) return base
+    return Color(
+        red = base.red + (ComboHotGlow.red - base.red) * heat,
+        green = base.green + (ComboHotGlow.green - base.green) * heat,
+        blue = base.blue + (ComboHotGlow.blue - base.blue) * heat,
+        alpha = base.alpha,
+    )
+}
+
 private fun DrawScope.drawSnakeSegment(
     isHead: Boolean,
     left: Float,
@@ -904,6 +925,7 @@ private fun DrawScope.drawSnakeSegment(
     alpha: Float,
     shaders: BoardShaders,
     time: Float,
+    headGlow: Color = palette.headGlow,
 ) {
     val centerX = left + cell / 2f
     val centerY = top + cell / 2f
@@ -914,7 +936,7 @@ private fun DrawScope.drawSnakeSegment(
         shaders.glow.setFloatUniform("center", centerX, centerY)
         shaders.glow.setFloatUniform("radius", glowRadius)
         shaders.glow.setFloatUniform("time", time)
-        shaders.glow.setColorUniform("glowColor", palette.headGlow.toArgb())
+        shaders.glow.setColorUniform("glowColor", headGlow.toArgb())
         drawCircle(brush = shaders.glowBrush, radius = glowRadius, center = Offset(centerX, centerY))
     }
 
@@ -1327,7 +1349,7 @@ private fun DrawScope.draw3DScene(
                         shaders.glow.setFloatUniform("center", center.x, center.y)
                         shaders.glow.setFloatUniform("radius", gr)
                         shaders.glow.setFloatUniform("time", time)
-                        shaders.glow.setColorUniform("glowColor", palette.headGlow.toArgb())
+                        shaders.glow.setColorUniform("glowColor", hotGlow(palette.headGlow, state.combo).toArgb())
                         drawCircle(brush = shaders.glowBrush, radius = gr, center = center)
                     })
                 }

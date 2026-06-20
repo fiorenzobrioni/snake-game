@@ -13,9 +13,11 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -173,12 +175,27 @@ fun GameScreen(
     // Use sin on both axes so the offset is exactly 0 at rest (cos(0)=1 left the
     // board shifted ~17dp down when idle, pushing its bottom off-screen on the
     // first game until a death animation drove the damping term to zero).
-    val shakeX = sin(shakeT * Math.PI * 10).toFloat() * amplitudePx * damp +
-        sin(quakeT * Math.PI * 14).toFloat() * quakeAmpPx * quakeDamp +
-        sin(wobble * 2 * Math.PI * 12).toFloat() * sustainedAmp
-    val shakeY = sin(shakeT * Math.PI * 9).toFloat() * amplitudePx * damp +
-        sin(quakeT * Math.PI * 13).toFloat() * quakeAmpPx * quakeDamp +
-        cos(wobble * 2 * Math.PI * 11).toFloat() * sustainedAmp
+    // Accessibility: reduce-motion flattens every board shake to zero.
+    val motionScale = if (viewModel.reduceMotion) 0f else 1f
+    val shakeX = (
+        sin(shakeT * Math.PI * 10).toFloat() * amplitudePx * damp +
+            sin(quakeT * Math.PI * 14).toFloat() * quakeAmpPx * quakeDamp +
+            sin(wobble * 2 * Math.PI * 12).toFloat() * sustainedAmp
+        ) * motionScale
+    val shakeY = (
+        sin(shakeT * Math.PI * 9).toFloat() * amplitudePx * damp +
+            sin(quakeT * Math.PI * 13).toFloat() * quakeAmpPx * quakeDamp +
+            cos(wobble * 2 * Math.PI * 11).toFloat() * sustainedAmp
+        ) * motionScale
+
+    // A brief danger flash on a near-miss / grace dodge (suppressed by reduce-motion).
+    val nearMissFlash = remember { Animatable(0f) }
+    LaunchedEffect(viewModel.nearMissEventId) {
+        if (viewModel.nearMissEventId > 0 && !viewModel.reduceMotion) {
+            nearMissFlash.snapTo(0.7f)
+            nearMissFlash.animateTo(0f, tween(durationMillis = 320, easing = LinearEasing))
+        }
+    }
 
     // Pause blur (step 3.4): blurs the frozen board behind the overlay scrim.
     val blurRadius by animateDpAsState(
@@ -240,6 +257,7 @@ fun GameScreen(
                 length = if (onBoard) state.snake.size else 0,
                 palette = viewModel.palette,
                 showPause = state.status == GameStatus.Running,
+                reduceMotion = viewModel.reduceMotion,
                 onPause = { audio.playPause(); viewModel.togglePause() },
             )
 
@@ -310,8 +328,22 @@ fun GameScreen(
                     cameraBlend = camBlend.value,
                     fixedNorth = viewModel.viewMode.fixedNorth,
                     electricField = viewModel.electricWalls,
+                    reduceMotion = viewModel.reduceMotion,
                     modifier = boardModifier,
                 )
+                // Danger frame flash, tracking the board's shake offset.
+                if (nearMissFlash.value > 0f) {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .offset { IntOffset(shakeX.roundToInt(), shakeY.roundToInt()) }
+                            .border(
+                                width = 3.dp,
+                                color = NearMissFlashColor.copy(alpha = nearMissFlash.value),
+                                shape = RoundedCornerShape(14.dp),
+                            ),
+                    )
+                }
             }
 
             if (playing) {
@@ -375,6 +407,18 @@ fun GameScreen(
  * row would appear/disappear with each power-up and visibly resize the board,
  * making the snake seem to jump.
  */
+/** The warning colour used by the near-miss / grace-dodge danger flash. */
+private val NearMissFlashColor = Color(0xFFFF6E40)
+
+/** The combo multiplier's colour, warming through tiers as the streak climbs. */
+@Composable
+private fun comboTierColor(combo: Int): Color = when {
+    combo >= 8 -> Color(0xFFFF5252)
+    combo >= 5 -> Color(0xFFFFA000)
+    combo >= 3 -> Color(0xFFFFD54F)
+    else -> MaterialTheme.colorScheme.tertiary
+}
+
 private val EffectTimersRowHeight = 34.dp
 
 /** A row of countdown chips for the timed effects currently running. */
@@ -485,6 +529,7 @@ private fun Hud(
     length: Int,
     palette: SkinPalette,
     showPause: Boolean,
+    reduceMotion: Boolean,
     onPause: () -> Unit,
 ) {
     // Rolling score counter (step 3.6).
@@ -505,13 +550,24 @@ private fun Hud(
                 modifier = Modifier.weight(1f),
             )
             if (combo > 1) {
+                // Combo "juice": the multiplier punches in on each bump and warms
+                // through a colour ramp (white → gold → orange → red) as it climbs.
+                val pulse = remember { Animatable(1f) }
+                LaunchedEffect(combo) {
+                    if (!reduceMotion) {
+                        pulse.snapTo(1.3f)
+                        pulse.animateTo(1f, spring(dampingRatio = 0.42f))
+                    }
+                }
                 Text(
                     text = stringResource(R.string.hud_combo, combo),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.tertiary,
+                    color = comboTierColor(combo),
                     maxLines = 1,
-                    modifier = Modifier.padding(end = 8.dp),
+                    modifier = Modifier
+                        .padding(end = 8.dp)
+                        .graphicsLayer { scaleX = pulse.value; scaleY = pulse.value },
                 )
             }
             TextButton(

@@ -39,6 +39,8 @@ data class Settings(
     val crtEnabled: Boolean = false,
     /** Vibration feedback for gameplay events and near-misses (default on). */
     val hapticsEnabled: Boolean = true,
+    /** Accessibility: damp screen shake, particle bursts and near-miss flashes (default off). */
+    val reduceMotion: Boolean = false,
     /** Animated electric/plasma flow on the 3D boundary barrier (default on). */
     val electricWallsEnabled: Boolean = true,
     val skin: Skin = Skin.Classic,
@@ -77,6 +79,7 @@ class SettingsRepository(private val context: Context) {
             sfxVolume = prefs[SFX_VOLUME] ?: DEFAULT_SFX_VOLUME,
             crtEnabled = prefs[CRT_ENABLED] ?: false,
             hapticsEnabled = prefs[HAPTICS_ENABLED] ?: true,
+            reduceMotion = prefs[REDUCE_MOTION] ?: false,
             electricWallsEnabled = prefs[ELECTRIC_WALLS] ?: true,
             skin = prefs[SKIN].toEnum(Skin::valueOf) ?: Skin.Classic,
             hazardsEnabled = prefs[HAZARDS_ENABLED] ?: true,
@@ -119,6 +122,9 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setHapticsEnabled(enabled: Boolean) =
         edit { it[HAPTICS_ENABLED] = enabled }
+
+    suspend fun setReduceMotion(enabled: Boolean) =
+        edit { it[REDUCE_MOTION] = enabled }
 
     suspend fun setElectricWallsEnabled(enabled: Boolean) =
         edit { it[ELECTRIC_WALLS] = enabled }
@@ -257,6 +263,7 @@ class SettingsRepository(private val context: Context) {
         val SFX_VOLUME = floatPreferencesKey("sfx_volume")
         val CRT_ENABLED = booleanPreferencesKey("crt_enabled")
         val HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
+        val REDUCE_MOTION = booleanPreferencesKey("reduce_motion")
         val ELECTRIC_WALLS = booleanPreferencesKey("electric_walls")
         val SKIN = stringPreferencesKey("skin")
         val HAZARDS_ENABLED = booleanPreferencesKey("hazards_enabled")

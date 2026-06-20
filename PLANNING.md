@@ -308,6 +308,87 @@ snake-game/
       The difficulty selector is hidden/ignored (scores pinned to one level per scale; a "best level"
       record is also kept); three new achievements (Climber / Tower Topper / Full Circle).
 
+### Phase 6.9 - Feel, accessibility & retention (pre-launch polish)
+
+> A grab-bag of polish, depth and retention ideas to tackle **before** the Play Store phase. Each step is
+> self-contained and can be picked up in its own chat. Already shipped in this band: a **coyote/grace
+> tick**, **haptics + near-miss feedback**, a **Daily Challenge** (with per-day modifiers), **combo
+> "juice"** (head-on-fire + animated multiplier), a **near-miss visual flash**, and a **Reduce motion &
+> flashing** accessibility toggle. The remaining steps below are still open.
+
+**Game feel & telegraphing**
+
+- [ ] **Step 6.9.1 - Telegraph hazards before they strike.** Explosion/Earthquake currently fire with no
+      warning, so they can feel arbitrary. Add a 1-tick "tell": flash the about-to-trigger special (or its
+      blast cells) and a short pre-haptic the tick before the effect lands. Impl: emit a `GameEvent`
+      (e.g. `HazardImminent`) one tick early from `GameEngine.tick`, or animate the special's on-board
+      glyph as its timeout nears; gate the flash under **Reduce motion**.
+
+- [ ] **Step 6.9.2 - Richer game-over summary.** Replace the bare "Final score" with a short run recap:
+      foods eaten, max combo, run duration, max length (and for Campaign: deepest level). The data already
+      exists on the per-run accumulators in `GameViewModel` (`runFoodsEaten`, `runMaxCombo`, `runMaxLength`,
+      `runStartMs`, `runMaxDepth`); surface them via a small stats object to `GameOverOverlay`.
+
+**Accessibility & controls**
+
+- [ ] **Step 6.9.3 - Swipe sensitivity + tap-to-turn.** Add a swipe-distance threshold setting and an
+      optional "tap a screen half to turn" scheme (left half = turn left, right half = turn right) for
+      comfortable one-handed play. Impl: new `ControlScheme.TapTurn` (or a sensitivity slider in Settings)
+      wired through `GameControls` / `swipeToSteer`; persist via `SettingsRepository`.
+
+- [ ] **Step 6.9.4 - Auto-pause on focus loss.** When the app is backgrounded mid-run, auto-pause instead
+      of letting the loop keep ticking unseen. Impl: observe the host lifecycle (the `App` `DisposableEffect`
+      already watches `ON_STOP`/`ON_START`) and call `GameViewModel.togglePause()` when a run is Running.
+
+**Depth / objectives**
+
+- [ ] **Step 6.9.5 - Rotating objectives / missions.** Beyond the static achievements, show 2-3 rotating
+      per-run goals ("eat 3 maxi foods", "reach a x5 combo", "survive 90s") that refresh daily/weekly and
+      give a sense of purpose to a single run. Impl: a pure-Kotlin `Mission` model evaluated against the
+      existing `RunStats`; persist completion + a small reward (points/cosmetic) in `SettingsRepository`;
+      surface progress on the menu or game-over screen.
+
+- [ ] **Step 6.9.6 - Player-activated power-up (one slot).** A single chargeable ability the player
+      triggers on demand (e.g. a one-shot **Dash** that skips a few cells, or a **Bomb** that clears nearby
+      debris/obstacles), instead of only random pickups - adds a tactical decision. Impl: a `GameState`
+      "charge" field filled by play (e.g. by combos), a HUD button, and an engine action; respect
+      determinism so it stays test-friendly.
+
+- [ ] **Step 6.9.7 - Environmental hazards in Campaign.** The level shapes are already procedural, so they
+      lend themselves to **moving walls** (gates that open/close on a cycle) and **teleport pads** (enter
+      one, exit its pair). Impl: extend `LevelsMode`/the wall set with time-phased cells and a teleport map;
+      apply in `GameEngine.tick`; cover with `LevelShapesTest`-style connectivity/lethality tests.
+
+**Retention & social**
+
+- [ ] **Step 6.9.8 - Daily streak achievements & rewards.** Tie achievements (and maybe an unlockable skin)
+      to the Daily Challenge streak ("7-day streak", "30-day streak"). Impl: the streak already lives in
+      `SettingsRepository` (`dailyStreak`); add `Achievement` entries that read it, and gate a `Skin` behind a
+      milestone.
+
+- [ ] **Step 6.9.9 - Unlockable skins.** The four skins are all available immediately; gate some behind
+      achievements / streaks / score milestones to give long-term goals. Impl: an "unlocked skins" set in
+      `SettingsRepository`, a lock state in the Settings skin picker, and unlock triggers on game-over.
+
+- [ ] **Step 6.9.10 - Weekly challenge / local Daily history.** A small screen showing the last 7 days'
+      Daily results (best per day) and a "this week" aggregate. Impl: the per-day bests are already stored
+      (`daily_best_<epochDay>`); add a bulk read over the last N days and a simple table view.
+
+- [ ] **Step 6.9.11 - Share your score.** From the game-over (and Daily) screen, render a small score card
+      and open the Android share sheet (`ACTION_SEND` with a generated image). Impl: draw the card to a
+      `Bitmap`, save to cache via a `FileProvider`, and launch a share `Intent`.
+
+- [ ] **Step 6.9.12 - Ghost replay of your best run.** Re-play a translucent "ghost" snake of your best run
+      alongside the live one. The interpolation + per-tick state machinery already exists; record the best
+      run's input/positions and render the ghost from the same `previousSnake`/`tickTimeNanos` path. Impl:
+      capture a compact per-tick position log on a best run, persist it, and add a ghost layer to `GameBoard`.
+
+**Onboarding & polish**
+
+- [ ] **Step 6.9.13 - First-run onboarding / tutorial.** A brief, skippable intro on first launch (controls
+      + objective), so new players aren't dropped cold. Impl: a one-time flag in `SettingsRepository`; a
+      lightweight overlay or a 2-3 card pager shown before the first game.
+
 ### Phase 7 - Play Store distribution & cleanup
 
 - [x] **Step 7.1** - Final app icon / adaptive icon + branded **SplashScreen API**; set `versionCode`/`versionName`.
@@ -340,6 +421,7 @@ snake-game/
 | **M2 - Pretty** | End of Phases 2–3 | Polished graphics, menus, professional look |
 | **M3 - Alive** | End of Phases 4–5 | Audio + AGSL shaders, "premium arcade" feel |
 | **M4 - Deep** | End of Phase 6 | Skins, power-ups, achievements, extra modes |
+| **M4.5 - Felt** | End of Phase 6.9 | Game feel, accessibility & retention polish |
 | **M5 - Published** | End of Phase 7 | Signed AAB on the Google Play Store, legacy archived |
 
 ---
