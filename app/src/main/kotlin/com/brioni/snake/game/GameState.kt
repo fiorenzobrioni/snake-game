@@ -85,6 +85,14 @@ data class GameState(
     val lives: Int = 0,
     val levelFoodsEaten: Int = 0,
     val walls: Set<Position> = emptySet(),
+    /**
+     * A "coyote" dodge banked by staying alive: the first lethal step spends it on
+     * a one-tick freeze (the head hesitates against the hazard) instead of dying,
+     * buying a beat to turn away. Re-banked by the next safe move. Granted by
+     * [GameEngine.setup] / level staging; defaults false so a bare state still dies
+     * on contact (keeps the engine's collision tests immediate).
+     */
+    val graceAvailable: Boolean = false,
     val lastEvents: List<GameEvent> = emptyList(),
 ) {
     val head: Position get() = snake.first()

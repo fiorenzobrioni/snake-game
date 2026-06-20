@@ -30,6 +30,13 @@ sealed interface GameEvent {
      */
     data object NearMiss : GameEvent
 
+    /**
+     * A lethal step was cancelled by a banked grace/coyote dodge: the snake froze
+     * for one tick instead of dying, leaving a beat to turn away. Drives a
+     * "close call" cue (a firm haptic / small jolt).
+     */
+    data object GraceDodge : GameEvent
+
     // --- Phase 6.2 specials. ---
 
     /** Explosion eaten: the snake split, leaving [debris] lethal blocks behind. */

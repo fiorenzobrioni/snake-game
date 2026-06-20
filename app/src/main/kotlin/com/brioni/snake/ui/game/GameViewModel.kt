@@ -504,6 +504,12 @@ class GameViewModel(
                         lastNearMissNanos = now
                     }
                 }
+                GameEvent.GraceDodge -> {
+                    // A whisker from death: a firmer cue sells the save. Suppress the
+                    // near-miss tick that would otherwise pile on right after.
+                    haptics.special()
+                    lastNearMissNanos = System.nanoTime()
+                }
                 is GameEvent.Exploded -> {
                     // Explosion: outward burst at the blast + a board shake.
                     eatEvent = EatEvent(event.food.position, event.food.span, palette.special, BurstStyle.Eat)

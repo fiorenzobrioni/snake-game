@@ -248,6 +248,59 @@ class GameEngineTest {
     }
 
     @Test
+    fun graceDodgeFreezesTheFirstLethalStepThenDies() {
+        // Heading Left into the x=0 wall, with a coyote dodge banked.
+        val cornered = GameState(
+            board = BoardDimensions(18, 26),
+            level = Level.Beginner,
+            snake = listOf(Position(0, 5), Position(1, 5), Position(2, 5)),
+            direction = Direction.Left,
+            pendingDirection = Direction.Left,
+            foods = emptyList(),
+            obstacles = emptySet(),
+            score = 0,
+            pendingGrowth = 0,
+            status = GameStatus.Running,
+            graceAvailable = true,
+        )
+        // First lethal tick: the snake holds in place instead of dying.
+        val dodged = engine.tick(cornered)
+        assertEquals(GameStatus.Running, dodged.status)
+        assertEquals(cornered.snake, dodged.snake)
+        assertFalse(dodged.graceAvailable)
+        assertTrue(dodged.lastEvents.contains(GameEvent.GraceDodge))
+        // Still aimed at the wall with no dodge left: now fatal.
+        assertEquals(GameStatus.GameOver, engine.tick(dodged).status)
+    }
+
+    @Test
+    fun graceReBanksAfterASafeMove() {
+        val cornered = GameState(
+            board = BoardDimensions(18, 26),
+            level = Level.Beginner,
+            snake = listOf(Position(0, 5), Position(1, 5), Position(2, 5)),
+            direction = Direction.Left,
+            pendingDirection = Direction.Left,
+            foods = emptyList(),
+            obstacles = emptySet(),
+            score = 0,
+            pendingGrowth = 0,
+            status = GameStatus.Running,
+            graceAvailable = true,
+        )
+        val dodged = engine.tick(cornered) // freeze, dodge spent
+        val turned = engine.changeDirection(dodged, Direction.Up)
+        val safe = engine.tick(turned) // steers up, away from the wall
+        assertEquals(GameStatus.Running, safe.status)
+        assertTrue("a safe move re-banks the dodge", safe.graceAvailable)
+    }
+
+    @Test
+    fun setupGrantsAGraceDodge() {
+        assertTrue(engine.setup(Level.Beginner, BoardDimensions(18, 26)).graceAvailable)
+    }
+
+    @Test
     fun reversalIntoSelfIsBlocked() {
         val state = runningState(Direction.Right)
         val attempted = engine.changeDirection(state, Direction.Left)

@@ -43,6 +43,7 @@ class GameEngine(private val random: Random = Random.Default) {
             mode = mode,
             lives = if (isLevels) LevelsMode.START_LIVES else 0,
             walls = if (isLevels) LevelsMode.shapeFor(1, board) else emptySet(),
+            graceAvailable = true,
         )
     }
 
@@ -356,6 +357,30 @@ class GameEngine(private val random: Random = Random.Default) {
                 debris.any { it.cell == newHead }
             )
 
+        // Coyote / grace tick: a banked dodge turns the first lethal step into a
+        // one-tick freeze - the head hesitates against the hazard instead of dying
+        // - so a beat-late turn at speed can still save the run. The dodge is spent
+        // here and re-banked by the next safe move; a second lethal step with none
+        // banked is fatal. The move is cancelled (the snake holds), while time,
+        // effects, debris and food upkeep still advance.
+        if (crashed && state.graceAvailable) {
+            return state.copy(
+                foods = foods,
+                direction = direction,
+                pendingDirection = direction,
+                elapsedTicks = elapsedTicks,
+                playedMs = playedMs,
+                combo = combo,
+                comboDeadlineTick = comboDeadlineTick,
+                debris = debris,
+                effectTimers = effectTimers,
+                timeAdjustMs = timeAdjustMs,
+                graceAvailable = false,
+                lastEvents = listOf(GameEvent.GraceDodge),
+                status = GameStatus.Running,
+            )
+        }
+
         // Levels: a crash with lives to spare consumes one and restages the
         // same level (score and food progress kept) instead of ending the run.
         if (crashed && state.mode == GameMode.Levels && lives > 1) {
@@ -392,6 +417,8 @@ class GameEngine(private val random: Random = Random.Default) {
             timeAdjustMs = timeAdjustMs,
             lives = if (dead && crashed && state.mode == GameMode.Levels) 0 else lives,
             levelFoodsEaten = levelFoodsEaten,
+            // A safe move re-banks the coyote dodge for the next near-death moment.
+            graceAvailable = true,
             lastEvents = events,
             status = if (dead) GameStatus.GameOver else GameStatus.Running,
         )
@@ -433,6 +460,7 @@ class GameEngine(private val random: Random = Random.Default) {
         lives = lives,
         levelFoodsEaten = levelFoodsEaten,
         walls = LevelsMode.shapeFor(levelIndex, state.board),
+        graceAvailable = true,
         lastEvents = events,
         status = GameStatus.LevelIntro,
     )
