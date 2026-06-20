@@ -234,10 +234,6 @@ fun shortestDelta(a: Float, b: Float): Float {
 
 internal fun lerpF(a: Float, b: Float, t: Float): Float = a + (b - a) * t
 
-/** Component-wise linear interpolation between two points / vectors. */
-internal fun lerpVec(a: Vec3, b: Vec3, t: Float): Vec3 =
-    Vec3(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t)
-
 internal fun smoothstep(t: Float): Float {
     val x = t.coerceIn(0f, 1f)
     return x * x * (3f - 2f * x)

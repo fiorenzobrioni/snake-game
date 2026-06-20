@@ -378,16 +378,18 @@ fun GameBoard(
 }
 
 /**
- * A single near-clipped face of an extruded 3D wall segment: its camera-space
- * polygon ready to project, its fill [color], and (for the vertical side faces)
- * the bottom->top corner pair of each side edge so masonry seams can be drawn and
- * clipped independently of the face. Cap faces leave the seam edges null.
+ * A single continuous run of boundary wall: a straight segment from (ax,ay) to
+ * (bx,by) in cell units, carrying its unit outward normal (nx,ny). One run spans a
+ * whole board edge (or a whole straight stretch of a campaign wall) so it can be
+ * extruded and drawn as one seam-free strip rather than one box per cell.
  */
-private data class WallFace(
-    val poly: List<Vec3>,
-    val color: Color,
-    val seamA: Pair<Vec3, Vec3>?,
-    val seamB: Pair<Vec3, Vec3>?,
+private data class WallRun(
+    val ax: Float,
+    val ay: Float,
+    val bx: Float,
+    val by: Float,
+    val nx: Float,
+    val ny: Float,
 )
 
 /** One edge (in cell units) between a playable cell and a wall / out-of-board. */
@@ -422,6 +424,67 @@ private fun boundaryEdges(walls: Set<Position>, board: BoardDimensions): List<Bo
         }
     }
     return edges
+}
+
+/**
+ * The continuous wall runs to extrude for the 3D view. For a plain rectangular board
+ * (no [boundary]) this is the four edges, each extended at both ends by one wall
+ * thickness so the corners seal into solid posts. For a shaped (Levels mode) board
+ * the unit [boundary] edges are merged into maximal straight runs (same line + same
+ * outward normal, contiguous), so each straight stretch is one seam-free strip.
+ */
+private fun wallRuns(boundary: List<BoundaryEdge>, board: BoardDimensions): List<WallRun> {
+    if (boundary.isEmpty()) {
+        val w = board.width.toFloat()
+        val h = board.height.toFloat()
+        val t = WALL_THICKNESS
+        return listOf(
+            WallRun(-t, 0f, w + t, 0f, 0f, -1f), // top
+            WallRun(-t, h, w + t, h, 0f, 1f), // bottom
+            WallRun(0f, -t, 0f, h + t, -1f, 0f), // left
+            WallRun(w, -t, w, h + t, 1f, 0f), // right
+        )
+    }
+    val runs = ArrayList<WallRun>()
+    // Horizontal runs (constant y, normal along y): group by (y, ny), merge over x.
+    boundary.filter { it.y1 == it.y2 && it.ny != 0f }
+        .groupBy { it.y1 to it.ny }
+        .forEach { (key, edges) ->
+            val (y, ny) = key
+            val lefts = edges.map { minOf(it.x1, it.x2) }.sorted()
+            var start = lefts.first()
+            var end = start + 1f
+            for (i in 1 until lefts.size) {
+                if (lefts[i] <= end + 1e-3f) {
+                    end = maxOf(end, lefts[i] + 1f)
+                } else {
+                    runs.add(WallRun(start, y, end, y, 0f, ny))
+                    start = lefts[i]
+                    end = start + 1f
+                }
+            }
+            runs.add(WallRun(start, y, end, y, 0f, ny))
+        }
+    // Vertical runs (constant x, normal along x): group by (x, nx), merge over y.
+    boundary.filter { it.x1 == it.x2 && it.nx != 0f }
+        .groupBy { it.x1 to it.nx }
+        .forEach { (key, edges) ->
+            val (x, nx) = key
+            val tops = edges.map { minOf(it.y1, it.y2) }.sorted()
+            var start = tops.first()
+            var end = start + 1f
+            for (i in 1 until tops.size) {
+                if (tops[i] <= end + 1e-3f) {
+                    end = maxOf(end, tops[i] + 1f)
+                } else {
+                    runs.add(WallRun(x, start, x, end, nx, 0f))
+                    start = tops[i]
+                    end = start + 1f
+                }
+            }
+            runs.add(WallRun(x, start, x, end, nx, 0f))
+        }
+    return runs
 }
 
 private fun DrawScope.drawBoardBackground(
@@ -998,112 +1061,80 @@ private fun DrawScope.draw3DScene(
     // Depth-sorted scene items (drawn far -> near).
     val items = ArrayList<Pair<Float, DrawScope.() -> Unit>>()
 
-    // Raised boundary walls: each edge is extruded into a solid box (thickness
-    // WALL_THICKNESS) so the arena wall reads with depth, like the interior
-    // obstacle blocks, rather than as a thin plane.
+    // Raised boundary walls. Each side of the arena is drawn as a SINGLE continuous
+    // extruded strip (a box: inner face, outer face, top cap and the two end caps),
+    // not as one box per cell. A planar quad projects exactly under perspective, so
+    // a single strip has no inter-cell seams, no per-cell depth-sort flicker and a
+    // uniform shade along its length - the previous per-cell boxes broke up into
+    // separate leaning blocks with gaps as the camera moved.
     val edgeWidth = (cell * 0.12f).coerceAtLeast(2f) * (0.6f + 0.4f * t)
     val wallTop = lerpF(0f, WALL_HEIGHT, t) // grows with the tilt; flat stays flat
-    val faceColor = brighten(borderColor, 0.30f)
-    val capColor = brighten(borderColor, 0.50f)
-    val railColor = brighten(borderColor, 0.65f)
-    // [nx]/[ny] is the unit outward normal: the wall is extruded entirely to the
-    // outside of the play area (inner face flush with the boundary line), so it
-    // never overlaps the snake when it runs along the edge.
-    // One extruded wall face: its (camera-space) polygon, fill colour, and the
-    // bottom/top corner pair of each vertical edge, used to draw masonry seams that
-    // survive near-plane clipping. Cap faces carry no seam edges.
-    fun wallFace(
-        poly: List<Vec3>,
-        color: Color,
-        seamA: Pair<Vec3, Vec3>? = null,
-        seamB: Pair<Vec3, Vec3>? = null,
-    ) = WallFace(cam.clipPolygonNear(poly), color, seamA, seamB)
+    // Flat per-face tones (cap brightest, inner mid, outer/ends darker) give a clean,
+    // consistent low-poly read of a solid wall with real thickness.
+    val innerColor = brighten(borderColor, 0.34f)
+    val outerColor = darken(brighten(borderColor, 0.30f), 0.34f)
+    val capColor = brighten(borderColor, 0.55f)
+    val endColor = darken(brighten(borderColor, 0.30f), 0.20f)
+    val railColor = brighten(borderColor, 0.70f)
 
-    fun addWall(ax: Float, ay: Float, bx: Float, by: Float, nx: Float, ny: Float) {
+    // Draws one continuous wall run from (ax,ay) to (bx,by) along a board edge,
+    // extruded outward by WALL_THICKNESS along its unit normal (nx,ny). The five
+    // faces are clipped to the near plane (so a run straddling the camera is trimmed,
+    // never dropped), depth-sorted among themselves, and emitted as one scene item.
+    fun addWallRun(ax: Float, ay: Float, bx: Float, by: Float, nx: Float, ny: Float) {
         val ox = nx * WALL_THICKNESS
         val oy = ny * WALL_THICKNESS
         fun cs(x: Float, y: Float, z: Float) = cam.cameraSpace(Vec3(x, y, z))
-        // "in" = the boundary line (play-area side); "out" = pushed outward.
-        val aInB = cs(ax, ay, 0f)
-        val bInB = cs(bx, by, 0f)
-        val aOutB = cs(ax + ox, ay + oy, 0f)
-        val bOutB = cs(bx + ox, by + oy, 0f)
-        val aInT = cs(ax, ay, wallTop)
-        val bInT = cs(bx, by, wallTop)
-        val aOutT = cs(ax + ox, ay + oy, wallTop)
-        val bOutT = cs(bx + ox, by + oy, wallTop)
-        // Inner & outer side faces + the top cap. Each face is clipped to the near
-        // plane so a wall cell straddling the camera is trimmed, not dropped - the
-        // arena wall stays continuous (no gaps) as the camera sweeps along it.
-        val faces = listOf(
-            wallFace(listOf(aInB, bInB, bInT, aInT), faceColor, aInB to aInT, bInB to bInT),
-            wallFace(listOf(aOutB, bOutB, bOutT, aOutT), faceColor, aOutB to aOutT, bOutB to bOutT),
-            wallFace(listOf(aInT, bInT, bOutT, aOutT), capColor),
-        ).filter { it.poly.size >= 3 }
+        // i* = inner (boundary line, play side); o* = outer (pushed out). 0 = base, 1 = top.
+        val iA0 = cs(ax, ay, 0f); val iB0 = cs(bx, by, 0f)
+        val iA1 = cs(ax, ay, wallTop); val iB1 = cs(bx, by, wallTop)
+        val oA0 = cs(ax + ox, ay + oy, 0f); val oB0 = cs(bx + ox, by + oy, 0f)
+        val oA1 = cs(ax + ox, ay + oy, wallTop); val oB1 = cs(bx + ox, by + oy, wallTop)
+        val rawFaces = listOf(
+            listOf(iA0, iB0, iB1, iA1) to innerColor, // inner (player-facing)
+            listOf(oB0, oA0, oA1, oB1) to outerColor, // outer
+            listOf(iA1, iB1, oB1, oA1) to capColor, // top cap
+            listOf(oA0, iA0, iA1, oA1) to endColor, // end at A
+            listOf(iB0, oB0, oB1, iB1) to endColor, // end at B
+        )
+        val faces = rawFaces.mapNotNull { (poly, color) ->
+            val c = cam.clipPolygonNear(poly)
+            if (c.size < 3) null else c to color
+        }
         if (faces.isEmpty()) return
-        // Sort key from the surviving (in-front) geometry so the trimmed segment
-        // still orders sensibly against the rest of the scene.
-        val sortZ = faces.flatMap { it.poly }.map { it.z }.average().toFloat()
-        items.add(sortZ to {
-            faces.sortedByDescending { fc -> fc.poly.sumOf { it.z.toDouble() } / fc.poly.size }.forEach { fc ->
-                val pix = fc.poly.map { toPixel(cam.projectCamera(it)) }
+        // Order the faces of THIS box far -> near so the box occludes itself correctly.
+        val ordered = faces.sortedByDescending { (poly, _) -> poly.sumOf { it.z.toDouble() } / poly.size }
+        val sortKey = faces.flatMap { it.first }.map { it.z }.average().toFloat()
+        items.add(sortKey to {
+            ordered.forEach { (poly, color) ->
+                val pix = poly.map { toPixel(cam.projectCamera(it)) }
                 val path = Path().apply {
                     moveTo(pix[0].x, pix[0].y)
                     for (i in 1 until pix.size) lineTo(pix[i].x, pix[i].y)
                     close()
                 }
-                // Stronger top-lit shading for solidity: bright near the top edge,
-                // darkening toward the base.
+                // Gentle ambient shade around the flat tone (lighter top, darker base)
+                // for depth without breaking the uniform look.
                 drawPath(
                     path,
                     brush = Brush.verticalGradient(
-                        colors = listOf(brighten(fc.color, 0.12f), darken(fc.color, 0.45f)),
+                        colors = listOf(brighten(color, 0.10f), darken(color, 0.16f)),
                         startY = pix.minOf { it.y },
                         endY = pix.maxOf { it.y },
                     ),
                 )
-                // Horizontal seam lines give the vertical side faces a masonry-like
-                // texture. Drawn from the original edge corners (clipped per-line) so
-                // they line up even when the face itself was trimmed.
-                if (fc.seamA != null && fc.seamB != null) {
-                    val seam = darken(fc.color, 0.6f).copy(alpha = 0.5f)
-                    for (hf in listOf(0.38f, 0.68f)) {
-                        val s0 = lerpVec(fc.seamA.first, fc.seamA.second, hf)
-                        val s1 = lerpVec(fc.seamB.first, fc.seamB.second, hf)
-                        val clip = cam.clipNear(s0, s1) ?: continue
-                        val pa = cam.projectCamera(clip.first)
-                        val pb = cam.projectCamera(clip.second)
-                        if (pa.visible && pb.visible) drawLine(seam, toPixel(pa), toPixel(pb), 1.5f)
-                    }
-                }
             }
             // Bright rail along the inner top edge (the side facing the player),
             // clipped so it never streaks to the screen corner near the camera.
-            cam.clipNear(aInT, bInT)?.let { clip ->
+            cam.clipNear(iA1, iB1)?.let { clip ->
                 val pa = cam.projectCamera(clip.first)
                 val pb = cam.projectCamera(clip.second)
                 if (pa.visible && pb.visible) drawLine(railColor, toPixel(pa), toPixel(pb), edgeWidth)
             }
         })
     }
-    if (boundary.isEmpty()) {
-        // Subdivide each board edge into unit-cell segments so the near-plane cull
-        // only drops the single cell straddling the camera - the rest of every
-        // wall (and the corners) stays drawn. Each edge is extruded outward.
-        val w = board.width
-        val h = board.height
-        for (x in 0 until w) {
-            addWall(x.toFloat(), 0f, x + 1f, 0f, 0f, -1f) // top edge, outward = up
-            addWall(x.toFloat(), h.toFloat(), x + 1f, h.toFloat(), 0f, 1f) // bottom edge, outward = down
-        }
-        for (y in 0 until h) {
-            addWall(0f, y.toFloat(), 0f, y + 1f, -1f, 0f) // left edge, outward = left
-            addWall(w.toFloat(), y.toFloat(), w.toFloat(), y + 1f, 1f, 0f) // right edge, outward = right
-        }
-    } else {
-        // Campaign boundary edges are already unit-length and carry their normal.
-        boundary.forEach { e -> addWall(e.x1, e.y1, e.x2, e.y2, e.nx, e.ny) }
-    }
+
+    wallRuns(boundary, board).forEach { r -> addWallRun(r.ax, r.ay, r.bx, r.by, r.nx, r.ny) }
 
     fun addRaisedQuad(cx: Float, cy: Float, fill: Color, outline: Color, height: Float, alpha: Float, banded: Boolean = false) {
         val cc = cam.cameraSpace(Vec3(cx, cy, height))
