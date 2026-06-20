@@ -40,6 +40,7 @@ import kotlinx.coroutines.flow.map
 fun MainMenuScreen(
     repo: SettingsRepository,
     onPlay: () -> Unit,
+    onCustom: () -> Unit,
     onRecords: () -> Unit,
     onAchievements: () -> Unit,
     onSettings: () -> Unit,
@@ -81,6 +82,12 @@ fun MainMenuScreen(
                 modifier = Modifier.padding(top = 48.dp).widthIn(min = 220.dp),
             ) {
                 Text(stringResource(R.string.menu_play), style = MaterialTheme.typography.titleMedium)
+            }
+            OutlinedButton(
+                onClick = onCustom,
+                modifier = Modifier.padding(top = 12.dp).widthIn(min = 220.dp),
+            ) {
+                Text(stringResource(R.string.menu_custom))
             }
             OutlinedButton(
                 onClick = onRecords,

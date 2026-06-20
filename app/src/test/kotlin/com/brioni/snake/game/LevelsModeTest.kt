@@ -301,8 +301,8 @@ class LevelsModeTest {
         val levels = rolls(GameMode.Levels)
         assertTrue(levels.any { it.effect is FoodEffect.ExtraLife })
         assertTrue(levels.none { it.effect is FoodEffect.TimeBonus || it.effect is FoodEffect.TimePenalty })
-        val classic = rolls(GameMode.Classic)
-        assertTrue(classic.none { it.effect is FoodEffect.ExtraLife })
+        val endless = rolls(GameMode.Endless)
+        assertTrue(endless.none { it.effect is FoodEffect.ExtraLife })
         val timeAttack = rolls(GameMode.TimeAttack)
         assertTrue(timeAttack.none { it.effect is FoodEffect.ExtraLife })
     }

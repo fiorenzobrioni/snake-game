@@ -23,7 +23,7 @@ class GameEngine(private val random: Random = Random.Default) {
     fun setup(
         level: Level,
         board: BoardDimensions,
-        mode: GameMode = GameMode.Classic,
+        mode: GameMode = GameMode.Endless,
         snakeSpeed: SnakeSpeed = SnakeSpeed.DEFAULT,
     ): GameState {
         val snake = startingSnake(board)
@@ -95,7 +95,7 @@ class GameEngine(private val random: Random = Random.Default) {
     fun newGame(
         level: Level,
         board: BoardDimensions,
-        mode: GameMode = GameMode.Classic,
+        mode: GameMode = GameMode.Endless,
         snakeSpeed: SnakeSpeed = SnakeSpeed.DEFAULT,
     ): GameState =
         start(setup(level, board, mode, snakeSpeed))
@@ -261,11 +261,6 @@ class GameEngine(private val random: Random = Random.Default) {
                     effectTimers = addOrRefresh(effectTimers, EffectKind.Freeze, effect.durationMs)
                     events.add(GameEvent.EffectStarted(EffectKind.Freeze, eaten))
                 }
-                is FoodEffect.ThreeD -> {
-                    body.removeAt(body.lastIndex) // pure effect: keep length, no rule/speed change
-                    effectTimers = addOrRefresh(effectTimers, EffectKind.ThreeD, effect.durationMs)
-                    events.add(GameEvent.EffectStarted(EffectKind.ThreeD, eaten))
-                }
                 is FoodEffect.Jackpot -> {
                     score += effect.bonus
                     pendingGrowth += effect.growth
@@ -332,7 +327,6 @@ class GameEngine(private val random: Random = Random.Default) {
                 specialAllowed = specialsOnBoard < MAX_SPECIALS_ON_BOARD && !freezeActive,
                 specialFrequency = specialFrequency,
                 mode = state.mode,
-                threeDWorld = state.threeDWorld,
             )
         }
 
@@ -555,15 +549,14 @@ class GameEngine(private val random: Random = Random.Default) {
         hazardsEnabled: Boolean = true,
         specialAllowed: Boolean = true,
         specialFrequency: SpecialFrequency = SpecialFrequency.Standard,
-        mode: GameMode = GameMode.Classic,
-        threeDWorld: Boolean = false,
+        mode: GameMode = GameMode.Endless,
     ): List<Food> {
         var foods = existing
         while (foods.size < FOOD_COUNT) {
             // A special is allowed only while fewer than the cap are on the board.
             val allowSpecial = specialAllowed &&
                 foods.count { it.category == FoodCategory.Special } < MAX_SPECIALS_ON_BOARD
-            val food = spawnFood(board, snake, obstacles, walls, foods, elapsedTicks, level, baseTickMillis, hazardsEnabled, allowSpecial, specialFrequency, mode, threeDWorld) ?: break
+            val food = spawnFood(board, snake, obstacles, walls, foods, elapsedTicks, level, baseTickMillis, hazardsEnabled, allowSpecial, specialFrequency, mode) ?: break
             foods = foods + food
         }
         return foods
@@ -587,9 +580,8 @@ class GameEngine(private val random: Random = Random.Default) {
         specialAllowed: Boolean,
         specialFrequency: SpecialFrequency,
         mode: GameMode,
-        threeDWorld: Boolean,
     ): Food? {
-        val spec = FoodTable.roll(random, elapsedTicks, level, baseTickMillis, hazardsEnabled, specialAllowed, specialFrequency, mode, threeDWorld)
+        val spec = FoodTable.roll(random, elapsedTicks, level, baseTickMillis, hazardsEnabled, specialAllowed, specialFrequency, mode)
         val span = spec.size.cellSpan
         // Top-left cell range that keeps the whole square off the border.
         val maxX = board.width - span

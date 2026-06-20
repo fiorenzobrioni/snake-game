@@ -50,6 +50,7 @@ import com.brioni.snake.game.Skin
 import com.brioni.snake.game.SnakeSpeed
 import com.brioni.snake.game.SpecialFrequency
 import com.brioni.snake.game.ThemeMode
+import com.brioni.snake.game.ViewMode
 import com.brioni.snake.ui.game.paletteFor
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -117,6 +118,14 @@ fun SettingsScreen(
             selected = settings.scale,
             label = { it.label },
             onSelected = { scale -> scope.launch { repo.setScale(scale) } },
+        )
+
+        ChoiceSection(
+            title = stringResource(R.string.settings_view),
+            options = ViewMode.entries,
+            selected = settings.viewMode,
+            label = { it.displayName },
+            onSelected = { view -> scope.launch { repo.setViewMode(view) } },
         )
 
         SkinSection(

@@ -41,7 +41,7 @@ data class Settings(
     val skin: Skin = Skin.Classic,
     val hazardsEnabled: Boolean = true,
     val specialFrequency: SpecialFrequency = SpecialFrequency.Standard,
-    val mode: GameMode = GameMode.Classic,
+    val mode: GameMode = GameMode.Endless,
     val themeMode: ThemeMode = ThemeMode.Dark,
     /** The board presentation: flat 2D, follow chase-cam 3D, or fixed-north 3D. */
     val viewMode: ViewMode = ViewMode.TwoD,
@@ -77,7 +77,7 @@ class SettingsRepository(private val context: Context) {
             skin = prefs[SKIN].toEnum(Skin::valueOf) ?: Skin.Classic,
             hazardsEnabled = prefs[HAZARDS_ENABLED] ?: true,
             specialFrequency = prefs[SPECIAL_FREQUENCY].toEnum(SpecialFrequency::valueOf) ?: SpecialFrequency.Standard,
-            mode = prefs[MODE].toEnum(GameMode::valueOf) ?: GameMode.Classic,
+            mode = prefs[MODE].toEnum(GameMode::valueOf) ?: GameMode.Endless,
             themeMode = prefs[THEME_MODE].toEnum(ThemeMode::valueOf) ?: ThemeMode.Dark,
             viewMode = prefs[VIEW_MODE].toEnum(ViewMode::valueOf)
                 // Fall back from the legacy boolean: a stored "true" maps to the

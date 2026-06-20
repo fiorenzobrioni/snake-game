@@ -186,22 +186,9 @@ fun GameScreen(
         label = "pauseBlur",
     )
 
-    // 3D hazard camera blend: 0 = flat top-down, 1 = full chase-cam. The VM bumps
-    // cinematicId on tilt-in (effect started) and tilt-out (effect expired); we
-    // animate the tilt then release the loop freeze it set.
+    // 3D camera blend: 0 = flat top-down, 1 = full chase-cam. Driven by the
+    // standing "3D" / "3D Fixed" view setting below.
     val camBlend = remember { Animatable(0f) }
-    // The timed hazard's tilt-in / tilt-out (only when 3D World is off; with it on
-    // the whole game stays in 3D, driven permanently below).
-    LaunchedEffect(viewModel.cinematicId) {
-        if (viewModel.cinematicId == 0 || viewModel.threeDWorldEnabled) return@LaunchedEffect
-        val entering = viewModel.state.hasEffect(EffectKind.ThreeD)
-        camBlend.animateTo(
-            targetValue = if (entering) 1f else 0f,
-            animationSpec = tween(durationMillis = 700, easing = FastOutSlowInEasing),
-        )
-        viewModel.endCinematicHold()
-        if (!entering) viewModel.clearThreeD()
-    }
     // 3D World setting: every mode is in the chase-cam. Tilt in once play starts
     // and hold; the terminal/setup snap below drops back to flat for the overlays.
     LaunchedEffect(viewModel.threeDWorldEnabled, state.status) {
@@ -238,12 +225,11 @@ fun GameScreen(
             Hud(
                 score = state.score,
                 combo = state.combo,
-                levelLabel = when {
-                    inLevels -> stringResource(R.string.hud_level_speed, state.levelIndex, state.speedCycle)
-                    state.mode == GameMode.Classic -> state.level.abbreviation
-                    else -> state.mode.abbreviation
+                statusLabel = when {
+                    inLevels -> stringResource(R.string.hud_level_speed, state.levelIndex, state.speedCycle) +
+                        " · " + viewModel.scale.displayName
+                    else -> "${state.mode.displayName} · ${state.level.displayName} · ${viewModel.scale.displayName}"
                 },
-                boardLabel = "${viewModel.scale.abbreviation} · ${state.board.width}×${state.board.height}",
                 timeLabel = timeLabel,
                 lives = if (inLevels && onBoard) state.lives else 0,
                 length = if (onBoard) state.snake.size else 0,
@@ -341,12 +327,10 @@ fun GameScreen(
                 selectedLevel = viewModel.level,
                 selectedSnakeSpeed = viewModel.snakeSpeed,
                 selectedScale = viewModel.scale,
-                viewMode = viewModel.viewMode,
                 onModeSelected = { viewModel.selectMode(it) },
                 onLevelSelected = { viewModel.selectLevel(it) },
                 onSnakeSpeedSelected = { viewModel.selectSnakeSpeed(it) },
                 onScaleSelected = { viewModel.selectScale(it) },
-                onViewModeChanged = { viewModel.selectViewMode(it) },
                 onPlay = { viewModel.start() },
             )
 
@@ -411,7 +395,6 @@ private fun EffectChip(effect: com.brioni.snake.game.ActiveEffect) {
         com.brioni.snake.game.EffectKind.Slow -> stringResource(R.string.effect_snail)
         com.brioni.snake.game.EffectKind.Ghost -> stringResource(R.string.effect_star)
         com.brioni.snake.game.EffectKind.Freeze -> stringResource(R.string.effect_freeze)
-        com.brioni.snake.game.EffectKind.ThreeD -> stringResource(R.string.effect_threed)
         com.brioni.snake.game.EffectKind.Quake -> stringResource(R.string.effect_quake)
     }
     Column(
@@ -491,8 +474,7 @@ private fun ControlRegion(
 private fun Hud(
     score: Int,
     combo: Int,
-    levelLabel: String,
-    boardLabel: String,
+    statusLabel: String,
     timeLabel: String?,
     lives: Int,
     length: Int,
@@ -546,7 +528,7 @@ private fun Hud(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "$levelLabel · $boardLabel",
+                text = statusLabel,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                 maxLines = 1,

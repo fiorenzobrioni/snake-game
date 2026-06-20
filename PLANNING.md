@@ -355,30 +355,25 @@ snake-game/
 - **Mystery foods are resolved at spawn, not at eat**: `FoodTable.roll` rolls the concealed amount and
   stores the final `FoodEffect`, so `GameEngine.tick` consumes no randomness and stays deterministic.
 - **Special power-ups / hazards** shipped in **Phase 6.2** (earthquake, explosion + lethal debris,
-  Lightning/Snail, Star/ghost, Freeze, Jackpot, and the **3D** chase-cam hazard) via
+  Lightning/Snail, Star/ghost, Freeze, Jackpot) via
   `FoodCategory.Special`, the extra `FoodEffect` cases and `GameState.debris`/`effectTimers`. Effect
   durations are stored in **ms** and aged by the effective interval each tick; the loop reads
   `GameState.tickIntervalMillis` (never `level.tickMillis`) so speed effects actually change the pace.
-  Keep that invariant. The 3D view eases the pace by `THREED_FACTOR` (proportional, applied when the
-  3D hazard is active or the **3D World** setting is on) so the perspective stays playable. The 3D *camera* is
-  otherwise rendering-only: the `game/` package is unaware of it (besides the speed factor), the
-  cinematic freeze is a transient UI flag (`GameViewModel.cinematicHold`), and all perspective math
+  Keep that invariant. The standing 3D views run at the exact 2D pace. The 3D *camera* is
+  rendering-only: the `game/` package is unaware of it, and all perspective math
   lives in `ui/game/ChaseCam.kt` + `GameBoard.draw3DScene` behind a single `camBlend` blend. The board
   swipe uses a **single, never-swapped** `pointerInput` routed through `GameViewModel.onSwipe`, which
   picks relative-turn vs absolute steering from the current `threeDActive` (swapping the modifier on a
   state change left a stale gesture handler - do not reintroduce that).
-- **3D World** is a **start-screen "View" selector** (three mutually-exclusive `ReadyOverlay` chips -
-  **2D** / **3D** / **3D Fixed** - via `GameViewModel.selectViewMode`), a three-way **`ViewMode`** enum
+- **3D World** is a **Settings "View" selector** (a `ViewMode` `ChoiceSection` - **2D** / **3D** /
+  **3D Fixed**, written via `SettingsRepository.setViewMode`), a three-way **`ViewMode`** enum
   persisted via DataStore (`Settings.viewMode`, falling back from the legacy `threeDWorld` boolean) and
   orthogonal to the mode: any mode plays in a perspective view when one is picked. **3D** follows the
   snake's heading (the camera rotates); **3D Fixed** is **north-locked and panoramic** -
   `blendedCam(fixedNorth = true)` still **follows the head** (centred, board scrolls underneath) but
   never rotates, so it stays readable in every direction. Steering there is **absolute** (2D-style) via
-  `GameViewModel.relativeSteering` (`threeDActive && !viewMode.fixedNorth`). It is carried into a run as
-  the boolean `GameState.threeDWorld` flag (set by both 3D
-  variants, stamped in `GameViewModel.resetTo` + synced on the Ready screen), which the model consults
-  only to ease the pace and suppress the redundant 3D food. `threeDActive`
-  (`threeDWorldEnabled || threeDHazardActive`) drives the renderer + relative controls; `GameScreen`
+  `GameViewModel.relativeSteering` (`threeDActive && !viewMode.fixedNorth`). `threeDActive`
+  (`= threeDWorldEnabled`, derived from `viewMode`) drives the renderer + relative controls; `GameScreen`
   holds `camBlend` at 1 while a 3D view is on and passes `viewMode.fixedNorth` to `GameBoard`. It was
   briefly a `GameMode` (`ThreeDWorld`); that was removed in favour of the orthogonal selector - do not
   reintroduce it as a mode.
@@ -390,9 +385,9 @@ snake-game/
   carries only `obstacleCount`; the pace lives in a separate `SnakeSpeed` enum (5 settings:
   Relaxed→Turbo, the old per-level tick values), persisted via DataStore (`Settings.snakeSpeed`,
   default `SnakeSpeed.DEFAULT = Relaxed`) and stamped onto `GameState.snakeSpeed`. The base tick is
-  read from `snakeSpeed.tickMillis` in `GameState.tickIntervalMillis` for Classic/Time Attack (Endless
-  and Campaign still override it). Both selectors sit on the start screen and in Settings (speed under
-  Level), and are disabled in the modes that ignore them. Highscores stay keyed on `(mode, level,
+  read from `snakeSpeed.tickMillis` in `GameState.tickIntervalMillis` for Time Attack (Endless and
+  Campaign still override it). Both selectors sit on the **Custom** setup screen and in Settings (speed
+  under Level), and are disabled in the modes that ignore them. Highscores stay keyed on `(mode, level,
   scale)` only - speed is **not** part of `ScoreKey`, so all speeds share a level/scale's best score.
 - **Back-during-play behaviour is a setting** (`BackBehavior`: `Pause` (default) / `KeepPlaying`,
   persisted as `back_behavior`): it only affects a **Running** game (paused / game-over / Ready always

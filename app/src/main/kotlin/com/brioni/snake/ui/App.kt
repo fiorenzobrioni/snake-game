@@ -122,7 +122,12 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
 
                     Screen.Menu -> MainMenuScreen(
                         repo = repo,
-                        onPlay = { navigate(Screen.Game) },
+                        // Quick Play: launch straight into a run with the current
+                        // settings; the game screen starts it once it has measured
+                        // the board (see GameViewModel.requestQuickStart).
+                        onPlay = { gameViewModel.requestQuickStart(); navigate(Screen.Game) },
+                        // Custom: open the game screen's setup overlay instead.
+                        onCustom = { navigate(Screen.Game) },
                         onRecords = { navigate(Screen.Records) },
                         onAchievements = { navigate(Screen.Achievements) },
                         onSettings = { navigate(Screen.Settings) },

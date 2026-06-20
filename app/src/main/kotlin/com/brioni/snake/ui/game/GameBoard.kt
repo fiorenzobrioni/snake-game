@@ -741,27 +741,8 @@ private fun DrawScope.drawSpecialSymbol(
         is FoodEffect.TimeBonus -> drawClock(cx, cy, r, color, plus = true)
         is FoodEffect.TimePenalty -> drawClock(cx, cy, r, color, plus = false)
         is FoodEffect.ExtraLife -> drawSnakeHeadIcon(cx, cy, r, color)
-        is FoodEffect.ThreeD -> drawCube(cx, cy, r, color)
         else -> Unit
     }
-}
-
-/** A small wireframe cube — the 3D hazard icon. */
-private fun DrawScope.drawCube(cx: Float, cy: Float, r: Float, color: Color) {
-    val s = r * 0.96f // square side
-    val d = r * 0.5f // depth offset to the back face
-    val sw = r * 0.15f
-    val stroke = Stroke(width = sw, cap = StrokeCap.Round)
-    val fx = cx - s / 2f - d / 2f // front face, top-left
-    val fy = cy - s / 2f + d / 2f
-    val bx = fx + d // back face, shifted up-right
-    val by = fy - d
-    drawRect(color, topLeft = Offset(fx, fy), size = Size(s, s), style = stroke)
-    drawRect(color, topLeft = Offset(bx, by), size = Size(s, s), style = stroke)
-    drawLine(color, Offset(fx, fy), Offset(bx, by), sw)
-    drawLine(color, Offset(fx + s, fy), Offset(bx + s, by), sw)
-    drawLine(color, Offset(fx, fy + s), Offset(bx, by + s), sw)
-    drawLine(color, Offset(fx + s, fy + s), Offset(bx + s, by + s), sw)
 }
 
 /** A tiny snake head (rounded square + upward eyes) — the extra-life bonus icon. */
