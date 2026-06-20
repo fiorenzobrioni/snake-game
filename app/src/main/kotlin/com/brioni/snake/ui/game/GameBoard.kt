@@ -41,6 +41,7 @@ import com.brioni.snake.game.FoodTier
 import com.brioni.snake.game.GameState
 import com.brioni.snake.game.Position
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
@@ -60,11 +61,11 @@ import kotlin.math.sin
 /** Final window of a Ghost (Star) effect over which the warning blink ramps up. */
 private const val GHOST_WARN_MS = 2_000f
 
-/** Height (cells) of the raised boundary walls in the 3D chase-cam view. */
+/**
+ * Height (cells) of the luminous boundary barrier in the 3D views. Tunable: this is
+ * the only knob for how tall the neon border energy-field stands above the floor.
+ */
 private const val WALL_HEIGHT = 0.7f
-
-/** Thickness (cells) of the boundary walls, giving them obstacle-like depth. */
-private const val WALL_THICKNESS = 0.28f
 
 /** Mixes [c] toward white by [f] (0..1), forcing full opacity — for bright rails. */
 private fun brighten(c: Color, f: Float): Color = Color(
@@ -85,6 +86,51 @@ private fun darken(c: Color, f: Float): Color = Color(
 /** Linear interpolation between two screen points. */
 private fun lerpOffset(a: Offset, b: Offset, t: Float): Offset =
     Offset(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)
+
+/**
+ * The screen->UV homography for a projected quad whose corners [p0]..[p3] are the
+ * images of UV (0,0), (1,0), (1,1), (0,1). Returns the 3x3 (row-major, 9 floats)
+ * mapping a homogeneous screen point to homogeneous UV, or null if degenerate. Lets
+ * the wall shader flow its energy *along the wall* in correct perspective. Built via
+ * Heckbert's square->quad map, then inverted.
+ */
+private fun screenToUvHomography(p0: Offset, p1: Offset, p2: Offset, p3: Offset): FloatArray? {
+    val dx1 = p1.x - p2.x
+    val dx2 = p3.x - p2.x
+    val dy1 = p1.y - p2.y
+    val dy2 = p3.y - p2.y
+    val sx = p0.x - p1.x + p2.x - p3.x
+    val sy = p0.y - p1.y + p2.y - p3.y
+    val denom = dx1 * dy2 - dx2 * dy1
+    if (abs(denom) < 1e-6f) return null
+    val g = (sx * dy2 - dx2 * sy) / denom
+    val h = (dx1 * sy - sx * dy1) / denom
+    // M maps homogeneous UV -> homogeneous screen; invert it for screen -> UV.
+    val m = floatArrayOf(
+        p1.x - p0.x + g * p1.x, p3.x - p0.x + h * p3.x, p0.x,
+        p1.y - p0.y + g * p1.y, p3.y - p0.y + h * p3.y, p0.y,
+        g, h, 1f,
+    )
+    return invert3x3(m)
+}
+
+/** Inverse of a row-major 3x3, or null when (near-)singular. */
+private fun invert3x3(m: FloatArray): FloatArray? {
+    val a = m[0]; val b = m[1]; val c = m[2]
+    val d = m[3]; val e = m[4]; val f = m[5]
+    val g = m[6]; val h = m[7]; val i = m[8]
+    val ca = e * i - f * h
+    val cb = -(d * i - f * g)
+    val cc = d * h - e * g
+    val det = a * ca + b * cb + c * cc
+    if (abs(det) < 1e-9f) return null
+    val inv = 1f / det
+    return floatArrayOf(
+        ca * inv, (c * h - b * i) * inv, (b * f - c * e) * inv,
+        cb * inv, (a * i - c * g) * inv, (c * d - a * f) * inv,
+        cc * inv, (b * g - a * h) * inv, (a * e - b * d) * inv,
+    )
+}
 
 /** Fills a polygon (screen-space [px]) with a top-to-bottom vertical gradient. */
 private fun DrawScope.fillFace(px: List<Offset>, top: Color, bottom: Color) {
@@ -116,6 +162,7 @@ fun GameBoard(
     outsideColor: Color = Color.Black,
     cameraBlend: Float = 0f,
     fixedNorth: Boolean = false,
+    electricField: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val particles: SnapshotStateList<Particle> = remember { emptyList<Particle>().toMutableStateList() }
@@ -254,6 +301,7 @@ fun GameBoard(
                 time = time,
                 textMeasurer = textMeasurer,
                 borderColor = borderColor,
+                electricField = electricField,
             )
             return@Canvas
         }
@@ -377,6 +425,21 @@ fun GameBoard(
     }
 }
 
+/**
+ * A single continuous run of boundary wall: a straight segment from (ax,ay) to
+ * (bx,by) in cell units, carrying its unit outward normal (nx,ny). One run spans a
+ * whole board edge (or a whole straight stretch of a campaign wall) so it can be
+ * extruded and drawn as one seam-free strip rather than one box per cell.
+ */
+private data class WallRun(
+    val ax: Float,
+    val ay: Float,
+    val bx: Float,
+    val by: Float,
+    val nx: Float,
+    val ny: Float,
+)
+
 /** One edge (in cell units) between a playable cell and a wall / out-of-board. */
 private data class BoundaryEdge(
     val x1: Float,
@@ -409,6 +472,67 @@ private fun boundaryEdges(walls: Set<Position>, board: BoardDimensions): List<Bo
         }
     }
     return edges
+}
+
+/**
+ * The continuous wall runs to draw for the 3D view. For a plain rectangular board
+ * (no [boundary]) this is the four edges, corner to corner (the barrier has no
+ * thickness, so adjacent edges meet exactly at the corner line - no overlap). For a
+ * shaped (Levels mode) board the unit [boundary] edges are merged into maximal
+ * straight runs (same line + same outward normal, contiguous), so each straight
+ * stretch is one continuous barrier.
+ */
+private fun wallRuns(boundary: List<BoundaryEdge>, board: BoardDimensions): List<WallRun> {
+    if (boundary.isEmpty()) {
+        val w = board.width.toFloat()
+        val h = board.height.toFloat()
+        return listOf(
+            WallRun(0f, 0f, w, 0f, 0f, -1f), // top
+            WallRun(0f, h, w, h, 0f, 1f), // bottom
+            WallRun(0f, 0f, 0f, h, -1f, 0f), // left
+            WallRun(w, 0f, w, h, 1f, 0f), // right
+        )
+    }
+    val runs = ArrayList<WallRun>()
+    // Horizontal runs (constant y, normal along y): group by (y, ny), merge over x.
+    boundary.filter { it.y1 == it.y2 && it.ny != 0f }
+        .groupBy { it.y1 to it.ny }
+        .forEach { (key, edges) ->
+            val (y, ny) = key
+            val lefts = edges.map { minOf(it.x1, it.x2) }.sorted()
+            var start = lefts.first()
+            var end = start + 1f
+            for (i in 1 until lefts.size) {
+                if (lefts[i] <= end + 1e-3f) {
+                    end = maxOf(end, lefts[i] + 1f)
+                } else {
+                    runs.add(WallRun(start, y, end, y, 0f, ny))
+                    start = lefts[i]
+                    end = start + 1f
+                }
+            }
+            runs.add(WallRun(start, y, end, y, 0f, ny))
+        }
+    // Vertical runs (constant x, normal along x): group by (x, nx), merge over y.
+    boundary.filter { it.x1 == it.x2 && it.nx != 0f }
+        .groupBy { it.x1 to it.nx }
+        .forEach { (key, edges) ->
+            val (x, nx) = key
+            val tops = edges.map { minOf(it.y1, it.y2) }.sorted()
+            var start = tops.first()
+            var end = start + 1f
+            for (i in 1 until tops.size) {
+                if (tops[i] <= end + 1e-3f) {
+                    end = maxOf(end, tops[i] + 1f)
+                } else {
+                    runs.add(WallRun(x, start, x, end, nx, 0f))
+                    start = tops[i]
+                    end = start + 1f
+                }
+            }
+            runs.add(WallRun(x, start, x, end, nx, 0f))
+        }
+    return runs
 }
 
 private fun DrawScope.drawBoardBackground(
@@ -894,6 +1018,7 @@ private fun DrawScope.draw3DScene(
     time: Float,
     textMeasurer: TextMeasurer,
     borderColor: Color,
+    electricField: Boolean,
 ) {
     val board = state.board
     val snake = state.snake
@@ -948,14 +1073,19 @@ private fun DrawScope.draw3DScene(
     // staying black-leaning and on-brand with the dark theme. Drawn only when the
     // whole quad is in front of the camera (otherwise the receding grid carries it).
     run {
-        val floor = listOf(
-            cam.project(Vec3(0f, 0f, 0f)),
-            cam.project(Vec3(board.width.toFloat(), 0f, 0f)),
-            cam.project(Vec3(board.width.toFloat(), board.height.toFloat(), 0f)),
-            cam.project(Vec3(0f, board.height.toFloat(), 0f)),
+        // Clip the floor quad to the near plane (rather than dropping it whenever a
+        // corner falls behind the camera) so the ground stays a continuous filled
+        // surface as the camera sweeps over it.
+        val floorCam = cam.clipPolygonNear(
+            listOf(
+                cam.cameraSpace(Vec3(0f, 0f, 0f)),
+                cam.cameraSpace(Vec3(board.width.toFloat(), 0f, 0f)),
+                cam.cameraSpace(Vec3(board.width.toFloat(), board.height.toFloat(), 0f)),
+                cam.cameraSpace(Vec3(0f, board.height.toFloat(), 0f)),
+            ),
         )
-        if (floor.all { it.visible }) {
-            val pix = floor.map { toPixel(it) }
+        if (floorCam.size >= 3) {
+            val pix = floorCam.map { toPixel(cam.projectCamera(it)) }
             val path = Path().apply {
                 moveTo(pix[0].x, pix[0].y)
                 for (i in 1 until pix.size) lineTo(pix[i].x, pix[i].y)
@@ -980,91 +1110,93 @@ private fun DrawScope.draw3DScene(
     // Depth-sorted scene items (drawn far -> near).
     val items = ArrayList<Pair<Float, DrawScope.() -> Unit>>()
 
-    // Raised boundary walls: each edge is extruded into a solid box (thickness
-    // WALL_THICKNESS) so the arena wall reads with depth, like the interior
-    // obstacle blocks, rather than as a thin plane.
-    val edgeWidth = (cell * 0.12f).coerceAtLeast(2f) * (0.6f + 0.4f * t)
-    val wallTop = lerpF(0f, WALL_HEIGHT, t) // grows with the tilt; flat stays flat
-    val faceColor = brighten(borderColor, 0.30f)
-    val capColor = brighten(borderColor, 0.50f)
-    val railColor = brighten(borderColor, 0.65f)
-    // [nx]/[ny] is the unit outward normal: the wall is extruded entirely to the
-    // outside of the play area (inner face flush with the boundary line), so it
-    // never overlaps the snake when it runs along the edge.
-    fun addWall(ax: Float, ay: Float, bx: Float, by: Float, nx: Float, ny: Float) {
-        val ox = nx * WALL_THICKNESS
-        val oy = ny * WALL_THICKNESS
+    // Luminous boundary barrier. Each arena side is a single translucent "energy
+    // field" quad (boundary line up to WALL_HEIGHT) with glowing neon rails along the
+    // floor edge, the top edge and the two vertical ends. The barrier has no
+    // thickness, so: (1) it never hides the snake/food behind the back edges - you
+    // see through it; (2) perpendicular sides meet at a corner *line* with no area
+    // overlap, killing the corner z-fighting/flicker of the old solid boxes; and
+    // (3) a double-sided filled quad reads correctly from every angle (no "hollow"
+    // look). WALL_HEIGHT is the single height knob.
+    val wallTop = lerpF(0f, WALL_HEIGHT, t) // grows with the tilt; flat collapses to the outline
+    val coreWidth = (cell * 0.05f).coerceAtLeast(1.5f) * (0.6f + 0.4f * t)
+    // Lift the (often dark) skin border to a vivid neon for the structural rails, and
+    // add a gentle breathing pulse for the energy-field feel.
+    val neon = brighten(borderColor, 0.55f)
+    val pulse = 0.86f + 0.14f * (sin(time * 1.6f) * 0.5f + 0.5f)
+    // The energy field itself glows in the skin's vivid accent (the head-glow colour:
+    // lime for Classic, cyan for Neon, ...) so it reads as electric/plasma, not grey.
+    val electric = brighten(palette.headGlow, 0.1f)
+    val fieldAlpha = 0.18f * t
+
+    // Draws a glowing neon line between two world points: a soft wide halo, the
+    // coloured core and a hot near-white centre (cheap additive-looking bloom). The
+    // segment is near-clipped so it never streaks to a screen corner near the camera.
+    fun glowLine(a: Vec3, b: Vec3, width: Float, intensity: Float) {
+        val clip = cam.clipNear(a, b) ?: return
+        val pa = cam.projectCamera(clip.first)
+        val pb = cam.projectCamera(clip.second)
+        if (!pa.visible || !pb.visible) return
+        val p0 = toPixel(pa)
+        val p1 = toPixel(pb)
+        drawLine(neon.copy(alpha = 0.10f * intensity), p0, p1, width * 4.5f, cap = StrokeCap.Round)
+        drawLine(neon.copy(alpha = 0.22f * intensity), p0, p1, width * 2.3f, cap = StrokeCap.Round)
+        drawLine(neon.copy(alpha = 0.95f * intensity), p0, p1, width, cap = StrokeCap.Round)
+        drawLine(Color.White.copy(alpha = 0.6f * intensity), p0, p1, width * 0.4f, cap = StrokeCap.Round)
+    }
+
+    // Draws one continuous barrier run from (ax,ay) to (bx,by) along a board edge.
+    fun addWallRun(ax: Float, ay: Float, bx: Float, by: Float) {
         fun cs(x: Float, y: Float, z: Float) = cam.cameraSpace(Vec3(x, y, z))
-        // "in" = the boundary line (play-area side); "out" = pushed outward.
-        val aInB = cs(ax, ay, 0f)
-        val bInB = cs(bx, by, 0f)
-        val aOutB = cs(ax + ox, ay + oy, 0f)
-        val bOutB = cs(bx + ox, by + oy, 0f)
-        val aInT = cs(ax, ay, wallTop)
-        val bInT = cs(bx, by, wallTop)
-        val aOutT = cs(ax + ox, ay + oy, wallTop)
-        val bOutT = cs(bx + ox, by + oy, wallTop)
-        val corners = listOf(aInB, bInB, aOutB, bOutB, aInT, bInT, aOutT, bOutT)
-        // Cull the whole segment if any corner is behind the near plane (segments
-        // are unit-length, so at most the cell straddling the camera drops).
-        if (corners.any { it.z <= Cam.NEAR }) return
-        // Inner & outer side faces + the top cap, each tagged with its fill colour.
-        // Painted far -> near inside the lambda so the box occludes itself.
-        val faces = listOf(
-            listOf(aInB, bInB, bInT, aInT) to faceColor,
-            listOf(aOutB, bOutB, bOutT, aOutT) to faceColor,
-            listOf(aInT, bInT, bOutT, aOutT) to capColor,
-        )
-        val centroidZ = corners.map { it.z }.average().toFloat()
-        items.add(centroidZ to {
-            faces.sortedByDescending { (pts, _) -> pts.sumOf { it.z.toDouble() } }.forEach { (pts, color) ->
-                val pix = pts.map { toPixel(cam.projectCamera(it)) }
-                val path = Path().apply {
-                    moveTo(pix[0].x, pix[0].y)
-                    for (i in 1 until pix.size) lineTo(pix[i].x, pix[i].y)
-                    close()
-                }
-                // Stronger top-lit shading for solidity: bright near the top edge,
-                // darkening toward the base.
-                drawPath(
-                    path,
-                    brush = Brush.verticalGradient(
-                        colors = listOf(brighten(color, 0.12f), darken(color, 0.45f)),
-                        startY = pix.minOf { it.y },
-                        endY = pix.maxOf { it.y },
-                    ),
-                )
-                // Horizontal seam lines give the vertical side faces a masonry-like
-                // texture (skipped on the flat top cap).
-                if (color != capColor) {
-                    val seam = darken(color, 0.6f).copy(alpha = 0.5f)
-                    for (hf in listOf(0.38f, 0.68f)) {
-                        drawLine(seam, lerpOffset(pix[0], pix[3], hf), lerpOffset(pix[1], pix[2], hf), 1.5f)
-                    }
+        val a0 = cs(ax, ay, 0f); val b0 = cs(bx, by, 0f) // floor edge
+        val a1 = cs(ax, ay, wallTop); val b1 = cs(bx, by, wallTop) // top edge
+        val field = cam.clipPolygonNear(listOf(a0, b0, b1, a1))
+        if (field.size < 3) return
+        val sortKey = field.map { it.z }.average().toFloat()
+        items.add(sortKey to {
+            // Translucent energy field. The base is always a faint vertical gradient;
+            // when the electric effect is on (and the whole quad is in front of the
+            // camera, so its perspective UV is well-defined) an AGSL plasma flow is
+            // layered on top, mapped along the wall via a screen->UV homography.
+            val pix = field.map { toPixel(cam.projectCamera(it)) }
+            val path = Path().apply {
+                moveTo(pix[0].x, pix[0].y)
+                for (i in 1 until pix.size) lineTo(pix[i].x, pix[i].y)
+                close()
+            }
+            val fieldTint = if (electricField) electric else neon
+            drawPath(
+                path,
+                brush = Brush.verticalGradient(
+                    colors = listOf(fieldTint.copy(alpha = fieldAlpha * 1.4f), fieldTint.copy(alpha = fieldAlpha * 0.4f)),
+                    startY = pix.minOf { it.y },
+                    endY = pix.maxOf { it.y },
+                ),
+            )
+            val wallShader = shaders.wallField
+            val wallBrush = shaders.wallFieldBrush
+            if (electricField && wallShader != null && wallBrush != null && wallTop > 0.06f && field.size == 4) {
+                screenToUvHomography(pix[0], pix[1], pix[2], pix[3])?.let { hg ->
+                    wallShader.setFloatUniform("h0", hg[0], hg[1], hg[2])
+                    wallShader.setFloatUniform("h1", hg[3], hg[4], hg[5])
+                    wallShader.setFloatUniform("h2", hg[6], hg[7], hg[8])
+                    wallShader.setFloatUniform("time", time)
+                    wallShader.setFloatUniform("intensity", t)
+                    wallShader.setColorUniform("fieldColor", electric.toArgb())
+                    drawPath(path, brush = wallBrush)
                 }
             }
-            // Bright rail along the inner top edge (the side facing the player).
-            drawLine(railColor, toPixel(cam.projectCamera(aInT)), toPixel(cam.projectCamera(bInT)), edgeWidth)
+            // Glowing rails: top edge (brightest), floor edge, and the vertical ends
+            // (corner posts). Adjacent runs share the corner verticals exactly, so the
+            // overlap is identical geometry - it reads as one crisp post, no flicker.
+            glowLine(a1, b1, coreWidth, pulse) // top rail
+            glowLine(a0, b0, coreWidth * 0.85f, 0.7f * pulse) // floor rail (dimmer)
+            glowLine(a0, a1, coreWidth * 0.85f, 0.9f * pulse) // vertical end A
+            glowLine(b0, b1, coreWidth * 0.85f, 0.9f * pulse) // vertical end B
         })
     }
-    if (boundary.isEmpty()) {
-        // Subdivide each board edge into unit-cell segments so the near-plane cull
-        // only drops the single cell straddling the camera - the rest of every
-        // wall (and the corners) stays drawn. Each edge is extruded outward.
-        val w = board.width
-        val h = board.height
-        for (x in 0 until w) {
-            addWall(x.toFloat(), 0f, x + 1f, 0f, 0f, -1f) // top edge, outward = up
-            addWall(x.toFloat(), h.toFloat(), x + 1f, h.toFloat(), 0f, 1f) // bottom edge, outward = down
-        }
-        for (y in 0 until h) {
-            addWall(0f, y.toFloat(), 0f, y + 1f, -1f, 0f) // left edge, outward = left
-            addWall(w.toFloat(), y.toFloat(), w.toFloat(), y + 1f, 1f, 0f) // right edge, outward = right
-        }
-    } else {
-        // Campaign boundary edges are already unit-length and carry their normal.
-        boundary.forEach { e -> addWall(e.x1, e.y1, e.x2, e.y2, e.nx, e.ny) }
-    }
+
+    wallRuns(boundary, board).forEach { r -> addWallRun(r.ax, r.ay, r.bx, r.by) }
 
     fun addRaisedQuad(cx: Float, cy: Float, fill: Color, outline: Color, height: Float, alpha: Float, banded: Boolean = false) {
         val cc = cam.cameraSpace(Vec3(cx, cy, height))

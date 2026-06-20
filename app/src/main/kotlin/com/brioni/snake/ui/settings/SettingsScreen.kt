@@ -173,6 +173,12 @@ fun SettingsScreen(
             onCheckedChange = { enabled -> scope.launch { repo.setCrtEnabled(enabled) } },
         )
 
+        ToggleSection(
+            title = stringResource(R.string.settings_electric_walls),
+            checked = settings.electricWallsEnabled,
+            onCheckedChange = { enabled -> scope.launch { repo.setElectricWallsEnabled(enabled) } },
+        )
+
         ChoiceSection(
             title = stringResource(R.string.settings_back_behavior),
             options = BackBehavior.entries,

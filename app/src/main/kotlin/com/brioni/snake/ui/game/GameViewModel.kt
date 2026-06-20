@@ -102,6 +102,10 @@ class GameViewModel(
     var crtEnabled by mutableStateOf(false)
         private set
 
+    /** Whether the 3D barrier's electric/plasma flow is enabled (setting). */
+    var electricWalls by mutableStateOf(true)
+        private set
+
     /** Active visual skin (loaded from settings); drives the renderer [palette]. */
     var skin by mutableStateOf(Skin.Classic)
         private set
@@ -251,6 +255,7 @@ class GameViewModel(
                 controlScheme = settings.controlScheme
                 backBehavior = settings.backBehavior
                 crtEnabled = settings.crtEnabled
+                electricWalls = settings.electricWallsEnabled
                 skin = settings.skin
                 hazardsEnabled = settings.hazardsEnabled
                 specialFrequency = settings.specialFrequency

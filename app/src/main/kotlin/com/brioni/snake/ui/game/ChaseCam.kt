@@ -57,6 +57,37 @@ class Cam(
         return Proj(focal * c.x / c.z / aspect, focal * c.y / c.z, c.z, visible = true)
     }
 
+    /**
+     * Clips a convex camera-space polygon against the near plane, keeping the part
+     * with z >= [NEAR_CLIP]. Vertices straddling the plane are moved onto it (so the
+     * projected polygon stays gap-free) and the result clears the projection's
+     * `z > NEAR` visibility test. Returns fewer than 3 vertices when the polygon is
+     * (almost) entirely behind the camera. This is what lets walls, the floor and
+     * the grid pass behind the camera without being dropped wholesale.
+     */
+    fun clipPolygonNear(poly: List<Vec3>): List<Vec3> {
+        if (poly.size < 3) return emptyList()
+        val out = ArrayList<Vec3>(poly.size + 2)
+        for (i in poly.indices) {
+            val cur = poly[i]
+            val prev = poly[if (i == 0) poly.lastIndex else i - 1]
+            val curIn = cur.z >= NEAR_CLIP
+            val prevIn = prev.z >= NEAR_CLIP
+            if (curIn != prevIn) {
+                val t = (NEAR_CLIP - prev.z) / (cur.z - prev.z)
+                out.add(
+                    Vec3(
+                        prev.x + (cur.x - prev.x) * t,
+                        prev.y + (cur.y - prev.y) * t,
+                        NEAR_CLIP,
+                    ),
+                )
+            }
+            if (curIn) out.add(cur)
+        }
+        return out
+    }
+
     /** Projects a world point straight to normalized screen coords. */
     fun project(p: Vec3): Proj = projectCamera(cameraSpace(p))
 
@@ -67,18 +98,27 @@ class Cam(
      * straight world lines that pass behind the camera without artefacts.
      */
     fun clipNear(a: Vec3, b: Vec3): Pair<Vec3, Vec3>? {
-        val aIn = a.z > NEAR
-        val bIn = b.z > NEAR
+        val aIn = a.z >= NEAR_CLIP
+        val bIn = b.z >= NEAR_CLIP
         if (!aIn && !bIn) return null
         if (aIn && bIn) return a to b
-        val t = (NEAR - a.z) / (b.z - a.z)
-        val m = Vec3(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, NEAR)
+        val t = (NEAR_CLIP - a.z) / (b.z - a.z)
+        val m = Vec3(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, NEAR_CLIP)
         return if (aIn) a to m else m to b
     }
 
     companion object {
         /** Points nearer than this (in cell units along the view) are culled. */
         const val NEAR = 0.05f
+
+        /**
+         * Near clip plane, a hair in front of [NEAR]. Geometry is clipped to this
+         * depth so the clipped vertices land strictly in front of [NEAR] and still
+         * pass [projectCamera]'s `z > NEAR` test - otherwise a vertex resting exactly
+         * on [NEAR] (and any float round-off below it) would be culled, dropping the
+         * line/polygon that was just clipped (the cause of the vanishing grid lines).
+         */
+        const val NEAR_CLIP = 0.052f
     }
 }
 

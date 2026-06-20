@@ -63,9 +63,10 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - 🔊 **Music & sound effects** - looping background music that crossfades between the menu and
   gameplay, plus SFX for eating, shrinking, mystery pieces, game over and UI. Independent
   **master / music / SFX** volume sliders in Settings; audio pauses when the app is backgrounded.
-- ✨ **GPU shader effects** - an animated background, a glowing snake head and pulsing
-  halos on rare foods, all via **AGSL** `RuntimeShader`s, plus an optional **retro CRT filter**
-  toggle in Settings.
+- ✨ **GPU shader effects** - an animated background, a glowing snake head, pulsing
+  halos on rare foods and a perspective-mapped electric/plasma flow on the 3D arena barrier,
+  all via **AGSL** `RuntimeShader`s, plus optional **retro CRT filter** and **electric 3D walls**
+  toggles in Settings.
 - ⚡ **Power-ups & hazards** - rare maxi pieces that appear later in a run: **Lightning** (speed up),
   **Snail** (slow down), **Star** (invincible pass-through; the snake blinks faster as it runs out),
   **Freeze**, **Jackpot** (big bonus),
@@ -91,8 +92,8 @@ The classic Snake mechanics, extended with configurable features so every run fe
   **any** mode in perspective instead of the flat top-down board (at a slightly eased pace, with relative
   left/right steering). **3D** is a behind-the-head chase-cam that follows your heading; **3D Fixed** is a
   north-locked, panoramic view that never rotates, so it stays readable in every direction. Food renders
-  as solid beveled cubes and the arena walls/obstacles read as solid 3D blocks. The choice is remembered
-  between sessions.
+  as solid beveled cubes, the obstacles read as solid 3D blocks, and the arena is bounded by a luminous,
+  translucent neon barrier you can see through. The choice is remembered between sessions.
 - 🧩 **Campaign mode** - ten **designed board shapes** (cut corners, pillars, chambers, a vault…)
   that repeat forever, one **speed step faster** each lap. Eat **12 foods** to clear a level; you
   start with **3 lives** (a crash respawns you in the same level, keeping score and progress) and a
@@ -239,9 +240,9 @@ perspective - the board tilts in as the run starts, the pace is eased a little f
 steering becomes relative left/right turns (swipe horizontally, or the two-button control). **3D** is a
 behind-the-head chase-cam that turns to follow your heading; **3D Fixed** is a north-locked, panoramic
 view that never rotates, so the board stays readable however the snake moves (handy when you head toward
-the bottom of the screen). In both, food appears as solid beveled cubes and the arena walls/obstacles
-read as solid 3D blocks. Switch back to **2D** for the classic flat top-down board. Your choice is
-remembered between sessions.
+the bottom of the screen). In both, food appears as solid beveled cubes, obstacles read as solid 3D
+blocks, and the arena is bounded by a luminous, translucent neon barrier you can see through. Switch back
+to **2D** for the classic flat top-down board. Your choice is remembered between sessions.
 
 **Power-ups & hazards:** as a run progresses, rare special pieces start appearing on the board.
 Power-ups help: **Lightning** speeds the snake up, **Snail** slows it down, **Star** grants brief
