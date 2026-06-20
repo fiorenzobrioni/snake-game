@@ -1120,11 +1120,14 @@ private fun DrawScope.draw3DScene(
     // look). WALL_HEIGHT is the single height knob.
     val wallTop = lerpF(0f, WALL_HEIGHT, t) // grows with the tilt; flat collapses to the outline
     val coreWidth = (cell * 0.05f).coerceAtLeast(1.5f) * (0.6f + 0.4f * t)
-    // Lift the (often dark) skin border to a vivid neon so the barrier glows on every
-    // skin, and add a gentle breathing pulse for the energy-field feel.
+    // Lift the (often dark) skin border to a vivid neon for the structural rails, and
+    // add a gentle breathing pulse for the energy-field feel.
     val neon = brighten(borderColor, 0.55f)
     val pulse = 0.86f + 0.14f * (sin(time * 1.6f) * 0.5f + 0.5f)
-    val fieldAlpha = 0.16f * t
+    // The energy field itself glows in the skin's vivid accent (the head-glow colour:
+    // lime for Classic, cyan for Neon, ...) so it reads as electric/plasma, not grey.
+    val electric = brighten(palette.headGlow, 0.1f)
+    val fieldAlpha = 0.18f * t
 
     // Draws a glowing neon line between two world points: a soft wide halo, the
     // coloured core and a hot near-white centre (cheap additive-looking bloom). The
@@ -1161,10 +1164,11 @@ private fun DrawScope.draw3DScene(
                 for (i in 1 until pix.size) lineTo(pix[i].x, pix[i].y)
                 close()
             }
+            val fieldTint = if (electricField) electric else neon
             drawPath(
                 path,
                 brush = Brush.verticalGradient(
-                    colors = listOf(neon.copy(alpha = fieldAlpha * 1.4f), neon.copy(alpha = fieldAlpha * 0.4f)),
+                    colors = listOf(fieldTint.copy(alpha = fieldAlpha * 1.4f), fieldTint.copy(alpha = fieldAlpha * 0.4f)),
                     startY = pix.minOf { it.y },
                     endY = pix.maxOf { it.y },
                 ),
@@ -1178,7 +1182,7 @@ private fun DrawScope.draw3DScene(
                     wallShader.setFloatUniform("h2", hg[6], hg[7], hg[8])
                     wallShader.setFloatUniform("time", time)
                     wallShader.setFloatUniform("intensity", t)
-                    wallShader.setColorUniform("fieldColor", neon.toArgb())
+                    wallShader.setColorUniform("fieldColor", electric.toArgb())
                     drawPath(path, brush = wallBrush)
                 }
             }

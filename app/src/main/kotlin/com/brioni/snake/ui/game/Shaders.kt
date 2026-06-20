@@ -122,19 +122,22 @@ object Shaders {
             float3 p = float3(fragCoord, 1.0);
             float w = dot(h2, p);
             float2 uv = float2(dot(h0, p), dot(h1, p)) / w;
-            // Travelling energy bands rising up the wall, warped by drifting noise.
-            float warp = fbm(float2(uv.x * 4.0 - time * 0.15, uv.y * 3.0 + time * 0.1));
-            float band = sin(uv.y * 16.0 - time * 2.2 + warp * 5.0 + uv.x * 3.0);
-            band = pow(max(band, 0.0), 6.0);
-            float shimmer = fbm(float2(uv.x * 6.0 + time * 0.2, uv.y * 5.0 - time * 0.25));
-            // Brighter toward the top/bottom rails, softly faded at the side edges.
-            float vEdge = smoothstep(0.0, 0.35, uv.y) * smoothstep(1.0, 0.65, uv.y);
-            float vRails = 1.0 - 0.7 * vEdge;
+            // Two sets of travelling energy bands rising up the wall, warped by
+            // drifting noise, that cross for an arcing "electric" read.
+            float warp = fbm(float2(uv.x * 4.0 - time * 0.2, uv.y * 3.0 + time * 0.12));
+            float b1 = sin(uv.y * 13.0 - time * 2.6 + warp * 5.5 + uv.x * 3.0);
+            float b2 = sin(uv.y * 7.0 + time * 1.7 - warp * 4.0 - uv.x * 5.0);
+            float band = pow(max(b1, 0.0), 3.0) + 0.7 * pow(max(b2, 0.0), 4.0);
+            float shimmer = fbm(float2(uv.x * 6.0 + time * 0.25, uv.y * 5.0 - time * 0.3));
+            // A touch brighter toward the top/bottom rails, softly faded at the sides.
+            float vEdge = smoothstep(0.0, 0.4, uv.y) * smoothstep(1.0, 0.6, uv.y);
+            float vRails = 1.0 - 0.45 * vEdge;
             float uFade = smoothstep(0.0, 0.05, uv.x) * smoothstep(1.0, 0.95, uv.x);
-            float a = (0.045 * shimmer + 0.11 * band * vRails) * uFade * intensity;
-            a = clamp(a, 0.0, 0.20);
+            // Marked but still translucent: a constant coloured glow plus the filaments.
+            float a = (0.16 + 0.16 * shimmer + 0.42 * band * vRails) * uFade * intensity;
+            a = clamp(a, 0.0, 0.62);
             // Hot near-white core on the filaments, the field colour elsewhere.
-            float3 col = mix(float3(fieldColor.rgb), float3(1.0), band * 0.6);
+            float3 col = mix(float3(fieldColor.rgb), float3(1.0), clamp(band, 0.0, 1.0) * 0.7);
             return half4(half3(col * a), half(a));
         }
     """
