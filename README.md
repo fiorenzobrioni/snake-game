@@ -82,7 +82,7 @@ The classic Snake mechanics, extended with configurable features so every run fe
   penalty, each with a floating callout.
 - 🏆 **Records screen** - a best-score table per difficulty × board scale (and per mode), reachable
   from the main menu.
-- 🎖️ **Achievements** - twenty-one local milestones (combos, scores, endurance, eating sprees, using
+- 🎖️ **Achievements** - twenty-five local milestones (combos, scores, endurance, eating sprees, using
   power-ups, growing a very long snake…) that unlock as you play, with a dedicated screen and an unlock
   banner on the game-over screen.
 - 🕹️ **Game modes** - **Classic**, **Endless** (speed ramps up the longer you survive),

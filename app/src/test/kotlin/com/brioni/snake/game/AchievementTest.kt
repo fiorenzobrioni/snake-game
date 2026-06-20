@@ -18,10 +18,12 @@ class AchievementTest {
         usedJackpot: Boolean = false,
         maxLevelReached: Int = 0,
         maxSpeedCycle: Int = 1,
+        maxLevelDepth: Int = 0,
         maxSnakeLength: Int = 0,
     ) = RunStats(
         mode, score, maxCombo, durationMs, foodsEaten, usedExplosion, usedStar, usedJackpot,
-        maxLevelReached = maxLevelReached, maxSpeedCycle = maxSpeedCycle, maxSnakeLength = maxSnakeLength,
+        maxLevelReached = maxLevelReached, maxSpeedCycle = maxSpeedCycle, maxLevelDepth = maxLevelDepth,
+        maxSnakeLength = maxSnakeLength,
     )
 
     @Test
@@ -54,9 +56,13 @@ class AchievementTest {
     }
 
     @Test
-    fun `gourmand needs fifty foods`() {
+    fun `food-count achievements gate on foods eaten`() {
         assertTrue(Achievement.Gourmand.test(stats(foodsEaten = 50)))
         assertFalse(Achievement.Gourmand.test(stats(foodsEaten = 49)))
+        assertTrue(Achievement.Glutton.test(stats(foodsEaten = 200)))
+        assertFalse(Achievement.Glutton.test(stats(foodsEaten = 199)))
+        assertTrue(Achievement.Insatiable.test(stats(foodsEaten = 500)))
+        assertFalse(Achievement.Insatiable.test(stats(foodsEaten = 499)))
     }
 
     @Test
@@ -68,6 +74,19 @@ class AchievementTest {
         assertFalse(Achievement.TowerTopper.test(stats(mode = GameMode.Levels, maxLevelReached = 9)))
         assertTrue(Achievement.FullCircle.test(stats(mode = GameMode.Levels, maxSpeedCycle = 2)))
         assertFalse(Achievement.FullCircle.test(stats(mode = GameMode.Levels, maxSpeedCycle = 1)))
+    }
+
+    @Test
+    fun `tower achievements gate on the deepest level depth`() {
+        // Level 10 at Speed 2 is depth 20; Level 10 at Speed 3 is depth 30.
+        assertTrue(Achievement.TowerMaster.test(stats(mode = GameMode.Levels, maxLevelDepth = 20)))
+        assertFalse(Achievement.TowerMaster.test(stats(mode = GameMode.Levels, maxLevelDepth = 19)))
+        assertFalse(Achievement.TowerMaster.test(stats(mode = GameMode.Classic, maxLevelDepth = 20)))
+        assertTrue(Achievement.TowerSovereign.test(stats(mode = GameMode.Levels, maxLevelDepth = 30)))
+        assertFalse(Achievement.TowerSovereign.test(stats(mode = GameMode.Levels, maxLevelDepth = 29)))
+        // Reaching only Level 10 of Speed 1 (depth 10) earns neither.
+        assertFalse(Achievement.TowerMaster.test(stats(mode = GameMode.Levels, maxLevelDepth = 10)))
+        assertFalse(Achievement.TowerSovereign.test(stats(mode = GameMode.Levels, maxLevelDepth = 10)))
     }
 
     @Test
