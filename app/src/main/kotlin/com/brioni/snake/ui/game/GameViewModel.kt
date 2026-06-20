@@ -233,6 +233,9 @@ class GameViewModel(
     private var runStartMs = 0L
     private var runMaxLevel = 1
     private var runMaxCycle = 1
+    private var runMaxDepth = 0
+    private var runLivesLost = 0
+    private var runFlawlessLap = false
     private var runExtraLives = 0
     private var runMaxLength = 0
 
@@ -431,6 +434,9 @@ class GameViewModel(
         runStartMs = System.currentTimeMillis()
         runMaxLevel = 1
         runMaxCycle = 1
+        runMaxDepth = levelDepth(state.levelIndex, state.speedCycle)
+        runLivesLost = 0
+        runFlawlessLap = false
         runExtraLives = 0
         runMaxLength = state.snake.size
         newlyUnlocked = emptyList()
@@ -560,11 +566,15 @@ class GameViewModel(
                     sfx.levelUp()
                     runMaxLevel = max(runMaxLevel, event.levelIndex)
                     runMaxCycle = max(runMaxCycle, event.speedCycle)
+                    runMaxDepth = max(runMaxDepth, levelDepth(event.levelIndex, event.speedCycle))
+                    // First full lap cleared with no life lost so far: a flawless lap.
+                    if (event.speedCycle >= 2 && runLivesLost == 0) runFlawlessLap = true
                 }
                 is GameEvent.LifeLost -> {
                     // A non-final crash: the lighter quake shake, not the death one.
                     shakeEventId++
                     sfx.lifeLost()
+                    runLivesLost++
                 }
                 is GameEvent.LifeGained -> {
                     eatEvent = EatEvent(event.food.position, event.food.span, SpecialVisuals.ExtraLifeColor, BurstStyle.Eat)
@@ -657,6 +667,8 @@ class GameViewModel(
             usedJackpot = runUsedJackpot,
             maxLevelReached = if (mode == GameMode.Levels) runMaxLevel else 0,
             maxSpeedCycle = runMaxCycle,
+            maxLevelDepth = if (mode == GameMode.Levels) runMaxDepth else 0,
+            flawlessLap = mode == GameMode.Levels && runFlawlessLap,
             extraLivesGained = runExtraLives,
             maxSnakeLength = runMaxLength,
         )
@@ -688,6 +700,14 @@ class GameViewModel(
             repo.highScore(currentMode, level, currentScale).collect { bestScore = it }
         }
     }
+
+    /**
+     * Levels mode: the deepest 1-based linear progress of a (level, cycle) pair,
+     * `(speedCycle - 1) * LEVEL_COUNT + levelIndex` - so Level 10 of Speed 1 is 10,
+     * Level 10 of Speed 2 is 20, and so on. Feeds the tower-climb achievements.
+     */
+    private fun levelDepth(levelIndex: Int, speedCycle: Int): Int =
+        (speedCycle - 1) * LevelsMode.LEVEL_COUNT + levelIndex
 
     private fun stopLoop() {
         loop?.cancel()

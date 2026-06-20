@@ -17,6 +17,18 @@ data class RunStats(
     val maxLevelReached: Int = 0,
     /** Levels mode: the highest 1-based speed cycle entered during the run. */
     val maxSpeedCycle: Int = 1,
+    /**
+     * Levels mode: the deepest linear level progress reached during the run,
+     * `(speedCycle - 1) * LevelsMode.LEVEL_COUNT + levelIndex`. Unlike
+     * [maxLevelReached] / [maxSpeedCycle] (independent maxima) this is a single
+     * monotone position, so "reach Level 10 at Speed 2" is exactly `>= 20`.
+     */
+    val maxLevelDepth: Int = 0,
+    /**
+     * Levels mode: true when the player completed a full first lap - cleared all
+     * ten levels and reached Speed 2 - without ever losing a life along the way.
+     */
+    val flawlessLap: Boolean = false,
     /** Levels mode: extra lives banked during the run. */
     val extraLivesGained: Int = 0,
     /** The greatest snake length reached at any point during the run. */
@@ -37,6 +49,8 @@ enum class Achievement(
     Centurion("Centurion", "Score 100 in a single run", { it.score >= 100 }),
     ComboMaster("Combo Master", "Reach a x5 combo", { it.maxCombo >= 5 }),
     Gourmand("Gourmand", "Eat 50 foods in one run", { it.foodsEaten >= 50 }),
+    Glutton("Glutton", "Eat 200 foods in one run", { it.foodsEaten >= 200 }),
+    Insatiable("Insatiable", "Eat 500 foods in one run", { it.foodsEaten >= 500 }),
     Survivor("Survivor", "Last three minutes in one run", { it.durationMs >= 180_000 }),
     Demolition("Demolition", "Set off an explosion", { it.usedExplosion }),
     Untouchable("Untouchable", "Use a Star power-up", { it.usedStar }),
@@ -50,7 +64,9 @@ enum class Achievement(
     Grandmaster("Grandmaster", "Score 5000 in a single run", { it.score >= 5000 }),
     Climber("Climber", "Reach Level 5 in Campaign mode", { it.mode == GameMode.Levels && it.maxLevelReached >= 5 }),
     TowerTopper("Tower Topper", "Reach Level 10 in Campaign mode", { it.mode == GameMode.Levels && it.maxLevelReached >= 10 }),
-    FullCircle("Full Circle", "Clear all ten levels and start Speed 2", { it.mode == GameMode.Levels && it.maxSpeedCycle >= 2 }),
+    FullCircle("Full Circle", "Clear all ten levels and reach Speed 2 without losing a life", { it.mode == GameMode.Levels && it.flawlessLap }),
+    TowerMaster("Tower Master", "Reach Level 10 at Speed 2 in Campaign", { it.mode == GameMode.Levels && it.maxLevelDepth >= 20 }),
+    TowerSovereign("Tower Sovereign", "Reach Level 10 at Speed 3 in Campaign", { it.mode == GameMode.Levels && it.maxLevelDepth >= 30 }),
     LongHaul("Long Haul", "Grow the snake to 50 segments", { it.maxSnakeLength >= 50 }),
     Anaconda("Anaconda", "Grow the snake to 100 segments", { it.maxSnakeLength >= 100 }),
     Titanoboa("Titanoboa", "Grow the snake to 180 segments", { it.maxSnakeLength >= 180 }),

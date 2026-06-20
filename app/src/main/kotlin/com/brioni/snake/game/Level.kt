@@ -9,12 +9,14 @@ package com.brioni.snake.game
 enum class Level(
     val displayName: String,
     val obstacleCount: Int,
+    /** Fixed 3-letter, upper-case tag for the compact in-game HUD. */
+    val abbreviation: String,
 ) {
-    Beginner("Beginner", 0),
-    Adventurer("Adventurer", 8),
-    Warrior("Warrior", 15),
-    Champion("Champion", 25),
-    Legend("Legend", 40);
+    Beginner("Beginner", 0, "BEG"),
+    Adventurer("Adventurer", 8, "ADV"),
+    Warrior("Warrior", 15, "WAR"),
+    Champion("Champion", 25, "CHA"),
+    Legend("Legend", 40, "LEG");
 
     /** 1-based level number for display, e.g. "1. Beginner". */
     val label: String get() = "${ordinal + 1}. $displayName"
