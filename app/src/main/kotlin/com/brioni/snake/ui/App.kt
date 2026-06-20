@@ -38,13 +38,14 @@ import com.brioni.snake.ui.game.GameViewModel
 import com.brioni.snake.ui.achievements.AchievementsScreen
 import com.brioni.snake.ui.credits.CreditsScreen
 import com.brioni.snake.ui.daily.DailyChallengeScreen
+import com.brioni.snake.ui.daily.RandomChallengeScreen
 import com.brioni.snake.ui.intro.BrandIntroScreen
 import com.brioni.snake.ui.menu.MainMenuScreen
 import com.brioni.snake.ui.records.RecordsScreen
 import com.brioni.snake.ui.settings.SettingsScreen
 
 /** The top-level destinations. [Intro] is the cold-launch brand splash. */
-private enum class Screen { Intro, Menu, Game, Daily, Settings, Records, Achievements, Credits }
+private enum class Screen { Intro, Menu, Game, Daily, Random, Settings, Records, Achievements, Credits }
 
 /**
  * Root of the UI. Hosts a lightweight, state-based navigation between the main
@@ -133,6 +134,7 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
                         // Custom: open the game screen's setup overlay instead.
                         onCustom = { navigate(Screen.Game) },
                         onDaily = { navigate(Screen.Daily) },
+                        onRandom = { navigate(Screen.Random) },
                         onRecords = { navigate(Screen.Records) },
                         onAchievements = { navigate(Screen.Achievements) },
                         onSettings = { navigate(Screen.Settings) },
@@ -161,8 +163,17 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
                         repo = repo,
                         // Launch the seeded run; the game screen starts it once the
                         // board is measured (see GameViewModel.requestDailyStart).
+                        onPlay = { epochDay ->
+                            gameViewModel.requestDailyStart(epochDay)
+                            navigate(Screen.Game)
+                        },
+                        onBack = { navigate(Screen.Menu) },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+
+                    Screen.Random -> RandomChallengeScreen(
                         onPlay = { challenge ->
-                            gameViewModel.requestDailyStart(challenge)
+                            gameViewModel.requestRandomStart(challenge)
                             navigate(Screen.Game)
                         },
                         onBack = { navigate(Screen.Menu) },

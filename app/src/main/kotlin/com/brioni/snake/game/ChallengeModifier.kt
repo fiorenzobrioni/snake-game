@@ -1,12 +1,13 @@
 package com.brioni.snake.game
 
 /**
- * A Daily Challenge twist layered on top of the base config, so a given day's
- * run has a recognisable flavour. Each modifier optionally overrides one of the
- * spawn-affecting knobs; [None] leaves the standard rules. Picked deterministically
- * from the day's seed in [DailyChallenge.forDay], so it is the same for everyone.
+ * A challenge twist layered on top of the base [Challenge] config, so a run has a
+ * recognisable flavour. Each modifier optionally overrides one spawn-affecting
+ * knob; [None] leaves the standard rules. Picked deterministically from the
+ * challenge seed/day, so a Daily is the same for everyone and a Random is stable
+ * for its seed.
  */
-enum class DailyModifier(val displayName: String) {
+enum class ChallengeModifier(val displayName: String) {
     /** No twist: standard rules. */
     None("Standard"),
 
@@ -26,6 +27,6 @@ enum class DailyModifier(val displayName: String) {
     /** Forced special-spawn frequency, or null to keep the default. */
     val specialFrequencyOverride: SpecialFrequency? get() = if (this == Frenzy) SpecialFrequency.Frenzy else null
 
-    /** Forced board granularity, or null to keep the daily's default. */
+    /** Forced board granularity, or null to keep the challenge's default. */
     val scaleOverride: BoardScale? get() = if (this == Compact) BoardScale.Cozy else null
 }

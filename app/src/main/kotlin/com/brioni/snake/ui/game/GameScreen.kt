@@ -243,7 +243,14 @@ fun GameScreen(
                 score = state.score,
                 combo = state.combo,
                 statusLabel = buildString {
-                    if (viewModel.dailyChallenge != null) append(stringResource(R.string.daily_hud_prefix)).append(" · ")
+                    if (viewModel.activeChallenge != null) {
+                        val tag = if (viewModel.isDailyChallenge) {
+                            stringResource(R.string.daily_hud_prefix)
+                        } else {
+                            stringResource(R.string.random_hud_prefix)
+                        }
+                        append(tag).append(" · ")
+                    }
                     append(
                         when {
                             inLevels -> stringResource(R.string.hud_level_speed, state.levelIndex, state.speedCycle) +
@@ -389,6 +396,8 @@ fun GameScreen(
                 score = state.score,
                 bestScore = viewModel.bestScore,
                 isNewBest = viewModel.isNewBest,
+                // A Random challenge is a one-off: no best to show.
+                showBest = !viewModel.isRandomChallenge,
                 unlocked = viewModel.newlyUnlocked.map { it.title },
                 onPlayAgain = { viewModel.playAgain() },
                 onSetup = { viewModel.toSetup() },

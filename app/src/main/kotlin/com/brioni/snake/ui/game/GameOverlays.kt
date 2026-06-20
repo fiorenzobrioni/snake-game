@@ -326,6 +326,7 @@ fun GameOverOverlay(
     onPlayAgain: () -> Unit,
     onSetup: () -> Unit,
     onMenu: () -> Unit,
+    showBest: Boolean = true,
 ) {
     OverlayScrim {
         Text(
@@ -341,18 +342,20 @@ fun GameOverOverlay(
             color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(top = 12.dp),
         )
-        Text(
-            text = if (isNewBest) {
-                stringResource(R.string.new_highscore)
-            } else {
-                stringResource(R.string.highscore_label, bestScore)
-            },
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = if (isNewBest) FontWeight.Bold else FontWeight.Normal,
-            color = if (isNewBest) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-            modifier = Modifier.padding(top = 6.dp),
-        )
+        if (showBest) {
+            Text(
+                text = if (isNewBest) {
+                    stringResource(R.string.new_highscore)
+                } else {
+                    stringResource(R.string.highscore_label, bestScore)
+                },
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = if (isNewBest) FontWeight.Bold else FontWeight.Normal,
+                color = if (isNewBest) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        }
         if (unlocked.isNotEmpty()) {
             Column(
                 modifier = Modifier

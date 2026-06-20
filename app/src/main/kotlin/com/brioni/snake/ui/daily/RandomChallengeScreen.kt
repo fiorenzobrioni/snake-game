@@ -17,9 +17,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -27,39 +28,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.brioni.snake.R
-import com.brioni.snake.data.SettingsRepository
 import com.brioni.snake.game.Challenge
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 /**
- * The Daily Challenge hub: shows today's seeded run (mode / level / board), the
- * player's best for today and their current streak, and launches the run via
- * [onPlay] (with today's epoch day). Today's [Challenge] is derived from the
- * device date once on entry so the whole screen reads a single, stable challenge.
+ * The Random Challenge hub: a one-off surprise run for variety. Same layout as the
+ * Daily, minus the best-today / streak stats. A "Shuffle" reroll picks a fresh
+ * random [Challenge]; "Play" launches it. Nothing is recorded.
  */
 @Composable
-fun DailyChallengeScreen(
-    repo: SettingsRepository,
-    onPlay: (Long) -> Unit,
+fun RandomChallengeScreen(
+    onPlay: (Challenge) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val today = remember { LocalDate.now() }
-    val epochDay = remember(today) { today.toEpochDay() }
-    val challenge = remember(epochDay) { Challenge.forDay(epochDay) }
-    val best by repo.dailyBest(epochDay).collectAsState(initial = 0)
-    val streak by repo.dailyStreak().collectAsState(initial = 0)
-    val lastPlayed by repo.dailyLastPlayedDay().collectAsState(initial = null)
-
-    // The streak is "alive" only if today's or yesterday's daily was played;
-    // otherwise an old streak has lapsed and shows as 0 until they play today.
-    val liveStreak = when (lastPlayed) {
-        epochDay, epochDay - 1 -> streak
-        else -> 0
-    }
-    val playedToday = lastPlayed == epochDay
+    var challenge by remember { mutableStateOf(Challenge.random()) }
 
     Column(
         modifier = modifier
@@ -69,16 +51,10 @@ fun DailyChallengeScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = stringResource(R.string.daily_title),
+            text = stringResource(R.string.random_title),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 4.dp),
-        )
-        Text(
-            text = today.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG)),
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(bottom = 24.dp),
         )
 
@@ -92,7 +68,7 @@ fun DailyChallengeScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    text = stringResource(R.string.daily_subtitle),
+                    text = stringResource(R.string.random_subtitle),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -105,30 +81,17 @@ fun DailyChallengeScreen(
             }
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth().widthIn(max = 480.dp).padding(top = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        OutlinedButton(
+            onClick = { challenge = Challenge.random() },
+            modifier = Modifier.padding(top = 20.dp).widthIn(min = 220.dp),
         ) {
-            StatTile(
-                label = stringResource(R.string.daily_best_label),
-                value = best.toString(),
-                modifier = Modifier.weight(1f),
-            )
-            StatTile(
-                label = stringResource(R.string.daily_streak_label),
-                value = stringResource(R.string.daily_streak_value, liveStreak),
-                modifier = Modifier.weight(1f),
-            )
+            Text(stringResource(R.string.random_shuffle))
         }
-
         Button(
-            onClick = { onPlay(epochDay) },
-            modifier = Modifier.padding(top = 32.dp).widthIn(min = 220.dp),
+            onClick = { onPlay(challenge) },
+            modifier = Modifier.padding(top = 12.dp).widthIn(min = 220.dp),
         ) {
-            Text(
-                stringResource(if (playedToday) R.string.daily_play_again else R.string.daily_play),
-                style = MaterialTheme.typography.titleMedium,
-            )
+            Text(stringResource(R.string.random_play), style = MaterialTheme.typography.titleMedium)
         }
         OutlinedButton(
             onClick = onBack,
@@ -152,32 +115,5 @@ private fun ConfigRow(label: String, value: String) {
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface,
         )
-    }
-}
-
-@Composable
-private fun StatTile(label: String, value: String, modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        shape = RoundedCornerShape(16.dp),
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                value,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Text(
-                label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-        }
     }
 }

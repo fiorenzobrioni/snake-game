@@ -101,6 +101,8 @@ The classic Snake mechanics, extended with configurable features so every run fe
   everyone that day (the twist rotates through Bonus Rush, Frenzy and Compact Arena; the obstacle layout
   and food sequence come from the day's seed). Beat your **best today** and build a **day streak**.
   Reached from the main menu.
+- 🎲 **Random Challenge** - a one-off surprise run for variety: **Shuffle** for a fresh mode / level /
+  board / twist mix, then play. Nothing is recorded - it's pure fun.
 - 🕹️ **Game modes** - **Endless** (speed ramps up the longer you survive; the default),
   **Time Attack** (score as much as you can in 120s) and **Campaign** (see below), selectable on the
   **Custom** setup screen.

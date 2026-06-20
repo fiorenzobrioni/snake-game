@@ -11,6 +11,7 @@
     <string name="menu_play">Play</string>
     <string name="menu_custom">Custom</string>
     <string name="menu_daily">Daily Challenge</string>
+    <string name="menu_random">Random Challenge</string>
     <string name="menu_records">Records</string>
 
     <!-- Daily Challenge -->
@@ -26,6 +27,13 @@
     <string name="daily_streak_value">%1$d</string>
     <string name="daily_play">Play</string>
     <string name="daily_play_again">Play again</string>
+
+    <!-- Random Challenge -->
+    <string name="random_title">Random Challenge</string>
+    <string name="random_subtitle">A surprise one-off run for variety. Shuffle for a new mix, then play - nothing is recorded.</string>
+    <string name="random_hud_prefix">Random</string>
+    <string name="random_shuffle">Shuffle</string>
+    <string name="random_play">Play</string>
     <string name="records_title">Records</string>
     <string name="menu_achievements">Achievements</string>
     <string name="achievements_title">Achievements</string>
