@@ -82,7 +82,9 @@ The classic Snake mechanics, extended with configurable features so every run fe
   **Freeze**, **Jackpot** (big bonus),
   plus the hazards **Earthquake** (a sustained screen shake for a few seconds that makes the board hard
   to read - no debris, your length is untouched) and **Explosion** (severs the last third of the snake,
-  leaving the detached tail as lethal debris that lingers for several seconds). Active
+  leaving the detached tail as lethal debris that lingers for several seconds). Hazards wear a dashed
+  **caution ring** and, the moment before you would eat one, flash a **danger telegraph** (with a
+  pre-haptic) so a strike never feels arbitrary - the flash respects the **Reduce motion** toggle. Active
   effects show countdown chips; up to **two specials** can share the board at once. Toggle **Hazards**
   off in Settings for a calmer run, or dial how often specials appear with the **Special blocks**
   setting (*Standard / Frequent / Frenzy*) - the higher tiers also bring specials online earlier in a
@@ -254,7 +256,9 @@ effect fades), **Freeze** pauses further specials for a strategic breather, and 
 large score bonus. Hazards hinder: **Earthquake** sets off a sustained screen shake for a few seconds
 that makes the board hard to read (it leaves no debris and your length is untouched); **Explosion**
 severs the last third of the snake - the detached tail turns into lethal debris that lingers for several
-seconds before it auto-clears. Active effects show
+seconds before it auto-clears. Every hazard wears a dashed **caution ring**, and the tick before you
+would eat one the board flashes a **danger telegraph** over it (with a short pre-haptic), so a strike is
+always announced; the flash honours the **Reduce motion** toggle. Active effects show
 a countdown chip in the HUD. **Time Attack** also has two clock-only pieces - a **+5s** bonus and a
 **−3s** penalty. Toggle **Hazards** off in **Settings** for a calmer run (this also hides the time
 penalty), or raise **Special blocks** to *Frenzy* for constant chaos.

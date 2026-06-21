@@ -285,16 +285,20 @@ snake-game/
 > A grab-bag of polish, depth and retention ideas to tackle **before** the Play Store phase. Each step is
 > self-contained and can be picked up in its own chat. Already shipped in this band: a **coyote/grace
 > tick**, **haptics + near-miss feedback**, a **Daily Challenge** (with per-day modifiers), **combo
-> "juice"** (head-on-fire + animated multiplier), a **near-miss visual flash**, and a **Reduce motion &
-> flashing** accessibility toggle. The remaining steps below are still open.
+> "juice"** (head-on-fire + animated multiplier), a **near-miss visual flash**, a **Reduce motion &
+> flashing** accessibility toggle, and a **hazard telegraph** (Step 6.9.1). The remaining steps below are
+> still open.
 
 **Game feel & telegraphing**
 
-- [ ] **Step 6.9.1 - Telegraph hazards before they strike.** Explosion/Earthquake currently fire with no
-      warning, so they can feel arbitrary. Add a 1-tick "tell": flash the about-to-trigger special (or its
-      blast cells) and a short pre-haptic the tick before the effect lands. Impl: emit a `GameEvent`
-      (e.g. `HazardImminent`) one tick early from `GameEngine.tick`, or animate the special's on-board
-      glyph as its timeout nears; gate the flash under **Reduce motion**.
+- [x] **Step 6.9.1 - Telegraph hazards before they strike.** Hazards (Earthquake / Explosion / Snail /
+      time penalty) now give a one-tick "tell". `GameEngine.tick` emits `GameEvent.HazardImminent` when
+      continuing straight would land on a hazard food next tick (predictive, advisory only - never affects
+      the rules; covered by `HazardTelegraphTest`). The ViewModel fires a distinct **pre-haptic**
+      (`GameHaptics.hazardWarning`, a crisp double-tick) and the renderer flashes a universal-red danger
+      telegraph over the piece (steady highlight + strobing border + an outward "radar ping" ring), gated
+      under **Reduce motion**. Hazard specials also wear a steady dashed **"caution" ring** so a dangerous
+      piece reads at a glance, the calm counterpart to the eat-imminent flash.
 
 - [ ] **Step 6.9.2 - Richer game-over summary.** Replace the bare "Final score" with a short run recap:
       foods eaten, max combo, run duration, max length (and for Campaign: deepest level). The data already

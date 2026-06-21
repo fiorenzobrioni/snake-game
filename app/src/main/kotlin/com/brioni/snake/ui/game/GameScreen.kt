@@ -303,6 +303,8 @@ fun GameScreen(
                     eatEventId = viewModel.eatEventId,
                     floatingText = viewModel.floatingText,
                     floatingTextId = viewModel.floatingTextId,
+                    hazardWarn = viewModel.hazardWarn,
+                    hazardWarnId = viewModel.hazardWarnId,
                     textMeasurer = textMeasurer,
                     palette = viewModel.palette,
                     borderColor = boardBorderColor,

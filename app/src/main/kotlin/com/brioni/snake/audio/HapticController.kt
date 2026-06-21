@@ -44,6 +44,12 @@ class HapticController(context: Context, repo: SettingsRepository) : GameHaptics
     // A deliberately faint, brief buzz so a graze is felt but never intrusive.
     override fun nearMiss() = play(VibrationEffect.createOneShot(10L, 40))
 
+    // A crisp "tick-tick" alert, distinct from the faint near-miss, so an
+    // about-to-strike hazard is felt a beat before contact.
+    override fun hazardWarning() = play(
+        VibrationEffect.createWaveform(longArrayOf(0, 18, 28, 18), intArrayOf(0, 150, 0, 150), -1),
+    )
+
     // The strongest cue: a short double "thud".
     override fun death() = play(
         VibrationEffect.createWaveform(longArrayOf(0, 60, 50, 90), intArrayOf(0, 200, 0, 255), -1),

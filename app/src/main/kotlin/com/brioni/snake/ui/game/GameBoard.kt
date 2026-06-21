@@ -1,5 +1,8 @@
 package com.brioni.snake.ui.game
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -17,6 +20,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -37,6 +41,7 @@ import com.brioni.snake.game.FoodEffect
 import com.brioni.snake.game.FoodTier
 import com.brioni.snake.game.GameState
 import com.brioni.snake.game.Position
+import com.brioni.snake.game.isHazard
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.min
@@ -57,6 +62,9 @@ import kotlin.math.sin
 /** Final window of a Ghost (Star) effect over which the warning blink ramps up. */
 private const val GHOST_WARN_MS = 2_000f
 
+/** Universal danger red for the hazard telegraph (skin-independent so it always reads as "danger"). */
+private val HazardWarnColor = Color(0xFFFF1E1E)
+
 @Composable
 fun GameBoard(
     state: GameState,
@@ -68,6 +76,8 @@ fun GameBoard(
     eatEventId: Int,
     floatingText: FloatingTextEvent?,
     floatingTextId: Int,
+    hazardWarn: HazardWarnEvent?,
+    hazardWarnId: Int,
     textMeasurer: TextMeasurer,
     palette: SkinPalette,
     borderColor: Color = palette.boardBorder,
@@ -86,6 +96,17 @@ fun GameBoard(
     // a redraw each frame; the interpolation fraction is *derived* from it and
     // tickTimeNanos at draw time, so it can never lag a committed move.
     var frameNanos by remember { mutableLongStateOf(System.nanoTime()) }
+
+    // Hazard telegraph: a 1→0 envelope driving the danger flash over the piece
+    // the snake is about to eat. Restarted on each new warning; suppressed under
+    // reduce-motion (the pre-haptic still fires from the ViewModel).
+    val hazardPulse = remember { Animatable(0f) }
+    LaunchedEffect(hazardWarnId) {
+        if (hazardWarnId > 0 && hazardWarn != null && !reduceMotion) {
+            hazardPulse.snapTo(1f)
+            hazardPulse.animateTo(0f, tween(durationMillis = 460, easing = FastOutLinearInEasing))
+        }
+    }
 
     // A single frame-driven loop runs only while the game is running: it
     // advances the particles and writes [frameNanos] to force a redraw each
@@ -226,6 +247,20 @@ fun GameBoard(
                     shaders = shaders,
                     time = time,
                     headGlow = hotGlow(palette.headGlow, state.combo),
+                )
+            }
+            // Hazard telegraph: a danger flash over the piece the snake is about
+            // to eat (one tick before contact). Suppressed under reduce-motion -
+            // the envelope simply stays at 0 there.
+            val warnT = hazardPulse.value
+            if (warnT > 0.001f && hazardWarn != null) {
+                drawHazardWarning(
+                    left = originX + hazardWarn.cell.x * cell,
+                    top = originY + hazardWarn.cell.y * cell,
+                    side = cell * hazardWarn.span,
+                    cell = cell,
+                    envelope = warnT,
+                    seconds = seconds,
                 )
             }
             particles.forEach { p ->
@@ -388,6 +423,49 @@ private fun DrawScope.drawObstacle(cell: Float, left: Float, top: Float, palette
     )
 }
 
+/**
+ * The hazard telegraph drawn over the [side]-wide cell square at ([left], [top])
+ * the tick before the snake would eat a hazard. [envelope] is a 1→0 fade; it
+ * layers a steady danger highlight, a strobing alarm border and an outward
+ * "radar ping" ring that expands as the warning subsides. Universally red so it
+ * reads as danger on every skin.
+ */
+private fun DrawScope.drawHazardWarning(
+    left: Float,
+    top: Float,
+    side: Float,
+    cell: Float,
+    envelope: Float,
+    seconds: Double,
+) {
+    val corner = CornerRadius(cell * 0.28f, cell * 0.28f)
+    // Steady highlight over the cells: "the danger is here".
+    drawRoundRect(
+        color = HazardWarnColor.copy(alpha = 0.30f * envelope),
+        topLeft = Offset(left, top),
+        size = Size(side, side),
+        cornerRadius = corner,
+    )
+    // Strobing alarm border hugging the square.
+    val blink = 0.55f + 0.45f * sin(seconds * 30.0).toFloat()
+    drawRoundRect(
+        color = HazardWarnColor.copy(alpha = (0.9f * envelope * blink).coerceIn(0f, 1f)),
+        topLeft = Offset(left, top),
+        size = Size(side, side),
+        cornerRadius = corner,
+        style = Stroke(width = (cell * 0.12f).coerceAtLeast(2f)),
+    )
+    // Outward ping ring that expands as the warning fades.
+    val pad = cell * (0.12f + 0.85f * (1f - envelope))
+    drawRoundRect(
+        color = HazardWarnColor.copy(alpha = 0.85f * envelope),
+        topLeft = Offset(left - pad, top - pad),
+        size = Size(side + 2 * pad, side + 2 * pad),
+        cornerRadius = CornerRadius(corner.x + pad, corner.y + pad),
+        style = Stroke(width = (cell * 0.09f).coerceAtLeast(1.5f)),
+    )
+}
+
 private fun DrawScope.drawFood(
     food: Food,
     cell: Float,
@@ -511,6 +589,22 @@ private fun DrawScope.drawSpecialFood(
         center = Offset(centerX, centerY),
         style = Stroke(width = radius * 0.12f),
     )
+
+    // Hazards wear a dashed "caution" ring so a dangerous piece is readable at a
+    // glance - the steady counterpart to the eat-imminent telegraph flash.
+    if (food.effect.isHazard) {
+        val ringRadius = radius * 1.34f
+        val dash = ringRadius * 0.52f
+        drawCircle(
+            color = HazardWarnColor.copy(alpha = 0.75f * pulse),
+            radius = ringRadius,
+            center = Offset(centerX, centerY),
+            style = Stroke(
+                width = radius * 0.16f,
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, dash * 0.55f)),
+            ),
+        )
+    }
 
     val ink = Color(0xFF10151C)
     drawSpecialSymbol(food.effect, centerX, centerY, radius * 0.92f, ink, textMeasurer)

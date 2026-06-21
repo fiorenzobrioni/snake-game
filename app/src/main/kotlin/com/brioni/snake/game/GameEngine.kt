@@ -402,6 +402,20 @@ class GameEngine(private val random: Random = Random.Default) {
             events.add(GameEvent.NearMiss)
         }
 
+        // Hazard telegraph: if continuing straight would land on a hazard food
+        // next tick, warn now (one-tick "tell"). Predictive - the player may
+        // still turn away - so it is advisory only and never affects the rules.
+        if (!dead) {
+            val aheadStep = newHead.step(direction)
+            val ahead = if (ghost) {
+                Position((aheadStep.x + board.width) % board.width, (aheadStep.y + board.height) % board.height)
+            } else {
+                aheadStep
+            }
+            foods.firstOrNull { it.effect.isHazard && it.occupies(ahead) }
+                ?.let { events.add(GameEvent.HazardImminent(it)) }
+        }
+
         return state.copy(
             snake = body,
             direction = direction,

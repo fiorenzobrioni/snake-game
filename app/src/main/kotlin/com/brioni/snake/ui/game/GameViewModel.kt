@@ -68,6 +68,12 @@ data class EatEvent(val cell: Position, val span: Int, val color: Color, val sty
 data class FloatingTextEvent(val cell: Position, val span: Int, val text: String, val color: Color)
 
 /**
+ * A one-tick hazard telegraph: the renderer flashes a danger warning over the
+ * [span]-cell square at [cell] the tick before the snake would eat the hazard.
+ */
+data class HazardWarnEvent(val cell: Position, val span: Int)
+
+/**
  * Holds the [GameState] and drives the tick loop. All game rules live in
  * [GameEngine]; this class owns the timing coroutine, surfaces state to Compose
  * and publishes the data the renderer needs for inter-tick interpolation
@@ -165,6 +171,12 @@ class GameViewModel(
 
     /** Bumped on a near-miss / grace dodge so the UI can flash a brief danger cue. */
     var nearMissEventId by mutableIntStateOf(0)
+        private set
+
+    /** Latest hazard telegraph and a monotonic id so repeats are observable. */
+    var hazardWarn: HazardWarnEvent? = null
+        private set
+    var hazardWarnId by mutableIntStateOf(0)
         private set
 
     /** Best score for the current (level, scale), and whether the last run beat it. */
@@ -593,6 +605,14 @@ class GameViewModel(
                     haptics.special()
                     nearMissEventId++
                     lastNearMissNanos = System.nanoTime()
+                }
+                is GameEvent.HazardImminent -> {
+                    // One tick before the snake would eat a hazard: telegraph it
+                    // with a warning flash (the renderer gates it under reduce-motion)
+                    // and a pre-haptic, so the strike never lands unannounced.
+                    hazardWarn = HazardWarnEvent(event.food.position, event.food.span)
+                    hazardWarnId++
+                    haptics.hazardWarning()
                 }
                 is GameEvent.Exploded -> {
                     // Explosion: outward burst at the blast + a board shake.
