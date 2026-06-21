@@ -62,13 +62,6 @@ import kotlin.math.sin
 /** Final window of a Ghost (Star) effect over which the warning blink ramps up. */
 private const val GHOST_WARN_MS = 2_000f
 
-/**
- * Additive-layer strength for the in-game board background. Deliberately low so
- * the drifting glows/nebula stay an atmosphere, never competing with gameplay
- * (the menu backdrop runs the same shader at full strength).
- */
-private const val BOARD_BACKGROUND_INTENSITY = 0.55f
-
 /** Universal danger red for the hazard telegraph (skin-independent so it always reads as "danger"). */
 private val HazardWarnColor = Color(0xFFFF1E1E)
 
@@ -167,8 +160,13 @@ fun GameBoard(
                 BurstStyle.Vanish -> emitVanishBurst(particles, cx, cy, event.color, event.span)
                 BurstStyle.Blast -> emitExplosionBurst(particles, cx, cy, event.color, event.span)
             }
+            // Always reset first: a previous ring animation may have just been
+            // cancelled mid-flight by this very event (e.g. an eat immediately
+            // followed by a food vanishing). Without this reset the cancelled ring
+            // would stay frozen at a mid value and linger on the board as a stray
+            // circle. Only the non-vanish styles then play the expanding ring.
+            eatRing.snapTo(0f)
             if (event.style != BurstStyle.Vanish) {
-                eatRing.snapTo(0f)
                 eatRing.animateTo(1f, tween(durationMillis = if (event.style == BurstStyle.Blast) 520 else 360, easing = FastOutLinearInEasing))
             }
         }
@@ -427,17 +425,10 @@ private fun DrawScope.drawBoardBackground(
     shaders: BoardShaders,
     time: Float,
 ) {
-    // AGSL: the gradient brought to life with a drifting nebula, breathing glows,
-    // a light sweep and a vignette - kept subtle on the board so it never competes
-    // with the snake/food (the menu backdrop runs the same shader at full intensity).
+    // AGSL: the gradient brought to life with drifting glows + vignette.
     shaders.background.setFloatUniform("origin", originX, originY)
     shaders.background.setFloatUniform("resolution", boardWidth, boardHeight)
     shaders.background.setFloatUniform("time", time)
-    shaders.background.setFloatUniform("intensity", BOARD_BACKGROUND_INTENSITY)
-    shaders.background.setColorUniform("topColor", palette.boardTop.toArgb())
-    shaders.background.setColorUniform("bottomColor", palette.boardBottom.toArgb())
-    shaders.background.setColorUniform("glowA", palette.headGlow.toArgb())
-    shaders.background.setColorUniform("glowB", palette.boardBorder.toArgb())
     drawRect(
         brush = shaders.backgroundBrush,
         topLeft = Offset(originX, originY),
