@@ -9,14 +9,18 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
+import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -29,7 +33,9 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
 /**
@@ -49,6 +55,9 @@ private val SnakeButtonShape = RoundedCornerShape(15.dp)
 private val SnakeButtonMinHeight = 52.dp
 private val SnakeButtonHPadding = 24.dp
 private val SnakeButtonVPadding = 14.dp
+private val MenuTileMinHeight = 68.dp
+private val MenuIconButtonSize = 44.dp
+private val MenuIconButtonShape = RoundedCornerShape(13.dp)
 
 /** Mixes [c] toward white by [f] (0..1), preserving alpha. */
 private fun lighten(c: Color, f: Float): Color = Color(
@@ -181,5 +190,133 @@ fun SnakeOutlinedButton(
                 )
             }
         }
+    }
+}
+
+/**
+ * A compact, square-ish menu tile with an icon stacked over a short label. Shares
+ * the glassy rim look of [SnakeOutlinedButton] so the grouped "shelf" rows on the
+ * menu read as one family. Designed to sit in a [Row] with `Modifier.weight(1f)`.
+ */
+@Composable
+fun MenuTile(
+    onClick: () -> Unit,
+    icon: ImageVector,
+    label: String,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val primary = scheme.primary
+    val onBackground = scheme.onBackground
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed && enabled) 0.96f else 1f,
+        label = "menuTileScale",
+    )
+    val fill = Brush.verticalGradient(
+        listOf(onBackground.copy(alpha = 0.08f), onBackground.copy(alpha = 0.02f)),
+    )
+    val rim = Brush.verticalGradient(
+        listOf(primary.copy(alpha = 0.70f), primary.copy(alpha = 0.22f)),
+    )
+
+    Box(
+        modifier = modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                alpha = if (enabled) 1f else 0.45f
+            }
+            .heightIn(min = MenuTileMinHeight)
+            .clip(SnakeButtonShape)
+            .background(fill)
+            .border(BorderStroke(1.5.dp, rim), SnakeButtonShape)
+            .clickable(
+                interactionSource = interaction,
+                indication = ripple(color = primary),
+                enabled = enabled,
+                role = Role.Button,
+                onClick = onClick,
+            )
+            .padding(horizontal = 8.dp, vertical = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = primary,
+                modifier = Modifier.size(24.dp),
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = onBackground,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        }
+    }
+}
+
+/**
+ * A small glassy icon-only button for low-emphasis "overflow" actions (e.g. the
+ * Settings / Credits entries pinned in the menu's top corner).
+ */
+@Composable
+fun MenuIconButton(
+    onClick: () -> Unit,
+    icon: ImageVector,
+    contentDescription: String,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val primary = scheme.primary
+    val onBackground = scheme.onBackground
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed && enabled) 0.92f else 1f,
+        label = "menuIconScale",
+    )
+    val fill = Brush.verticalGradient(
+        listOf(onBackground.copy(alpha = 0.08f), onBackground.copy(alpha = 0.02f)),
+    )
+    val rim = Brush.verticalGradient(
+        listOf(primary.copy(alpha = 0.70f), primary.copy(alpha = 0.22f)),
+    )
+
+    Box(
+        modifier = modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                alpha = if (enabled) 1f else 0.45f
+            }
+            .size(MenuIconButtonSize)
+            .clip(MenuIconButtonShape)
+            .background(fill)
+            .border(BorderStroke(1.5.dp, rim), MenuIconButtonShape)
+            .clickable(
+                interactionSource = interaction,
+                indication = ripple(color = primary, bounded = false),
+                enabled = enabled,
+                role = Role.Button,
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = primary,
+            modifier = Modifier.size(22.dp),
+        )
     }
 }

@@ -407,10 +407,24 @@ snake-game/
       press-scale + ripple. The D-pad (`FilledTonalButton`), the HUD pause (`TextButton`) and the selector
       chips are intentionally untouched. The **main menu** also dropped the full-screen gliding-snake
       decoration; the wordmark gained a green gradient + soft glow, and a small in-game-style **`TitleSnake`**
-      emblem now sits beneath it (recoloured from the active skin). The menu list became vertically
-      scrollable so the taller buttons never clip on short screens. The wordmark's emblem is a static,
+      emblem now sits beneath it (recoloured from the active skin). The wordmark's emblem is a static,
       in-game-accurate snake (`GameBoard.SnakeEmblem`, drawn through the gameplay `drawSnake` renderer so it
-      matches the active skin exactly), sized to the measured width of the title.
+      matches the active skin exactly), sized to the measured width of the title. *(Superseded layout note:
+      the menu was later reworked from a single scrolling list into the bottom-anchored "game launcher"
+      below.)*
+
+- [x] **Step 6.9.15 - Main menu "game launcher" layout.** Reworked `MainMenuScreen` from a single
+      vertically scrolling `Column` (which pushed the missions card below the fold) into a `Box` with a
+      weighted `Column`: a `weight(1f)` **brand region** (pulsing wordmark + larger skin-coloured
+      `SnakeEmblem`) over a bottom-anchored **controls cluster** grouped by type - a slim missions strip, a
+      full-width **Play** (with a leading icon), a **Modes** shelf (Custom / Daily / Random) and a
+      **Progress** shelf (Records / Achievements) - with `Settings` / `Credits` demoted to small overflow
+      icon buttons in the top-right corner. Everything now fits one screen on normal/large phones without
+      scrolling. Added `MenuTile` / `MenuIconButton` to `ui/components/SnakeButtons.kt` (reusing the glass-rim
+      + press-scale styling) and the lean `material-icons-core` dependency (core `Icons.Filled` glyphs, not
+      the heavy `-extended`). The old `DailyMissionsCard` collapsed into a single-line `MissionsStrip`
+      (title + `✓`/`○` pips + `n / 3`); full mission descriptions remain on the game-over banner. The
+      composable signature/callbacks are unchanged, so `App.kt` was untouched.
 
 **Onboarding & polish**
 

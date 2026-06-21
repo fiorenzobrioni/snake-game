@@ -104,7 +104,7 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - 📊 **Run recap** - the game-over screen shows a short summary of the run: foods eaten, best combo, time
   survived, the snake's longest length and, in Campaign, the deepest level reached.
 - 🎯 **Daily missions** - three rotating per-run goals (eat so many foods, reach a combo, survive a time,
-  score, grow long, grab a power-up) that refresh each day. The main menu's **Today's Missions** card
+  score, grow long, grab a power-up) that refresh each day. The main menu's **Today's Missions** strip
   tracks which you've cleared today, and completing one pops a banner on the game-over screen.
 - ▶️ **Quick Play** - the main menu's **Play** button drops you straight into a run with your last-used
   settings; a separate **Custom** entry opens the full pre-game setup (mode, level, snake speed, board
@@ -130,7 +130,7 @@ The classic Snake mechanics, extended with configurable features so every run fe
     and **teleport portals** - step onto one swirling pad to instantly emerge at its partner across the
     board. Gates are lethal only while closed and never seal you in; portals open up bold shortcuts.
 - ⏸️ **Pause & menus** - pause overlay with a blur effect; restart or return to the main menu at any time. Highscores are kept per (mode, level, board scale). A **Back during play** setting chooses what the system Back gesture does mid-game: **Pause** (default) or **Keep playing** (Back is ignored, and a swipe-back is fed to the snake as a turn when using swipe controls).
-- 💎 **Polished navigation** - an **animated GPU background** behind the menus, a **branded main menu** (a glowing wordmark with a small in-game-style snake emblem that follows your selected skin), **premium action buttons** (gradient-lit, with a tactile press), and **blur-dissolve** screen transitions.
+- 💎 **Polished navigation** - an **animated GPU background** behind the menus, a **branded main menu** laid out as a "game launcher" (a glowing wordmark with a small in-game-style snake emblem that follows your selected skin as the hero, over a bottom-anchored cluster of actions grouped by type so everything fits one screen), **premium action buttons** (gradient-lit, with a tactile press), and **blur-dissolve** screen transitions.
 - ⏸️ **Auto-pause** - backgrounding the app mid-run pauses the game automatically, so the snake never keeps moving while you're away.
 - 📜 **Credits screen** - an in-app **Credits / About** page (author, license and asset attribution), reachable from the main menu.
 
