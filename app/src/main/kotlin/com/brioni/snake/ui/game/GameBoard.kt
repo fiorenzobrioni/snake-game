@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import com.brioni.snake.game.BoardDimensions
+import com.brioni.snake.game.Debris
 import com.brioni.snake.game.Direction
 import com.brioni.snake.game.EffectKind
 import com.brioni.snake.game.Food
@@ -43,6 +44,7 @@ import com.brioni.snake.game.GameState
 import com.brioni.snake.game.Position
 import com.brioni.snake.game.isHazard
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
@@ -247,9 +249,7 @@ fun GameBoard(
             state.obstacles.forEach { obstacle ->
                 drawObstacle(cell, originX + obstacle.x * cell, originY + obstacle.y * cell, palette)
             }
-            state.debris.forEach { d ->
-                drawDebris(cell, originX + d.cell.x * cell, originY + d.cell.y * cell, d.life, palette)
-            }
+            drawDebris(state.debris, cell, originX, originY, palette)
             state.foods.forEach { food ->
                 drawFood(food, cell, originX, originY, pulse, textMeasurer, palette, shaders, time)
             }
@@ -821,32 +821,56 @@ private fun DrawScope.drawCrack(cx: Float, cy: Float, r: Float, color: Color) {
 }
 
 /**
- * The severed tail left behind by an Explosion: drawn as a block in the very
- * same style as a normal snake-body segment (so it reads as the detached tail,
- * not a stray pellet). Still lethal and time-limited, so it fades out as its
- * timer runs down.
+ * The severed tail left behind by an Explosion, drawn with the *exact* live-snake
+ * graphics in the current skin so it reads as a piece that genuinely detached -
+ * the same shaded tube (rounded skins) or blocky segments (flat skins), the same
+ * colours and the same trunk-to-tip taper, never a stray pellet. Only the head is
+ * omitted (it is a tail) and the whole run fades out as its lethal timer expires.
+ *
+ * The severed tail keeps its original ordering, so contiguous debris cells are
+ * grouped into chains and each chain is rendered as one continuous tapering body.
  */
-private fun DrawScope.drawDebris(cell: Float, left: Float, top: Float, life: Float, palette: SkinPalette) {
-    val alpha = 0.35f + 0.55f * life
-    val inset = cell * 0.06f
-    val side = cell - 2 * inset
-    val topLeft = Offset(left + inset, top + inset)
-    val corner = cell * palette.cornerFactor
-    val radius = CornerRadius(corner, corner)
-    drawRoundRect(
-        color = palette.snakeBody.copy(alpha = alpha),
-        topLeft = topLeft,
-        size = Size(side, side),
-        cornerRadius = radius,
-    )
-    drawRoundRect(
-        color = palette.snakeOutline.copy(alpha = alpha),
-        topLeft = topLeft,
-        size = Size(side, side),
-        cornerRadius = radius,
-        style = Stroke(width = cell * 0.06f),
-    )
+private fun DrawScope.drawDebris(
+    debris: List<Debris>,
+    cell: Float,
+    originX: Float,
+    originY: Float,
+    palette: SkinPalette,
+) {
+    if (debris.isEmpty()) return
+    // Split the (ordered) debris into runs of orthogonally-adjacent cells; each
+    // run is one severed tail and is drawn as a single continuous body.
+    val chains = ArrayList<List<Debris>>()
+    var current = ArrayList<Debris>()
+    for (d in debris) {
+        val last = current.lastOrNull()
+        if (last == null || isAdjacentCell(last.cell, d.cell)) {
+            current.add(d)
+        } else {
+            chains.add(current)
+            current = arrayListOf(d)
+        }
+    }
+    if (current.isNotEmpty()) chains.add(current)
+
+    for (chain in chains) {
+        val centers = chain.map { d ->
+            Offset(originX + (d.cell.x + 0.5f) * cell, originY + (d.cell.y + 0.5f) * cell)
+        }
+        // Cells severed together share a timer, so the chain fades as one piece.
+        val life = chain.minOf { it.life }
+        val alpha = (0.32f + 0.6f * life).coerceIn(0f, 1f)
+        if (palette.useGlow) {
+            drawSnakeTube(centers, cell, palette, alpha)
+        } else {
+            drawSnakeBlocks(centers, cell, palette, alpha)
+        }
+    }
 }
+
+/** Orthogonally adjacent (4-neighbour) cells - used to chain a severed tail. */
+private fun isAdjacentCell(a: Position, b: Position): Boolean =
+    abs(a.x - b.x) + abs(a.y - b.y) == 1
 
 /** A fiery accent the head glow blends toward as the combo climbs. */
 private val ComboHotGlow = Color(0xFFFF5722)

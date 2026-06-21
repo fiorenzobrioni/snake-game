@@ -300,10 +300,13 @@ snake-game/
       under **Reduce motion**. Hazard specials also wear a steady dashed **"caution" ring** so a dangerous
       piece reads at a glance, the calm counterpart to the eat-imminent flash.
 
-- [ ] **Step 6.9.2 - Richer game-over summary.** Replace the bare "Final score" with a short run recap:
-      foods eaten, max combo, run duration, max length (and for Campaign: deepest level). The data already
-      exists on the per-run accumulators in `GameViewModel` (`runFoodsEaten`, `runMaxCombo`, `runMaxLength`,
-      `runStartMs`, `runMaxDepth`); surface them via a small stats object to `GameOverOverlay`.
+- [x] **Step 6.9.2 - Richer game-over summary.** The game-over overlay now shows a run recap card under the
+      best-score line: foods eaten, best combo, time survived, max length (and, in Campaign, the deepest
+      level reached as "L-S"). The per-run accumulators in `GameViewModel` are surfaced via a small
+      `RunSummary` object (`lastSummary`) passed to `GameOverOverlay`, which renders it as a `RunRecap`
+      stat card. The Explosion's severed tail also now renders with the exact live-snake graphics in the
+      current skin (same shaded tube / blocky segments, colours and taper) instead of plain faded blocks -
+      contiguous debris cells are chained and drawn headless via the snake renderer in `GameBoard`.
 
 **Accessibility & controls**
 

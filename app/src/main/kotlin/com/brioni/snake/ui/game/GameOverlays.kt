@@ -327,6 +327,7 @@ fun GameOverOverlay(
     onSetup: () -> Unit,
     onMenu: () -> Unit,
     showBest: Boolean = true,
+    summary: RunSummary? = null,
 ) {
     OverlayScrim {
         Text(
@@ -355,6 +356,9 @@ fun GameOverOverlay(
                 else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                 modifier = Modifier.padding(top = 6.dp),
             )
+        }
+        if (summary != null) {
+            RunRecap(summary)
         }
         if (unlocked.isNotEmpty()) {
             Column(
@@ -404,4 +408,74 @@ fun GameOverOverlay(
             Text(stringResource(R.string.action_menu))
         }
     }
+}
+
+/**
+ * The game-over run recap (Step 6.9.2): a small stat card listing what the run
+ * achieved - foods eaten, best combo, time survived and max length, plus the
+ * deepest level reached in Campaign. A calm, readable counterpart to the
+ * achievement banner above it.
+ */
+@Composable
+private fun RunRecap(summary: RunSummary) {
+    Column(
+        modifier = Modifier
+            .padding(top = 16.dp)
+            .fillMaxWidth()
+            .widthIn(max = 360.dp)
+            .background(
+                MaterialTheme.colorScheme.onBackground.copy(alpha = 0.06f),
+                RoundedCornerShape(12.dp),
+            )
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.recap_title),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(bottom = 6.dp),
+        )
+        RecapRow(stringResource(R.string.recap_foods), summary.foodsEaten.toString())
+        RecapRow(stringResource(R.string.recap_combo), stringResource(R.string.recap_combo_value, summary.maxCombo))
+        RecapRow(stringResource(R.string.recap_time), formatRunDuration(summary.durationMs))
+        RecapRow(stringResource(R.string.recap_length), summary.maxLength.toString())
+        if (summary.isCampaign) {
+            RecapRow(
+                stringResource(R.string.recap_level),
+                stringResource(R.string.records_level_speed, summary.deepestLevel, summary.deepestSpeed),
+            )
+        }
+    }
+}
+
+/** One label/value line of the [RunRecap] card. */
+@Composable
+private fun RecapRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 3.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+    }
+}
+
+/** Formats a run duration as minutes:seconds (seconds zero-padded). */
+@Composable
+private fun formatRunDuration(durationMs: Long): String {
+    val totalSeconds = (durationMs / 1000L).coerceAtLeast(0L)
+    return stringResource(R.string.recap_time_value, totalSeconds / 60L, totalSeconds % 60L)
 }

@@ -99,6 +99,8 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - 🎖️ **Achievements** - twenty-five local milestones (combos, scores, endurance, eating sprees, using
   power-ups, growing a very long snake…) that unlock as you play, with a dedicated screen and an unlock
   banner on the game-over screen.
+- 📊 **Run recap** - the game-over screen shows a short summary of the run: foods eaten, best combo, time
+  survived, the snake's longest length and, in Campaign, the deepest level reached.
 - ▶️ **Quick Play** - the main menu's **Play** button drops you straight into a run with your last-used
   settings; a separate **Custom** entry opens the full pre-game setup (mode, level, snake speed, board
   scale) when you want to tweak everything.
