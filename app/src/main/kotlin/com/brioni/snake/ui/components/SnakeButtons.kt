@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -56,7 +57,9 @@ private val SnakeButtonShape = RoundedCornerShape(15.dp)
 private val SnakeButtonMinHeight = 52.dp
 private val SnakeButtonHPadding = 24.dp
 private val SnakeButtonVPadding = 14.dp
-private val MenuTileMinHeight = 68.dp
+// Fixed so every tile is identical regardless of one- vs two-line labels (tall
+// enough for an icon plus a two-line label).
+private val MenuTileHeight = 82.dp
 private val MenuIconButtonSize = 44.dp
 private val MenuIconButtonShape = RoundedCornerShape(13.dp)
 
@@ -230,7 +233,7 @@ fun MenuTile(
                 scaleY = scale
                 alpha = if (enabled) 1f else 0.45f
             }
-            .heightIn(min = MenuTileMinHeight)
+            .height(MenuTileHeight)
             .clip(SnakeButtonShape)
             .background(fill)
             .border(BorderStroke(1.5.dp, rim), SnakeButtonShape)
@@ -241,7 +244,7 @@ fun MenuTile(
                 role = Role.Button,
                 onClick = onClick,
             )
-            .padding(horizontal = 8.dp, vertical = 12.dp),
+            .padding(horizontal = 8.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center,
     ) {
         Column(
@@ -259,9 +262,9 @@ fun MenuTile(
                 style = MaterialTheme.typography.labelMedium,
                 color = onBackground,
                 textAlign = TextAlign.Center,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 6.dp),
+                modifier = Modifier.padding(top = 4.dp),
             )
         }
     }

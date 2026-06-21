@@ -170,19 +170,19 @@ fun MainMenuScreen(
                 MenuTile(
                     onClick = onCustom,
                     icon = Icons.Filled.Build,
-                    label = stringResource(R.string.menu_custom),
+                    label = stringResource(R.string.menu_custom_game),
                     modifier = Modifier.weight(1f),
                 )
                 MenuTile(
                     onClick = onDaily,
                     icon = Icons.Filled.DateRange,
-                    label = stringResource(R.string.menu_daily_short),
+                    label = stringResource(R.string.menu_daily),
                     modifier = Modifier.weight(1f),
                 )
                 MenuTile(
                     onClick = onRandom,
                     icon = Icons.Filled.Refresh,
-                    label = stringResource(R.string.menu_random_short),
+                    label = stringResource(R.string.menu_random),
                     modifier = Modifier.weight(1f),
                 )
             }
