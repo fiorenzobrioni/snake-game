@@ -78,9 +78,10 @@ The classic Snake mechanics, extended with configurable features so every run fe
   (crisp blocks on the flat skins), food is drawn with top-lit gradients and soft shadows, and eating
   pops a shockwave ring with **combo-reactive** sparks (the burst grows hotter and bigger as your streak
   climbs); the Explosion hazard sets off a fiery two-tone detonation.
-- ✨ **GPU shader effects** - an animated background, a glowing snake head and pulsing
-  halos on rare foods, all via **AGSL** `RuntimeShader`s, plus an optional **retro CRT filter**
-  toggle in Settings.
+- ✨ **GPU shader effects** - a living **atmospheric background** (a drifting nebula, breathing
+  bloom glows, a slow light sweep and a vignette, tinted per skin and dithered to avoid banding), a
+  glowing snake head and pulsing halos on rare foods, all via **AGSL** `RuntimeShader`s, plus an
+  optional **retro CRT filter** toggle in Settings. The menus run the same backdrop at full intensity.
 - ⚡ **Power-ups & hazards** - rare maxi pieces that appear later in a run: **Lightning** (speed up),
   **Snail** (slow down), **Star** (invincible pass-through; the snake blinks faster as it runs out),
   **Freeze**, **Jackpot** (big bonus),

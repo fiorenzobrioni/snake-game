@@ -62,6 +62,13 @@ import kotlin.math.sin
 /** Final window of a Ghost (Star) effect over which the warning blink ramps up. */
 private const val GHOST_WARN_MS = 2_000f
 
+/**
+ * Additive-layer strength for the in-game board background. Deliberately low so
+ * the drifting glows/nebula stay an atmosphere, never competing with gameplay
+ * (the menu backdrop runs the same shader at full strength).
+ */
+private const val BOARD_BACKGROUND_INTENSITY = 0.55f
+
 /** Universal danger red for the hazard telegraph (skin-independent so it always reads as "danger"). */
 private val HazardWarnColor = Color(0xFFFF1E1E)
 
@@ -420,10 +427,17 @@ private fun DrawScope.drawBoardBackground(
     shaders: BoardShaders,
     time: Float,
 ) {
-    // AGSL: the gradient brought to life with drifting glows + vignette.
+    // AGSL: the gradient brought to life with a drifting nebula, breathing glows,
+    // a light sweep and a vignette - kept subtle on the board so it never competes
+    // with the snake/food (the menu backdrop runs the same shader at full intensity).
     shaders.background.setFloatUniform("origin", originX, originY)
     shaders.background.setFloatUniform("resolution", boardWidth, boardHeight)
     shaders.background.setFloatUniform("time", time)
+    shaders.background.setFloatUniform("intensity", BOARD_BACKGROUND_INTENSITY)
+    shaders.background.setColorUniform("topColor", palette.boardTop.toArgb())
+    shaders.background.setColorUniform("bottomColor", palette.boardBottom.toArgb())
+    shaders.background.setColorUniform("glowA", palette.headGlow.toArgb())
+    shaders.background.setColorUniform("glowB", palette.boardBorder.toArgb())
     drawRect(
         brush = shaders.backgroundBrush,
         topLeft = Offset(originX, originY),
