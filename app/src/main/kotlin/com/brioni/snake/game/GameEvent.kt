@@ -87,4 +87,11 @@ sealed interface GameEvent {
      * instead ([LevelsMode.LIFE_CAP_BONUS]).
      */
     data class LifeGained(val food: Food, val lives: Int, val capped: Boolean) : GameEvent
+
+    /**
+     * Levels (Step 6.9.7): the head entered teleport pad [from] and emerged at
+     * its partner [to] this tick. Drives a portal whoosh, paired bursts and an
+     * interpolation snap (the jump is instantaneous, never tweened across the board).
+     */
+    data class Teleported(val from: Position, val to: Position) : GameEvent
 }

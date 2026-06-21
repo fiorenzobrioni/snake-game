@@ -30,6 +30,9 @@ interface GameSfx {
     /** Levels mode: the food goal was met and the next level is staging. */
     fun levelUp()
 
+    /** Levels mode: the head jumped through a teleport pad. */
+    fun teleport()
+
     /** No-op sink — the ViewModel's default, so it runs and tests without audio. */
     object None : GameSfx {
         override fun ate(food: Food, combo: Int) {}
@@ -39,5 +42,6 @@ interface GameSfx {
         override fun lifeGained() {}
         override fun lifeLost() {}
         override fun levelUp() {}
+        override fun teleport() {}
     }
 }

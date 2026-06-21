@@ -84,6 +84,12 @@ data class FloatingTextEvent(val cell: Position, val span: Int, val text: String
 data class HazardWarnEvent(val cell: Position, val span: Int)
 
 /**
+ * A portal jump (Step 6.9.7): the head left pad [from] and emerged at [to]. The
+ * renderer flashes both pads and plays an implode-at-entry / burst-at-exit pair.
+ */
+data class TeleportEvent(val from: Position, val to: Position)
+
+/**
  * A compact recap of a finished run, surfaced to the game-over overlay
  * (Step 6.9.2). [deepestLevel]/[deepestSpeed] are only meaningful for Campaign
  * ([isCampaign]); the overlay hides that row in the other modes.
@@ -202,6 +208,12 @@ class GameViewModel(
     var hazardWarn: HazardWarnEvent? = null
         private set
     var hazardWarnId by mutableIntStateOf(0)
+        private set
+
+    /** Latest teleport jump and a monotonic id so repeats are observable. */
+    var teleportEvent: TeleportEvent? = null
+        private set
+    var teleportEventId by mutableIntStateOf(0)
         private set
 
     /** Best score for the current (level, scale), and whether the last run beat it. */
@@ -706,6 +718,15 @@ class GameViewModel(
                     haptics.lifeLost()
                     runLivesLost++
                 }
+                is GameEvent.Teleported -> {
+                    // Portal jump: paired bursts at both pads + a whoosh. The
+                    // interpolation snap is handled below (resetTo) so the head
+                    // doesn't streak across the board.
+                    teleportEvent = TeleportEvent(event.from, event.to)
+                    teleportEventId++
+                    sfx.teleport()
+                    haptics.special()
+                }
                 is GameEvent.LifeGained -> {
                     eatEvent = EatEvent(event.food.position, event.food.span, SpecialVisuals.ExtraLifeColor, BurstStyle.Eat)
                     eatEventId++
@@ -726,6 +747,13 @@ class GameViewModel(
             resetTo(after)
             introIsRespawn = after.lastEvents.any { it is GameEvent.LifeLost }
             startIntro()
+            return
+        }
+
+        if (after.lastEvents.any { it is GameEvent.Teleported }) {
+            // A portal jump is instantaneous: snap to the new positions so the
+            // head blinks across rather than sliding the whole way over.
+            resetTo(after)
             return
         }
 

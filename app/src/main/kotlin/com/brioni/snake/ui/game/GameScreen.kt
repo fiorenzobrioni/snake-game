@@ -305,6 +305,8 @@ fun GameScreen(
                     floatingTextId = viewModel.floatingTextId,
                     hazardWarn = viewModel.hazardWarn,
                     hazardWarnId = viewModel.hazardWarnId,
+                    teleportEvent = viewModel.teleportEvent,
+                    teleportEventId = viewModel.teleportEventId,
                     textMeasurer = textMeasurer,
                     palette = viewModel.palette,
                     borderColor = boardBorderColor,

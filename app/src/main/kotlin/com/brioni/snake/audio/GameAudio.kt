@@ -69,6 +69,9 @@ class GameAudio(context: Context, repo: SettingsRepository) : GameSfx {
 
     override fun levelUp() = sound.play(Sfx.Jackpot)
 
+    // A bright, pitched-up sparkle reads as a portal "whoosh" without a new asset.
+    override fun teleport() = sound.play(Sfx.Star, rate = 1.5f)
+
     // --- UI sound effects ------------------------------------------------
 
     fun playPause() = sound.play(Sfx.Pause)

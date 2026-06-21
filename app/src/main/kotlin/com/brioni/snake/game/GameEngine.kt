@@ -28,6 +28,7 @@ class GameEngine(private val random: Random = Random.Default) {
     ): GameState {
         val snake = startingSnake(board)
         val isLevels = mode == GameMode.Levels
+        val hazards = if (isLevels) LevelsMode.hazardsFor(1, board) else LevelHazards.EMPTY
         return GameState(
             board = board,
             level = level,
@@ -43,6 +44,8 @@ class GameEngine(private val random: Random = Random.Default) {
             mode = mode,
             lives = if (isLevels) LevelsMode.START_LIVES else 0,
             walls = if (isLevels) LevelsMode.shapeFor(1, board) else emptySet(),
+            gates = hazards.gates,
+            teleports = hazards.teleports,
             graceAvailable = true,
         )
     }
@@ -59,7 +62,7 @@ class GameEngine(private val random: Random = Random.Default) {
             foods = refill(
                 state.board, state.snake, state.obstacles, state.walls, emptyList(),
                 elapsedTicks = 0, level = state.level, baseTickMillis = state.snakeSpeed.tickMillis,
-                mode = state.mode,
+                mode = state.mode, reserved = state.hazardSpawnCells,
             ),
             status = GameStatus.Running,
         )
@@ -76,6 +79,7 @@ class GameEngine(private val random: Random = Random.Default) {
                 state.board, state.snake, state.obstacles, state.walls, emptyList(),
                 elapsedTicks = state.elapsedTicks, level = state.level,
                 baseTickMillis = state.snakeSpeed.tickMillis, mode = state.mode,
+                reserved = state.hazardSpawnCells,
             ),
             status = GameStatus.Running,
         )
@@ -175,11 +179,16 @@ class GameEngine(private val random: Random = Random.Default) {
         val ghost = effectTimers.any { it.kind == EffectKind.Ghost }
         val board = state.board
         val stepped = state.head.step(direction)
-        val newHead = if (ghost) {
+        val movedHead = if (ghost) {
             Position((stepped.x + board.width) % board.width, (stepped.y + board.height) % board.height)
         } else {
             stepped
         }
+        // Teleport pads: stepping onto one pad emerges at its partner this tick.
+        // Resolved before collisions/eating so the exit cell is what gets tested.
+        val portalExit = state.teleports.firstNotNullOfOrNull { it.exitFor(movedHead) }
+        val newHead = portalExit ?: movedHead
+        if (portalExit != null) events.add(GameEvent.Teleported(movedHead, portalExit))
 
         var body = ArrayList<Position>(state.snake.size + 1)
         body.add(newHead)
@@ -328,6 +337,7 @@ class GameEngine(private val random: Random = Random.Default) {
                 specialAllowed = specialsOnBoard < MAX_SPECIALS_ON_BOARD && !freezeActive,
                 specialFrequency = specialFrequency,
                 mode = state.mode,
+                reserved = state.hazardSpawnCells,
             )
         }
 
@@ -349,10 +359,13 @@ class GameEngine(private val random: Random = Random.Default) {
         // The budget shifts with time-bonus / time-penalty blocks (timeAdjustMs).
         val timeUp = state.mode == GameMode.TimeAttack &&
             (playedMs - timeAdjustMs) >= GameState.TIME_ATTACK_MS
+        // Gates that are closed *now* (this tick's clock) are lethal like walls.
+        val closedGates = state.closedGateCells(elapsedTicks)
         val crashed = !ghost && (
             isOutOfBounds(newHead, board) ||
                 newHead in state.obstacles ||
                 newHead in state.walls ||
+                newHead in closedGates ||
                 collidesWithBody(newHead, body) ||
                 debris.any { it.cell == newHead }
             )
@@ -398,7 +411,7 @@ class GameEngine(private val random: Random = Random.Default) {
 
         // Near-miss: the head survived but is grazing a static hazard. Skipped
         // while invincible (Ghost passes through everything anyway).
-        if (!dead && !ghost && isNearMiss(newHead, board, state.obstacles, state.walls, debris)) {
+        if (!dead && !ghost && isNearMiss(newHead, board, state.obstacles, state.walls, closedGates, debris)) {
             events.add(GameEvent.NearMiss)
         }
 
@@ -456,28 +469,33 @@ class GameEngine(private val random: Random = Random.Default) {
         elapsedTicks: Int,
         playedMs: Long,
         levelFoodsEaten: Int = 0,
-    ): GameState = state.copy(
-        snake = startingSnake(state.board),
-        direction = Direction.Up,
-        pendingDirection = Direction.Up,
-        foods = emptyList(),
-        score = score,
-        pendingGrowth = 0,
-        elapsedTicks = elapsedTicks,
-        playedMs = playedMs,
-        combo = 0,
-        comboDeadlineTick = 0,
-        debris = emptyList(),
-        effectTimers = emptyList(),
-        levelIndex = levelIndex,
-        speedCycle = speedCycle,
-        lives = lives,
-        levelFoodsEaten = levelFoodsEaten,
-        walls = LevelsMode.shapeFor(levelIndex, state.board),
-        graceAvailable = true,
-        lastEvents = events,
-        status = GameStatus.LevelIntro,
-    )
+    ): GameState {
+        val hazards = LevelsMode.hazardsFor(levelIndex, state.board)
+        return state.copy(
+            snake = startingSnake(state.board),
+            direction = Direction.Up,
+            pendingDirection = Direction.Up,
+            foods = emptyList(),
+            score = score,
+            pendingGrowth = 0,
+            elapsedTicks = elapsedTicks,
+            playedMs = playedMs,
+            combo = 0,
+            comboDeadlineTick = 0,
+            debris = emptyList(),
+            effectTimers = emptyList(),
+            levelIndex = levelIndex,
+            speedCycle = speedCycle,
+            lives = lives,
+            levelFoodsEaten = levelFoodsEaten,
+            walls = LevelsMode.shapeFor(levelIndex, state.board),
+            gates = hazards.gates,
+            teleports = hazards.teleports,
+            graceAvailable = true,
+            lastEvents = events,
+            status = GameStatus.LevelIntro,
+        )
+    }
 
     /** Drops up to [segments] tail cells, never below the length floor; returns how many went. */
     private fun trimTail(body: MutableList<Position>, segments: Int): Int {
@@ -512,10 +530,12 @@ class GameEngine(private val random: Random = Random.Default) {
         board: BoardDimensions,
         obstacles: Set<Position>,
         walls: Set<Position>,
+        closedGates: Set<Position>,
         debris: List<Debris>,
     ): Boolean = Direction.entries.any { dir ->
         val n = head.step(dir)
-        isOutOfBounds(n, board) || n in obstacles || n in walls || debris.any { it.cell == n }
+        isOutOfBounds(n, board) || n in obstacles || n in walls ||
+            n in closedGates || debris.any { it.cell == n }
     }
 
     /** The head (index 0) hitting any other body cell. */
@@ -614,13 +634,14 @@ class GameEngine(private val random: Random = Random.Default) {
         specialAllowed: Boolean = true,
         specialFrequency: SpecialFrequency = SpecialFrequency.Standard,
         mode: GameMode = GameMode.Endless,
+        reserved: Set<Position> = emptySet(),
     ): List<Food> {
         var foods = existing
         while (foods.size < FOOD_COUNT) {
             // A special is allowed only while fewer than the cap are on the board.
             val allowSpecial = specialAllowed &&
                 foods.count { it.category == FoodCategory.Special } < MAX_SPECIALS_ON_BOARD
-            val food = spawnFood(board, snake, obstacles, walls, foods, elapsedTicks, level, baseTickMillis, hazardsEnabled, allowSpecial, specialFrequency, mode) ?: break
+            val food = spawnFood(board, snake, obstacles, walls, foods, elapsedTicks, level, baseTickMillis, hazardsEnabled, allowSpecial, specialFrequency, mode, reserved) ?: break
             foods = foods + food
         }
         return foods
@@ -644,6 +665,7 @@ class GameEngine(private val random: Random = Random.Default) {
         specialAllowed: Boolean,
         specialFrequency: SpecialFrequency,
         mode: GameMode,
+        reserved: Set<Position>,
     ): Food? {
         val spec = FoodTable.roll(random, elapsedTicks, level, baseTickMillis, hazardsEnabled, specialAllowed, specialFrequency, mode)
         val span = spec.size.cellSpan
@@ -656,6 +678,7 @@ class GameEngine(private val random: Random = Random.Default) {
         occupied.addAll(snake)
         occupied.addAll(obstacles)
         occupied.addAll(walls)
+        occupied.addAll(reserved) // gate footprints + teleport pads
         existing.forEach { occupied.addAll(it.cells()) }
 
         fun candidateAt(x: Int, y: Int): Food? {

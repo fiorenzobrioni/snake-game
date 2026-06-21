@@ -75,6 +75,225 @@ object LevelsMode {
     }
 
     /**
+     * The environmental hazards for the 1-based [levelIndex] on [board]
+     * (Step 6.9.7): time-phased [Gate]s (moving walls) and [TeleportPair]s
+     * (portals). Deterministic - designed per level, not random - and
+     * **sanitised** so the result is always safe: gate/teleport cells never sit
+     * on a static wall or the protected spawn zone, teleport pads are always two
+     * distinct playable cells, and gates are dropped (most-recent first) until
+     * every playable cell stays reachable with **all** gates closed, so a closing
+     * gate can never trap the snake. Levels without hazards return
+     * [LevelHazards.EMPTY].
+     */
+    fun hazardsFor(levelIndex: Int, board: BoardDimensions): LevelHazards {
+        require(levelIndex in 1..LEVEL_COUNT) { "levelIndex must be in 1..$LEVEL_COUNT" }
+        val walls = shapeFor(levelIndex, board)
+        val raw = when (levelIndex) {
+            1 -> openFieldHazards(board)
+            3 -> twinPillarHazards(board)
+            5 -> hourglassHazards(board)
+            7 -> octagonHazards(board)
+            9 -> threeChamberHazards(board)
+            10 -> vaultHazards(board)
+            else -> LevelHazards.EMPTY
+        }
+        return sanitize(raw, board, walls)
+    }
+
+    /**
+     * Filters [raw] hazards down to a safe, well-formed set on [board]:
+     *  - gate cells must be in bounds, off the static [walls] and off the
+     *    protected centre; empty gates are dropped;
+     *  - teleport pads must be in bounds, off walls / gates / the protected
+     *    centre, and the two pads must be distinct; invalid pairs are dropped;
+     *  - finally gates are trimmed (newest first) until the board stays fully
+     *    connected with every remaining gate treated as closed, guaranteeing no
+     *    gate cycle can ever seal the snake into a dead pocket.
+     */
+    private fun sanitize(
+        raw: LevelHazards,
+        board: BoardDimensions,
+        walls: Set<Position>,
+    ): LevelHazards {
+        val clearZone = protectedCenter(board)
+        fun valid(cell: Position) =
+            cell.x in 0 until board.width && cell.y in 0 until board.height &&
+                cell !in walls && cell !in clearZone
+
+        val gateCells = HashSet<Position>()
+        var gates = raw.gates.mapNotNull { gate ->
+            val cells = gate.cells.filterTo(LinkedHashSet()) { valid(it) }
+            if (cells.isEmpty()) null else gate.copy(cells = cells)
+        }
+        gates.forEach { gateCells.addAll(it.cells) }
+
+        val teleports = raw.teleports.filter { pair ->
+            pair.a != pair.b && pair.cells.all { valid(it) && it !in gateCells }
+        }
+
+        // Trim gates (most-recently-added first) until closing them all still
+        // leaves every playable cell reachable from the spawn.
+        val spawn = startingHead(board)
+        while (gates.isNotEmpty()) {
+            val closed = gates.flatMapTo(HashSet()) { it.cells }
+            val blocked = walls + closed
+            val playable = board.width * board.height - blocked.size
+            if (reachableCount(spawn, blocked, board) == playable) break
+            gates = gates.dropLast(1)
+        }
+
+        return LevelHazards(gates, teleports)
+    }
+
+    /** The head spawn cell (matches [GameEngine]'s centred three-cell snake). */
+    private fun startingHead(board: BoardDimensions) = Position(board.width / 2, board.height / 2)
+
+    /** Cells reachable from [start] with 4-way moves avoiding [blocked]. */
+    private fun reachableCount(start: Position, blocked: Set<Position>, board: BoardDimensions): Int {
+        if (start in blocked) return 0
+        val seen = HashSet<Position>()
+        val stack = ArrayDeque<Position>()
+        seen.add(start)
+        stack.addLast(start)
+        while (stack.isNotEmpty()) {
+            val cell = stack.removeLast()
+            for (dir in Direction.entries) {
+                val n = cell.step(dir)
+                if (n.x !in 0 until board.width || n.y !in 0 until board.height) continue
+                if (n in blocked || !seen.add(n)) continue
+                stack.addLast(n)
+            }
+        }
+        return seen.size
+    }
+
+    // --- Per-level hazard geometry (mirrors the wall shapes above) ------------
+
+    /**
+     * Level 1 - Open Field: two crossed teleport pairs at the quarter points
+     * (NW-SE and NE-SW), turning the empty rectangle into a portal playground.
+     */
+    private fun openFieldHazards(b: BoardDimensions): LevelHazards {
+        val qx = b.width / 4
+        val qy = b.height / 4
+        return LevelHazards(
+            teleports = listOf(
+                TeleportPair(Position(qx, qy), Position(b.width - 1 - qx, b.height - 1 - qy)),
+                TeleportPair(Position(b.width - 1 - qx, qy), Position(qx, b.height - 1 - qy)),
+            ),
+        )
+    }
+
+    /**
+     * Level 3 - Twin Pillars: two free-standing horizontal gate bars above and
+     * below the pillars, out of phase, so the snake times its way through the
+     * central corridor. The bars stop short of the side walls, so the open ends
+     * are always a way around - they obstruct, never trap.
+     */
+    private fun twinPillarHazards(b: BoardDimensions): LevelHazards {
+        val margin = (b.width / 6).coerceAtLeast(2)
+        val fromX = margin
+        val toX = b.width - 1 - margin
+        if (toX - fromX < 2) return LevelHazards.EMPTY
+        val cy = b.height / 2
+        val topRow = (cy - b.height / 5).coerceAtLeast(1)
+        val bottomRow = (cy + b.height / 5).coerceAtMost(b.height - 2)
+        val half = Gate.DEFAULT_PERIOD / 2
+        return LevelHazards(
+            gates = listOf(
+                horizontalGate(fromX, toX, topRow, offset = 0),
+                horizontalGate(fromX, toX, bottomRow, offset = half),
+            ),
+        )
+    }
+
+    /**
+     * Level 5 - The Hourglass: a teleport pair linking the open top and bottom
+     * lanes, a shortcut straight through the pinched waist for the bold.
+     */
+    private fun hourglassHazards(b: BoardDimensions): LevelHazards {
+        val cx = b.width / 2
+        return LevelHazards(
+            teleports = listOf(
+                TeleportPair(Position(cx, b.height / 5), Position(cx, b.height - 1 - b.height / 5)),
+            ),
+        )
+    }
+
+    /**
+     * Level 7 - The Octagon: two horizontal gate bars sweeping the wide central
+     * chamber, out of phase, with open ends near the bevelled corners to slip past.
+     */
+    private fun octagonHazards(b: BoardDimensions): LevelHazards {
+        val margin = (b.width / 4).coerceAtLeast(2)
+        val fromX = margin
+        val toX = b.width - 1 - margin
+        if (toX - fromX < 2) return LevelHazards.EMPTY
+        val cy = b.height / 2
+        val topRow = (cy - b.height / 6).coerceAtLeast(1)
+        val bottomRow = (cy + b.height / 6).coerceAtMost(b.height - 2)
+        val half = Gate.DEFAULT_PERIOD / 2
+        return LevelHazards(
+            gates = listOf(
+                horizontalGate(fromX, toX, topRow, offset = 0),
+                horizontalGate(fromX, toX, bottomRow, offset = half),
+            ),
+        )
+    }
+
+    /**
+     * Level 9 - Three Chambers: a gate sealing one doorway in each divider (the
+     * top divider's left passage, the bottom divider's right passage), out of
+     * phase. Each divider always keeps its other passage open, so the chambers
+     * stay linked - timing a closing door just costs a detour.
+     */
+    private fun threeChamberHazards(b: BoardDimensions): LevelHazards {
+        val passW = (cutUnit(b) + 1).coerceAtLeast(2)
+        val y1 = b.height / 4
+        val y2 = b.height - 1 - b.height / 4
+        val px1 = (b.width / 4 - passW / 2).coerceAtLeast(1)
+        val px2 = b.width - px1 - passW
+        val topDoor = (px1 until px1 + passW).map { Position(it, y1) }.toSet()
+        val bottomDoor = (px2 until px2 + passW).map { Position(it, y2) }.toSet()
+        val half = Gate.DEFAULT_PERIOD / 2
+        return LevelHazards(
+            gates = listOf(
+                Gate(topDoor, offsetTicks = 0),
+                Gate(bottomDoor, offsetTicks = half),
+            ),
+        )
+    }
+
+    /**
+     * Level 10 - The Vault: a teleport pair punching a shortcut from inside the
+     * ring to a far outside corner, plus a gate that re-seals the top doorway on
+     * a cycle (the vault's other three gaps keep it reachable throughout).
+     */
+    private fun vaultHazards(b: BoardDimensions): LevelHazards {
+        val inset = (min(b.width, b.height) / 4).coerceAtLeast(3)
+        val left = inset
+        val right = b.width - 1 - inset
+        val top = inset
+        val bottom = b.height - 1 - inset
+        if (right - left < 4 || bottom - top < 4) return LevelHazards.EMPTY
+        val gapW = (cutUnit(b) + 1).coerceAtLeast(2)
+        // The top gap (carved near the left corner in vault()) becomes a gate.
+        val topGate = (0 until gapW).map { Position(left + 1 + it, top) }.toSet()
+        val inside = Position(left + 1, bottom - 1)
+        val outside = Position((b.width - 2).coerceAtLeast(0), 1)
+        return LevelHazards(
+            gates = listOf(Gate(topGate)),
+            teleports = listOf(TeleportPair(inside, outside)),
+        )
+    }
+
+    /** A horizontal moving-wall gate from [fromX]..[toX] (inclusive) on [row]. */
+    private fun horizontalGate(fromX: Int, toX: Int, row: Int, offset: Int): Gate {
+        val cells = (fromX..toX).mapTo(LinkedHashSet()) { Position(it, row) }
+        return Gate(cells, offsetTicks = offset)
+    }
+
+    /**
      * The clear zone around the centre that no shape may block: the snake
      * spawns at (w/2, h/2..h/2+2) heading Up, so the zone extends further
      * upward than downward. Narrower on small (Cozy) boards.
