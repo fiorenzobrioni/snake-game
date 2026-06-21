@@ -22,44 +22,39 @@ import kotlin.math.PI
 import kotlin.math.sin
 
 /**
- * A discreet, looping decoration layered *behind* the main-menu content: a
- * stylised snake gliding through the empty space above the title.
- *
- * The look reuses the gameplay vocabulary — rounded-rect snake segments with a
- * glowing eyed head ([com.brioni.snake.ui.game.GameBoard]) — recoloured from the
- * selected [palette], so the menu reflects the player's chosen skin. It is kept
- * low-opacity so the title and buttons stay perfectly legible, and is drawn with
- * plain Canvas primitives (a radial-gradient glow instead of the AGSL shader) so
- * this file is self-contained and cheap.
+ * A small, brand-defining snake drawn just beneath the main-menu title - a
+ * compact emblem rather than the old full-screen gliding decoration. It reuses
+ * the gameplay vocabulary (rounded-rect segments with a glowing eyed head,
+ * mirroring [com.brioni.snake.ui.game.GameBoard]) recoloured from the selected
+ * [palette], so the menu reflects the player's chosen skin. A gentle, slow
+ * slither keeps it alive without drawing attention away from the buttons.
  */
 @Composable
-fun MenuDecorations(palette: SkinPalette, modifier: Modifier = Modifier) {
-    val transition = rememberInfiniteTransition(label = "menuDecorations")
-    // A single 0..1 phase drives the snake slither and the head-glow pulse.
+fun TitleSnake(palette: SkinPalette, modifier: Modifier = Modifier) {
+    val transition = rememberInfiniteTransition(label = "titleSnake")
     val phase by transition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(4000, easing = LinearEasing), RepeatMode.Restart),
+        animationSpec = infiniteRepeatable(tween(5200, easing = LinearEasing), RepeatMode.Restart),
         label = "phase",
     )
 
     Canvas(modifier = modifier) {
-        drawDecorSnake(palette, phase)
+        drawTitleSnake(palette, phase)
     }
 }
 
 /**
- * Draws the decorative snake in the top region (~6%..20% of the height), as a
- * chain of rounded-rect segments following a horizontal S-curve, with a glowing
- * eyed head leading the way. [phase] gently slithers the whole body.
+ * Draws the short title snake centred in the canvas: a chain of rounded-rect
+ * segments following a shallow horizontal S-curve, with a glowing eyed head
+ * leading on the right. [phase] gently slithers the whole body.
  */
-private fun DrawScope.drawDecorSnake(palette: SkinPalette, phase: Float) {
-    val segments = 9
-    val cell = size.width * 0.072f
-    val step = cell * 0.92f // slight overlap so the body reads as continuous
-    val baseY = size.height * 0.13f
-    val amplitude = cell * 1.15f
-    // Centre the chain horizontally; the head sits on the right, leading.
+private fun DrawScope.drawTitleSnake(palette: SkinPalette, phase: Float) {
+    val segments = 7
+    val cell = size.height * 0.70f
+    val step = cell * 0.86f // slight overlap so the body reads as continuous
+    val baseY = size.height * 0.5f
+    val amplitude = size.height * 0.16f
     val totalWidth = step * (segments - 1)
     val startX = (size.width - totalWidth) / 2f
     val wave = phase * 2f * PI.toFloat()
@@ -68,19 +63,16 @@ private fun DrawScope.drawDecorSnake(palette: SkinPalette, phase: Float) {
     for (i in 0 until segments) {
         val isHead = i == segments - 1
         val cx = startX + step * i
-        val cy = baseY + sin(wave + i * 0.7f) * amplitude
-        // Body fades slightly toward the tail; the head stays the brightest.
-        val alpha = if (isHead) 0.9f else 0.34f + 0.30f * (i.toFloat() / (segments - 1))
+        val cy = baseY + sin(wave + i * 0.6f) * amplitude
+        // Body tapers in opacity toward the tail; the head stays the brightest.
+        val alpha = if (isHead) 1f else 0.55f + 0.35f * (i.toFloat() / (segments - 1))
 
         if (isHead && palette.useGlow) {
-            val glowRadius = cell * 1.5f
+            val glowRadius = cell * 1.4f
             val pulse = 0.8f + 0.2f * sin(wave * 1.5f)
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(
-                        palette.headGlow.copy(alpha = 0.45f * pulse),
-                        Color.Transparent,
-                    ),
+                    colors = listOf(palette.headGlow.copy(alpha = 0.55f * pulse), Color.Transparent),
                     center = Offset(cx, cy),
                     radius = glowRadius,
                 ),
@@ -89,17 +81,17 @@ private fun DrawScope.drawDecorSnake(palette: SkinPalette, phase: Float) {
             )
         }
 
-        drawDecorSegment(isHead, cx, cy, cell, palette, alpha)
+        drawTitleSegment(isHead, cx, cy, cell, palette, alpha)
         if (isHead) {
             // The head points along the body's local slope, so the eyes lead the turn.
-            val slope = sin(wave + i * 0.7f) - sin(wave + (i - 1) * 0.7f)
-            drawDecorEyes(cx, cy, cell, dirX = 1f, dirY = slope.coerceIn(-1f, 1f), palette)
+            val slope = sin(wave + i * 0.6f) - sin(wave + (i - 1) * 0.6f)
+            drawTitleEyes(cx, cy, cell, dirX = 1f, dirY = slope.coerceIn(-1f, 1f), palette)
         }
     }
 }
 
-/** A single rounded-rect snake segment, centred at [cx],[cy] — mirrors the in-game style. */
-private fun DrawScope.drawDecorSegment(
+/** A single rounded-rect snake segment, centred at [cx],[cy] - mirrors the in-game style. */
+private fun DrawScope.drawTitleSegment(
     isHead: Boolean,
     cx: Float,
     cy: Float,
@@ -123,8 +115,8 @@ private fun DrawScope.drawDecorSegment(
     )
 }
 
-/** Two white eyes with dark pupils, looking along ([dirX],[dirY]) — mirrors GameBoard.drawEyes. */
-private fun DrawScope.drawDecorEyes(
+/** Two white eyes with dark pupils, looking along ([dirX],[dirY]) - mirrors GameBoard.drawEyes. */
+private fun DrawScope.drawTitleEyes(
     cx: Float,
     cy: Float,
     cell: Float,
@@ -132,7 +124,6 @@ private fun DrawScope.drawDecorEyes(
     dirY: Float,
     palette: SkinPalette,
 ) {
-    // Normalise the look direction so the eyes seat consistently regardless of slope.
     val len = kotlin.math.hypot(dirX, dirY).coerceAtLeast(0.0001f)
     val fx = dirX / len
     val fy = dirY / len
@@ -140,14 +131,14 @@ private fun DrawScope.drawDecorEyes(
     val perpY = fx
     val forward = cell * 0.16f
     val spread = cell * 0.2f
-    val eyeRadius = cell * 0.11f
-    val pupilRadius = cell * 0.055f
+    val eyeRadius = cell * 0.12f
+    val pupilRadius = cell * 0.06f
     for (sign in intArrayOf(-1, 1)) {
         val ex = cx + fx * forward + perpX * spread * sign
         val ey = cy + fy * forward + perpY * spread * sign
-        drawCircle(Color.White.copy(alpha = 0.9f), eyeRadius, Offset(ex, ey))
+        drawCircle(Color.White, eyeRadius, Offset(ex, ey))
         drawCircle(
-            palette.snakeEye.copy(alpha = 0.9f),
+            palette.snakeEye,
             pupilRadius,
             Offset(ex + fx * cell * 0.03f, ey + fy * cell * 0.03f),
         )

@@ -315,9 +315,10 @@ snake-game/
       comfortable one-handed play. Impl: new `ControlScheme.TapTurn` (or a sensitivity slider in Settings)
       wired through `GameControls` / `swipeToSteer`; persist via `SettingsRepository`.
 
-- [ ] **Step 6.9.4 - Auto-pause on focus loss.** When the app is backgrounded mid-run, auto-pause instead
-      of letting the loop keep ticking unseen. Impl: observe the host lifecycle (the `App` `DisposableEffect`
-      already watches `ON_STOP`/`ON_START`) and call `GameViewModel.togglePause()` when a run is Running.
+- [x] **Step 6.9.4 - Auto-pause on focus loss.** When the app is backgrounded mid-run it now auto-pauses
+      instead of letting the loop tick unseen. The `App` lifecycle observer calls
+      `GameViewModel.togglePause()` on `ON_STOP` when the status is `Running` (it does not auto-resume on
+      `ON_START` - the player resumes from the pause overlay).
 
 **Depth / objectives**
 
@@ -368,6 +369,16 @@ snake-game/
       shadow, top sheen and a square dashed "caution" ring for hazards. The glow skins (Classic / Neon) are
       intentionally left as haloed discs (their strength). Implemented in `GameBoard` by branching the food /
       special renderers on `SkinPalette.useGlow`.
+
+- [x] **Step 6.9.14 - Premium action buttons + menu polish.** Replaced the flat, fully-rounded Material
+      `Button` / `OutlinedButton` used for the menu-style actions across the app with branded
+      `SnakeButton` / `SnakeOutlinedButton` (`ui/components/SnakeButtons.kt`): defined 15dp corners, a
+      top-lit gradient fill (or glassy fill + gradient rim), a hairline/coloured lift shadow and a tactile
+      press-scale + ripple. The D-pad (`FilledTonalButton`), the HUD pause (`TextButton`) and the selector
+      chips are intentionally untouched. The **main menu** also dropped the full-screen gliding-snake
+      decoration; the wordmark gained a green gradient + soft glow, and a small in-game-style **`TitleSnake`**
+      emblem now sits beneath it (recoloured from the active skin). The menu list became vertically
+      scrollable so the taller buttons never clip on short screens.
 
 **Onboarding & polish**
 

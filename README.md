@@ -123,7 +123,8 @@ The classic Snake mechanics, extended with configurable features so every run fe
   selectors are disabled here - the mode has its own layouts and pace - and the Records screen tracks both your best
   score and the deepest level you reached per board scale.
 - ⏸️ **Pause & menus** - pause overlay with a blur effect; restart or return to the main menu at any time. Highscores are kept per (mode, level, board scale). A **Back during play** setting chooses what the system Back gesture does mid-game: **Pause** (default) or **Keep playing** (Back is ignored, and a swipe-back is fed to the snake as a turn when using swipe controls).
-- 💎 **Polished navigation** - an **animated GPU background** behind the menus, a **decorated main menu** (a gliding snake that follows your selected skin), and **blur-dissolve** screen transitions.
+- 💎 **Polished navigation** - an **animated GPU background** behind the menus, a **branded main menu** (a glowing wordmark with a small in-game-style snake emblem that follows your selected skin), **premium action buttons** (gradient-lit, with a tactile press), and **blur-dissolve** screen transitions.
+- ⏸️ **Auto-pause** - backgrounding the app mid-run pauses the game automatically, so the snake never keeps moving while you're away.
 - 📜 **Credits screen** - an in-app **Credits / About** page (author, license and asset attribution), reachable from the main menu.
 
 ### 🍽️ Food system at a glance

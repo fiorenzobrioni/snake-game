@@ -17,8 +17,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
+import com.brioni.snake.ui.components.SnakeButton
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.material3.MaterialTheme
@@ -193,7 +193,7 @@ fun SettingsScreen(
             onSelected = { behavior -> scope.launch { repo.setBackBehavior(behavior) } },
         )
 
-        Button(
+        SnakeButton(
             onClick = onBack,
             modifier = Modifier.padding(top = 32.dp).widthIn(min = 200.dp),
         ) {

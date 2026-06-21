@@ -19,9 +19,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.OutlinedButton
+import com.brioni.snake.ui.components.SnakeButton
+import com.brioni.snake.ui.components.SnakeOutlinedButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -143,7 +143,7 @@ fun ReadyOverlay(
             }
         }
 
-        Button(
+        SnakeButton(
             onClick = onPlay,
             modifier = Modifier
                 .padding(top = 24.dp)
@@ -295,19 +295,19 @@ fun PausedOverlay(onResume: () -> Unit, onSetup: () -> Unit, onMenu: () -> Unit)
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
         )
-        Button(
+        SnakeButton(
             onClick = onResume,
             modifier = Modifier.padding(top = 24.dp).widthIn(min = 200.dp),
         ) {
             Text(stringResource(R.string.action_resume))
         }
-        OutlinedButton(
+        SnakeOutlinedButton(
             onClick = onSetup,
             modifier = Modifier.padding(top = 12.dp).widthIn(min = 200.dp),
         ) {
             Text(stringResource(R.string.action_game_setup))
         }
-        OutlinedButton(
+        SnakeOutlinedButton(
             onClick = onMenu,
             modifier = Modifier.padding(top = 12.dp).widthIn(min = 200.dp),
         ) {
@@ -389,19 +389,19 @@ fun GameOverOverlay(
                 }
             }
         }
-        Button(
+        SnakeButton(
             onClick = onPlayAgain,
             modifier = Modifier.padding(top = 24.dp).widthIn(min = 200.dp),
         ) {
             Text(stringResource(R.string.action_play_again))
         }
-        OutlinedButton(
+        SnakeOutlinedButton(
             onClick = onSetup,
             modifier = Modifier.padding(top = 12.dp).widthIn(min = 200.dp),
         ) {
             Text(stringResource(R.string.action_game_setup))
         }
-        OutlinedButton(
+        SnakeOutlinedButton(
             onClick = onMenu,
             modifier = Modifier.padding(top = 12.dp).widthIn(min = 200.dp),
         ) {
