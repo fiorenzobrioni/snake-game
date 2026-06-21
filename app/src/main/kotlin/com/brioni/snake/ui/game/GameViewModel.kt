@@ -30,6 +30,7 @@ import com.brioni.snake.game.GameState
 import com.brioni.snake.game.GameStatus
 import com.brioni.snake.game.Level
 import com.brioni.snake.game.LevelsMode
+import com.brioni.snake.game.Mission
 import com.brioni.snake.game.Position
 import com.brioni.snake.game.RunStats
 import com.brioni.snake.game.Skin
@@ -42,6 +43,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.random.Random
 import kotlin.math.max
+import java.time.LocalDate
 
 /** Which particle burst the renderer should spawn for an [EatEvent]. */
 enum class BurstStyle {
@@ -224,6 +226,10 @@ class GameViewModel(
 
     /** Achievements unlocked by the most recent run (for the game-over banner). */
     var newlyUnlocked by mutableStateOf<List<Achievement>>(emptyList())
+        private set
+
+    /** Rotating missions completed by the most recent run (for the game-over banner). */
+    var newlyCompletedMissions by mutableStateOf<List<Mission>>(emptyList())
         private set
 
     /** Recap of the most recent finished run, for the game-over summary. */
@@ -538,6 +544,7 @@ class GameViewModel(
         runExtraLives = 0
         runMaxLength = state.snake.size
         newlyUnlocked = emptyList()
+        newlyCompletedMissions = emptyList()
     }
 
     /**
@@ -820,6 +827,19 @@ class GameViewModel(
             if (earned.isNotEmpty()) {
                 repo.addUnlockedAchievements(earned.map { it.name })
                 newlyUnlocked = earned
+            }
+        }
+        // Evaluate today's rotating missions (Step 6.9.5) and surface any newly
+        // completed ones; completion is persisted tagged with the day so it counts
+        // only once and resets when the daily set rotates.
+        viewModelScope.launch {
+            val epochDay = LocalDate.now().toEpochDay()
+            val alreadyDone = repo.completedMissionsForDay(epochDay).first()
+            val justDone = Mission.forDay(epochDay)
+                .filter { it.id !in alreadyDone && it.completedBy(stats) }
+            if (justDone.isNotEmpty()) {
+                repo.addCompletedMissions(epochDay, justDone.map { it.id })
+                newlyCompletedMissions = justDone
             }
         }
     }

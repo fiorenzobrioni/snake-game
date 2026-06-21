@@ -103,6 +103,9 @@ The classic Snake mechanics, extended with configurable features so every run fe
   banner on the game-over screen.
 - 📊 **Run recap** - the game-over screen shows a short summary of the run: foods eaten, best combo, time
   survived, the snake's longest length and, in Campaign, the deepest level reached.
+- 🎯 **Daily missions** - three rotating per-run goals (eat so many foods, reach a combo, survive a time,
+  score, grow long, grab a power-up) that refresh each day. The main menu's **Today's Missions** card
+  tracks which you've cleared today, and completing one pops a banner on the game-over screen.
 - ▶️ **Quick Play** - the main menu's **Play** button drops you straight into a run with your last-used
   settings; a separate **Custom** entry opens the full pre-game setup (mode, level, snake speed, board
   scale) when you want to tweak everything.
@@ -279,6 +282,11 @@ penalty), or raise **Special blocks** to *Frenzy* for constant chaos.
 **Achievements:** milestones unlock automatically as you play - high combos, long runs, using
 power-ups, growing a very long snake, and more. A banner appears on the game-over screen when one
 unlocks; browse the full list from the main menu.
+
+**Daily missions:** alongside the static achievements, three goals rotate each day (eat a number of
+foods, reach a combo, survive a time, hit a score, grow long, or grab a power-up). They give a single
+run a sense of purpose: the main menu's **Today's Missions** card shows which you've cleared today, and
+completing one pops a banner on the game-over screen. The set refreshes the next day.
 
 ---
 
