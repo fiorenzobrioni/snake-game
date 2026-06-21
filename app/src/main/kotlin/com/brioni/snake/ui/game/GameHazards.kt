@@ -200,13 +200,14 @@ fun DrawScope.drawTeleports(
     originX: Float,
     originY: Float,
     reduceMotion: Boolean,
+    overlay: Boolean = false,
 ) {
     if (state.teleports.isEmpty()) return
     state.teleports.forEachIndexed { index, pair ->
         val color = portalColor(index)
         // The paired pads counter-spin so they read as linked yet distinct ends.
-        drawPortal(pair.a, color, seconds, spin = seconds, cell, originX, originY, reduceMotion)
-        drawPortal(pair.b, color, seconds, spin = -seconds, cell, originX, originY, reduceMotion)
+        drawPortal(pair.a, color, seconds, spin = seconds, cell, originX, originY, reduceMotion, overlay)
+        drawPortal(pair.b, color, seconds, spin = -seconds, cell, originX, originY, reduceMotion, overlay)
     }
 }
 
@@ -214,6 +215,12 @@ fun DrawScope.drawTeleports(
  * A swirling portal disc: an outer halo, two counter-rotating arc rings, a bright
  * rim and a dark vortex core. [spin] drives the arc rotation (one pad of a pair
  * spins the opposite way, hinting they are linked yet distinct entry/exit).
+ *
+ * When [overlay] is true this is the lighter pass drawn *over* the snake: it skips
+ * the outer halo, tints the throat instead of blackening it, and runs at reduced
+ * opacity, so a body segment crossing a pad reads as half-transparent / phasing
+ * (the snake can pass straight through a portal). The footprint stays within the
+ * single pad cell so the active area never looks larger than it is.
  */
 private fun DrawScope.drawPortal(
     at: Position,
@@ -224,25 +231,35 @@ private fun DrawScope.drawPortal(
     originX: Float,
     originY: Float,
     reduceMotion: Boolean,
+    overlay: Boolean,
 ) {
     val center = Offset(originX + (at.x + 0.5f) * cell, originY + (at.y + 0.5f) * cell)
-    val pulse = if (reduceMotion) 1f else 0.88f + 0.12f * sin(seconds * 3.4).toFloat()
+    val pulse = if (reduceMotion) 1f else 0.9f + 0.1f * sin(seconds * 3.4).toFloat()
     val r = cell * 0.46f * pulse
+    // The over-snake pass is dimmer so it veils rather than hides the body.
+    val a = if (overlay) 0.5f else 1f
 
-    // Outer halo.
-    drawCircle(
-        brush = Brush.radialGradient(
-            colors = listOf(color.copy(alpha = 0.55f), Color.Transparent),
+    // Outer halo - under-pass only, and kept tight so it does not bleed into the
+    // neighbouring cells (which made the active area look bigger than one cell).
+    if (!overlay) {
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(color.copy(alpha = 0.5f), Color.Transparent),
+                center = center,
+                radius = r * 1.55f,
+            ),
+            radius = r * 1.55f,
             center = center,
-            radius = r * 2.2f,
-        ),
-        radius = r * 2.2f,
-        center = center,
-    )
-    // Dark vortex throat.
+        )
+    }
+    // Vortex throat: solid+dark under the snake, a soft colour tint over it.
     drawCircle(
         brush = Brush.radialGradient(
-            colors = listOf(Color.Black.copy(alpha = 0.85f), color.copy(alpha = 0.25f)),
+            colors = if (overlay) {
+                listOf(color.copy(alpha = 0.35f), Color.Transparent)
+            } else {
+                listOf(Color.Black.copy(alpha = 0.85f), color.copy(alpha = 0.25f))
+            },
             center = center,
             radius = r,
         ),
@@ -255,7 +272,7 @@ private fun DrawScope.drawPortal(
         val dir = if (k == 0) 1.0 else -1.0
         val start = ((base * 90.0 * dir) + k * 60.0).toFloat()
         drawArc(
-            color = color.copy(alpha = 0.9f),
+            color = color.copy(alpha = 0.9f * a),
             startAngle = start,
             sweepAngle = 110f,
             useCenter = false,
@@ -266,7 +283,7 @@ private fun DrawScope.drawPortal(
     }
     // Bright rim.
     drawCircle(
-        color = lightenColor(color, 0.4f).copy(alpha = 0.9f),
+        color = lightenColor(color, 0.4f).copy(alpha = 0.9f * a),
         radius = r,
         center = center,
         style = Stroke(width = cell * 0.06f),

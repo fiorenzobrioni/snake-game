@@ -223,7 +223,9 @@ fun GameBoard(
     LaunchedEffect(teleportEventId) {
         val event = teleportEvent
         if (teleportEventId > 0 && event != null && !reduceMotion) {
-            val color = portalColor(0)
+            // Burst in the colour of the pair that fired (fall back to the first).
+            val index = state.teleports.indexOfFirst { event.from in it.cells || event.to in it.cells }
+            val color = portalColor(index.coerceAtLeast(0))
             emitImplodeBurst(particles, event.from.x + 0.5f, event.from.y + 0.5f, color, 1)
             emitEatBurst(particles, event.to.x + 0.5f, event.to.y + 0.5f, color, 1)
         }
@@ -337,6 +339,9 @@ fun GameBoard(
                 time = time,
                 headGlow = hotGlow(palette.headGlow, state.combo),
             )
+            // A lighter portal pass over the snake: where the body lies on a pad it
+            // shows through as half-transparent, selling that the snake phases through.
+            drawTeleports(state, seconds, cell, originX, originY, reduceMotion, overlay = true)
             // Hazard telegraph: a danger flash over the piece the snake is about
             // to eat (one tick before contact). Suppressed under reduce-motion -
             // the envelope simply stays at 0 there.
