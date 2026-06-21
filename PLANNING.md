@@ -378,7 +378,9 @@ snake-game/
       chips are intentionally untouched. The **main menu** also dropped the full-screen gliding-snake
       decoration; the wordmark gained a green gradient + soft glow, and a small in-game-style **`TitleSnake`**
       emblem now sits beneath it (recoloured from the active skin). The menu list became vertically
-      scrollable so the taller buttons never clip on short screens.
+      scrollable so the taller buttons never clip on short screens. The wordmark's emblem is a static,
+      in-game-accurate snake (`GameBoard.SnakeEmblem`, drawn through the gameplay `drawSnake` renderer so it
+      matches the active skin exactly), sized to the measured width of the title.
 
 **Onboarding & polish**
 

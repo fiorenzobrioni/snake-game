@@ -83,6 +83,48 @@ private fun darken(c: Color, f: Float): Color = Color(
     alpha = c.alpha,
 )
 
+/**
+ * A static, in-game-accurate snake emblem (used under the menu wordmark). It
+ * draws through the exact same [drawSnake] renderer as gameplay - the tapered,
+ * shaded tube with a glossy glowing head for glow skins, two-tone blocky segments
+ * for flat skins - so it reflects the selected [palette] faithfully. It is drawn
+ * straight and still (no slither), head leading on the right, and the chain fills
+ * the given width so callers can match it to the title's width.
+ */
+@Composable
+fun SnakeEmblem(palette: SkinPalette, modifier: Modifier = Modifier) {
+    val shaders = remember { BoardShaders() }
+    Canvas(modifier = modifier) {
+        if (size.width <= 0f || size.height <= 0f) return@Canvas
+        // Cell size from the height, leaving headroom so the head glow / drop
+        // shadow can bleed softly (the Canvas draw is not clipped to its bounds).
+        val cell = size.height * 0.72f
+        if (cell <= 0f) return@Canvas
+        val cy = size.height / 2f
+        val step = cell // one cell of spacing between centres, like adjacent board cells
+        val span = size.width - cell // small inset so head/tail sit inside the width
+        val n = (span / step).toInt().coerceAtLeast(1) + 1
+        val totalWidth = step * (n - 1)
+        val startX = (size.width - totalWidth) / 2f
+        // Head is index 0 (rightmost); increasing index walks left toward the tail.
+        val centers = ArrayList<Offset>(n)
+        for (i in 0 until n) {
+            centers.add(Offset(startX + step * (n - 1 - i), cy))
+        }
+        drawSnake(
+            centers = centers,
+            cell = cell,
+            direction = Direction.Right,
+            palette = palette,
+            bodyAlpha = 1f,
+            headAlpha = 1f,
+            shaders = shaders,
+            time = 0f,
+            headGlow = palette.headGlow,
+        )
+    }
+}
+
 @Composable
 fun GameBoard(
     state: GameState,
@@ -95,8 +137,7 @@ fun GameBoard(
     floatingText: FloatingTextEvent?,
     floatingTextId: Int,
     hazardWarn: HazardWarnEvent?,
-    hazardWarnId: Int,
-    textMeasurer: TextMeasurer,
+    hazardWarnId: Int,    textMeasurer: TextMeasurer,
     palette: SkinPalette,
     borderColor: Color = palette.boardBorder,
     outsideColor: Color = Color.Black,

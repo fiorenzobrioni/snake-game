@@ -19,21 +19,26 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.brioni.snake.R
 import com.brioni.snake.data.SettingsRepository
 import com.brioni.snake.game.Skin
 import com.brioni.snake.ui.components.SnakeButton
 import com.brioni.snake.ui.components.SnakeOutlinedButton
+import com.brioni.snake.ui.game.SnakeEmblem
 import com.brioni.snake.ui.game.paletteFor
 import kotlinx.coroutines.flow.map
 
@@ -90,18 +95,27 @@ fun MainMenuScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
+            // Measure the laid-out wordmark so the emblem below can match its width.
+            var titleSize by remember { mutableStateOf(IntSize.Zero) }
             Text(
                 text = stringResource(R.string.game_title),
                 style = titleStyle,
                 modifier = Modifier.scale(titleScale),
+                onTextLayout = { titleSize = it.size },
             )
-            // A small in-game-style snake emblem just beneath the wordmark.
-            TitleSnake(
-                palette = palette,
-                modifier = Modifier
-                    .padding(top = 10.dp)
-                    .size(width = 168.dp, height = 38.dp),
-            )
+            // A static, in-game-accurate snake (drawn through the gameplay renderer)
+            // beneath the wordmark, as wide as the word and matching the active skin.
+            if (titleSize.width > 0) {
+                val density = LocalDensity.current
+                val emblemWidth = with(density) { titleSize.width.toDp() }
+                val emblemHeight = with(density) { (titleSize.height * 0.42f).toDp() }
+                SnakeEmblem(
+                    palette = palette,
+                    modifier = Modifier
+                        .padding(top = 8.dp)
+                        .size(width = emblemWidth, height = emblemHeight),
+                )
+            }
 
             SnakeButton(
                 onClick = onPlay,
