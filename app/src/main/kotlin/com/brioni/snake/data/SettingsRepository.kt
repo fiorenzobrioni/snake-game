@@ -21,7 +21,6 @@ import com.brioni.snake.game.Skin
 import com.brioni.snake.game.SnakeSpeed
 import com.brioni.snake.game.SpecialFrequency
 import com.brioni.snake.game.ThemeMode
-import com.brioni.snake.game.ViewMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlin.math.max
@@ -41,15 +40,11 @@ data class Settings(
     val hapticsEnabled: Boolean = true,
     /** Accessibility: damp screen shake, particle bursts and near-miss flashes (default off). */
     val reduceMotion: Boolean = false,
-    /** Animated electric/plasma flow on the 3D boundary barrier (default on). */
-    val electricWallsEnabled: Boolean = true,
     val skin: Skin = Skin.Classic,
     val hazardsEnabled: Boolean = true,
     val specialFrequency: SpecialFrequency = SpecialFrequency.Standard,
     val mode: GameMode = GameMode.Endless,
     val themeMode: ThemeMode = ThemeMode.Dark,
-    /** The board presentation: flat 2D, follow chase-cam 3D, or fixed-north 3D. */
-    val viewMode: ViewMode = ViewMode.TwoD,
 )
 
 /** Default audio levels (also used as the in-memory fallback before load). */
@@ -80,16 +75,11 @@ class SettingsRepository(private val context: Context) {
             crtEnabled = prefs[CRT_ENABLED] ?: false,
             hapticsEnabled = prefs[HAPTICS_ENABLED] ?: true,
             reduceMotion = prefs[REDUCE_MOTION] ?: false,
-            electricWallsEnabled = prefs[ELECTRIC_WALLS] ?: true,
             skin = prefs[SKIN].toEnum(Skin::valueOf) ?: Skin.Classic,
             hazardsEnabled = prefs[HAZARDS_ENABLED] ?: true,
             specialFrequency = prefs[SPECIAL_FREQUENCY].toEnum(SpecialFrequency::valueOf) ?: SpecialFrequency.Standard,
             mode = prefs[MODE].toEnum(GameMode::valueOf) ?: GameMode.Endless,
             themeMode = prefs[THEME_MODE].toEnum(ThemeMode::valueOf) ?: ThemeMode.Dark,
-            viewMode = prefs[VIEW_MODE].toEnum(ViewMode::valueOf)
-                // Fall back from the legacy boolean: a stored "true" maps to the
-                // follow chase-cam, anything else (or unset) to flat 2D.
-                ?: if (prefs[THREE_D_WORLD] == true) ViewMode.ThreeD else ViewMode.TwoD,
         )
     }
 
@@ -126,9 +116,6 @@ class SettingsRepository(private val context: Context) {
     suspend fun setReduceMotion(enabled: Boolean) =
         edit { it[REDUCE_MOTION] = enabled }
 
-    suspend fun setElectricWallsEnabled(enabled: Boolean) =
-        edit { it[ELECTRIC_WALLS] = enabled }
-
     suspend fun setSkin(skin: Skin) =
         edit { it[SKIN] = skin.name }
 
@@ -143,9 +130,6 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setThemeMode(themeMode: ThemeMode) =
         edit { it[THEME_MODE] = themeMode.name }
-
-    suspend fun setViewMode(mode: ViewMode) =
-        edit { it[VIEW_MODE] = mode.name }
 
     /** The stored best for a (mode × level × scale) slot (0 if none yet). */
     fun highScore(mode: GameMode, level: Level, scale: BoardScale): Flow<Int> =
@@ -264,14 +248,11 @@ class SettingsRepository(private val context: Context) {
         val CRT_ENABLED = booleanPreferencesKey("crt_enabled")
         val HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
         val REDUCE_MOTION = booleanPreferencesKey("reduce_motion")
-        val ELECTRIC_WALLS = booleanPreferencesKey("electric_walls")
         val SKIN = stringPreferencesKey("skin")
         val HAZARDS_ENABLED = booleanPreferencesKey("hazards_enabled")
         val SPECIAL_FREQUENCY = stringPreferencesKey("special_frequency")
         val MODE = stringPreferencesKey("game_mode")
         val THEME_MODE = stringPreferencesKey("theme_mode")
-        val THREE_D_WORLD = booleanPreferencesKey("three_d_world")
-        val VIEW_MODE = stringPreferencesKey("view_mode")
         val UNLOCKED_ACHIEVEMENTS = stringSetPreferencesKey("unlocked_achievements")
         val DAILY_STREAK = intPreferencesKey("daily_streak")
         val DAILY_LAST_DAY = longPreferencesKey("daily_last_day")

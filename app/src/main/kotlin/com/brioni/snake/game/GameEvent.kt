@@ -37,6 +37,15 @@ sealed interface GameEvent {
      */
     data object GraceDodge : GameEvent
 
+    /**
+     * The snake is **one tick from eating** the hazard [food] (Earthquake /
+     * Explosion / Snail / time penalty): the cell it is about to enter, on its
+     * current heading, holds the hazard. Drives a short "tell" - a warning flash
+     * on the piece plus a pre-haptic - so the strike never feels arbitrary. It is
+     * predictive (the player can still turn away), so it is purely advisory.
+     */
+    data class HazardImminent(val food: Food) : GameEvent
+
     // --- Phase 6.2 specials. ---
 
     /** Explosion eaten: the snake split, leaving [debris] lethal blocks behind. */

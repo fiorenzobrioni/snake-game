@@ -73,7 +73,6 @@
     <string name="settings_level">Level</string>
     <string name="settings_snake_speed">Snake speed</string>
     <string name="settings_board_scale">Board scale</string>
-    <string name="settings_view">View</string>
     <string name="settings_master_volume">Master volume</string>
     <string name="settings_music_volume">Music volume</string>
     <string name="settings_sfx_volume">Sound effects</string>
@@ -82,7 +81,6 @@
     <string name="settings_haptics">Vibration feedback</string>
     <string name="settings_reduce_motion">Reduce motion &amp; flashing</string>
     <string name="settings_crt_filter">Retro CRT filter</string>
-    <string name="settings_electric_walls">Electric 3D walls</string>
     <string name="settings_back_behavior">Back during play</string>
     <string name="settings_skin">Skin</string>
     <string name="settings_theme">Theme</string>

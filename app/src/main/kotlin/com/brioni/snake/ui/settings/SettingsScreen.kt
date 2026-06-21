@@ -50,7 +50,6 @@ import com.brioni.snake.game.Skin
 import com.brioni.snake.game.SnakeSpeed
 import com.brioni.snake.game.SpecialFrequency
 import com.brioni.snake.game.ThemeMode
-import com.brioni.snake.game.ViewMode
 import com.brioni.snake.ui.game.paletteFor
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -120,14 +119,6 @@ fun SettingsScreen(
             onSelected = { scale -> scope.launch { repo.setScale(scale) } },
         )
 
-        ChoiceSection(
-            title = stringResource(R.string.settings_view),
-            options = ViewMode.entries,
-            selected = settings.viewMode,
-            label = { it.displayName },
-            onSelected = { view -> scope.launch { repo.setViewMode(view) } },
-        )
-
         SkinSection(
             selected = settings.skin,
             onSelected = { skin -> scope.launch { repo.setSkin(skin) } },
@@ -192,12 +183,6 @@ fun SettingsScreen(
             title = stringResource(R.string.settings_crt_filter),
             checked = settings.crtEnabled,
             onCheckedChange = { enabled -> scope.launch { repo.setCrtEnabled(enabled) } },
-        )
-
-        ToggleSection(
-            title = stringResource(R.string.settings_electric_walls),
-            checked = settings.electricWallsEnabled,
-            onCheckedChange = { enabled -> scope.launch { repo.setElectricWallsEnabled(enabled) } },
         )
 
         ChoiceSection(

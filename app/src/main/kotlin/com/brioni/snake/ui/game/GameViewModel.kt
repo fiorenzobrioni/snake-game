@@ -35,7 +35,6 @@ import com.brioni.snake.game.RunStats
 import com.brioni.snake.game.Skin
 import com.brioni.snake.game.SnakeSpeed
 import com.brioni.snake.game.SpecialFrequency
-import com.brioni.snake.game.ViewMode
 import com.brioni.snake.game.boardFor
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -46,27 +45,43 @@ import kotlin.math.max
 
 /** Which particle burst the renderer should spawn for an [EatEvent]. */
 enum class BurstStyle {
-    /** Outward explosion — growing food, jackpot, explosion. */
+    /** Outward spray — growing food, jackpot. */
     Eat,
 
-    /** Inward implosion — shrinking food, earthquake. */
+    /** Inward implosion — shrinking food. */
     Implode,
 
     /** Gentle upward fade — an ignored food that timed out and vanished. */
     Vanish,
+
+    /** A big, fiery two-tone detonation with embers — the Explosion hazard. */
+    Blast,
 }
 
 /**
  * A board event, surfaced to the renderer to spawn a particle burst. [style]
- * selects which burst to play at [cell].
+ * selects which burst to play at [cell]; [combo] lets the renderer make the
+ * burst grow hotter and larger as the eat-streak climbs.
  */
-data class EatEvent(val cell: Position, val span: Int, val color: Color, val style: BurstStyle)
+data class EatEvent(
+    val cell: Position,
+    val span: Int,
+    val color: Color,
+    val style: BurstStyle,
+    val combo: Int = 1,
+)
 
 /**
  * A short floating label to spawn on the board (e.g. "+5s" / "-3s" for the Time
  * Attack clock blocks), placed at [cell] (its [span] centres the text).
  */
 data class FloatingTextEvent(val cell: Position, val span: Int, val text: String, val color: Color)
+
+/**
+ * A one-tick hazard telegraph: the renderer flashes a danger warning over the
+ * [span]-cell square at [cell] the tick before the snake would eat the hazard.
+ */
+data class HazardWarnEvent(val cell: Position, val span: Int)
 
 /**
  * Holds the [GameState] and drives the tick loop. All game rules live in
@@ -106,10 +121,6 @@ class GameViewModel(
     var crtEnabled by mutableStateOf(false)
         private set
 
-    /** Whether the 3D barrier's electric/plasma flow is enabled (setting). */
-    var electricWalls by mutableStateOf(true)
-        private set
-
     /** Accessibility: damp screen shake, particle bursts and near-miss flashes (setting). */
     var reduceMotion by mutableStateOf(false)
         private set
@@ -125,13 +136,6 @@ class GameViewModel(
     /** How often specials (power-ups / hazards) spawn (setting). */
     var specialFrequency by mutableStateOf(SpecialFrequency.Standard)
         private set
-
-    /** The board presentation (setting): flat 2D, follow chase-cam, or fixed-north. */
-    var viewMode by mutableStateOf(ViewMode.TwoD)
-        private set
-
-    /** True while either 3D view is selected as the standing setting. */
-    val threeDWorldEnabled: Boolean get() = viewMode.is3D
 
     /** Active play mode; highscores are tracked per (mode, level, scale). */
     var mode by mutableStateOf(GameMode.Endless)
@@ -179,20 +183,11 @@ class GameViewModel(
     var nearMissEventId by mutableIntStateOf(0)
         private set
 
-    /**
-     * Whether the board should render (and steer) in the 3D chase-cam: the
-     * "3D" / "3D Fixed" view setting that plays every mode in perspective. Gates
-     * the relative-controls override and the perspective renderer.
-     */
-    val threeDActive: Boolean get() = threeDWorldEnabled
-
-    /**
-     * Whether steering should be heading-relative (left/right turns) rather than
-     * absolute. True for the rotating "3D" follow view, but **false** for the
-     * north-locked "3D Fixed" view, whose board never rotates - there swipe/D-pad
-     * behave exactly like the flat 2D board.
-     */
-    val relativeSteering: Boolean get() = threeDActive && !viewMode.fixedNorth
+    /** Latest hazard telegraph and a monotonic id so repeats are observable. */
+    var hazardWarn: HazardWarnEvent? = null
+        private set
+    var hazardWarnId by mutableIntStateOf(0)
+        private set
 
     /** Best score for the current (level, scale), and whether the last run beat it. */
     var bestScore by mutableIntStateOf(0)
@@ -273,9 +268,7 @@ class GameViewModel(
                 backBehavior = settings.backBehavior
                 crtEnabled = settings.crtEnabled
                 reduceMotion = settings.reduceMotion
-                electricWalls = settings.electricWallsEnabled
                 skin = settings.skin
-                viewMode = settings.viewMode
                 // The Daily Challenge pins the spawn-affecting toggles so the run is
                 // identical for everyone; only sync them from settings outside it.
                 if (activeChallenge == null) {
@@ -579,7 +572,7 @@ class GameViewModel(
         after.lastEvents.forEach { event ->
             when (event) {
                 is GameEvent.Ate -> {
-                    eatEvent = EatEvent(event.food.position, event.food.span, palette.foodColor(event.food), BurstStyle.Eat)
+                    eatEvent = EatEvent(event.food.position, event.food.span, palette.foodColor(event.food), BurstStyle.Eat, event.combo)
                     eatEventId++
                     val grown = (event.food.effect as? FoodEffect.Grow)?.segments ?: 0
                     if (grown > 0) {
@@ -623,9 +616,17 @@ class GameViewModel(
                     nearMissEventId++
                     lastNearMissNanos = System.nanoTime()
                 }
+                is GameEvent.HazardImminent -> {
+                    // One tick before the snake would eat a hazard: telegraph it
+                    // with a warning flash (the renderer gates it under reduce-motion)
+                    // and a pre-haptic, so the strike never lands unannounced.
+                    hazardWarn = HazardWarnEvent(event.food.position, event.food.span)
+                    hazardWarnId++
+                    haptics.hazardWarning()
+                }
                 is GameEvent.Exploded -> {
-                    // Explosion: outward burst at the blast + a board shake.
-                    eatEvent = EatEvent(event.food.position, event.food.span, palette.special, BurstStyle.Eat)
+                    // Explosion: a fiery detonation at the blast + a board shake.
+                    eatEvent = EatEvent(event.food.position, event.food.span, SpecialVisuals.ExplosionColor, BurstStyle.Blast)
                     eatEventId++
                     shakeEventId++
                     sfx.special(event.food)
@@ -715,23 +716,9 @@ class GameViewModel(
         tickTimeNanos = System.nanoTime()
     }
 
-    /**
-     * Routes a board swipe. In a rotating 3D view a horizontal swipe is a heading-
-     * relative turn (left/right) and vertical swipes are ignored; otherwise (2D or
-     * the north-locked 3D Fixed view) it steers by the swiped absolute [direction].
-     * Reading [relativeSteering] here (not at wiring time) keeps a single, never-
-     * swapped gesture detector correct in every view.
-     */
+    /** Routes a board swipe: steers by the swiped absolute [direction]. */
     fun onSwipe(direction: Direction) {
-        if (relativeSteering) {
-            when (direction) {
-                Direction.Left -> turnLeft()
-                Direction.Right -> turnRight()
-                Direction.Up, Direction.Down -> Unit
-            }
-        } else {
-            setDirection(direction)
-        }
+        setDirection(direction)
     }
 
     private fun onGameOver(score: Int) {

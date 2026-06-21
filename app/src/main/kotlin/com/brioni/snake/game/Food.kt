@@ -230,9 +230,7 @@ object FoodTable {
             add(Weighted(14) { FoodEffect.Ghost(GHOST_MS) })
             add(Weighted(14) { FoodEffect.Freeze(FREEZE_MS) })
             add(Weighted(10) { FoodEffect.Jackpot(bonus = random.nextInt(150, 401), growth = random.nextInt(2, 6)) })
-            // Harmful — only when hazards are enabled (total weight 54). These absorb
-            // the weight freed by removing the old 3D hazard, so the overall
-            // benefit/hazard balance stays as it was before that removal.
+            // Harmful — only when hazards are enabled (total weight 54).
             if (hazardsEnabled) {
                 add(Weighted(20) { FoodEffect.Quake(QUAKE_MS) })
                 add(Weighted(16) { FoodEffect.Burst(BURST_DEBRIS_MS) })

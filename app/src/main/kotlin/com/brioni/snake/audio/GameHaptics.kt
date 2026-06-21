@@ -19,6 +19,9 @@ interface GameHaptics {
     /** The head grazed a static hazard without crashing: a faint tick. */
     fun nearMiss()
 
+    /** A hazard is one tick from being eaten: a brief alerting double-tick. */
+    fun hazardWarning()
+
     /** The snake died: the strongest cue. */
     fun death()
 
@@ -33,6 +36,7 @@ interface GameHaptics {
         override fun eat() {}
         override fun special() {}
         override fun nearMiss() {}
+        override fun hazardWarning() {}
         override fun death() {}
         override fun lifeLost() {}
         override fun levelUp() {}
