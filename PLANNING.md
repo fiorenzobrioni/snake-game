@@ -322,11 +322,28 @@ snake-game/
 
 **Depth / objectives**
 
-- [ ] **Step 6.9.5 - Rotating objectives / missions.** Beyond the static achievements, show 2-3 rotating
-      per-run goals ("eat 3 maxi foods", "reach a x5 combo", "survive 90s") that refresh daily/weekly and
-      give a sense of purpose to a single run. Impl: a pure-Kotlin `Mission` model evaluated against the
-      existing `RunStats`; persist completion + a small reward (points/cosmetic) in `SettingsRepository`;
-      surface progress on the menu or game-over screen.
+- [x] **Step 6.9.5 - Rotating objectives / missions.** Beyond the static achievements, three rotating
+      per-run goals ("eat 30 foods", "reach a x6 combo", "survive 90s") that refresh daily and give a sense
+      of purpose to a single run. **Done:** a pure-Kotlin `game/Mission` model (a stable `id`, a
+      `description`, a `target` and a `progressOf(RunStats)` extractor, with `progress`/`completedBy`
+      helpers) plus a `forDay(epochDay)` deterministic daily picker over a fixed `POOL` (same day → same
+      goals, rotating as the day advances; SplitMix64-hashed like `Challenge`). Every mission is expressed
+      purely over the existing `RunStats` fields (foods eaten, combo, survived seconds, score, max length,
+      any power-up), so the rotation never offers an impossible goal in the current mode. Completion is
+      persisted in `SettingsRepository` tagged with its day (`completed_missions` set of `"epochDay/id"`),
+      so the daily set resets naturally (yesterday's completions never satisfy today's goals);
+      `completedMissionsForDay` / `addCompletedMissions` / `completedMissionsTotal` expose it.
+      `GameViewModel.onGameOver` evaluates today's missions against the run and surfaces newly completed
+      ones (`newlyCompletedMissions`); the game-over overlay shows them in a "Mission complete!" banner and
+      the main menu shows a compact "Today's Missions" card (the three goals with a tick on the ones done
+      today + an `n / 3` counter). Covered by `MissionTest`.
+      **Re-verified ideas:** the pure-`Mission`-over-`RunStats`, daily-rotation and menu/game-over
+      surfacing are all valid and were kept. Two adaptations: (1) the "eat 3 maxi foods" example needs a
+      maxi-food counter that `RunStats` does not carry, so the pool uses goals expressible from the
+      existing stats instead of adding a new accumulator; (2) the "small reward (points/cosmetic)" was
+      dropped - the app has no points/currency economy and all skins are unlocked (gating skins is the
+      still-open Step 6.9.9), so inventing a currency here would be premature. Completion (and a lifetime
+      `completedMissionsTotal`) is persisted, leaving the door open for a reward once Step 6.9.9 lands.
 
 - [ ] **Step 6.9.6 - Player-activated power-up (one slot).** A single chargeable ability the player
       triggers on demand (e.g. a one-shot **Dash** that skips a few cells, or a **Bomb** that clears nearby

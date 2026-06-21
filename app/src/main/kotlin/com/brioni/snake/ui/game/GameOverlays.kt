@@ -8,6 +8,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -60,10 +61,14 @@ private fun OverlayScrim(
     } else {
         Color.Black.copy(alpha = alpha)
     }
+    // Vertically scrollable so a tall overlay (many selectors / a long recap +
+    // achievement + mission banner) never clips its buttons off the bottom edge on
+    // short screens. With Arrangement.Center it still centres when the content fits.
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(scrimColor)
+            .verticalScroll(rememberScrollState())
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -328,6 +333,7 @@ fun GameOverOverlay(
     onMenu: () -> Unit,
     showBest: Boolean = true,
     summary: RunSummary? = null,
+    completedMissions: List<String> = emptyList(),
 ) {
     OverlayScrim {
         Text(
@@ -359,6 +365,35 @@ fun GameOverOverlay(
         }
         if (summary != null) {
             RunRecap(summary)
+        }
+        if (completedMissions.isNotEmpty()) {
+            Column(
+                modifier = Modifier
+                    .padding(top = 16.dp)
+                    .fillMaxWidth()
+                    .background(
+                        MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f),
+                        RoundedCornerShape(12.dp),
+                    )
+                    .padding(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = stringResource(R.string.mission_completed),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
+                completedMissions.forEach { description ->
+                    Text(
+                        text = description,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
+                }
+            }
         }
         if (unlocked.isNotEmpty()) {
             Column(

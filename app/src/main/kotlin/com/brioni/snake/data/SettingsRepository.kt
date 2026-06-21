@@ -220,6 +220,32 @@ class SettingsRepository(private val context: Context) {
     suspend fun addUnlockedAchievements(ids: Collection<String>) =
         edit { it[UNLOCKED_ACHIEVEMENTS] = (it[UNLOCKED_ACHIEVEMENTS] ?: emptySet()) + ids }
 
+    /**
+     * The mission ids completed on [epochDay] (Step 6.9.5). Completions are stored
+     * tagged with their day ("epochDay/id") so the daily rotation resets naturally:
+     * yesterday's completions never satisfy today's goals.
+     */
+    fun completedMissionsForDay(epochDay: Long): Flow<Set<String>> =
+        context.dataStore.data.map { prefs ->
+            val prefix = "$epochDay/"
+            (prefs[COMPLETED_MISSIONS] ?: emptySet())
+                .asSequence()
+                .filter { it.startsWith(prefix) }
+                .map { it.removePrefix(prefix) }
+                .toSet()
+        }
+
+    /** The lifetime count of missions ever completed (across all days). */
+    fun completedMissionsTotal(): Flow<Int> =
+        context.dataStore.data.map { (it[COMPLETED_MISSIONS] ?: emptySet()).size }
+
+    /** Marks [ids] complete for [epochDay] (idempotent). */
+    suspend fun addCompletedMissions(epochDay: Long, ids: Collection<String>) =
+        edit { prefs ->
+            val tags = ids.map { "$epochDay/$it" }
+            prefs[COMPLETED_MISSIONS] = (prefs[COMPLETED_MISSIONS] ?: emptySet()) + tags
+        }
+
     private suspend fun edit(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
         context.dataStore.edit(block)
     }
@@ -254,6 +280,7 @@ class SettingsRepository(private val context: Context) {
         val MODE = stringPreferencesKey("game_mode")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val UNLOCKED_ACHIEVEMENTS = stringSetPreferencesKey("unlocked_achievements")
+        val COMPLETED_MISSIONS = stringSetPreferencesKey("completed_missions")
         val DAILY_STREAK = intPreferencesKey("daily_streak")
         val DAILY_LAST_DAY = longPreferencesKey("daily_last_day")
     }
