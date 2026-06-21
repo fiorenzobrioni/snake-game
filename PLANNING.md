@@ -334,10 +334,23 @@ snake-game/
       "charge" field filled by play (e.g. by combos), a HUD button, and an engine action; respect
       determinism so it stays test-friendly.
 
-- [ ] **Step 6.9.7 - Environmental hazards in Campaign.** The level shapes are already procedural, so they
+- [x] **Step 6.9.7 - Environmental hazards in Campaign.** The level shapes are already procedural, so they
       lend themselves to **moving walls** (gates that open/close on a cycle) and **teleport pads** (enter
       one, exit its pair). Impl: extend `LevelsMode`/the wall set with time-phased cells and a teleport map;
-      apply in `GameEngine.tick`; cover with `LevelShapesTest`-style connectivity/lethality tests.
+      apply in `GameEngine.tick`; cover with `LevelShapesTest`-style connectivity/lethality tests. **Done:**
+      new `game/LevelHazards.kt` (`Gate` with a deterministic tick-phased open/close cycle + close/open
+      warnings, `TeleportPair`, `LevelHazards`); `LevelsMode.hazardsFor` assigns designed gates/portals to
+      six levels (Open Field & Hourglass & Vault portals; Twin Pillars, Octagon, Three Chambers & Vault
+      gates) and **sanitises** them - off walls / the spawn zone, distinct pads, and gates trimmed until a
+      fully-closed set still leaves every cell reachable, so a closing gate can never trap the snake.
+      `GameState` carries `gates`/`teleports`; `GameEngine.tick` teleports the head onto its pad's partner,
+      treats closed-gate cells as lethal (Ghost passes through), excludes all hazard cells from food spawns,
+      and emits `GameEvent.Teleported`. Premium rendering in `ui/game/GameHazards.kt`: energy-barrier gates
+      with projector nodes, a sweeping scanline and a strobing close warning (smoothly eased across the
+      inter-tick fraction), and swirling counter-rotating portal discs with paired colours + a jump
+      burst/whoosh; the head's portal jump snaps interpolation. Covered by `LevelHazardsTest` (phase logic,
+      determinism, connectivity-with-all-gates-closed, pad reachability, and engine teleport/gate/spawn
+      behaviour).
 
 **Retention & social**
 

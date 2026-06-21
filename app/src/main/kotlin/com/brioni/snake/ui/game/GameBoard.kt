@@ -137,7 +137,10 @@ fun GameBoard(
     floatingText: FloatingTextEvent?,
     floatingTextId: Int,
     hazardWarn: HazardWarnEvent?,
-    hazardWarnId: Int,    textMeasurer: TextMeasurer,
+    hazardWarnId: Int,
+    teleportEvent: TeleportEvent?,
+    teleportEventId: Int,
+    textMeasurer: TextMeasurer,
     palette: SkinPalette,
     borderColor: Color = palette.boardBorder,
     outsideColor: Color = Color.Black,
@@ -212,6 +215,17 @@ fun GameBoard(
             if (event.style != BurstStyle.Vanish) {
                 eatRing.animateTo(1f, tween(durationMillis = if (event.style == BurstStyle.Blast) 520 else 360, easing = FastOutLinearInEasing))
             }
+        }
+    }
+
+    // Portal jump: an implosion at the entry pad and an outward burst at the exit,
+    // in that pair's portal colour. Suppressed under reduce-motion.
+    LaunchedEffect(teleportEventId) {
+        val event = teleportEvent
+        if (teleportEventId > 0 && event != null && !reduceMotion) {
+            val color = portalColor(0)
+            emitImplodeBurst(particles, event.from.x + 0.5f, event.from.y + 0.5f, color, 1)
+            emitEatBurst(particles, event.to.x + 0.5f, event.to.y + 0.5f, color, 1)
         }
     }
 
@@ -291,6 +305,12 @@ fun GameBoard(
                 drawObstacle(cell, originX + obstacle.x * cell, originY + obstacle.y * cell, palette)
             }
             drawDebris(state.debris, cell, originX, originY, palette)
+            // Levels (Step 6.9.7): teleport portals and moving-wall gates, painted
+            // under the snake so it reads as sliding into a barrier / through a portal.
+            drawTeleports(state, seconds, cell, originX, originY, reduceMotion)
+            // Paused/intro: f is pinned to 1; feed gates 0 so a transitioning gate
+            // shows its true current open/closed state rather than mid-morph.
+            drawGates(state, state.elapsedTicks, if (running) f else 0f, seconds, cell, originX, originY, reduceMotion)
             state.foods.forEach { food ->
                 drawFood(food, cell, originX, originY, pulse, textMeasurer, palette, shaders, time)
             }

@@ -56,6 +56,12 @@ enum class GameStatus {
  * @param walls            Levels mode only: cells outside the level's playable
  *                         shape. Lethal like out-of-bounds, excluded from every
  *                         spawn, and painted as "outside the board".
+ * @param gates            Levels mode only: time-phased moving walls (Step 6.9.7);
+ *                         each [Gate]'s cells are lethal while it is closed (a pure
+ *                         function of [elapsedTicks]) and passable while open.
+ * @param teleports        Levels mode only: portal pad pairs (Step 6.9.7); the head
+ *                         stepping onto one pad emerges at its partner on the same
+ *                         tick. Pad cells are excluded from every spawn.
  * @param lastEvents       what happened on the most recent tick, for the UI to
  *                         react to (particle bursts, future effects). Not part
  *                         of the logical state — cleared/replaced every tick.
@@ -85,6 +91,8 @@ data class GameState(
     val lives: Int = 0,
     val levelFoodsEaten: Int = 0,
     val walls: Set<Position> = emptySet(),
+    val gates: List<Gate> = emptyList(),
+    val teleports: List<TeleportPair> = emptyList(),
     /**
      * A "coyote" dodge banked by staying alive: the first lethal step spends it on
      * a one-tick freeze (the head hesitates against the hazard) instead of dying,
@@ -101,6 +109,22 @@ data class GameState(
 
     /** True while a timed [kind] effect is running. */
     fun hasEffect(kind: EffectKind): Boolean = effectTimers.any { it.kind == kind }
+
+    /** The lethal (closed) gate cells at [tick] - solid walls just for that moment. */
+    fun closedGateCells(tick: Int): Set<Position> {
+        if (gates.isEmpty()) return emptySet()
+        return gates.filter { it.isClosedAt(tick) }.flatMapTo(HashSet()) { it.cells }
+    }
+
+    /** Every gate and teleport cell (all phases) - excluded from food spawns. */
+    val hazardSpawnCells: Set<Position>
+        get() {
+            if (gates.isEmpty() && teleports.isEmpty()) return emptySet()
+            val cells = HashSet<Position>()
+            gates.forEach { cells.addAll(it.cells) }
+            teleports.forEach { cells.addAll(it.cells) }
+            return cells
+        }
 
     /**
      * The wall-clock delay until the next tick, after applying speed effects.
