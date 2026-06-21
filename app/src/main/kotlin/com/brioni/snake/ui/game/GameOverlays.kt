@@ -19,9 +19,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.OutlinedButton
+import com.brioni.snake.ui.components.SnakeButton
+import com.brioni.snake.ui.components.SnakeOutlinedButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -143,7 +143,7 @@ fun ReadyOverlay(
             }
         }
 
-        Button(
+        SnakeButton(
             onClick = onPlay,
             modifier = Modifier
                 .padding(top = 24.dp)
@@ -295,19 +295,19 @@ fun PausedOverlay(onResume: () -> Unit, onSetup: () -> Unit, onMenu: () -> Unit)
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
         )
-        Button(
+        SnakeButton(
             onClick = onResume,
             modifier = Modifier.padding(top = 24.dp).widthIn(min = 200.dp),
         ) {
             Text(stringResource(R.string.action_resume))
         }
-        OutlinedButton(
+        SnakeOutlinedButton(
             onClick = onSetup,
             modifier = Modifier.padding(top = 12.dp).widthIn(min = 200.dp),
         ) {
             Text(stringResource(R.string.action_game_setup))
         }
-        OutlinedButton(
+        SnakeOutlinedButton(
             onClick = onMenu,
             modifier = Modifier.padding(top = 12.dp).widthIn(min = 200.dp),
         ) {
@@ -327,6 +327,7 @@ fun GameOverOverlay(
     onSetup: () -> Unit,
     onMenu: () -> Unit,
     showBest: Boolean = true,
+    summary: RunSummary? = null,
 ) {
     OverlayScrim {
         Text(
@@ -355,6 +356,9 @@ fun GameOverOverlay(
                 else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                 modifier = Modifier.padding(top = 6.dp),
             )
+        }
+        if (summary != null) {
+            RunRecap(summary)
         }
         if (unlocked.isNotEmpty()) {
             Column(
@@ -385,23 +389,93 @@ fun GameOverOverlay(
                 }
             }
         }
-        Button(
+        SnakeButton(
             onClick = onPlayAgain,
             modifier = Modifier.padding(top = 24.dp).widthIn(min = 200.dp),
         ) {
             Text(stringResource(R.string.action_play_again))
         }
-        OutlinedButton(
+        SnakeOutlinedButton(
             onClick = onSetup,
             modifier = Modifier.padding(top = 12.dp).widthIn(min = 200.dp),
         ) {
             Text(stringResource(R.string.action_game_setup))
         }
-        OutlinedButton(
+        SnakeOutlinedButton(
             onClick = onMenu,
             modifier = Modifier.padding(top = 12.dp).widthIn(min = 200.dp),
         ) {
             Text(stringResource(R.string.action_menu))
         }
     }
+}
+
+/**
+ * The game-over run recap (Step 6.9.2): a small stat card listing what the run
+ * achieved - foods eaten, best combo, time survived and max length, plus the
+ * deepest level reached in Campaign. A calm, readable counterpart to the
+ * achievement banner above it.
+ */
+@Composable
+private fun RunRecap(summary: RunSummary) {
+    Column(
+        modifier = Modifier
+            .padding(top = 16.dp)
+            .fillMaxWidth()
+            .widthIn(max = 360.dp)
+            .background(
+                MaterialTheme.colorScheme.onBackground.copy(alpha = 0.06f),
+                RoundedCornerShape(12.dp),
+            )
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.recap_title),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(bottom = 6.dp),
+        )
+        RecapRow(stringResource(R.string.recap_foods), summary.foodsEaten.toString())
+        RecapRow(stringResource(R.string.recap_combo), stringResource(R.string.recap_combo_value, summary.maxCombo))
+        RecapRow(stringResource(R.string.recap_time), formatRunDuration(summary.durationMs))
+        RecapRow(stringResource(R.string.recap_length), summary.maxLength.toString())
+        if (summary.isCampaign) {
+            RecapRow(
+                stringResource(R.string.recap_level),
+                stringResource(R.string.records_level_speed, summary.deepestLevel, summary.deepestSpeed),
+            )
+        }
+    }
+}
+
+/** One label/value line of the [RunRecap] card. */
+@Composable
+private fun RecapRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 3.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+    }
+}
+
+/** Formats a run duration as minutes:seconds (seconds zero-padded). */
+@Composable
+private fun formatRunDuration(durationMs: Long): String {
+    val totalSeconds = (durationMs / 1000L).coerceAtLeast(0L)
+    return stringResource(R.string.recap_time_value, totalSeconds / 60L, totalSeconds % 60L)
 }

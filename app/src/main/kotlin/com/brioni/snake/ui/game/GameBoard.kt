@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import com.brioni.snake.game.BoardDimensions
+import com.brioni.snake.game.Debris
 import com.brioni.snake.game.Direction
 import com.brioni.snake.game.EffectKind
 import com.brioni.snake.game.Food
@@ -43,6 +44,7 @@ import com.brioni.snake.game.GameState
 import com.brioni.snake.game.Position
 import com.brioni.snake.game.isHazard
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
@@ -81,6 +83,48 @@ private fun darken(c: Color, f: Float): Color = Color(
     alpha = c.alpha,
 )
 
+/**
+ * A static, in-game-accurate snake emblem (used under the menu wordmark). It
+ * draws through the exact same [drawSnake] renderer as gameplay - the tapered,
+ * shaded tube with a glossy glowing head for glow skins, two-tone blocky segments
+ * for flat skins - so it reflects the selected [palette] faithfully. It is drawn
+ * straight and still (no slither), head leading on the right, and the chain fills
+ * the given width so callers can match it to the title's width.
+ */
+@Composable
+fun SnakeEmblem(palette: SkinPalette, modifier: Modifier = Modifier) {
+    val shaders = remember { BoardShaders() }
+    Canvas(modifier = modifier) {
+        if (size.width <= 0f || size.height <= 0f) return@Canvas
+        // Cell size from the height, leaving headroom so the head glow / drop
+        // shadow can bleed softly (the Canvas draw is not clipped to its bounds).
+        val cell = size.height * 0.72f
+        if (cell <= 0f) return@Canvas
+        val cy = size.height / 2f
+        val step = cell // one cell of spacing between centres, like adjacent board cells
+        val span = size.width - cell // small inset so head/tail sit inside the width
+        val n = (span / step).toInt().coerceAtLeast(1) + 1
+        val totalWidth = step * (n - 1)
+        val startX = (size.width - totalWidth) / 2f
+        // Head is index 0 (rightmost); increasing index walks left toward the tail.
+        val centers = ArrayList<Offset>(n)
+        for (i in 0 until n) {
+            centers.add(Offset(startX + step * (n - 1 - i), cy))
+        }
+        drawSnake(
+            centers = centers,
+            cell = cell,
+            direction = Direction.Right,
+            palette = palette,
+            bodyAlpha = 1f,
+            headAlpha = 1f,
+            shaders = shaders,
+            time = 0f,
+            headGlow = palette.headGlow,
+        )
+    }
+}
+
 @Composable
 fun GameBoard(
     state: GameState,
@@ -93,8 +137,7 @@ fun GameBoard(
     floatingText: FloatingTextEvent?,
     floatingTextId: Int,
     hazardWarn: HazardWarnEvent?,
-    hazardWarnId: Int,
-    textMeasurer: TextMeasurer,
+    hazardWarnId: Int,    textMeasurer: TextMeasurer,
     palette: SkinPalette,
     borderColor: Color = palette.boardBorder,
     outsideColor: Color = Color.Black,
@@ -247,9 +290,7 @@ fun GameBoard(
             state.obstacles.forEach { obstacle ->
                 drawObstacle(cell, originX + obstacle.x * cell, originY + obstacle.y * cell, palette)
             }
-            state.debris.forEach { d ->
-                drawDebris(cell, originX + d.cell.x * cell, originY + d.cell.y * cell, d.life, palette)
-            }
+            drawDebris(state.debris, cell, originX, originY, palette)
             state.foods.forEach { food ->
                 drawFood(food, cell, originX, originY, pulse, textMeasurer, palette, shaders, time)
             }
@@ -527,7 +568,7 @@ private fun DrawScope.drawFood(
     time: Float,
 ) {
     if (food.category == FoodCategory.Special) {
-        drawSpecialFood(food, cell, originX, originY, pulse, textMeasurer)
+        drawSpecialFood(food, cell, originX, originY, pulse, textMeasurer, palette)
         return
     }
     val color = palette.foodColor(food)
@@ -556,18 +597,21 @@ private fun DrawScope.drawFood(
         center = Offset(centerX - radius * 0.3f, centerY - radius * 0.34f),
         radius = radius * 1.5f,
     )
+    // Flat skins (Retro / Pixel) draw rounded-square food matching their blocky
+    // items - corner from the skin's cornerFactor (0 = crisp Pixel, lightly
+    // rounded Retro); glow skins (Classic / Neon) keep the round drop. The drop
+    // shadow that grounds flat-skin food follows the same square shape.
     if (!palette.useGlow) {
-        drawCircle(
-            color = Color.Black.copy(alpha = 0.22f),
-            radius = radius * 0.95f,
-            center = Offset(centerX + radius * 0.12f, centerY + radius * 0.3f),
-        )
-    }
-    // Pixel skin draws blocky square food; others keep the round drop.
-    if (palette.cornerFactor < 0.06f) {
         val tl = Offset(centerX - radius, centerY - radius)
         val sz = Size(radius * 2f, radius * 2f)
-        val rad = CornerRadius(radius * 0.16f, radius * 0.16f)
+        val cr = radius * 2f * palette.cornerFactor
+        val rad = CornerRadius(cr, cr)
+        drawRoundRect(
+            color = Color.Black.copy(alpha = 0.22f),
+            topLeft = Offset(tl.x + radius * 0.12f, tl.y + radius * 0.3f),
+            size = sz,
+            cornerRadius = rad,
+        )
         drawRoundRect(brush = gradient, topLeft = tl, size = sz, cornerRadius = rad)
         drawRoundRect(color = shade.copy(alpha = 0.6f), topLeft = tl, size = sz, cornerRadius = rad, style = Stroke(width = radius * 0.1f))
     } else {
@@ -620,9 +664,12 @@ private fun DrawScope.drawGlyph(
 }
 
 /**
- * Draws a Phase 6.2 special: a maxi disc in the power-up's universal accent
- * colour (so a colour always means the same effect across skins) with a halo and
- * a distinctive symbol on top.
+ * Draws a Phase 6.2 special: a maxi piece in the power-up's universal accent
+ * colour (so a colour always means the same effect across skins) with a
+ * distinctive symbol on top. Glow skins (Classic / Neon) render a haloed disc;
+ * flat skins (Retro / Pixel) render a rounded square matching their blocky items
+ * (corner from the skin's [SkinPalette.cornerFactor]), so the special pieces stay
+ * in the same visual language as that skin's food and snake.
  */
 private fun DrawScope.drawSpecialFood(
     food: Food,
@@ -631,44 +678,91 @@ private fun DrawScope.drawSpecialFood(
     originY: Float,
     pulse: Float,
     textMeasurer: TextMeasurer,
+    palette: SkinPalette,
 ) {
     val accent = SpecialVisuals.accent(food.effect)
     val extent = cell * food.span
     val centerX = originX + food.position.x * cell + extent / 2f
     val centerY = originY + food.position.y * cell + extent / 2f
     val radius = extent * 0.40f * pulse
+    val center = Offset(centerX, centerY)
 
-    drawCircle(
-        brush = Brush.radialGradient(
-            colors = listOf(accent.copy(alpha = 0.5f), Color.Transparent),
-            center = Offset(centerX, centerY),
-            radius = radius * 2.1f,
-        ),
-        radius = radius * 2.1f,
-        center = Offset(centerX, centerY),
-    )
-    drawCircle(color = accent, radius = radius, center = Offset(centerX, centerY))
-    drawCircle(
-        color = Color.Black.copy(alpha = 0.18f),
-        radius = radius,
-        center = Offset(centerX, centerY),
-        style = Stroke(width = radius * 0.12f),
-    )
-
-    // Hazards wear a dashed "caution" ring so a dangerous piece is readable at a
-    // glance - the steady counterpart to the eat-imminent telegraph flash.
-    if (food.effect.isHazard) {
-        val ringRadius = radius * 1.34f
-        val dash = ringRadius * 0.52f
+    if (palette.useGlow) {
+        // Glow skins: a haloed disc.
         drawCircle(
-            color = HazardWarnColor.copy(alpha = 0.75f * pulse),
-            radius = ringRadius,
-            center = Offset(centerX, centerY),
-            style = Stroke(
-                width = radius * 0.16f,
-                pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, dash * 0.55f)),
+            brush = Brush.radialGradient(
+                colors = listOf(accent.copy(alpha = 0.5f), Color.Transparent),
+                center = center,
+                radius = radius * 2.1f,
             ),
+            radius = radius * 2.1f,
+            center = center,
         )
+        drawCircle(color = accent, radius = radius, center = center)
+        drawCircle(
+            color = Color.Black.copy(alpha = 0.18f),
+            radius = radius,
+            center = center,
+            style = Stroke(width = radius * 0.12f),
+        )
+        // Hazards wear a dashed "caution" ring so a dangerous piece is readable
+        // at a glance - the steady counterpart to the eat-imminent telegraph.
+        if (food.effect.isHazard) {
+            val ringRadius = radius * 1.34f
+            val dash = ringRadius * 0.52f
+            drawCircle(
+                color = HazardWarnColor.copy(alpha = 0.75f * pulse),
+                radius = ringRadius,
+                center = center,
+                style = Stroke(
+                    width = radius * 0.16f,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, dash * 0.55f)),
+                ),
+            )
+        }
+    } else {
+        // Flat skins: a rounded square with a grounding shadow, top sheen and a
+        // square dashed "caution" ring for hazards.
+        val tl = Offset(centerX - radius, centerY - radius)
+        val sz = Size(radius * 2f, radius * 2f)
+        val cr = radius * 2f * palette.cornerFactor
+        val rad = CornerRadius(cr, cr)
+        drawRoundRect(
+            color = Color.Black.copy(alpha = 0.22f),
+            topLeft = Offset(tl.x + radius * 0.12f, tl.y + radius * 0.3f),
+            size = sz,
+            cornerRadius = rad,
+        )
+        drawRoundRect(color = accent, topLeft = tl, size = sz, cornerRadius = rad)
+        drawRect(
+            color = lighten(accent, 0.22f).copy(alpha = 0.4f),
+            topLeft = tl,
+            size = Size(sz.width, sz.height * 0.4f),
+        )
+        drawRoundRect(
+            color = Color.Black.copy(alpha = 0.18f),
+            topLeft = tl,
+            size = sz,
+            cornerRadius = rad,
+            style = Stroke(width = radius * 0.12f),
+        )
+        if (food.effect.isHazard) {
+            val pad = radius * 0.3f
+            val rtl = Offset(tl.x - pad, tl.y - pad)
+            val rsz = Size(sz.width + 2 * pad, sz.height + 2 * pad)
+            val rcr = cr + pad
+            val dash = rsz.width * 0.18f
+            drawRoundRect(
+                color = HazardWarnColor.copy(alpha = 0.75f * pulse),
+                topLeft = rtl,
+                size = rsz,
+                cornerRadius = CornerRadius(rcr, rcr),
+                style = Stroke(
+                    width = radius * 0.16f,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, dash * 0.55f)),
+                ),
+            )
+        }
     }
 
     val ink = Color(0xFF10151C)
@@ -821,32 +915,56 @@ private fun DrawScope.drawCrack(cx: Float, cy: Float, r: Float, color: Color) {
 }
 
 /**
- * The severed tail left behind by an Explosion: drawn as a block in the very
- * same style as a normal snake-body segment (so it reads as the detached tail,
- * not a stray pellet). Still lethal and time-limited, so it fades out as its
- * timer runs down.
+ * The severed tail left behind by an Explosion, drawn with the *exact* live-snake
+ * graphics in the current skin so it reads as a piece that genuinely detached -
+ * the same shaded tube (rounded skins) or blocky segments (flat skins), the same
+ * colours and the same trunk-to-tip taper, never a stray pellet. Only the head is
+ * omitted (it is a tail) and the whole run fades out as its lethal timer expires.
+ *
+ * The severed tail keeps its original ordering, so contiguous debris cells are
+ * grouped into chains and each chain is rendered as one continuous tapering body.
  */
-private fun DrawScope.drawDebris(cell: Float, left: Float, top: Float, life: Float, palette: SkinPalette) {
-    val alpha = 0.35f + 0.55f * life
-    val inset = cell * 0.06f
-    val side = cell - 2 * inset
-    val topLeft = Offset(left + inset, top + inset)
-    val corner = cell * palette.cornerFactor
-    val radius = CornerRadius(corner, corner)
-    drawRoundRect(
-        color = palette.snakeBody.copy(alpha = alpha),
-        topLeft = topLeft,
-        size = Size(side, side),
-        cornerRadius = radius,
-    )
-    drawRoundRect(
-        color = palette.snakeOutline.copy(alpha = alpha),
-        topLeft = topLeft,
-        size = Size(side, side),
-        cornerRadius = radius,
-        style = Stroke(width = cell * 0.06f),
-    )
+private fun DrawScope.drawDebris(
+    debris: List<Debris>,
+    cell: Float,
+    originX: Float,
+    originY: Float,
+    palette: SkinPalette,
+) {
+    if (debris.isEmpty()) return
+    // Split the (ordered) debris into runs of orthogonally-adjacent cells; each
+    // run is one severed tail and is drawn as a single continuous body.
+    val chains = ArrayList<List<Debris>>()
+    var current = ArrayList<Debris>()
+    for (d in debris) {
+        val last = current.lastOrNull()
+        if (last == null || isAdjacentCell(last.cell, d.cell)) {
+            current.add(d)
+        } else {
+            chains.add(current)
+            current = arrayListOf(d)
+        }
+    }
+    if (current.isNotEmpty()) chains.add(current)
+
+    for (chain in chains) {
+        val centers = chain.map { d ->
+            Offset(originX + (d.cell.x + 0.5f) * cell, originY + (d.cell.y + 0.5f) * cell)
+        }
+        // Cells severed together share a timer, so the chain fades as one piece.
+        val life = chain.minOf { it.life }
+        val alpha = (0.32f + 0.6f * life).coerceIn(0f, 1f)
+        if (palette.useGlow) {
+            drawSnakeTube(centers, cell, palette, alpha)
+        } else {
+            drawSnakeBlocks(centers, cell, palette, alpha)
+        }
+    }
 }
+
+/** Orthogonally adjacent (4-neighbour) cells - used to chain a severed tail. */
+private fun isAdjacentCell(a: Position, b: Position): Boolean =
+    abs(a.x - b.x) + abs(a.y - b.y) == 1
 
 /** A fiery accent the head glow blends toward as the combo climbs. */
 private val ComboHotGlow = Color(0xFFFF5722)

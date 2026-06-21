@@ -84,6 +84,21 @@ data class FloatingTextEvent(val cell: Position, val span: Int, val text: String
 data class HazardWarnEvent(val cell: Position, val span: Int)
 
 /**
+ * A compact recap of a finished run, surfaced to the game-over overlay
+ * (Step 6.9.2). [deepestLevel]/[deepestSpeed] are only meaningful for Campaign
+ * ([isCampaign]); the overlay hides that row in the other modes.
+ */
+data class RunSummary(
+    val foodsEaten: Int,
+    val maxCombo: Int,
+    val durationMs: Long,
+    val maxLength: Int,
+    val isCampaign: Boolean,
+    val deepestLevel: Int,
+    val deepestSpeed: Int,
+)
+
+/**
  * Holds the [GameState] and drives the tick loop. All game rules live in
  * [GameEngine]; this class owns the timing coroutine, surfaces state to Compose
  * and publishes the data the renderer needs for inter-tick interpolation
@@ -197,6 +212,10 @@ class GameViewModel(
 
     /** Achievements unlocked by the most recent run (for the game-over banner). */
     var newlyUnlocked by mutableStateOf<List<Achievement>>(emptyList())
+        private set
+
+    /** Recap of the most recent finished run, for the game-over summary. */
+    var lastSummary by mutableStateOf<RunSummary?>(null)
         private set
 
     /** Levels mode: seconds left on the intro countdown (0 when not counting). */
@@ -723,11 +742,22 @@ class GameViewModel(
 
     private fun onGameOver(score: Int) {
         isNewBest = score > bestScore
+        val durationMs = System.currentTimeMillis() - runStartMs
+        // Run recap for the game-over overlay (Step 6.9.2).
+        lastSummary = RunSummary(
+            foodsEaten = runFoodsEaten,
+            maxCombo = runMaxCombo,
+            durationMs = durationMs,
+            maxLength = runMaxLength,
+            isCampaign = mode == GameMode.Levels,
+            deepestLevel = runMaxLevel,
+            deepestSpeed = runMaxCycle,
+        )
         val stats = RunStats(
             mode = mode,
             score = score,
             maxCombo = runMaxCombo,
-            durationMs = System.currentTimeMillis() - runStartMs,
+            durationMs = durationMs,
             foodsEaten = runFoodsEaten,
             usedExplosion = runUsedExplosion,
             usedStar = runUsedStar,

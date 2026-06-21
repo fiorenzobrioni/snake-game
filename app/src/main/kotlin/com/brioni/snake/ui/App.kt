@@ -33,6 +33,7 @@ import com.brioni.snake.audio.GameAudio
 import com.brioni.snake.audio.HapticController
 import com.brioni.snake.audio.MusicTrack
 import com.brioni.snake.data.SettingsRepository
+import com.brioni.snake.game.GameStatus
 import com.brioni.snake.ui.game.GameScreen
 import com.brioni.snake.ui.game.GameViewModel
 import com.brioni.snake.ui.achievements.AchievementsScreen
@@ -78,7 +79,13 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_STOP -> audio.pauseMusic()
+                Lifecycle.Event.ON_STOP -> {
+                    audio.pauseMusic()
+                    // Step 6.9.4: auto-pause a live run when the app is backgrounded,
+                    // so the loop never ticks unseen. We deliberately do not auto-resume
+                    // on ON_START - the player resumes from the pause overlay.
+                    if (gameViewModel.state.status == GameStatus.Running) gameViewModel.togglePause()
+                }
                 Lifecycle.Event.ON_START -> audio.resumeMusic()
                 else -> Unit
             }

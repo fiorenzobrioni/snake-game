@@ -5,36 +5,48 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.brioni.snake.R
 import com.brioni.snake.data.SettingsRepository
 import com.brioni.snake.game.Skin
+import com.brioni.snake.ui.components.SnakeButton
+import com.brioni.snake.ui.components.SnakeOutlinedButton
+import com.brioni.snake.ui.game.SnakeEmblem
 import com.brioni.snake.ui.game.paletteFor
 import kotlinx.coroutines.flow.map
 
 /**
- * The app's landing screen: an animated title with Play and Settings actions.
- * Pure navigation host; gameplay state lives in the game ViewModel. The animated
- * AGSL backdrop is provided by the App shell (shared across the menu screens).
+ * The app's landing screen: a branded title with a small skin-coloured snake
+ * emblem beneath it, plus the Play / navigation actions. Pure navigation host;
+ * gameplay state lives in the game ViewModel. The animated AGSL backdrop is
+ * provided by the App shell (shared across the menu screens).
  */
 @Composable
 fun MainMenuScreen(
@@ -51,77 +63,103 @@ fun MainMenuScreen(
 ) {
     val pulse = rememberInfiniteTransition(label = "titlePulse")
     val titleScale by pulse.animateFloat(
-        initialValue = 0.96f,
-        targetValue = 1.04f,
-        animationSpec = infiniteRepeatable(tween(1400), RepeatMode.Reverse),
+        initialValue = 0.98f,
+        targetValue = 1.03f,
+        animationSpec = infiniteRepeatable(tween(1600), RepeatMode.Reverse),
         label = "titleScale",
     )
 
-    // Recolour the decorations from the player's selected skin.
+    // The title + emblem reflect the player's selected skin.
     val skinFlow = remember(repo) { repo.settings.map { it.skin } }
     val skin by skinFlow.collectAsState(initial = Skin.Classic)
     val palette = paletteFor(skin)
 
-    Box(modifier = modifier.fillMaxSize()) {
-        // Discreet decorative layer drawn behind the title and buttons.
-        MenuDecorations(palette = palette, modifier = Modifier.fillMaxSize())
+    val primary = MaterialTheme.colorScheme.primary
+    val secondary = MaterialTheme.colorScheme.secondary
+    // A vertical green gradient + a soft same-hue glow give the wordmark depth and
+    // "character" instead of a flat solid fill.
+    val titleStyle = MaterialTheme.typography.displayLarge.merge(
+        TextStyle(
+            brush = Brush.verticalGradient(listOf(primary, secondary)),
+            shadow = Shadow(color = primary.copy(alpha = 0.5f), blurRadius = 34f),
+            fontWeight = FontWeight.Bold,
+        ),
+    )
 
+    Box(modifier = modifier.fillMaxSize()) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(24.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(vertical = 32.dp, horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
+            // Measure the laid-out wordmark so the emblem below can match its width.
+            var titleSize by remember { mutableStateOf(IntSize.Zero) }
             Text(
                 text = stringResource(R.string.game_title),
-                style = MaterialTheme.typography.displayLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
+                style = titleStyle,
                 modifier = Modifier.scale(titleScale),
+                onTextLayout = { titleSize = it.size },
             )
+            // A static, in-game-accurate snake (drawn through the gameplay renderer)
+            // beneath the wordmark, as wide as the word and matching the active skin.
+            if (titleSize.width > 0) {
+                val density = LocalDensity.current
+                val emblemWidth = with(density) { titleSize.width.toDp() }
+                val emblemHeight = with(density) { (titleSize.height * 0.42f).toDp() }
+                SnakeEmblem(
+                    palette = palette,
+                    modifier = Modifier
+                        .padding(top = 8.dp)
+                        .size(width = emblemWidth, height = emblemHeight),
+                )
+            }
 
-            Button(
+            SnakeButton(
                 onClick = onPlay,
-                modifier = Modifier.padding(top = 48.dp).widthIn(min = 220.dp),
+                modifier = Modifier.padding(top = 44.dp).widthIn(min = 220.dp),
             ) {
                 Text(stringResource(R.string.menu_play), style = MaterialTheme.typography.titleMedium)
             }
-            OutlinedButton(
+            SnakeOutlinedButton(
                 onClick = onCustom,
                 modifier = Modifier.padding(top = 12.dp).widthIn(min = 220.dp),
             ) {
                 Text(stringResource(R.string.menu_custom))
             }
-            OutlinedButton(
+            SnakeOutlinedButton(
                 onClick = onDaily,
                 modifier = Modifier.padding(top = 12.dp).widthIn(min = 220.dp),
             ) {
                 Text(stringResource(R.string.menu_daily))
             }
-            OutlinedButton(
+            SnakeOutlinedButton(
                 onClick = onRandom,
                 modifier = Modifier.padding(top = 12.dp).widthIn(min = 220.dp),
             ) {
                 Text(stringResource(R.string.menu_random))
             }
-            OutlinedButton(
+            SnakeOutlinedButton(
                 onClick = onRecords,
                 modifier = Modifier.padding(top = 12.dp).widthIn(min = 220.dp),
             ) {
                 Text(stringResource(R.string.menu_records))
             }
-            OutlinedButton(
+            SnakeOutlinedButton(
                 onClick = onAchievements,
                 modifier = Modifier.padding(top = 12.dp).widthIn(min = 220.dp),
             ) {
                 Text(stringResource(R.string.menu_achievements))
             }
-            OutlinedButton(
+            SnakeOutlinedButton(
                 onClick = onSettings,
                 modifier = Modifier.padding(top = 12.dp).widthIn(min = 220.dp),
             ) {
                 Text(stringResource(R.string.menu_settings))
             }
-            OutlinedButton(
+            SnakeOutlinedButton(
                 onClick = onCredits,
                 modifier = Modifier.padding(top = 12.dp).widthIn(min = 220.dp),
             ) {

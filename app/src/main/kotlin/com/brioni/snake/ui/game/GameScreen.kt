@@ -371,6 +371,7 @@ fun GameScreen(
                 isNewBest = viewModel.isNewBest,
                 // A Random challenge is a one-off: no best to show.
                 showBest = !viewModel.isRandomChallenge,
+                summary = viewModel.lastSummary,
                 unlocked = viewModel.newlyUnlocked.map { it.title },
                 onPlayAgain = { viewModel.playAgain() },
                 onSetup = { viewModel.toSetup() },

@@ -8,11 +8,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import com.brioni.snake.ui.components.SnakeButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -61,7 +61,7 @@ fun AchievementsScreen(
             AchievementCard(achievement, isUnlocked = achievement.name in unlocked)
         }
 
-        Button(
+        SnakeButton(
             onClick = onBack,
             modifier = Modifier.padding(top = 28.dp).widthIn(min = 200.dp),
         ) {
