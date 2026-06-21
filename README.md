@@ -105,7 +105,8 @@ The classic Snake mechanics, extended with configurable features so every run fe
   survived, the snake's longest length and, in Campaign, the deepest level reached.
 - 🎯 **Daily missions** - three rotating per-run goals (eat so many foods, reach a combo, survive a time,
   score, grow long, grab a power-up) that refresh each day. The main menu's **Today's Missions** strip
-  tracks which you've cleared today, and completing one pops a banner on the game-over screen.
+  tracks which you've cleared today (tap it for the full list), and the **game-over screen** shows the
+  day's missions with a tick on the ones done, highlighting any you just cleared.
 - ▶️ **Quick Play** - the main menu's **Play** button drops you straight into a run with your last-used
   settings; a separate **Custom** entry opens the full pre-game setup (mode, level, snake speed, board
   scale) when you want to tweak everything.

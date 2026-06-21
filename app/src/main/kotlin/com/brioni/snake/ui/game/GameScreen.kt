@@ -375,7 +375,7 @@ fun GameScreen(
                 showBest = !viewModel.isRandomChallenge,
                 summary = viewModel.lastSummary,
                 unlocked = viewModel.newlyUnlocked.map { it.title },
-                completedMissions = viewModel.newlyCompletedMissions.map { it.description },
+                missions = viewModel.missionsProgress,
                 onPlayAgain = { viewModel.playAgain() },
                 onSetup = { viewModel.toSetup() },
                 onMenu = { viewModel.toSetup(); onExitToMenu() },

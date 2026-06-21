@@ -106,6 +106,13 @@ data class RunSummary(
     val deepestSpeed: Int,
 )
 
+/** A day's mission with its status after a run, for the game-over panel. */
+data class MissionProgress(
+    val description: String,
+    val done: Boolean,
+    val justCompleted: Boolean,
+)
+
 /**
  * Holds the [GameState] and drives the tick loop. All game rules live in
  * [GameEngine]; this class owns the timing coroutine, surfaces state to Compose
@@ -228,8 +235,12 @@ class GameViewModel(
     var newlyUnlocked by mutableStateOf<List<Achievement>>(emptyList())
         private set
 
-    /** Rotating missions completed by the most recent run (for the game-over banner). */
-    var newlyCompletedMissions by mutableStateOf<List<Mission>>(emptyList())
+    /**
+     * Today's rotating missions with their status after the most recent run, for
+     * the game-over panel: each carries its description, whether it is done (now)
+     * and whether this run is the one that just completed it (for emphasis).
+     */
+    var missionsProgress by mutableStateOf<List<MissionProgress>>(emptyList())
         private set
 
     /** Recap of the most recent finished run, for the game-over summary. */
@@ -544,7 +555,7 @@ class GameViewModel(
         runExtraLives = 0
         runMaxLength = state.snake.size
         newlyUnlocked = emptyList()
-        newlyCompletedMissions = emptyList()
+        missionsProgress = emptyList()
     }
 
     /**
@@ -829,17 +840,25 @@ class GameViewModel(
                 newlyUnlocked = earned
             }
         }
-        // Evaluate today's rotating missions (Step 6.9.5) and surface any newly
-        // completed ones; completion is persisted tagged with the day so it counts
-        // only once and resets when the daily set rotates.
+        // Evaluate today's rotating missions (Step 6.9.5) and surface the full set
+        // with each goal's status, emphasising any just completed by this run.
+        // Completion is persisted tagged with the day so it counts only once and
+        // resets when the daily set rotates.
         viewModelScope.launch {
             val epochDay = LocalDate.now().toEpochDay()
             val alreadyDone = repo.completedMissionsForDay(epochDay).first()
-            val justDone = Mission.forDay(epochDay)
-                .filter { it.id !in alreadyDone && it.completedBy(stats) }
+            val today = Mission.forDay(epochDay)
+            val justDone = today.filter { it.id !in alreadyDone && it.completedBy(stats) }
             if (justDone.isNotEmpty()) {
                 repo.addCompletedMissions(epochDay, justDone.map { it.id })
-                newlyCompletedMissions = justDone
+            }
+            val justDoneIds = justDone.mapTo(mutableSetOf()) { it.id }
+            missionsProgress = today.map { mission ->
+                MissionProgress(
+                    description = mission.description,
+                    done = mission.id in alreadyDone || mission.id in justDoneIds,
+                    justCompleted = mission.id in justDoneIds,
+                )
             }
         }
     }
