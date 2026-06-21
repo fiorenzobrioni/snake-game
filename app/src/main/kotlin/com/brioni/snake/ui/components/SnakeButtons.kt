@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 /**
@@ -258,6 +259,8 @@ fun MenuTile(
                 style = MaterialTheme.typography.labelMedium,
                 color = onBackground,
                 textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = 6.dp),
             )
         }

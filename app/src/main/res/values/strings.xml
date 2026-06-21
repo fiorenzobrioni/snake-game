@@ -12,6 +12,9 @@
     <string name="menu_custom">Custom</string>
     <string name="menu_daily">Daily Challenge</string>
     <string name="menu_random">Random Challenge</string>
+    <!-- Short single-word labels for the compact menu tiles (keep them one line). -->
+    <string name="menu_daily_short">Daily</string>
+    <string name="menu_random_short">Random</string>
     <string name="menu_records">Records</string>
 
     <!-- Daily Challenge -->

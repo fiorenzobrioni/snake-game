@@ -6,6 +6,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.DateRange
@@ -37,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Shadow
@@ -46,6 +49,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import com.brioni.snake.R
 import com.brioni.snake.data.SettingsRepository
 import com.brioni.snake.game.Mission
@@ -172,13 +176,13 @@ fun MainMenuScreen(
                 MenuTile(
                     onClick = onDaily,
                     icon = Icons.Filled.DateRange,
-                    label = stringResource(R.string.menu_daily),
+                    label = stringResource(R.string.menu_daily_short),
                     modifier = Modifier.weight(1f),
                 )
                 MenuTile(
                     onClick = onRandom,
                     icon = Icons.Filled.Refresh,
-                    label = stringResource(R.string.menu_random),
+                    label = stringResource(R.string.menu_random_short),
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -225,9 +229,10 @@ fun MainMenuScreen(
 /**
  * A slim, always-visible "Today's Missions" strip (Step 6.9.5): the day's
  * completion count plus a tick/circle pip per rotating goal, so a single run has
- * a sense of purpose without eating vertical space. Completion is read back from
- * [SettingsRepository]; the full mission descriptions surface on the game-over
- * banner.
+ * a sense of purpose without eating vertical space. Tapping it opens a small
+ * dialog listing each goal's description and status (so the names are readable on
+ * demand without growing the menu). Completion is read back from
+ * [SettingsRepository].
  */
 @Composable
 private fun MissionsStrip(repo: SettingsRepository, modifier: Modifier = Modifier) {
@@ -235,13 +240,13 @@ private fun MissionsStrip(repo: SettingsRepository, modifier: Modifier = Modifie
     val missions = remember(epochDay) { Mission.forDay(epochDay) }
     val done by repo.completedMissionsForDay(epochDay).collectAsState(initial = emptySet())
     val completedCount = missions.count { it.id in done }
+    var showDetails by remember { mutableStateOf(false) }
 
     Row(
         modifier = modifier
-            .background(
-                MaterialTheme.colorScheme.onBackground.copy(alpha = 0.06f),
-                RoundedCornerShape(12.dp),
-            )
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.06f))
+            .clickable { showDetails = true }
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -270,6 +275,71 @@ private fun MissionsStrip(repo: SettingsRepository, modifier: Modifier = Modifie
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                 modifier = Modifier.padding(start = 12.dp),
             )
+            // A subtle affordance that the strip opens the full list.
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                modifier = Modifier.padding(start = 4.dp).size(18.dp),
+            )
+        }
+    }
+
+    if (showDetails) {
+        MissionsDialog(
+            missions = missions,
+            done = done,
+            onDismiss = { showDetails = false },
+        )
+    }
+}
+
+/**
+ * A compact branded dialog listing the day's missions with their descriptions and
+ * a tick / circle per goal. Opened from [MissionsStrip] so the goal names are
+ * readable without permanently growing the menu.
+ */
+@Composable
+private fun MissionsDialog(
+    missions: List<Mission>,
+    done: Set<String>,
+    onDismiss: () -> Unit,
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(horizontal = 20.dp, vertical = 18.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.missions_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.secondary,
+            )
+            missions.forEach { mission ->
+                val isDone = mission.id in done
+                Row(
+                    modifier = Modifier.padding(top = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = if (isDone) "✓" else "○",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isDone) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                    )
+                    Text(
+                        text = mission.description,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (isDone) MaterialTheme.colorScheme.onSurface
+                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
+                        modifier = Modifier.padding(start = 12.dp),
+                    )
+                }
+            }
         }
     }
 }
