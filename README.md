@@ -60,7 +60,9 @@ The classic Snake mechanics, extended with configurable features so every run fe
   A forgiving **coyote frame** makes a beat-late turn still count: the first lethal step makes the head
   hesitate one tick (instead of dying), giving you a moment to turn away - re-armed by your next safe move.
 - 🎨 **Skins** - four selectable looks (**Classic / Neon / Retro / Pixel**), each its own palette and
-  cell shape (Pixel is flat & square, Neon bubbly), all available immediately in Settings.
+  cell shape, all available immediately in Settings. The glow skins (Classic / Neon) draw snake, food and
+  power-ups as haloed round pieces; the flat skins (Retro / Pixel) render everything as squares (crisp on
+  Pixel, lightly rounded on Retro) for a coherent blocky look.
 - 🌗 **Theme** - choose **Light**, **Dark** or **System** (follows the device) in Settings.
 - 🔊 **Music & sound effects** - looping background music that crossfades between the menu and
   gameplay, plus SFX for eating, shrinking, mystery pieces, game over and UI. Independent

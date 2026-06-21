@@ -362,6 +362,13 @@ snake-game/
       run's input/positions and render the ghost from the same `previousSnake`/`tickTimeNanos` path. Impl:
       capture a compact per-tick position log on a best run, persist it, and add a ghost layer to `GameBoard`.
 
+- [x] **Step 6.9.13 - Per-skin item shapes.** Board items now match their skin's visual language: the flat
+      skins (Retro / Pixel) render regular food **and** special power-ups / hazards as rounded squares
+      (corner from the skin's `cornerFactor` - crisp Pixel, lightly rounded Retro), with a square grounding
+      shadow, top sheen and a square dashed "caution" ring for hazards. The glow skins (Classic / Neon) are
+      intentionally left as haloed discs (their strength). Implemented in `GameBoard` by branching the food /
+      special renderers on `SkinPalette.useGlow`.
+
 **Onboarding & polish**
 
 - [ ] **Step 6.9.13 - First-run onboarding / tutorial.** A brief, skippable intro on first launch (controls
