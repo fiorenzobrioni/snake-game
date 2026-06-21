@@ -45,21 +45,31 @@ import kotlin.math.max
 
 /** Which particle burst the renderer should spawn for an [EatEvent]. */
 enum class BurstStyle {
-    /** Outward explosion — growing food, jackpot, explosion. */
+    /** Outward spray — growing food, jackpot. */
     Eat,
 
-    /** Inward implosion — shrinking food, earthquake. */
+    /** Inward implosion — shrinking food. */
     Implode,
 
     /** Gentle upward fade — an ignored food that timed out and vanished. */
     Vanish,
+
+    /** A big, fiery two-tone detonation with embers — the Explosion hazard. */
+    Blast,
 }
 
 /**
  * A board event, surfaced to the renderer to spawn a particle burst. [style]
- * selects which burst to play at [cell].
+ * selects which burst to play at [cell]; [combo] lets the renderer make the
+ * burst grow hotter and larger as the eat-streak climbs.
  */
-data class EatEvent(val cell: Position, val span: Int, val color: Color, val style: BurstStyle)
+data class EatEvent(
+    val cell: Position,
+    val span: Int,
+    val color: Color,
+    val style: BurstStyle,
+    val combo: Int = 1,
+)
 
 /**
  * A short floating label to spawn on the board (e.g. "+5s" / "-3s" for the Time
@@ -562,7 +572,7 @@ class GameViewModel(
         after.lastEvents.forEach { event ->
             when (event) {
                 is GameEvent.Ate -> {
-                    eatEvent = EatEvent(event.food.position, event.food.span, palette.foodColor(event.food), BurstStyle.Eat)
+                    eatEvent = EatEvent(event.food.position, event.food.span, palette.foodColor(event.food), BurstStyle.Eat, event.combo)
                     eatEventId++
                     val grown = (event.food.effect as? FoodEffect.Grow)?.segments ?: 0
                     if (grown > 0) {
@@ -615,8 +625,8 @@ class GameViewModel(
                     haptics.hazardWarning()
                 }
                 is GameEvent.Exploded -> {
-                    // Explosion: outward burst at the blast + a board shake.
-                    eatEvent = EatEvent(event.food.position, event.food.span, palette.special, BurstStyle.Eat)
+                    // Explosion: a fiery detonation at the blast + a board shake.
+                    eatEvent = EatEvent(event.food.position, event.food.span, SpecialVisuals.ExplosionColor, BurstStyle.Blast)
                     eatEventId++
                     shakeEventId++
                     sfx.special(event.food)

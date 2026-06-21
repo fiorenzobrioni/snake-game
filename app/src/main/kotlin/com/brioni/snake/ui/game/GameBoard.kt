@@ -65,6 +65,22 @@ private const val GHOST_WARN_MS = 2_000f
 /** Universal danger red for the hazard telegraph (skin-independent so it always reads as "danger"). */
 private val HazardWarnColor = Color(0xFFFF1E1E)
 
+/** Mixes [c] toward white by [f] (0..1), preserving alpha — for highlights/sheen. */
+private fun lighten(c: Color, f: Float): Color = Color(
+    red = c.red + (1f - c.red) * f,
+    green = c.green + (1f - c.green) * f,
+    blue = c.blue + (1f - c.blue) * f,
+    alpha = c.alpha,
+)
+
+/** Darkens [c] toward black by fraction [f] (0 = unchanged, 1 = black). */
+private fun darken(c: Color, f: Float): Color = Color(
+    red = c.red * (1f - f),
+    green = c.green * (1f - f),
+    blue = c.blue * (1f - f),
+    alpha = c.alpha,
+)
+
 @Composable
 fun GameBoard(
     state: GameState,
@@ -129,6 +145,9 @@ fun GameBoard(
         }
     }
 
+    // Eat "pop": an expanding shockwave ring on each eat / blast, layered under
+    // the particle spray. A 0→1 envelope keyed on the eat id, faded as it grows.
+    val eatRing = remember { Animatable(0f) }
     LaunchedEffect(eatEventId) {
         val event = eatEvent
         // Reduce-motion suppresses the particle bursts (the floating "+N" labels stay).
@@ -136,9 +155,14 @@ fun GameBoard(
             val cx = event.cell.x + event.span / 2f
             val cy = event.cell.y + event.span / 2f
             when (event.style) {
-                BurstStyle.Eat -> emitEatBurst(particles, cx, cy, event.color, event.span)
+                BurstStyle.Eat -> emitEatBurst(particles, cx, cy, event.color, event.span, event.combo)
                 BurstStyle.Implode -> emitImplodeBurst(particles, cx, cy, event.color, event.span)
                 BurstStyle.Vanish -> emitVanishBurst(particles, cx, cy, event.color, event.span)
+                BurstStyle.Blast -> emitExplosionBurst(particles, cx, cy, event.color, event.span)
+            }
+            if (event.style != BurstStyle.Vanish) {
+                eatRing.snapTo(0f)
+                eatRing.animateTo(1f, tween(durationMillis = if (event.style == BurstStyle.Blast) 520 else 360, easing = FastOutLinearInEasing))
             }
         }
     }
@@ -225,30 +249,28 @@ fun GameBoard(
                 drawFood(food, cell, originX, originY, pulse, textMeasurer, palette, shaders, time)
             }
             // Ghost (Star): the snake shimmers while invincible (snakeAlpha is
-            // computed once above).
+            // computed once above). The interpolated cell centres feed both the
+            // smooth-tube renderer (rounded skins) and the blocky one (flat skins).
             val snake = state.snake
-            for (k in snake.indices.reversed()) {
+            val centers = ArrayList<Offset>(snake.size)
+            for (k in snake.indices) {
                 val to = snake[k]
-                val from = if (previousSnake.isEmpty()) {
-                    to
-                } else {
-                    previousSnake[k.coerceAtMost(previousSnake.lastIndex)]
-                }
+                val from = if (previousSnake.isEmpty()) to else previousSnake[k.coerceAtMost(previousSnake.lastIndex)]
                 val cx = lerp(from.x.toFloat(), to.x.toFloat(), f)
                 val cy = lerp(from.y.toFloat(), to.y.toFloat(), f)
-                drawSnakeSegment(
-                    isHead = k == 0,
-                    left = originX + cx * cell,
-                    top = originY + cy * cell,
-                    cell = cell,
-                    direction = state.direction,
-                    palette = palette,
-                    alpha = if (k == 0) (snakeAlpha + 0.2f).coerceAtMost(1f) else snakeAlpha,
-                    shaders = shaders,
-                    time = time,
-                    headGlow = hotGlow(palette.headGlow, state.combo),
-                )
+                centers.add(Offset(originX + (cx + 0.5f) * cell, originY + (cy + 0.5f) * cell))
             }
+            drawSnake(
+                centers = centers,
+                cell = cell,
+                direction = state.direction,
+                palette = palette,
+                bodyAlpha = snakeAlpha,
+                headAlpha = (snakeAlpha + 0.2f).coerceAtMost(1f),
+                shaders = shaders,
+                time = time,
+                headGlow = hotGlow(palette.headGlow, state.combo),
+            )
             // Hazard telegraph: a danger flash over the piece the snake is about
             // to eat (one tick before contact). Suppressed under reduce-motion -
             // the envelope simply stays at 0 there.
@@ -263,12 +285,34 @@ fun GameBoard(
                     seconds = seconds,
                 )
             }
-            particles.forEach { p ->
+            // Eat "pop": an expanding shockwave ring under the spray.
+            val ringT = eatRing.value
+            if (ringT in 0.001f..0.999f && eatEvent != null && !reduceMotion) {
+                val ev = eatEvent
+                val rc = Offset(originX + (ev.cell.x + ev.span / 2f) * cell, originY + (ev.cell.y + ev.span / 2f) * cell)
+                val big = ev.style == BurstStyle.Blast
+                val maxR = cell * (if (big) 3.4f else 1.7f) * ev.span.coerceAtLeast(1)
+                val r = maxR * ringT
+                val a = (1f - ringT) * (if (big) 0.9f else 0.6f)
                 drawCircle(
-                    color = p.color.copy(alpha = 0.85f * p.fade),
-                    radius = p.radiusCells * cell,
-                    center = Offset(originX + p.x * cell, originY + p.y * cell),
+                    color = lighten(ev.color, 0.3f).copy(alpha = a),
+                    radius = r,
+                    center = rc,
+                    style = Stroke(width = (cell * (if (big) 0.16f else 0.10f)) * (1f - ringT) + 1f),
                 )
+            }
+            particles.forEach { p ->
+                val center = Offset(originX + p.x * cell, originY + p.y * cell)
+                // Shrink a touch as it dies; glowing sparks get a soft additive halo
+                // and a hot inner core for a punchier, more "premium" read.
+                val r = p.radiusCells * cell * (0.55f + 0.45f * p.fade)
+                if (p.glow) {
+                    drawCircle(color = p.color.copy(alpha = 0.22f * p.fade), radius = r * 2.4f, center = center)
+                }
+                drawCircle(color = p.color.copy(alpha = (0.9f * p.fade).coerceAtMost(1f)), radius = r, center = center)
+                if (p.glow) {
+                    drawCircle(color = Color.White.copy(alpha = 0.5f * p.fade * p.fade), radius = r * 0.42f, center = center)
+                }
             }
             floatingTexts.forEach { t ->
                 // Fade out and ease the rise; a dark outline keeps it readable on
@@ -498,16 +542,32 @@ private fun DrawScope.drawFood(
         shaders.foodHalo.setColorUniform("ringColor", color.toArgb())
         drawCircle(brush = shaders.foodHaloBrush, radius = haloRadius, center = Offset(centerX, centerY))
     }
+    // Volume: a radial gradient lit from the top-left, with a darker rim. Flat
+    // skins are grounded with a soft drop shadow (glow skins lift via the halo).
+    val highlight = lighten(color, 0.34f)
+    val shade = darken(color, 0.26f)
+    val gradient = Brush.radialGradient(
+        colors = listOf(highlight, color, shade),
+        center = Offset(centerX - radius * 0.3f, centerY - radius * 0.34f),
+        radius = radius * 1.5f,
+    )
+    if (!palette.useGlow) {
+        drawCircle(
+            color = Color.Black.copy(alpha = 0.22f),
+            radius = radius * 0.95f,
+            center = Offset(centerX + radius * 0.12f, centerY + radius * 0.3f),
+        )
+    }
     // Pixel skin draws blocky square food; others keep the round drop.
     if (palette.cornerFactor < 0.06f) {
-        drawRoundRect(
-            color = color,
-            topLeft = Offset(centerX - radius, centerY - radius),
-            size = Size(radius * 2f, radius * 2f),
-            cornerRadius = CornerRadius(radius * 0.16f, radius * 0.16f),
-        )
+        val tl = Offset(centerX - radius, centerY - radius)
+        val sz = Size(radius * 2f, radius * 2f)
+        val rad = CornerRadius(radius * 0.16f, radius * 0.16f)
+        drawRoundRect(brush = gradient, topLeft = tl, size = sz, cornerRadius = rad)
+        drawRoundRect(color = shade.copy(alpha = 0.6f), topLeft = tl, size = sz, cornerRadius = rad, style = Stroke(width = radius * 0.1f))
     } else {
-        drawCircle(color = color, radius = radius, center = Offset(centerX, centerY))
+        drawCircle(brush = gradient, radius = radius, center = Offset(centerX, centerY))
+        drawCircle(color = shade.copy(alpha = 0.5f), radius = radius, center = Offset(centerX, centerY), style = Stroke(width = radius * 0.08f))
     }
 
     when {
@@ -801,52 +861,178 @@ private fun hotGlow(base: Color, combo: Int): Color {
     )
 }
 
-private fun DrawScope.drawSnakeSegment(
-    isHead: Boolean,
-    left: Float,
-    top: Float,
+// Snake body width (fraction of a cell) at the trunk, the tail tip, and how many
+// trailing segments taper down to the tip.
+private const val SNAKE_BODY_MAX = 0.84f
+private const val SNAKE_TAIL_MIN = 0.34f
+private const val SNAKE_TAIL_SEGMENTS = 4f
+
+/** Trunk-to-tail body width (px) for tube segment [i] of [n]. */
+private fun snakeWidth(i: Int, n: Int, cell: Float): Float {
+    val taper = ((n - 1 - i) / SNAKE_TAIL_SEGMENTS).coerceIn(0f, 1f)
+    return cell * (SNAKE_TAIL_MIN + (SNAKE_BODY_MAX - SNAKE_TAIL_MIN) * taper)
+}
+
+/** Trunk-to-tail block side (px) for blocky-skin segment [i] of [n]. */
+private fun blockSide(i: Int, n: Int, cell: Float): Float {
+    val taper = ((n - 1 - i) / SNAKE_TAIL_SEGMENTS).coerceIn(0f, 1f)
+    return cell * 0.9f * (0.5f + 0.5f * taper)
+}
+
+/**
+ * Draws the whole snake from interpolated cell [centers] (head = index 0). Rounded
+ * skins ([SkinPalette.useGlow]) get a smooth, shaded, **tapered tube** with a glossy
+ * head; flat skins keep crisp blocky segments. The head is drawn last, on top.
+ */
+private fun DrawScope.drawSnake(
+    centers: List<Offset>,
+    cell: Float,
+    direction: Direction,
+    palette: SkinPalette,
+    bodyAlpha: Float,
+    headAlpha: Float,
+    shaders: BoardShaders,
+    time: Float,
+    headGlow: Color,
+) {
+    if (centers.isEmpty()) return
+    val head = centers.first()
+    // Head glow halo first, so it sits beneath the body/head (rounded skins only).
+    if (palette.useGlow) {
+        val glowRadius = cell * 1.15f
+        shaders.glow.setFloatUniform("center", head.x, head.y)
+        shaders.glow.setFloatUniform("radius", glowRadius)
+        shaders.glow.setFloatUniform("time", time)
+        shaders.glow.setColorUniform("glowColor", headGlow.toArgb())
+        drawCircle(brush = shaders.glowBrush, radius = glowRadius, center = head)
+    }
+    if (palette.useGlow) {
+        drawSnakeTube(centers, cell, palette, bodyAlpha)
+        drawRoundHead(head, cell, direction, palette, headAlpha)
+    } else {
+        drawSnakeBlocks(centers, cell, palette, bodyAlpha)
+        drawBlockHead(head, cell, direction, palette, headAlpha)
+    }
+}
+
+/**
+ * The rounded-skin body: a continuous, seam-free tube built from round-capped
+ * capsules with tapering width, layered as drop shadow → outline → fill → a
+ * centre sheen so it reads as a shaded cylinder.
+ */
+private fun DrawScope.drawSnakeTube(
+    centers: List<Offset>,
+    cell: Float,
+    palette: SkinPalette,
+    alpha: Float,
+) {
+    val n = centers.size
+    val outline = cell * 0.055f
+    val outlineColor = palette.snakeOutline.copy(alpha = alpha)
+    val bodyColor = palette.snakeBody.copy(alpha = alpha)
+    val sheenColor = lighten(palette.snakeBody, 0.26f).copy(alpha = 0.5f * alpha)
+    val shadowColor = Color.Black.copy(alpha = 0.22f * alpha)
+
+    if (n == 1) {
+        val r = snakeWidth(0, n, cell) / 2f
+        drawCircle(outlineColor, r + outline, centers[0])
+        drawCircle(bodyColor, r, centers[0])
+        return
+    }
+
+    // joints fill the small notch on the outer side of each bend; only the opaque
+    // outline/fill passes need them (the shadow and sheen passes can skip them).
+    fun pass(color: Color, offset: Offset, joints: Boolean, widthOf: (Int) -> Float) {
+        for (i in 0 until n - 1) {
+            drawLine(color, centers[i] + offset, centers[i + 1] + offset, strokeWidth = widthOf(i).coerceAtLeast(1f), cap = StrokeCap.Round)
+        }
+        if (joints) {
+            for (i in 0 until n) {
+                val r = widthOf(i) / 2f
+                if (r > 0.4f) drawCircle(color, r, centers[i] + offset)
+            }
+        }
+    }
+
+    pass(shadowColor, Offset(cell * 0.05f, cell * 0.09f), joints = false) { snakeWidth(it, n, cell) + 2 * outline }
+    pass(outlineColor, Offset.Zero, joints = true) { snakeWidth(it, n, cell) + 2 * outline }
+    pass(bodyColor, Offset.Zero, joints = true) { snakeWidth(it, n, cell) }
+    pass(sheenColor, Offset(0f, -cell * 0.07f), joints = false) { snakeWidth(it, n, cell) * 0.45f }
+}
+
+/** The rounded-skin head: a glossy disc with a top sheen and direction-aware eyes. */
+private fun DrawScope.drawRoundHead(
+    center: Offset,
     cell: Float,
     direction: Direction,
     palette: SkinPalette,
     alpha: Float,
-    shaders: BoardShaders,
-    time: Float,
-    headGlow: Color = palette.headGlow,
 ) {
-    val centerX = left + cell / 2f
-    val centerY = top + cell / 2f
+    val r = cell * 0.46f
+    val outline = cell * 0.055f
+    drawCircle(palette.snakeOutline.copy(alpha = alpha), r + outline, center)
+    drawCircle(palette.snakeHead.copy(alpha = alpha), r, center)
+    drawCircle(
+        color = lighten(palette.snakeHead, 0.32f).copy(alpha = 0.5f * alpha),
+        radius = r * 0.52f,
+        center = center + Offset(0f, -r * 0.32f),
+    )
+    drawEyes(center.x, center.y, cell, direction, palette)
+}
 
-    if (isHead && palette.useGlow) {
-        // AGSL: a pulsing, gently rotating glow halo.
-        val glowRadius = cell * 1.1f
-        shaders.glow.setFloatUniform("center", centerX, centerY)
-        shaders.glow.setFloatUniform("radius", glowRadius)
-        shaders.glow.setFloatUniform("time", time)
-        shaders.glow.setColorUniform("glowColor", headGlow.toArgb())
-        drawCircle(brush = shaders.glowBrush, radius = glowRadius, center = Offset(centerX, centerY))
-    }
-
-    val inset = cell * 0.06f
-    val side = cell - 2 * inset
-    val topLeft = Offset(left + inset, top + inset)
+/**
+ * The flat-skin body: crisp square (or lightly rounded) segments with a unified
+ * drop shadow and a two-tone top-highlight / bottom-shade for a touch of volume,
+ * tapering toward the tail. Preserves the blocky/pixel identity of flat skins.
+ */
+private fun DrawScope.drawSnakeBlocks(
+    centers: List<Offset>,
+    cell: Float,
+    palette: SkinPalette,
+    alpha: Float,
+) {
+    val n = centers.size
     val corner = cell * palette.cornerFactor
-    val radius = CornerRadius(corner, corner)
-    val fill = (if (isHead) palette.snakeHead else palette.snakeBody).copy(alpha = alpha)
-    drawRoundRect(
-        color = fill,
-        topLeft = topLeft,
-        size = Size(side, side),
-        cornerRadius = radius,
-    )
-    drawRoundRect(
-        color = palette.snakeOutline.copy(alpha = alpha),
-        topLeft = topLeft,
-        size = Size(side, side),
-        cornerRadius = radius,
-        style = Stroke(width = cell * 0.06f),
-    )
+    val rad = CornerRadius(corner, corner)
+    val shadowOff = Offset(cell * 0.05f, cell * 0.08f)
 
-    if (isHead) drawEyes(centerX, centerY, cell, direction, palette)
+    for (i in 0 until n) {
+        val side = blockSide(i, n, cell)
+        val c = centers[i]
+        drawRoundRect(
+            color = Color.Black.copy(alpha = 0.20f * alpha),
+            topLeft = Offset(c.x - side / 2f + shadowOff.x, c.y - side / 2f + shadowOff.y),
+            size = Size(side, side),
+            cornerRadius = rad,
+        )
+    }
+    for (i in n - 1 downTo 0) {
+        val side = blockSide(i, n, cell)
+        val c = centers[i]
+        val tl = Offset(c.x - side / 2f, c.y - side / 2f)
+        drawRoundRect(palette.snakeBody.copy(alpha = alpha), tl, Size(side, side), rad)
+        drawRect(lighten(palette.snakeBody, 0.18f).copy(alpha = 0.45f * alpha), Offset(tl.x, tl.y), Size(side, side * 0.4f))
+        drawRect(darken(palette.snakeBody, 0.25f).copy(alpha = 0.4f * alpha), Offset(tl.x, tl.y + side * 0.64f), Size(side, side * 0.36f))
+        drawRoundRect(palette.snakeOutline.copy(alpha = alpha), tl, Size(side, side), rad, style = Stroke(width = cell * 0.06f))
+    }
+}
+
+/** The flat-skin head: a larger two-tone block with direction-aware eyes. */
+private fun DrawScope.drawBlockHead(
+    center: Offset,
+    cell: Float,
+    direction: Direction,
+    palette: SkinPalette,
+    alpha: Float,
+) {
+    val side = cell * 0.92f
+    val corner = cell * palette.cornerFactor
+    val rad = CornerRadius(corner, corner)
+    val tl = Offset(center.x - side / 2f, center.y - side / 2f)
+    drawRoundRect(palette.snakeHead.copy(alpha = alpha), tl, Size(side, side), rad)
+    drawRect(lighten(palette.snakeHead, 0.2f).copy(alpha = 0.45f * alpha), Offset(tl.x, tl.y), Size(side, side * 0.4f))
+    drawRoundRect(palette.snakeOutline.copy(alpha = alpha), tl, Size(side, side), rad, style = Stroke(width = cell * 0.06f))
+    drawEyes(center.x, center.y, cell, direction, palette)
 }
 
 private fun DrawScope.drawEyes(
