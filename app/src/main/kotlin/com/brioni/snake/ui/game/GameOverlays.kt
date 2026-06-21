@@ -333,7 +333,7 @@ fun GameOverOverlay(
     onMenu: () -> Unit,
     showBest: Boolean = true,
     summary: RunSummary? = null,
-    completedMissions: List<String> = emptyList(),
+    missions: List<MissionProgress> = emptyList(),
 ) {
     OverlayScrim {
         Text(
@@ -366,7 +366,8 @@ fun GameOverOverlay(
         if (summary != null) {
             RunRecap(summary)
         }
-        if (completedMissions.isNotEmpty()) {
+        if (missions.isNotEmpty()) {
+            val anyJustCompleted = missions.any { it.justCompleted }
             Column(
                 modifier = Modifier
                     .padding(top = 16.dp)
@@ -378,20 +379,39 @@ fun GameOverOverlay(
                     .padding(12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
+                // Celebrate when this run just cleared a goal, otherwise just label
+                // the day's mission list so the player always sees their progress.
                 Text(
-                    text = stringResource(R.string.mission_completed),
+                    text = if (anyJustCompleted) {
+                        stringResource(R.string.mission_completed)
+                    } else {
+                        stringResource(R.string.missions_title)
+                    },
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.secondary,
                 )
-                completedMissions.forEach { description ->
-                    Text(
-                        text = description,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(top = 2.dp),
-                    )
+                missions.forEach { mission ->
+                    Row(
+                        modifier = Modifier.padding(top = 6.dp).fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = if (mission.done) "✓" else "○",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (mission.done) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
+                        )
+                        Text(
+                            text = mission.description,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (mission.justCompleted) FontWeight.Bold else FontWeight.Normal,
+                            color = if (mission.done) MaterialTheme.colorScheme.onBackground
+                            else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                            modifier = Modifier.padding(start = 10.dp),
+                        )
+                    }
                 }
             }
         }
