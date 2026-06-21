@@ -35,7 +35,6 @@ import com.brioni.snake.game.RunStats
 import com.brioni.snake.game.Skin
 import com.brioni.snake.game.SnakeSpeed
 import com.brioni.snake.game.SpecialFrequency
-import com.brioni.snake.game.ViewMode
 import com.brioni.snake.game.boardFor
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -106,10 +105,6 @@ class GameViewModel(
     var crtEnabled by mutableStateOf(false)
         private set
 
-    /** Whether the 3D barrier's electric/plasma flow is enabled (setting). */
-    var electricWalls by mutableStateOf(true)
-        private set
-
     /** Accessibility: damp screen shake, particle bursts and near-miss flashes (setting). */
     var reduceMotion by mutableStateOf(false)
         private set
@@ -125,13 +120,6 @@ class GameViewModel(
     /** How often specials (power-ups / hazards) spawn (setting). */
     var specialFrequency by mutableStateOf(SpecialFrequency.Standard)
         private set
-
-    /** The board presentation (setting): flat 2D, follow chase-cam, or fixed-north. */
-    var viewMode by mutableStateOf(ViewMode.TwoD)
-        private set
-
-    /** True while either 3D view is selected as the standing setting. */
-    val threeDWorldEnabled: Boolean get() = viewMode.is3D
 
     /** Active play mode; highscores are tracked per (mode, level, scale). */
     var mode by mutableStateOf(GameMode.Endless)
@@ -178,21 +166,6 @@ class GameViewModel(
     /** Bumped on a near-miss / grace dodge so the UI can flash a brief danger cue. */
     var nearMissEventId by mutableIntStateOf(0)
         private set
-
-    /**
-     * Whether the board should render (and steer) in the 3D chase-cam: the
-     * "3D" / "3D Fixed" view setting that plays every mode in perspective. Gates
-     * the relative-controls override and the perspective renderer.
-     */
-    val threeDActive: Boolean get() = threeDWorldEnabled
-
-    /**
-     * Whether steering should be heading-relative (left/right turns) rather than
-     * absolute. True for the rotating "3D" follow view, but **false** for the
-     * north-locked "3D Fixed" view, whose board never rotates - there swipe/D-pad
-     * behave exactly like the flat 2D board.
-     */
-    val relativeSteering: Boolean get() = threeDActive && !viewMode.fixedNorth
 
     /** Best score for the current (level, scale), and whether the last run beat it. */
     var bestScore by mutableIntStateOf(0)
@@ -273,9 +246,7 @@ class GameViewModel(
                 backBehavior = settings.backBehavior
                 crtEnabled = settings.crtEnabled
                 reduceMotion = settings.reduceMotion
-                electricWalls = settings.electricWallsEnabled
                 skin = settings.skin
-                viewMode = settings.viewMode
                 // The Daily Challenge pins the spawn-affecting toggles so the run is
                 // identical for everyone; only sync them from settings outside it.
                 if (activeChallenge == null) {
@@ -715,23 +686,9 @@ class GameViewModel(
         tickTimeNanos = System.nanoTime()
     }
 
-    /**
-     * Routes a board swipe. In a rotating 3D view a horizontal swipe is a heading-
-     * relative turn (left/right) and vertical swipes are ignored; otherwise (2D or
-     * the north-locked 3D Fixed view) it steers by the swiped absolute [direction].
-     * Reading [relativeSteering] here (not at wiring time) keeps a single, never-
-     * swapped gesture detector correct in every view.
-     */
+    /** Routes a board swipe: steers by the swiped absolute [direction]. */
     fun onSwipe(direction: Direction) {
-        if (relativeSteering) {
-            when (direction) {
-                Direction.Left -> turnLeft()
-                Direction.Right -> turnRight()
-                Direction.Up, Direction.Down -> Unit
-            }
-        } else {
-            setDirection(direction)
-        }
+        setDirection(direction)
     }
 
     private fun onGameOver(score: Int) {

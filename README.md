@@ -74,10 +74,9 @@ The classic Snake mechanics, extended with configurable features so every run fe
   fiery orange-red) as the streak climbs.
 - ♿ **Reduce motion & flashing** - an accessibility toggle in Settings that damps the screen shake, the
   particle bursts and the near-miss flash for a calmer, flash-free board.
-- ✨ **GPU shader effects** - an animated background, a glowing snake head, pulsing
-  halos on rare foods and a perspective-mapped electric/plasma flow on the 3D arena barrier,
-  all via **AGSL** `RuntimeShader`s, plus optional **retro CRT filter** and **electric 3D walls**
-  toggles in Settings.
+- ✨ **GPU shader effects** - an animated background, a glowing snake head and pulsing
+  halos on rare foods, all via **AGSL** `RuntimeShader`s, plus an optional **retro CRT filter**
+  toggle in Settings.
 - ⚡ **Power-ups & hazards** - rare maxi pieces that appear later in a run: **Lightning** (speed up),
   **Snail** (slow down), **Star** (invincible pass-through; the snake blinks faster as it runs out),
   **Freeze**, **Jackpot** (big bonus),
@@ -106,12 +105,6 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - 🕹️ **Game modes** - **Endless** (speed ramps up the longer you survive; the default),
   **Time Attack** (score as much as you can in 120s) and **Campaign** (see below), selectable on the
   **Custom** setup screen.
-- 🧊 **3D views** - a **View** setting (**2D** / **3D** / **3D Fixed**) that plays
-  **any** mode in perspective instead of the flat top-down board (at the same pace as 2D, with relative
-  left/right steering). **3D** is a behind-the-head chase-cam that follows your heading; **3D Fixed** is a
-  north-locked, panoramic view that never rotates, so it stays readable in every direction. Food renders
-  as solid beveled cubes, the obstacles read as solid 3D blocks, and the arena is bounded by a luminous,
-  translucent neon barrier you can see through. The choice is remembered between sessions.
 - 🧩 **Campaign mode** - ten **designed board shapes** (cut corners, pillars, chambers, a vault…)
   that repeat forever, one **speed step faster** each lap. Eat **12 foods** to clear a level; you
   start with **3 lives** (a crash respawns you in the same level, keeping score and progress) and a
@@ -254,16 +247,6 @@ lives, an exclusive 2×2 extra-life piece, and a speed-up every completed lap - 
 *Level x · Speed x*, your hearts and the foods still to go). Your best score is tracked per mode,
 level and board scale; check the **Records** screen from the main menu.
 
-**3D views:** in **Settings**, switch the **View** to **3D** or **3D Fixed** to play *any* mode in
-perspective - the board tilts in as the run starts, the pace matches the flat 2D board at the same
-level/speed, and steering becomes relative left/right turns (swipe horizontally, or the two-button
-control). **3D** is a
-behind-the-head chase-cam that turns to follow your heading; **3D Fixed** is a north-locked, panoramic
-view that never rotates, so the board stays readable however the snake moves (handy when you head toward
-the bottom of the screen). In both, food appears as solid beveled cubes, obstacles read as solid 3D
-blocks, and the arena is bounded by a luminous, translucent neon barrier you can see through. Switch back
-to **2D** for the classic flat top-down board. Your choice is remembered between sessions.
-
 **Power-ups & hazards:** as a run progresses, rare special pieces start appearing on the board.
 Power-ups help: **Lightning** speeds the snake up, **Snail** slows it down, **Star** grants brief
 invincibility (you can pass through walls, obstacles and your own body - the snake blinks as the
@@ -271,10 +254,7 @@ effect fades), **Freeze** pauses further specials for a strategic breather, and 
 large score bonus. Hazards hinder: **Earthquake** sets off a sustained screen shake for a few seconds
 that makes the board hard to read (it leaves no debris and your length is untouched); **Explosion**
 severs the last third of the snake - the detached tail turns into lethal debris that lingers for several
-seconds before it auto-clears; and **3D** briefly
-freezes the action while the board tilts forward into a chase-cam mounted behind and above the snake's
-head, then hands play back in that perspective view for the duration (steering becomes relative
-left/right turns) before tilting back to the flat top-down. Active effects show
+seconds before it auto-clears. Active effects show
 a countdown chip in the HUD. **Time Attack** also has two clock-only pieces - a **+5s** bonus and a
 **−3s** penalty. Toggle **Hazards** off in **Settings** for a calmer run (this also hides the time
 penalty), or raise **Special blocks** to *Frenzy* for constant chaos.

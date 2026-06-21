@@ -17,9 +17,7 @@ Roadmap, work in progress, TODOs, known bugs, and ideas. For the history of deve
 - [ ] Write unit tests for `GameEngine` edge-cases: wall collision on all four sides, body self-collision, 180° reversal block
 - [ ] Verify smooth-motion interpolation on low-end devices
 - [ ] Verify the mystery "?" glyph renders crisply on small cells (dense boards)
-- [ ] Re-tune the food spawn weights / time gates after playtesting on a device (special weights were
-  rebalanced when the 3D hazard was removed - its freed weight went back to the other hazards to keep
-  the original benefit/hazard mix; the time gates are still pending a device pass)
+- [ ] Re-tune the food spawn weights / time gates after playtesting on a device
 - [ ] Optionally enrich the synthesized SFX before Play release (background music is now Gemini-generated)
 
 ---
@@ -261,33 +259,7 @@ snake-game/
   - [x] **Star** - brief invincibility / ghost (pass through walls, obstacles and self) with a HUD timer.
   - [x] **Freeze** - temporarily freezes special spawns / slows time - a strategic breather.
   - [x] **Jackpot** - rare piece granting a large score bonus (and a random growth).
-  - [x] **3D** (hazard) - the game briefly freezes while the board tilts into a behind-the-head
-        **chase-cam**, then resumes in perspective for the effect's duration before tilting back.
-        Model-wise it is a plain timed `EffectKind.ThreeD`; the only rule effect is a **proportional
-        slowdown** (`THREED_FACTOR`) for playability. The cinematic freeze is **UI-only** (a transient
-        `GameViewModel.cinematicHold`, *not* `GameStatus.Paused` and *not* a model field) and the
-        camera lives entirely under `ui/game/` (`ChaseCam.kt` perspective projection + `GameBoard`
-        `draw3DScene`, driven by a single `camBlend` 0→1 that morphs flat top-down ↔ chase-cam, so
-        `t=0` stays pixel-identical to the 2D renderer). Steering becomes **relative** while active
-        (swipe = horizontal turn, every other scheme → two-button). Gated by the **Hazards** toggle.
-        The chase-cam view also raises **boundary walls** so the arena reads clearly in 3D.
-  - [x] **3D World** - a **start-screen "View" selector** (not a mode) that plays *any* mode entirely in
-        a perspective view (+ the 3D slowdown). Reuses the same renderer/controls; suppresses the
-        now-redundant 3D food. As of Step 6.7 it is a three-way **`ViewMode`** (2D / 3D / 3D Fixed)
-        persisted via DataStore (`Settings.viewMode`, with legacy `threeDWorld` boolean fallback) and
-        still carried into the run as the boolean `GameState.threeDWorld` flag (both 3D variants set it).
-- [x] **Step 6.7** - **3D refinements & rebalance**:
-  - **3D Fixed view** - a new **north-locked, panoramic** `ViewMode.ThreeDFixed`: like the chase-cam it
-    **follows the head** (keeping it centred while the board scrolls underneath) but **never rotates**
-    (yaw stays north), so the view stays readable in every direction. It is higher/more overhead and
-    wider than the chase-cam (panoramic bird's-eye). `blendedCam` grew a `fixedNorth` branch
-    (`ChaseCam.kt`); `GameBoard.draw3DScene`/`GameScreen` thread the flag through. Steering reverts to
-    **absolute** (2D-style) there via `GameViewModel.relativeSteering` since the board is fixed.
-  - **More panoramic chase-cam** - the follow chase-cam sits higher and further back (`CAM_BACK`/
-    `CAM_HEIGHT`/`FOCAL_CHASE`).
-  - **Solid 3D objects** - food renders as **beveled cubes** spanning their footprint (maxi = one 2×2
-    cube); boundary walls and interior obstacles get top-lit shading + seam texture; the floor is a
-    filled dark gradient under the grid (stays black-leaning, on-brand with the dark theme).
+- [x] **Step 6.7** - **Refinements & rebalance**:
   - **Earthquake / Explosion rebalance** - see Step 6.2 bullets above (sustained-shake malus; 1/3 split
     with longer-lived debris).
   - **Length-scaled scoring** - grow-food points scale with the current snake length (×1 short → ×5 cap,
@@ -443,24 +415,8 @@ snake-game/
   `FoodCategory.Special`, the extra `FoodEffect` cases and `GameState.debris`/`effectTimers`. Effect
   durations are stored in **ms** and aged by the effective interval each tick; the loop reads
   `GameState.tickIntervalMillis` (never `level.tickMillis`) so speed effects actually change the pace.
-  Keep that invariant. The standing 3D views run at the exact 2D pace. The 3D *camera* is
-  rendering-only: the `game/` package is unaware of it, and all perspective math
-  lives in `ui/game/ChaseCam.kt` + `GameBoard.draw3DScene` behind a single `camBlend` blend. The board
-  swipe uses a **single, never-swapped** `pointerInput` routed through `GameViewModel.onSwipe`, which
-  picks relative-turn vs absolute steering from the current `threeDActive` (swapping the modifier on a
-  state change left a stale gesture handler - do not reintroduce that).
-- **3D World** is a **Settings "View" selector** (a `ViewMode` `ChoiceSection` - **2D** / **3D** /
-  **3D Fixed**, written via `SettingsRepository.setViewMode`), a three-way **`ViewMode`** enum
-  persisted via DataStore (`Settings.viewMode`, falling back from the legacy `threeDWorld` boolean) and
-  orthogonal to the mode: any mode plays in a perspective view when one is picked. **3D** follows the
-  snake's heading (the camera rotates); **3D Fixed** is **north-locked and panoramic** -
-  `blendedCam(fixedNorth = true)` still **follows the head** (centred, board scrolls underneath) but
-  never rotates, so it stays readable in every direction. Steering there is **absolute** (2D-style) via
-  `GameViewModel.relativeSteering` (`threeDActive && !viewMode.fixedNorth`). `threeDActive`
-  (`= threeDWorldEnabled`, derived from `viewMode`) drives the renderer + relative controls; `GameScreen`
-  holds `camBlend` at 1 while a 3D view is on and passes `viewMode.fixedNorth` to `GameBoard`. It was
-  briefly a `GameMode` (`ThreeDWorld`); that was removed in favour of the orthogonal selector - do not
-  reintroduce it as a mode.
+  Keep that invariant. The board swipe uses a **single** `pointerInput` routed through
+  `GameViewModel.onSwipe`, which steers by the swiped absolute direction.
 - **Control scheme**: the default is **Swipe** (set in `GameViewModel.DEFAULT_CONTROL` and the
   persisted fallback in `SettingsRepository`); the two-button relative scheme and the D-pad remain
   selectable in Settings (choice persisted via DataStore). Phase 3 had originally shipped two-button
