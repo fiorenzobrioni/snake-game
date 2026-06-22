@@ -33,6 +33,8 @@ data class RunStats(
     val extraLivesGained: Int = 0,
     /** The greatest snake length reached at any point during the run. */
     val maxSnakeLength: Int = 0,
+    /** Daily challenge: the consecutive-day streak after this run (0 otherwise). */
+    val dailyStreak: Int = 0,
 )
 
 /**
@@ -70,6 +72,8 @@ enum class Achievement(
     LongHaul("Long Haul", "Grow the snake to 50 segments", { it.maxSnakeLength >= 50 }),
     Anaconda("Anaconda", "Grow the snake to 100 segments", { it.maxSnakeLength >= 100 }),
     Titanoboa("Titanoboa", "Grow the snake to 180 segments", { it.maxSnakeLength >= 180 }),
+    WeekWarrior("Week Warrior", "Reach a 7-day Daily streak", { it.dailyStreak >= 7 }),
+    MonthMaster("Monthly Master", "Reach a 30-day Daily streak", { it.dailyStreak >= 30 }),
     ;
 
     companion object {

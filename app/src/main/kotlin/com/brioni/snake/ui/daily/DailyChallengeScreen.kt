@@ -43,6 +43,7 @@ import java.time.format.FormatStyle
 fun DailyChallengeScreen(
     repo: SettingsRepository,
     onPlay: (Long) -> Unit,
+    onHistory: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -129,6 +130,12 @@ fun DailyChallengeScreen(
                 stringResource(if (playedToday) R.string.daily_play_again else R.string.daily_play),
                 style = MaterialTheme.typography.titleMedium,
             )
+        }
+        SnakeOutlinedButton(
+            onClick = onHistory,
+            modifier = Modifier.padding(top = 12.dp).widthIn(min = 220.dp),
+        ) {
+            Text(stringResource(R.string.daily_history_button))
         }
         SnakeOutlinedButton(
             onClick = onBack,

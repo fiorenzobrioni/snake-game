@@ -39,6 +39,7 @@ import com.brioni.snake.ui.game.GameViewModel
 import com.brioni.snake.ui.achievements.AchievementsScreen
 import com.brioni.snake.ui.credits.CreditsScreen
 import com.brioni.snake.ui.daily.DailyChallengeScreen
+import com.brioni.snake.ui.daily.DailyHistoryScreen
 import com.brioni.snake.ui.daily.RandomChallengeScreen
 import com.brioni.snake.ui.intro.BrandIntroScreen
 import com.brioni.snake.ui.menu.MainMenuScreen
@@ -46,7 +47,7 @@ import com.brioni.snake.ui.records.RecordsScreen
 import com.brioni.snake.ui.settings.SettingsScreen
 
 /** The top-level destinations. [Intro] is the cold-launch brand splash. */
-private enum class Screen { Intro, Menu, Game, Daily, Random, Settings, Records, Achievements, Credits }
+private enum class Screen { Intro, Menu, Game, Daily, DailyHistory, Random, Settings, Records, Achievements, Credits }
 
 /**
  * Root of the UI. Hosts a lightweight, state-based navigation between the main
@@ -98,10 +99,11 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
         }
     }
 
-    // Secondary screens go back to the Menu; the Game screen owns its own back
-    // (pause vs. exit) and the Menu is the root (the system handles back/exit).
+    // Secondary screens go back to the Menu; the Daily history nests under Daily;
+    // the Game screen owns its own back (pause vs. exit) and the Menu is the root
+    // (the system handles back/exit).
     BackHandler(enabled = screen != Screen.Menu && screen != Screen.Game) {
-        navigate(Screen.Menu)
+        navigate(if (screen == Screen.DailyHistory) Screen.Daily else Screen.Menu)
     }
 
     val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
@@ -174,7 +176,14 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
                             gameViewModel.requestDailyStart(epochDay)
                             navigate(Screen.Game)
                         },
+                        onHistory = { navigate(Screen.DailyHistory) },
                         onBack = { navigate(Screen.Menu) },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+
+                    Screen.DailyHistory -> DailyHistoryScreen(
+                        repo = repo,
+                        onBack = { navigate(Screen.Daily) },
                         modifier = Modifier.fillMaxSize(),
                     )
 

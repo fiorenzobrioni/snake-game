@@ -40,7 +40,7 @@ data class Settings(
     val hapticsEnabled: Boolean = true,
     /** Accessibility: damp screen shake, particle bursts and near-miss flashes (default off). */
     val reduceMotion: Boolean = false,
-    val skin: Skin = Skin.Classic,
+    val skin: Skin = Skin.Retro,
     val hazardsEnabled: Boolean = true,
     val specialFrequency: SpecialFrequency = SpecialFrequency.Standard,
     val mode: GameMode = GameMode.Endless,
@@ -75,7 +75,7 @@ class SettingsRepository(private val context: Context) {
             crtEnabled = prefs[CRT_ENABLED] ?: false,
             hapticsEnabled = prefs[HAPTICS_ENABLED] ?: true,
             reduceMotion = prefs[REDUCE_MOTION] ?: false,
-            skin = prefs[SKIN].toEnum(Skin::valueOf) ?: Skin.Classic,
+            skin = prefs[SKIN].toEnum(Skin::valueOf) ?: Skin.Retro,
             hazardsEnabled = prefs[HAZARDS_ENABLED] ?: true,
             specialFrequency = prefs[SPECIAL_FREQUENCY].toEnum(SpecialFrequency::valueOf) ?: SpecialFrequency.Standard,
             mode = prefs[MODE].toEnum(GameMode::valueOf) ?: GameMode.Endless,
@@ -212,6 +212,20 @@ class SettingsRepository(private val context: Context) {
         return best
     }
 
+    /**
+     * The stored Daily bests for the [days]-day window ending on [endEpochDay],
+     * keyed by epoch day (only days actually played are present). Used by the
+     * Daily history / weekly screen (Step 6.9.10).
+     */
+    fun dailyBests(endEpochDay: Long, days: Int): Flow<Map<Long, Int>> =
+        context.dataStore.data.map { prefs ->
+            buildMap {
+                for (d in (endEpochDay - days + 1)..endEpochDay) {
+                    prefs[dailyBestKey(d)]?.let { put(d, it) }
+                }
+            }
+        }
+
     /** The set of unlocked achievement ids (enum names). */
     fun unlockedAchievements(): Flow<Set<String>> =
         context.dataStore.data.map { it[UNLOCKED_ACHIEVEMENTS] ?: emptySet() }
@@ -219,6 +233,17 @@ class SettingsRepository(private val context: Context) {
     /** Adds [ids] to the unlocked set (idempotent). */
     suspend fun addUnlockedAchievements(ids: Collection<String>) =
         edit { it[UNLOCKED_ACHIEVEMENTS] = (it[UNLOCKED_ACHIEVEMENTS] ?: emptySet()) + ids }
+
+    /**
+     * The set of unlocked skin ids (enum names) beyond the always-available ones.
+     * [Skin.defaultUnlocked] are not stored here; combine with this set in the UI.
+     */
+    fun unlockedSkins(): Flow<Set<String>> =
+        context.dataStore.data.map { it[UNLOCKED_SKINS] ?: emptySet() }
+
+    /** Adds [ids] to the unlocked skin set (idempotent). */
+    suspend fun addUnlockedSkins(ids: Collection<String>) =
+        edit { it[UNLOCKED_SKINS] = (it[UNLOCKED_SKINS] ?: emptySet()) + ids }
 
     /**
      * The mission ids completed on [epochDay] (Step 6.9.5). Completions are stored
@@ -280,6 +305,7 @@ class SettingsRepository(private val context: Context) {
         val MODE = stringPreferencesKey("game_mode")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val UNLOCKED_ACHIEVEMENTS = stringSetPreferencesKey("unlocked_achievements")
+        val UNLOCKED_SKINS = stringSetPreferencesKey("unlocked_skins")
         val COMPLETED_MISSIONS = stringSetPreferencesKey("completed_missions")
         val DAILY_STREAK = intPreferencesKey("daily_streak")
         val DAILY_LAST_DAY = longPreferencesKey("daily_last_day")

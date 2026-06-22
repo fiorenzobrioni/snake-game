@@ -979,10 +979,10 @@ private fun DrawScope.drawDebris(
         // Cells severed together share a timer, so the chain fades as one piece.
         val life = chain.minOf { it.life }
         val alpha = (0.32f + 0.6f * life).coerceIn(0f, 1f)
-        if (palette.useGlow) {
-            drawSnakeTube(centers, cell, palette, alpha)
-        } else {
+        if (palette.segmentedBody) {
             drawSnakeBlocks(centers, cell, palette, alpha)
+        } else {
+            drawSnakeTube(centers, cell, palette, alpha)
         }
     }
 }
@@ -1028,9 +1028,10 @@ private fun blockSide(i: Int, n: Int, cell: Float): Float {
 }
 
 /**
- * Draws the whole snake from interpolated cell [centers] (head = index 0). Rounded
- * skins ([SkinPalette.useGlow]) get a smooth, shaded, **tapered tube** with a glossy
- * head; flat skins keep crisp blocky segments. The head is drawn last, on top.
+ * Draws the whole snake from interpolated cell [centers] (head = index 0). Tube
+ * skins get a smooth, shaded, **tapered tube** with a glossy head; segmented skins
+ * ([SkinPalette.segmentedBody]) keep crisp blocky segments. The head is drawn last,
+ * on top. The head-glow halo is independent ([SkinPalette.useGlow]).
  */
 private fun DrawScope.drawSnake(
     centers: List<Offset>,
@@ -1054,12 +1055,12 @@ private fun DrawScope.drawSnake(
         shaders.glow.setColorUniform("glowColor", headGlow.toArgb())
         drawCircle(brush = shaders.glowBrush, radius = glowRadius, center = head)
     }
-    if (palette.useGlow) {
-        drawSnakeTube(centers, cell, palette, bodyAlpha)
-        drawRoundHead(head, cell, direction, palette, headAlpha)
-    } else {
+    if (palette.segmentedBody) {
         drawSnakeBlocks(centers, cell, palette, bodyAlpha)
         drawBlockHead(head, cell, direction, palette, headAlpha)
+    } else {
+        drawSnakeTube(centers, cell, palette, bodyAlpha)
+        drawRoundHead(head, cell, direction, palette, headAlpha)
     }
 }
 

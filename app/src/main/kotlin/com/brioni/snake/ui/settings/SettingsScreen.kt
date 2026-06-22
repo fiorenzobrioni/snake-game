@@ -17,7 +17,10 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import com.brioni.snake.ui.components.SnakeButton
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -70,6 +73,12 @@ fun SettingsScreen(
     val settings by repo.settings.collectAsState(
         initial = Settings(Level.Beginner, BoardScale.Classic, ControlScheme.Swipe),
     )
+    val storedUnlockedSkins by repo.unlockedSkins().collectAsState(initial = emptySet())
+    // The skins the player may actually select: the always-available ones plus any
+    // earned and persisted.
+    val unlockedSkins = remember(storedUnlockedSkins) {
+        Skin.defaultUnlocked.mapTo(mutableSetOf()) { it.name } + storedUnlockedSkins
+    }
     val scope = rememberCoroutineScope()
 
     Column(
@@ -121,6 +130,7 @@ fun SettingsScreen(
 
         SkinSection(
             selected = settings.skin,
+            unlocked = unlockedSkins,
             onSelected = { skin -> scope.launch { repo.setSkin(skin) } },
         )
 
@@ -247,6 +257,7 @@ private fun <T> ChoiceSection(
 @Composable
 private fun SkinSection(
     selected: Skin,
+    unlocked: Set<String>,
     onSelected: (Skin) -> Unit,
 ) {
     Column(
@@ -270,6 +281,7 @@ private fun SkinSection(
                         SkinCard(
                             skin = skin,
                             selected = skin == selected,
+                            locked = skin.name !in unlocked,
                             onClick = { onSelected(skin) },
                         )
                     }
@@ -280,14 +292,17 @@ private fun SkinSection(
 }
 
 @Composable
-private fun SkinCard(skin: Skin, selected: Boolean, onClick: () -> Unit) {
+private fun SkinCard(skin: Skin, selected: Boolean, locked: Boolean, onClick: () -> Unit) {
     val palette = remember(skin) { paletteFor(skin) }
     val border = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+    // A locked card is dimmed, shows a lock badge and its unlock hint, and can't be
+    // selected (tapping does nothing).
+    val contentAlpha = if (locked) 0.4f else 1f
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
+            .clickable(enabled = !locked, onClick = onClick)
             .border(
                 width = if (selected) 2.dp else 1.dp,
                 color = border,
@@ -299,20 +314,41 @@ private fun SkinCard(skin: Skin, selected: Boolean, onClick: () -> Unit) {
             )
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Swatch(palette.snakeHead)
-            Swatch(palette.snakeBody)
-            Swatch(palette.growMedium)
-            Swatch(palette.shrinkMedium)
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Swatch(palette.snakeHead.copy(alpha = contentAlpha))
+            Swatch(palette.snakeBody.copy(alpha = contentAlpha))
+            Swatch(palette.growMedium.copy(alpha = contentAlpha))
+            Swatch(palette.shrinkMedium.copy(alpha = contentAlpha))
+            if (locked) {
+                Icon(
+                    imageVector = Icons.Filled.Lock,
+                    contentDescription = stringResource(R.string.skin_locked),
+                    tint = androidx.compose.ui.graphics.Color.White,
+                    modifier = Modifier.padding(start = 4.dp).size(14.dp),
+                )
+            }
         }
         Text(
             text = skin.displayName,
             style = MaterialTheme.typography.labelMedium,
             // The card is always a dark gradient, so use a light caption in both
             // themes (theme-driven onSurface would be black-on-dark in light mode).
-            color = if (selected) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.White,
+            color = if (selected) MaterialTheme.colorScheme.primary
+            else androidx.compose.ui.graphics.Color.White.copy(alpha = contentAlpha),
             modifier = Modifier.padding(top = 8.dp),
         )
+        if (locked) {
+            Text(
+                text = skin.unlock.requirementText,
+                style = MaterialTheme.typography.labelSmall,
+                color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.7f),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.padding(top = 2.dp).widthIn(max = 120.dp),
+            )
+        }
     }
 }
 
