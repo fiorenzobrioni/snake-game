@@ -445,9 +445,24 @@ snake-game/
 
 **Onboarding & polish**
 
-- [ ] **Step 6.9.13 - First-run onboarding / tutorial.** A brief, skippable intro on first launch (controls
-      + objective + food-powerup-hazard types), so new players aren't dropped cold. Impl: a one-time flag in `SettingsRepository`; a
-      lightweight overlay or a 3-4 card pager shown before the first game.
+- [x] **Step 6.9.16 - First-run onboarding / tutorial.** A brief, skippable intro shown once on first launch
+      (gated by a one-time `onboardingCompleted` flag in `SettingsRepository`), then re-openable any time from a
+      **"How to play"** button in Settings. Implemented as a dedicated, re-callable `ui/onboarding/OnboardingScreen`
+      (a 4-card `HorizontalPager`): **Objective**, **Controls**, **Food** (Grow / Shrink / Mystery legend) and
+      **Power-ups & hazards** (two labelled legends). Each card pairs a hand-drawn Canvas illustration - a framed
+      mini-board styled from the player's active skin via `paletteFor` - with an Orbitron title + body; animation
+      is restrained (a subtle artwork parallax driven by `pagerState.currentPageOffsetFraction` and an animated
+      page indicator, over the shared AGSL menu backdrop). Wired into `App` as a new `Screen.Onboarding`: the brand
+      splash hands off to it on first run (else straight to the menu) and it returns to the Menu (first run) or
+      Settings (replay). *(Renumbered from the duplicate "6.9.13" this step was originally filed under.)*
+
+- [x] **Step 6.9.17 - Brand-splash visual overhaul.** Redrew `BrandIntroScreen` in the game's **Retro skin**: the
+      crawling snake and the **SNAKE** wordmark are now retro snake-body pieces (top-lit sheen via a vertical
+      gradient fill). The two shader "explosions" were replaced with **real particle bursts** reusing the in-game
+      `emitExplosionBurst` / `updateParticles` (a per-frame `withFrameNanos` loop spawns each burst once as the head
+      sweeps past, advances the particles and drives the redraw). The board is more **premium**: the Retro gradient
+      lifted with two slow-drifting warm glows, a radial vignette for depth and a soft-haloed framed border. The
+      bloom post-filter stays (now also blooming the sparks).
 
 ### Phase 7 - Play Store distribution & cleanup
 

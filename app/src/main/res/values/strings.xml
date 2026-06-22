@@ -106,6 +106,27 @@
     <string name="settings_theme">Theme</string>
     <string name="settings_hazards">Hazards (earthquake, explosion, snail)</string>
     <string name="settings_special_frequency">Special blocks</string>
+    <string name="settings_how_to_play">How to play</string>
+
+    <!-- First-run onboarding / tutorial (Step 6.9.16) -->
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_done">Get started</string>
+    <string name="onboarding_objective_title">Welcome to Snake</string>
+    <string name="onboarding_objective_body">Steer the snake to eat food and grow. Avoid the walls, the obstacles and your own tail - survive, build combos and chase a new high score.</string>
+    <string name="onboarding_controls_title">Steer the snake</string>
+    <string name="onboarding_controls_body">Swipe anywhere to turn, or switch to Tap-to-turn or an on-screen D-pad in Settings. The snake never stops, so plan your next turn early.</string>
+    <string name="onboarding_food_title">Eat to grow</string>
+    <string name="onboarding_food_body">Green food grows you and scores points - the bigger the piece, the bigger the reward. Warm-coloured food trims your tail, and a \"?\" hides a random surprise.</string>
+    <string name="onboarding_food_grow">Grow</string>
+    <string name="onboarding_food_shrink">Shrink</string>
+    <string name="onboarding_food_mystery">Mystery</string>
+    <string name="onboarding_specials_title">Power-ups &amp; hazards</string>
+    <string name="onboarding_specials_body">Later in a run, special blocks appear. Power-ups help you; hazards make life harder. Prefer a gentler game? Turn hazards off any time in Settings.</string>
+    <string name="onboarding_powerups">Power-ups</string>
+    <string name="onboarding_hazards">Hazards</string>
+    <string name="onboarding_jackpot">Jackpot</string>
+    <string name="onboarding_explosion">Explosion</string>
 
     <!-- HUD -->
     <string name="hud_score">Score: %1$d</string>

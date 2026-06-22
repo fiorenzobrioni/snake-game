@@ -60,8 +60,8 @@ The classic Snake mechanics, extended with configurable features so every run fe
   A forgiving **coyote frame** makes a beat-late turn still count: the first lethal step makes the head
   hesitate one tick (instead of dying), giving you a moment to turn away - re-armed by your next safe move.
 - 🎨 **Skins** - six selectable looks, each its own palette and render style. **Retro** (the default) and
-  **Classic** are unlocked from the start; the rest are earned: **Neon** (score 500 in a run), **Pixel**
-  (score 1500), **Aurora** (a 7-day Daily streak) and **Ember** (a 30-day Daily streak). Locked skins show
+  **Classic** are unlocked from the start; the rest are earned: **Neon** (score 1500 in a run), **Pixel**
+  (score 5000), **Aurora** (a 7-day Daily streak) and **Ember** (a 30-day Daily streak). Locked skins show
   their unlock condition in Settings. The glow skins (Classic / Neon / Aurora / Ember) draw food and
   power-ups as haloed round pieces; the flat skins (Retro / Pixel) render them as squares (crisp on Pixel,
   lightly rounded on Retro). Aurora and Ember pair a glowing look with a **segmented** snake body that reads
@@ -138,6 +138,7 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - 💎 **Polished navigation** - an **animated GPU background** behind the menus, a **branded main menu** laid out as a "game launcher" (a glowing wordmark with a small in-game-style snake emblem that follows your selected skin as the hero, over a bottom-anchored cluster of actions grouped by type so everything fits one screen), **premium action buttons** (gradient-lit, with a tactile press), and **blur-dissolve** screen transitions.
 - ⏸️ **Auto-pause** - backgrounding the app mid-run pauses the game automatically, so the snake never keeps moving while you're away.
 - 📜 **Credits screen** - an in-app **Credits / About** page (author, license and asset attribution), reachable from the main menu.
+- 🧭 **First-run tutorial** - a brief, skippable walkthrough (objective, controls, and the food / power-up / hazard types) on first launch, re-openable any time via **How to play** in Settings.
 
 ### 🍽️ Food system at a glance
 

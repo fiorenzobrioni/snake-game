@@ -68,6 +68,7 @@ fun SettingsScreen(
     repo: SettingsRepository,
     audio: GameAudio,
     onBack: () -> Unit,
+    onShowTutorial: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val settings by repo.settings.collectAsState(
@@ -95,6 +96,14 @@ fun SettingsScreen(
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(bottom = 8.dp),
         )
+
+        // Replay the first-run tutorial on demand (Step 6.9.16).
+        SnakeButton(
+            onClick = onShowTutorial,
+            modifier = Modifier.padding(top = 4.dp, bottom = 4.dp).widthIn(min = 200.dp),
+        ) {
+            Text(stringResource(R.string.settings_how_to_play))
+        }
 
         ChoiceSection(
             title = stringResource(R.string.settings_control_scheme),
