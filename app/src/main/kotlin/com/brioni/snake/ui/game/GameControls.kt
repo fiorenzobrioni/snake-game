@@ -15,10 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ripple
@@ -30,11 +27,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -47,9 +42,7 @@ import androidx.compose.ui.res.stringResource
 import com.brioni.snake.R
 import com.brioni.snake.game.Direction
 import kotlin.math.abs
-import kotlin.math.cos
 import kotlin.math.min
-import kotlin.math.sin
 
 /**
  * The swipe distance (in px) the player must drag before a steer fires, as a
@@ -125,43 +118,12 @@ fun Modifier.tapToTurn(
 }
 
 /**
- * The two-button scheme: two large half-width buttons that turn the snake left /
- * right **relative to its heading** (Left = counter-clockwise, Right =
- * clockwise). They fill the bottom of the screen, split in half, for easy
- * thumb reach with either hand. Styled from the active [palette] so the buttons
- * belong to the current skin.
- */
-@Composable
-fun RelativeControls(
-    onLeft: () -> Unit,
-    onRight: () -> Unit,
-    palette: SkinPalette,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier.fillMaxWidth().height(104.dp),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        ControlButton(
-            palette = palette,
-            descriptionRes = R.string.turn_left,
-            modifier = Modifier.weight(1f).fillMaxHeight(),
-            onClick = onLeft,
-        ) { color -> drawTurnArrow(color = color, clockwise = false) }
-        ControlButton(
-            palette = palette,
-            descriptionRes = R.string.turn_right,
-            modifier = Modifier.weight(1f).fillMaxHeight(),
-            onClick = onRight,
-        ) { color -> drawTurnArrow(color = color, clockwise = true) }
-    }
-}
-
-/**
- * On-screen D-pad arranged as a cross. Complements swipe steering for players who
- * prefer buttons. Arrows are drawn as crisp, perfectly centred vector chevrons on
- * a [Canvas] (no Unicode glyphs, which sat off-centre in the button box), tinted
- * from the active [palette].
+ * On-screen D-pad arranged as a tight, regular cross. Complements swipe steering
+ * for players who prefer buttons. The cluster is deliberately compact - small
+ * buttons with a small gap - so the thumb travels as little as possible between
+ * directions, which matters when the snake is moving fast. Arrows are drawn as
+ * crisp, perfectly centred vector chevrons on a [Canvas] (no Unicode glyphs,
+ * which sat off-centre in the button box), tinted from the active [palette].
  */
 @Composable
 fun DirectionPad(
@@ -172,12 +134,13 @@ fun DirectionPad(
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(DPadGap),
     ) {
         DirectionButton(palette, Direction.Up, R.string.dir_up) { onDirection(Direction.Up) }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(horizontalArrangement = Arrangement.spacedBy(DPadGap), verticalAlignment = Alignment.CenterVertically) {
             DirectionButton(palette, Direction.Left, R.string.dir_left) { onDirection(Direction.Left) }
-            // A central hub block keeps the cross visually anchored.
+            // A central hub keeps the cross a regular plus (Up/Down sit directly
+            // above/below it); sized to the button so the cross stays symmetric.
             Spacer(modifier = Modifier.size(DPadButtonSize))
             DirectionButton(palette, Direction.Right, R.string.dir_right) { onDirection(Direction.Right) }
         }
@@ -185,9 +148,9 @@ fun DirectionPad(
     }
 }
 
-private val DPadButtonSize = 68.dp
-private val ControlButtonShape = RoundedCornerShape(20.dp)
-private val DPadButtonShape = RoundedCornerShape(18.dp)
+private val DPadButtonSize = 58.dp
+private val DPadGap = 6.dp
+private val DPadButtonShape = RoundedCornerShape(16.dp)
 
 @Composable
 private fun DirectionButton(
@@ -215,7 +178,7 @@ private fun ControlButton(
     palette: SkinPalette,
     descriptionRes: Int,
     modifier: Modifier = Modifier,
-    shape: androidx.compose.foundation.shape.RoundedCornerShape = ControlButtonShape,
+    shape: androidx.compose.foundation.shape.RoundedCornerShape = DPadButtonShape,
     onClick: () -> Unit,
     draw: DrawScope.(Color) -> Unit,
 ) {
@@ -281,47 +244,6 @@ private fun ControlButton(
     }
 }
 
-/**
- * Draws a clean curved rotation arrow centred in the [DrawScope], used by the
- * relative turn buttons. [clockwise] true draws a clockwise (turn-right) arc,
- * false a counter-clockwise (turn-left) one, each capped with a tangent arrowhead.
- */
-private fun DrawScope.drawTurnArrow(color: Color, clockwise: Boolean) {
-    val center = Offset(size.width / 2f, size.height / 2f)
-    val radius = min(size.width, size.height) * 0.20f
-    val stroke = radius * 0.40f
-    val sweep = 250f
-    // Mirror the start so both arrows sit symmetrically with the gap (arrowhead)
-    // toward the bottom-inner side.
-    val startAngle = if (clockwise) -50f else -130f
-    val effectiveSweep = if (clockwise) sweep else -sweep
-    drawArc(
-        color = color,
-        startAngle = startAngle,
-        sweepAngle = effectiveSweep,
-        useCenter = false,
-        topLeft = Offset(center.x - radius, center.y - radius),
-        size = Size(radius * 2f, radius * 2f),
-        style = Stroke(width = stroke, cap = StrokeCap.Round),
-    )
-    // Arrowhead at the arc's end, oriented along the direction of travel.
-    val endRad = Math.toRadians((startAngle + effectiveSweep).toDouble())
-    val tip = Offset(
-        center.x + radius * cos(endRad).toFloat(),
-        center.y + radius * sin(endRad).toFloat(),
-    )
-    // Tangent (direction of travel) at the tip; flips with the sweep direction.
-    val travel = if (clockwise) {
-        Offset((-sin(endRad)).toFloat(), cos(endRad).toFloat())
-    } else {
-        Offset(sin(endRad).toFloat(), (-cos(endRad)).toFloat())
-    }
-    val back = Offset(-travel.x, -travel.y)
-    val headLen = radius * 0.95f
-    drawLine(color, tip, tip + rotate(back, 32.0) * headLen, stroke, cap = StrokeCap.Round)
-    drawLine(color, tip, tip + rotate(back, -32.0) * headLen, stroke, cap = StrokeCap.Round)
-}
-
 /** Draws a crisp, perfectly centred filled chevron pointing in [direction]. */
 private fun DrawScope.drawDirectionArrow(color: Color, direction: Direction) {
     val center = Offset(size.width / 2f, size.height / 2f)
@@ -355,14 +277,6 @@ private fun DrawScope.drawDirectionArrow(color: Color, direction: Direction) {
     // A rounded join softens the triangle's corners for a premium, non-jagged look.
     drawPath(path, color = color, style = Stroke(width = reach * 0.5f, join = androidx.compose.ui.graphics.StrokeJoin.Round))
     drawPath(path, color = color)
-}
-
-/** Rotates [v] by [deg] degrees (screen space, y-down). */
-private fun rotate(v: Offset, deg: Double): Offset {
-    val a = Math.toRadians(deg)
-    val ca = cos(a).toFloat()
-    val sa = sin(a).toFloat()
-    return Offset(v.x * ca - v.y * sa, v.x * sa + v.y * ca)
 }
 
 /** Linearly mixes [base] toward [other] by fraction [f] (0..1), keeping base alpha. */

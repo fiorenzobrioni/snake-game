@@ -164,6 +164,4 @@
     <string name="dir_down">Move down</string>
     <string name="dir_left">Move left</string>
     <string name="dir_right">Move right</string>
-    <string name="turn_left">Turn left</string>
-    <string name="turn_right">Turn right</string>
 </resources>

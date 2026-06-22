@@ -482,13 +482,6 @@ private fun ControlRegion(
     modifier: Modifier = Modifier,
 ) {
     when (scheme) {
-        ControlScheme.TwoButton -> RelativeControls(
-            onLeft = viewModel::turnLeft,
-            onRight = viewModel::turnRight,
-            palette = viewModel.palette,
-            modifier = modifier,
-        )
-
         ControlScheme.DPad -> DirectionPad(
             onDirection = viewModel::setDirection,
             palette = viewModel.palette,
