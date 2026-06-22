@@ -30,6 +30,8 @@ data class Settings(
     val level: Level,
     val scale: BoardScale,
     val controlScheme: ControlScheme,
+    /** Swipe steering sensitivity (0..1); 0.5 keeps the tuned default distance. */
+    val swipeSensitivity: Float = DEFAULT_SWIPE_SENSITIVITY,
     val backBehavior: BackBehavior = BackBehavior.DEFAULT,
     val snakeSpeed: SnakeSpeed = SnakeSpeed.DEFAULT,
     val masterVolume: Float = DEFAULT_MASTER_VOLUME,
@@ -52,6 +54,12 @@ const val DEFAULT_MASTER_VOLUME = 1f
 const val DEFAULT_MUSIC_VOLUME = 0.5f
 const val DEFAULT_SFX_VOLUME = 0.8f
 
+/**
+ * Default swipe sensitivity. 0.5 is the midpoint and maps to the carefully tuned
+ * swipe distance the game already shipped with, so the default feel is unchanged.
+ */
+const val DEFAULT_SWIPE_SENSITIVITY = 0.5f
+
 /** Process-wide DataStore, created once for the app's [Context]. */
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "snake_prefs")
 
@@ -67,6 +75,7 @@ class SettingsRepository(private val context: Context) {
             level = prefs[LEVEL].toEnum(Level::valueOf) ?: Level.Beginner,
             scale = prefs[SCALE].toEnum(BoardScale::valueOf) ?: BoardScale.Classic,
             controlScheme = prefs[CONTROL].toEnum(ControlScheme::valueOf) ?: ControlScheme.Swipe,
+            swipeSensitivity = prefs[SWIPE_SENSITIVITY] ?: DEFAULT_SWIPE_SENSITIVITY,
             backBehavior = prefs[BACK_BEHAVIOR].toEnum(BackBehavior::valueOf) ?: BackBehavior.DEFAULT,
             snakeSpeed = prefs[SNAKE_SPEED].toEnum(SnakeSpeed::valueOf) ?: SnakeSpeed.DEFAULT,
             masterVolume = prefs[MASTER_VOLUME] ?: DEFAULT_MASTER_VOLUME,
@@ -94,6 +103,9 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setControlScheme(scheme: ControlScheme) =
         edit { it[CONTROL] = scheme.name }
+
+    suspend fun setSwipeSensitivity(value: Float) =
+        edit { it[SWIPE_SENSITIVITY] = value.coerceIn(0f, 1f) }
 
     suspend fun setBackBehavior(behavior: BackBehavior) =
         edit { it[BACK_BEHAVIOR] = behavior.name }
@@ -292,6 +304,7 @@ class SettingsRepository(private val context: Context) {
         val SNAKE_SPEED = stringPreferencesKey("snake_speed")
         val SCALE = stringPreferencesKey("board_scale")
         val CONTROL = stringPreferencesKey("control_scheme")
+        val SWIPE_SENSITIVITY = floatPreferencesKey("swipe_sensitivity")
         val BACK_BEHAVIOR = stringPreferencesKey("back_behavior")
         val MASTER_VOLUME = floatPreferencesKey("master_volume")
         val MUSIC_VOLUME = floatPreferencesKey("music_volume")

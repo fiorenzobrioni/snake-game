@@ -56,7 +56,7 @@ The classic Snake mechanics, extended with configurable features so every run fe
   is computed from your device's screen so it fills the display with square cells in portrait. Bigger
   boards also give food, power-ups and hazards proportionally more time before they vanish, so the
   snake can reach them across the longer distances.
-- 🎮 **Control schemes** - **swipe** by default, or a two-button *relative* steering / classic D-pad.
+- 🎮 **Control schemes** - **swipe** by default (with adjustable sensitivity), a compact classic **D-pad**, or one-handed **tap-to-turn**.
   A forgiving **coyote frame** makes a beat-late turn still count: the first lethal step makes the head
   hesitate one tick (instead of dying), giving you a moment to turn away - re-armed by your next safe move.
 - 🎨 **Skins** - six selectable looks, each its own palette and render style. **Retro** (the default) and
@@ -250,9 +250,11 @@ mystery and shrink foods only start appearing as the session runs on - so each r
 Chain bites together to build a **combo** and multiply your score, and use shrink food to cut your length
 when the board gets tight (you never drop below 3 segments).
 
-**Controls (touch):** by default you **swipe** anywhere on the board to change direction. Prefer
-buttons? Switch in **Settings** to a **two-button** scheme (turn left / right relative to the snake's
-heading) or the classic **D-pad** - your choice is saved. 180° reversals are blocked, so you can't
+**Controls (touch):** by default you **swipe** anywhere on the board to change direction, with an
+adjustable **swipe sensitivity** in Settings (the default keeps the tuned feel). Prefer buttons? Switch
+in **Settings** to a compact, premium **D-pad** (skin-tinted keys in a tight cross for quick direction
+changes). For one-handed play there is also a **tap-to-turn** scheme: tap the left half of the board to
+turn left, the right half to turn right. Your choice is saved. 180° reversals are blocked, so you can't
 instantly fold back into your own body. Tap **Play** on the main menu to start instantly with your
 last-used settings, or **Custom** to pick the mode, level, snake speed and board scale first; pause and
 restart from the in-game controls. Your best score is kept per (mode, level, scale).

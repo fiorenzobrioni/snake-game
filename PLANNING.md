@@ -314,10 +314,19 @@ snake-game/
 
 **Accessibility & controls**
 
-- [ ] **Step 6.9.3 - Swipe sensitivity + tap-to-turn.** Add a swipe-distance threshold setting and an
-      optional "tap a screen half to turn" scheme (left half = turn left, right half = turn right) for
-      comfortable one-handed play. Impl: new `ControlScheme.TapTurn` (or a sensitivity slider in Settings)
-      wired through `GameControls` / `swipeToSteer`; persist via `SettingsRepository`.
+- [x] **Step 6.9.3 - Swipe sensitivity + tap-to-turn.** A **swipe sensitivity** slider (0..100%, persisted as
+      `swipe_sensitivity`) maps to the steer threshold via `swipeThresholdPx(sensitivity)` in `GameControls`;
+      the midpoint 50% reproduces the existing tuned 48px distance exactly, so the default feel is unchanged.
+      The slider is surfaced in Settings only when the Swipe scheme is active. A new `ControlScheme.TapTurn`
+      lets the player turn **relative to the heading** by tapping the **left/right half of the board** (left =
+      counter-clockwise, right = clockwise) via the `Modifier.tapToTurn` gesture - comfortable one-handed play
+      with no buttons stealing board space. The old **Two buttons** scheme was **removed** as redundant
+      (Tap-to-turn is the same relative-turn mechanic, one-handed and without occupying board space), leaving a
+      clean, non-overlapping set: Swipe (absolute) / D-pad (4-way) / Tap-to-turn (relative). The **D-pad** was
+      restyled premium and made **compact**: the flat `FilledTonalButton`s became skin-tinted glassy keys
+      (top-lit gradient fill, coloured rim, lift shadow, press-scale + ripple) with **perfectly centred,
+      Canvas-drawn vector chevrons** replacing the off-centre Unicode glyphs, laid out as a tight regular cross
+      (58dp buttons, 6dp gaps) so the thumb travels less between directions when the snake is fast.
 
 - [x] **Step 6.9.4 - Auto-pause on focus loss.** When the app is backgrounded mid-run it now auto-pauses
       instead of letting the loop tick unseen. The `App` lifecycle observer calls

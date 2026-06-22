@@ -281,8 +281,18 @@ fun GameScreen(
                     boardModifier = boardModifier.graphicsLayer { renderEffect = crtEffect }
                 }
                 boardModifier = boardModifier.offset { IntOffset(shakeX.roundToInt(), shakeY.roundToInt()) }
-                if (state.status == GameStatus.Running && viewModel.controlScheme == ControlScheme.Swipe) {
-                    boardModifier = boardModifier.swipeToSteer(onSwipe = viewModel::onSwipe)
+                if (state.status == GameStatus.Running) {
+                    when (viewModel.controlScheme) {
+                        ControlScheme.Swipe -> boardModifier = boardModifier.swipeToSteer(
+                            thresholdPx = swipeThresholdPx(viewModel.swipeSensitivity),
+                            onSwipe = viewModel::onSwipe,
+                        )
+                        ControlScheme.TapTurn -> boardModifier = boardModifier.tapToTurn(
+                            onLeft = viewModel::turnLeft,
+                            onRight = viewModel::turnRight,
+                        )
+                        else -> Unit
+                    }
                 }
                 // The board interior stays dark, but its frame follows the theme:
                 // a branded green border on the light surround, the skin's subtle
@@ -472,19 +482,15 @@ private fun ControlRegion(
     modifier: Modifier = Modifier,
 ) {
     when (scheme) {
-        ControlScheme.TwoButton -> RelativeControls(
-            onLeft = viewModel::turnLeft,
-            onRight = viewModel::turnRight,
-            modifier = modifier,
-        )
-
         ControlScheme.DPad -> DirectionPad(
             onDirection = viewModel::setDirection,
+            palette = viewModel.palette,
             modifier = modifier,
         )
 
-        // Swipe steers directly on the board; no bottom buttons needed.
-        ControlScheme.Swipe -> Unit
+        // Swipe and Tap-to-turn both steer directly on the board; no bottom
+        // buttons needed.
+        ControlScheme.Swipe, ControlScheme.TapTurn -> Unit
     }
 }
 
