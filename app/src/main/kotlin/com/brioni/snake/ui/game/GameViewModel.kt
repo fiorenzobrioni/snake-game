@@ -1,6 +1,7 @@
 package com.brioni.snake.ui.game
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -12,6 +13,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.brioni.snake.audio.GameHaptics
 import com.brioni.snake.audio.GameSfx
+import com.brioni.snake.data.DEFAULT_SWIPE_SENSITIVITY
 import com.brioni.snake.data.SettingsRepository
 import com.brioni.snake.game.Achievement
 import com.brioni.snake.game.BackBehavior
@@ -141,6 +143,10 @@ class GameViewModel(
 
     /** Active steering scheme (loaded from settings). */
     var controlScheme by mutableStateOf(DEFAULT_CONTROL)
+        private set
+
+    /** Swipe steering sensitivity (0..1; loaded from settings). */
+    var swipeSensitivity by mutableFloatStateOf(DEFAULT_SWIPE_SENSITIVITY)
         private set
 
     /** What the Back gesture does during active play (loaded from settings). */
@@ -317,6 +323,7 @@ class GameViewModel(
         viewModelScope.launch {
             repo.settings.collect { settings ->
                 controlScheme = settings.controlScheme
+                swipeSensitivity = settings.swipeSensitivity
                 backBehavior = settings.backBehavior
                 crtEnabled = settings.crtEnabled
                 reduceMotion = settings.reduceMotion

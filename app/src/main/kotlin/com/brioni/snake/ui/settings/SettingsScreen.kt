@@ -104,6 +104,15 @@ fun SettingsScreen(
             onSelected = { scheme -> scope.launch { repo.setControlScheme(scheme) } },
         )
 
+        // The swipe-distance threshold only applies to the Swipe scheme, so it is
+        // surfaced just when that scheme is active.
+        if (settings.controlScheme == ControlScheme.Swipe) {
+            SensitivitySection(
+                value = settings.swipeSensitivity,
+                onCommit = { scope.launch { repo.setSwipeSensitivity(it) } },
+            )
+        }
+
         ChoiceSection(
             title = stringResource(R.string.settings_level),
             options = Level.entries,
@@ -360,6 +369,39 @@ private fun Swatch(color: androidx.compose.ui.graphics.Color) {
             .clip(RoundedCornerShape(4.dp))
             .background(color),
     )
+}
+
+/**
+ * The swipe sensitivity slider (0..100%). Local state tracks the drag for instant
+ * feedback; the value is persisted only when the gesture ends to avoid a DataStore
+ * write per pixel. 50% reproduces the game's tuned default swipe distance.
+ */
+@Composable
+private fun SensitivitySection(
+    value: Float,
+    onCommit: (Float) -> Unit,
+) {
+    var sliderValue by remember { mutableFloatStateOf(value) }
+    LaunchedEffect(value) { sliderValue = value }
+
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = stringResource(R.string.settings_swipe_sensitivity, (sliderValue * 100).roundToInt()),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(bottom = 4.dp),
+        )
+        Slider(
+            value = sliderValue,
+            onValueChange = { sliderValue = it },
+            onValueChangeFinished = { onCommit(sliderValue) },
+            valueRange = 0f..1f,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
 }
 
 @Composable
