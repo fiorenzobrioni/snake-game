@@ -1,6 +1,7 @@
 package com.brioni.snake.game
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -11,8 +12,8 @@ import org.junit.Test
 class SkinTest {
 
     @Test
-    fun `four skins are offered`() {
-        assertEquals(4, Skin.entries.size)
+    fun `six skins are offered`() {
+        assertEquals(6, Skin.entries.size)
     }
 
     @Test
@@ -23,7 +24,41 @@ class SkinTest {
     }
 
     @Test
-    fun `classic is the default-facing first entry`() {
-        assertEquals(Skin.Classic, Skin.entries.first())
+    fun `retro is the default-facing first entry, classic second`() {
+        assertEquals(Skin.Retro, Skin.entries[0])
+        assertEquals(Skin.Classic, Skin.entries[1])
+    }
+
+    @Test
+    fun `only retro and classic are unlocked by default`() {
+        assertEquals(setOf(Skin.Retro, Skin.Classic), Skin.defaultUnlocked)
+    }
+
+    @Test
+    fun `score milestones unlock neon and pixel`() {
+        // Neon needs 500, Pixel needs 1500 in a single run; streak irrelevant.
+        assertEquals(emptyList<Skin>(), Skin.newlyUnlocked(score = 499, streak = 0, already = emptySet()))
+        assertTrue(Skin.Neon in Skin.newlyUnlocked(score = 500, streak = 0, already = emptySet()))
+        assertFalse(Skin.Pixel in Skin.newlyUnlocked(score = 1499, streak = 0, already = emptySet()))
+        assertTrue(Skin.Pixel in Skin.newlyUnlocked(score = 1500, streak = 0, already = emptySet()))
+    }
+
+    @Test
+    fun `streak milestones unlock aurora and ember`() {
+        assertFalse(Skin.Aurora in Skin.newlyUnlocked(score = 0, streak = 6, already = emptySet()))
+        assertTrue(Skin.Aurora in Skin.newlyUnlocked(score = 0, streak = 7, already = emptySet()))
+        assertFalse(Skin.Ember in Skin.newlyUnlocked(score = 0, streak = 29, already = emptySet()))
+        assertTrue(Skin.Ember in Skin.newlyUnlocked(score = 0, streak = 30, already = emptySet()))
+    }
+
+    @Test
+    fun `always-unlocked and already-earned skins are never reported`() {
+        // Retro/Classic are Always: they never appear in newlyUnlocked.
+        val big = Skin.newlyUnlocked(score = 5000, streak = 60, already = emptySet())
+        assertFalse(Skin.Retro in big)
+        assertFalse(Skin.Classic in big)
+        // Already-unlocked gated skins are excluded.
+        val again = Skin.newlyUnlocked(score = 5000, streak = 60, already = big.map { it.name }.toSet())
+        assertEquals(emptyList<Skin>(), again)
     }
 }

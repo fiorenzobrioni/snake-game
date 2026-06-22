@@ -156,7 +156,7 @@ class GameViewModel(
         private set
 
     /** Active visual skin (loaded from settings); drives the renderer [palette]. */
-    var skin by mutableStateOf(Skin.Classic)
+    var skin by mutableStateOf(Skin.Retro)
         private set
 
     /** Whether harmful specials (earthquake/explosion/snail) may spawn (setting). */
@@ -233,6 +233,10 @@ class GameViewModel(
 
     /** Achievements unlocked by the most recent run (for the game-over banner). */
     var newlyUnlocked by mutableStateOf<List<Achievement>>(emptyList())
+        private set
+
+    /** Skins unlocked by the most recent run (for the game-over banner). */
+    var newlyUnlockedSkins by mutableStateOf<List<Skin>>(emptyList())
         private set
 
     /**
@@ -555,6 +559,7 @@ class GameViewModel(
         runExtraLives = 0
         runMaxLength = state.snake.size
         newlyUnlocked = emptyList()
+        newlyUnlockedSkins = emptyList()
         missionsProgress = emptyList()
     }
 
@@ -815,29 +820,45 @@ class GameViewModel(
             extraLivesGained = runExtraLives,
             maxSnakeLength = runMaxLength,
         )
-        // Persist; the bestJob collector reflects the new value back into state.
-        // The Daily keeps its own per-day best (and streak); a Random challenge is
-        // a one-off and stores nothing; a normal run uses the (mode, level, scale) records.
+        // Persist scores, then evaluate achievements and skin unlocks against the
+        // run. The Daily keeps its own per-day best (and streak); a Random challenge
+        // is a one-off and stores nothing; a normal run uses the (mode, level, scale)
+        // records. For a Daily, submitting first lets the streak achievements / skin
+        // rewards see the just-updated streak.
         val epochDay = dailyEpochDay
-        when {
-            epochDay != null -> viewModelScope.launch { repo.submitDailyScore(epochDay, score) }
-            activeChallenge != null -> Unit // Random challenge: not recorded.
-            else -> {
-                viewModelScope.launch { repo.submitScore(mode, state.level, scale, score) }
-                if (mode == GameMode.Levels) {
-                    // Levels: also track how deep the run got, for the Records screen.
-                    val completed = (state.speedCycle - 1) * LevelsMode.LEVEL_COUNT + (state.levelIndex - 1)
-                    viewModelScope.launch { repo.submitLevelsProgress(scale, completed) }
+        viewModelScope.launch {
+            val streak = when {
+                epochDay != null -> {
+                    repo.submitDailyScore(epochDay, score)
+                    repo.dailyStreak().first()
+                }
+                activeChallenge != null -> 0 // Random challenge: not recorded.
+                else -> {
+                    repo.submitScore(mode, state.level, scale, score)
+                    if (mode == GameMode.Levels) {
+                        // Levels: also track how deep the run got, for the Records screen.
+                        val completed = (state.speedCycle - 1) * LevelsMode.LEVEL_COUNT + (state.levelIndex - 1)
+                        repo.submitLevelsProgress(scale, completed)
+                    }
+                    0
                 }
             }
-        }
-        // Evaluate achievements against the run and surface any new unlocks.
-        viewModelScope.launch {
-            val already = repo.unlockedAchievements().first()
-            val earned = Achievement.earnedBy(stats, already)
+            // Bring the daily streak into the run stats so the streak achievements
+            // (and streak-gated skins) judge against the post-run value.
+            val finalStats = stats.copy(dailyStreak = streak)
+            val unlockedAchievements = repo.unlockedAchievements().first()
+            val earned = Achievement.earnedBy(finalStats, unlockedAchievements)
             if (earned.isNotEmpty()) {
                 repo.addUnlockedAchievements(earned.map { it.name })
                 newlyUnlocked = earned
+            }
+            // Reward progression: unlock gated skins reached by this run's score /
+            // the post-run streak, and surface them in the game-over banner.
+            val unlockedSkins = repo.unlockedSkins().first()
+            val newSkins = Skin.newlyUnlocked(score, streak, unlockedSkins)
+            if (newSkins.isNotEmpty()) {
+                repo.addUnlockedSkins(newSkins.map { it.name })
+                newlyUnlockedSkins = newSkins
             }
         }
         // Evaluate today's rotating missions (Step 6.9.5) and surface the full set

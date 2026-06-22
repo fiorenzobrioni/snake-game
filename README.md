@@ -59,10 +59,13 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - 🎮 **Control schemes** - **swipe** by default, or a two-button *relative* steering / classic D-pad.
   A forgiving **coyote frame** makes a beat-late turn still count: the first lethal step makes the head
   hesitate one tick (instead of dying), giving you a moment to turn away - re-armed by your next safe move.
-- 🎨 **Skins** - four selectable looks (**Classic / Neon / Retro / Pixel**), each its own palette and
-  cell shape, all available immediately in Settings. The glow skins (Classic / Neon) draw snake, food and
-  power-ups as haloed round pieces; the flat skins (Retro / Pixel) render everything as squares (crisp on
-  Pixel, lightly rounded on Retro) for a coherent blocky look.
+- 🎨 **Skins** - six selectable looks, each its own palette and render style. **Retro** (the default) and
+  **Classic** are unlocked from the start; the rest are earned: **Neon** (score 500 in a run), **Pixel**
+  (score 1500), **Aurora** (a 7-day Daily streak) and **Ember** (a 30-day Daily streak). Locked skins show
+  their unlock condition in Settings. The glow skins (Classic / Neon / Aurora / Ember) draw food and
+  power-ups as haloed round pieces; the flat skins (Retro / Pixel) render them as squares (crisp on Pixel,
+  lightly rounded on Retro). Aurora and Ember pair a glowing look with a **segmented** snake body that reads
+  beautifully through teleports and the invincibility shimmer.
 - 🌗 **Theme** - choose **Light**, **Dark** or **System** (follows the device) in Settings.
 - 🔊 **Music & sound effects** - looping background music that crossfades between the menu and
   gameplay, plus SFX for eating, shrinking, mystery pieces, game over and UI. Independent
@@ -98,9 +101,9 @@ The classic Snake mechanics, extended with configurable features so every run fe
   penalty, each with a floating callout.
 - 🏆 **Records screen** - a best-score table per difficulty × board scale (and per mode), reachable
   from the main menu.
-- 🎖️ **Achievements** - twenty-five local milestones (combos, scores, endurance, eating sprees, using
-  power-ups, growing a very long snake…) that unlock as you play, with a dedicated screen and an unlock
-  banner on the game-over screen.
+- 🎖️ **Achievements** - twenty-seven local milestones (combos, scores, endurance, eating sprees, using
+  power-ups, growing a very long snake, keeping a Daily streak…) that unlock as you play, with a dedicated
+  screen and an unlock banner on the game-over screen.
 - 📊 **Run recap** - the game-over screen shows a short summary of the run: foods eaten, best combo, time
   survived, the snake's longest length and, in Campaign, the deepest level reached.
 - 🎯 **Daily missions** - three rotating per-run goals (eat so many foods, reach a combo, survive a time,
@@ -112,8 +115,9 @@ The classic Snake mechanics, extended with configurable features so every run fe
   scale) when you want to tweak everything.
 - 📅 **Daily Challenge** - a date-seeded run with the same mode, level, board and **daily twist** for
   everyone that day (the twist rotates through Bonus Rush, Frenzy and Compact Arena; the obstacle layout
-  and food sequence come from the day's seed). Beat your **best today** and build a **day streak**.
-  Reached from the main menu.
+  and food sequence come from the day's seed). Beat your **best today** and build a **day streak** (which
+  unlocks the Aurora and Ember skins at 7 and 30 days). A **This Week** screen shows your last 7 days of
+  Daily results and a weekly best / total. Reached from the main menu.
 - 🎲 **Random Challenge** - a one-off surprise run for variety: **Shuffle** for a fresh mode / level /
   board / twist mix, then play. Nothing is recorded - it's pure fun.
 - 🕹️ **Game modes** - **Endless** (speed ramps up the longer you survive; the default),

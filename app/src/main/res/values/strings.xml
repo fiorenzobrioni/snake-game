@@ -29,6 +29,14 @@
     <string name="daily_streak_value">%1$d</string>
     <string name="daily_play">Play</string>
     <string name="daily_play_again">Play again</string>
+    <string name="daily_history_button">This week</string>
+
+    <!-- Daily history / weekly screen (Step 6.9.10) -->
+    <string name="daily_history_title">This Week</string>
+    <string name="daily_history_subtitle">Your Daily results over the last 7 days.</string>
+    <string name="daily_history_week_best">Best</string>
+    <string name="daily_history_week_total">Total</string>
+    <string name="daily_history_days_played">Days</string>
 
     <!-- Random Challenge -->
     <string name="random_title">Random Challenge</string>
@@ -91,6 +99,8 @@
     <string name="settings_crt_filter">Retro CRT filter</string>
     <string name="settings_back_behavior">Back during play</string>
     <string name="settings_skin">Skin</string>
+    <string name="skin_locked">Locked</string>
+    <string name="skin_unlocked">Skin unlocked!</string>
     <string name="settings_theme">Theme</string>
     <string name="settings_hazards">Hazards (earthquake, explosion, snail)</string>
     <string name="settings_special_frequency">Special blocks</string>

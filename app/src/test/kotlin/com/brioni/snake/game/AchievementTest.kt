@@ -21,10 +21,11 @@ class AchievementTest {
         maxLevelDepth: Int = 0,
         flawlessLap: Boolean = false,
         maxSnakeLength: Int = 0,
+        dailyStreak: Int = 0,
     ) = RunStats(
         mode, score, maxCombo, durationMs, foodsEaten, usedExplosion, usedStar, usedJackpot,
         maxLevelReached = maxLevelReached, maxSpeedCycle = maxSpeedCycle, maxLevelDepth = maxLevelDepth,
-        flawlessLap = flawlessLap, maxSnakeLength = maxSnakeLength,
+        flawlessLap = flawlessLap, maxSnakeLength = maxSnakeLength, dailyStreak = dailyStreak,
     )
 
     @Test
@@ -95,6 +96,21 @@ class AchievementTest {
         // Reaching only Level 10 of Speed 1 (depth 10) earns neither.
         assertFalse(Achievement.TowerMaster.test(stats(mode = GameMode.Levels, maxLevelDepth = 10)))
         assertFalse(Achievement.TowerSovereign.test(stats(mode = GameMode.Levels, maxLevelDepth = 10)))
+    }
+
+    @Test
+    fun `daily streak achievements gate on the streak length`() {
+        assertFalse(Achievement.WeekWarrior.test(stats(dailyStreak = 6)))
+        assertTrue(Achievement.WeekWarrior.test(stats(dailyStreak = 7)))
+        assertFalse(Achievement.MonthMaster.test(stats(dailyStreak = 29)))
+        assertTrue(Achievement.MonthMaster.test(stats(dailyStreak = 30)))
+        // A 30-day streak earns both at once; no streak earns neither.
+        val both = Achievement.earnedBy(stats(dailyStreak = 30), already = emptySet())
+        assertTrue(Achievement.WeekWarrior in both)
+        assertTrue(Achievement.MonthMaster in both)
+        val none = Achievement.earnedBy(stats(dailyStreak = 0), already = emptySet())
+        assertFalse(Achievement.WeekWarrior in none)
+        assertFalse(Achievement.MonthMaster in none)
     }
 
     @Test

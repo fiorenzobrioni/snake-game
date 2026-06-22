@@ -17,6 +17,10 @@ import com.brioni.snake.game.Skin
  *                     squares, ~0.5 → bubbly rounded). Shapes obstacles, snake
  *                     and (regular) food, so skins differ in form, not just hue.
  * @param useGlow      emit the radial head glow / food halos (false → flat styling).
+ * @param segmentedBody draw the snake body as discrete tapered blocks instead of a
+ *                     continuous tube. Independent of [useGlow], so a glowing skin
+ *                     can still wear a per-segment body (reads better through
+ *                     teleports / the invincibility shimmer).
  */
 data class SkinPalette(
     // Board background — a vertical gradient with a framed border.
@@ -50,6 +54,7 @@ data class SkinPalette(
     // Style flags.
     val cornerFactor: Float,
     val useGlow: Boolean,
+    val segmentedBody: Boolean,
 ) {
     /** Colour identity of a food, from its category and magnitude tier. */
     fun foodColor(food: Food): Color = when (food.category) {
@@ -76,6 +81,8 @@ fun paletteFor(skin: Skin): SkinPalette = when (skin) {
     Skin.Neon -> NeonPalette
     Skin.Retro -> RetroPalette
     Skin.Pixel -> PixelPalette
+    Skin.Aurora -> AuroraPalette
+    Skin.Ember -> EmberPalette
 }
 
 /** Original identity: lime snake, green/warm foods, gray obstacles, dark gradient. */
@@ -104,6 +111,7 @@ private val ClassicPalette = SkinPalette(
     special = Color(0xFFB388FF),
     cornerFactor = 0.30f,
     useGlow = true,
+    segmentedBody = false,
 )
 
 /** Saturated cyan/magenta on near-black with boosted glow. */
@@ -132,6 +140,7 @@ private val NeonPalette = SkinPalette(
     special = Color(0xFFFFEA00),
     cornerFactor = 0.50f,
     useGlow = true,
+    segmentedBody = false,
 )
 
 /** Warm phosphor arcade palette; flat styling that pairs with the CRT filter. */
@@ -160,6 +169,7 @@ private val RetroPalette = SkinPalette(
     special = Color(0xFFFFD166),
     cornerFactor = 0.16f,
     useGlow = false,
+    segmentedBody = true,
 )
 
 /** Flat, square, glow-free pixel-art styling. */
@@ -188,4 +198,71 @@ private val PixelPalette = SkinPalette(
     special = Color(0xFFB388FF),
     cornerFactor = 0.0f,
     useGlow = false,
+    segmentedBody = true,
+)
+
+/**
+ * Aurora borealis: a cool indigo board lit by teal/green/violet light, with glow.
+ * Wears a segmented body so the colourful pieces shimmer through teleports and the
+ * Star invincibility blink.
+ */
+private val AuroraPalette = SkinPalette(
+    boardTop = Color(0xFF101A2E),
+    boardBottom = Color(0xFF050811),
+    gridLine = Color(0x1A4DE6C8),
+    boardBorder = Color(0xFF2BD6C0),
+    obstacle = Color(0xFF2A3A5A),
+    obstacleHighlight = Color(0xFF6FA8D6),
+    obstacleShadow = Color(0xFF131D33),
+    snakeBody = Color(0xFF2BE0B0),
+    snakeHead = Color(0xFF7CFFD6),
+    snakeOutline = Color(0xFF12604F),
+    snakeEye = Color(0xFF050811),
+    headGlow = Color(0xFF3BE8C8),
+    growSmall = Color(0xFF9CF0C0),
+    growMedium = Color(0xFF4DE6A0),
+    growLarge = Color(0xFF2BC78C),
+    growHuge = Color(0xFF1E9E78),
+    growMystery = Color(0xFFB68CFF),
+    shrinkSmall = Color(0xFFFFD28C),
+    shrinkMedium = Color(0xFFFF9F6B),
+    shrinkLarge = Color(0xFFFF5C8A),
+    shrinkMystery = Color(0xFFFF7AC0),
+    special = Color(0xFFC299FF),
+    cornerFactor = 0.22f,
+    useGlow = true,
+    segmentedBody = true,
+)
+
+/**
+ * Ember: a dark charcoal board with a warm underglow and a molten orange snake,
+ * intense glow. Segmented body so the lava pieces trail brightly through teleports
+ * and the Star shimmer.
+ */
+private val EmberPalette = SkinPalette(
+    boardTop = Color(0xFF241008),
+    boardBottom = Color(0xFF0C0603),
+    gridLine = Color(0x1AFF7A2A),
+    boardBorder = Color(0xFFFF7A2A),
+    obstacle = Color(0xFF4A2A1A),
+    obstacleHighlight = Color(0xFF8C5A38),
+    obstacleShadow = Color(0xFF1E0F08),
+    snakeBody = Color(0xFFFF7A1A),
+    snakeHead = Color(0xFFFFC24D),
+    snakeOutline = Color(0xFF7A2E08),
+    snakeEye = Color(0xFF0C0603),
+    headGlow = Color(0xFFFF6A1A),
+    growSmall = Color(0xFFFFE08A),
+    growMedium = Color(0xFFFFC24D),
+    growLarge = Color(0xFFFF9A2E),
+    growHuge = Color(0xFFFF6A1A),
+    growMystery = Color(0xFFFFE36B),
+    shrinkSmall = Color(0xFFB388FF),
+    shrinkMedium = Color(0xFF8C5CFF),
+    shrinkLarge = Color(0xFFE53935),
+    shrinkMystery = Color(0xFFFF5252),
+    special = Color(0xFF66E0FF),
+    cornerFactor = 0.18f,
+    useGlow = true,
+    segmentedBody = true,
 )

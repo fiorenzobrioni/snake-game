@@ -242,7 +242,11 @@ snake-game/
 
 ### Phase 6 - Content & replayability
 
-- [x] **Step 6.1** - Skin system (Classic / Neon / Retro / Pixel = palette + render style + optional shader).
+- [x] **Step 6.1** - Skin system (palette + render style + optional shader). Now **six** skins: Retro
+      (default) / Classic / Neon / Pixel / Aurora / Ember. Render style is two independent `SkinPalette`
+      flags: `useGlow` (head glow + food halos) and `segmentedBody` (per-piece body vs continuous tube), so
+      Aurora / Ember glow **and** wear a segmented body (reads better through teleports / the Star shimmer).
+      Skins carry an unlock rule and only Retro + Classic are free (see Step 6.9.9).
 - [x] **Step 6.2** - **Special food pieces / power-ups & hazards** (extends the Phase 2.5 food system).
       All are **maxi-sized** with a distinctive shape/symbol, **time-gated** (appear later in a session)
       and surfaced through the existing `GameEvent` channel + HUD timers. They add `FoodCategory.Special`,
@@ -371,18 +375,22 @@ snake-game/
 
 **Retention & social**
 
-- [ ] **Step 6.9.8 - Daily streak achievements & rewards.** Tie achievements (and maybe an unlockable skin)
-      to the Daily Challenge streak ("7-day streak", "30-day streak"). Impl: the streak already lives in
-      `SettingsRepository` (`dailyStreak`); add `Achievement` entries that read it, and gate a `Skin` behind a
-      milestone.
+- [x] **Step 6.9.8 - Daily streak achievements & rewards.** Two `Achievement` entries read the post-run
+      Daily streak (`RunStats.dailyStreak`): `WeekWarrior` (7-day) and `MonthMaster` (30-day). The streak
+      also rewards skins: Aurora unlocks at 7 days, Ember at 30 (see Step 6.9.9). `GameViewModel.onGameOver`
+      submits the daily score first, then reads `dailyStreak()` so the streak is current before evaluation.
 
-- [ ] **Step 6.9.9 - Unlockable skins.** The four skins are all available immediately; gate some behind
-      achievements / streaks / score milestones to give long-term goals. Impl: an "unlocked skins" set in
-      `SettingsRepository`, a lock state in the Settings skin picker, and unlock triggers on game-over.
+- [x] **Step 6.9.9 - Unlockable skins.** Skins now carry a `SkinUnlock` rule (`Always` / `Score` / `Streak`).
+      Retro (the new default) and Classic are always unlocked and listed first; Neon (score 500), Pixel
+      (score 1500), Aurora (7-day streak) and Ember (30-day streak) are gated. An `unlocked_skins` set in
+      `SettingsRepository` persists earned skins; `Skin.newlyUnlocked` evaluates new unlocks on game-over;
+      the Settings picker shows locked cards (dimmed, lock badge, requirement hint) that can't be selected,
+      and the game-over overlay surfaces any skin just unlocked.
 
-- [ ] **Step 6.9.10 - Weekly challenge / local Daily history.** A small screen showing the last 7 days'
-      Daily results (best per day) and a "this week" aggregate. Impl: the per-day bests are already stored
-      (`daily_best_<epochDay>`); add a bulk read over the last N days and a simple table view.
+- [x] **Step 6.9.10 - Weekly challenge / local Daily history.** `DailyHistoryScreen` ("This Week", reached
+      from the Daily hub) shows the last 7 days of Daily results - best per day plus that day's twist - and a
+      week aggregate (best / total / days played). `SettingsRepository.dailyBests(endEpochDay, days)` bulk-reads
+      the per-day `daily_best_<epochDay>` keys.
 
 - [ ] **Step 6.9.11 - Share your score.** From the game-over (and Daily) screen, render a small score card
       and open the Android share sheet (`ACTION_SEND` with a generated image). Impl: draw the card to a
