@@ -437,8 +437,8 @@ snake-game/
 **Onboarding & polish**
 
 - [ ] **Step 6.9.13 - First-run onboarding / tutorial.** A brief, skippable intro on first launch (controls
-      + objective), so new players aren't dropped cold. Impl: a one-time flag in `SettingsRepository`; a
-      lightweight overlay or a 2-3 card pager shown before the first game.
+      + objective + food-powerup-hazard types), so new players aren't dropped cold. Impl: a one-time flag in `SettingsRepository`; a
+      lightweight overlay or a 3-4 card pager shown before the first game.
 
 ### Phase 7 - Play Store distribution & cleanup
 
