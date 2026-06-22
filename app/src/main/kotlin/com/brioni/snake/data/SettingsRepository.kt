@@ -47,6 +47,8 @@ data class Settings(
     val specialFrequency: SpecialFrequency = SpecialFrequency.Standard,
     val mode: GameMode = GameMode.Endless,
     val themeMode: ThemeMode = ThemeMode.Dark,
+    /** First-run flag: true once the player has seen (or skipped) the tutorial. */
+    val onboardingCompleted: Boolean = false,
 )
 
 /** Default audio levels (also used as the in-memory fallback before load). */
@@ -89,6 +91,7 @@ class SettingsRepository(private val context: Context) {
             specialFrequency = prefs[SPECIAL_FREQUENCY].toEnum(SpecialFrequency::valueOf) ?: SpecialFrequency.Standard,
             mode = prefs[MODE].toEnum(GameMode::valueOf) ?: GameMode.Endless,
             themeMode = prefs[THEME_MODE].toEnum(ThemeMode::valueOf) ?: ThemeMode.Dark,
+            onboardingCompleted = prefs[ONBOARDING_COMPLETED] ?: false,
         )
     }
 
@@ -142,6 +145,14 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setThemeMode(themeMode: ThemeMode) =
         edit { it[THEME_MODE] = themeMode.name }
+
+    /** Whether the first-run tutorial has been seen or skipped. */
+    fun onboardingCompleted(): Flow<Boolean> =
+        context.dataStore.data.map { it[ONBOARDING_COMPLETED] ?: false }
+
+    /** Marks the first-run tutorial as seen so it never auto-shows again. */
+    suspend fun setOnboardingCompleted(completed: Boolean) =
+        edit { it[ONBOARDING_COMPLETED] = completed }
 
     /** The stored best for a (mode × level × scale) slot (0 if none yet). */
     fun highScore(mode: GameMode, level: Level, scale: BoardScale): Flow<Int> =
@@ -317,6 +328,7 @@ class SettingsRepository(private val context: Context) {
         val SPECIAL_FREQUENCY = stringPreferencesKey("special_frequency")
         val MODE = stringPreferencesKey("game_mode")
         val THEME_MODE = stringPreferencesKey("theme_mode")
+        val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         val UNLOCKED_ACHIEVEMENTS = stringSetPreferencesKey("unlocked_achievements")
         val UNLOCKED_SKINS = stringSetPreferencesKey("unlocked_skins")
         val COMPLETED_MISSIONS = stringSetPreferencesKey("completed_missions")

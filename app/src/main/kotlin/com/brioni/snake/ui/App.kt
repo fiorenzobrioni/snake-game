@@ -15,9 +15,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -43,11 +45,13 @@ import com.brioni.snake.ui.daily.DailyHistoryScreen
 import com.brioni.snake.ui.daily.RandomChallengeScreen
 import com.brioni.snake.ui.intro.BrandIntroScreen
 import com.brioni.snake.ui.menu.MainMenuScreen
+import com.brioni.snake.ui.onboarding.OnboardingScreen
 import com.brioni.snake.ui.records.RecordsScreen
 import com.brioni.snake.ui.settings.SettingsScreen
+import kotlinx.coroutines.launch
 
 /** The top-level destinations. [Intro] is the cold-launch brand splash. */
-private enum class Screen { Intro, Menu, Game, Daily, DailyHistory, Random, Settings, Records, Achievements, Credits }
+private enum class Screen { Intro, Menu, Game, Daily, DailyHistory, Random, Settings, Records, Achievements, Credits, Onboarding }
 
 /**
  * Root of the UI. Hosts a lightweight, state-based navigation between the main
@@ -66,9 +70,16 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
     val haptics = remember(context) { HapticController(context.applicationContext, repo) }
     val gameViewModel: GameViewModel = viewModel(factory = GameViewModel.factory(repo, audio, haptics))
 
+    val scope = rememberCoroutineScope()
+    // First-run flag: drives whether the splash hands off to the tutorial or the menu.
+    val onboardingCompleted by repo.onboardingCompleted().collectAsState(initial = false)
+
     var ordinal by rememberSaveable { mutableIntStateOf(Screen.Intro.ordinal) }
     val screen = Screen.entries[ordinal]
     fun navigate(target: Screen) { ordinal = target.ordinal }
+    // Where the tutorial returns to: the Menu after the first run, or Settings when
+    // re-opened from the "How to play" entry there.
+    var onboardingReturnOrdinal by rememberSaveable { mutableIntStateOf(Screen.Menu.ordinal) }
 
     // Crossfade music to match the screen (menu/settings share the menu track).
     LaunchedEffect(screen) {
@@ -102,7 +113,7 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
     // Secondary screens go back to the Menu; the Daily history nests under Daily;
     // the Game screen owns its own back (pause vs. exit) and the Menu is the root
     // (the system handles back/exit).
-    BackHandler(enabled = screen != Screen.Menu && screen != Screen.Game) {
+    BackHandler(enabled = screen != Screen.Menu && screen != Screen.Game && screen != Screen.Onboarding) {
         navigate(if (screen == Screen.DailyHistory) Screen.Daily else Screen.Menu)
     }
 
@@ -130,7 +141,12 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
             Box(Modifier.fillMaxSize().blur(blurRadius)) {
                 when (current) {
                     Screen.Intro -> BrandIntroScreen(
-                        onFinished = { navigate(Screen.Menu) },
+                        // First launch hands off to the tutorial; afterwards straight
+                        // to the menu. The 4.1 s splash masks the DataStore load, so the
+                        // flag is settled by the time this fires.
+                        onFinished = {
+                            navigate(if (onboardingCompleted) Screen.Menu else Screen.Onboarding)
+                        },
                         modifier = Modifier.fillMaxSize(),
                     )
 
@@ -200,6 +216,10 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
                         repo = repo,
                         audio = audio,
                         onBack = { navigate(Screen.Menu) },
+                        onShowTutorial = {
+                            onboardingReturnOrdinal = Screen.Settings.ordinal
+                            navigate(Screen.Onboarding)
+                        },
                         modifier = Modifier.fillMaxSize(),
                     )
 
@@ -217,6 +237,16 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
 
                     Screen.Credits -> CreditsScreen(
                         onBack = { navigate(Screen.Menu) },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+
+                    Screen.Onboarding -> OnboardingScreen(
+                        repo = repo,
+                        onFinished = {
+                            scope.launch { repo.setOnboardingCompleted(true) }
+                            navigate(Screen.entries[onboardingReturnOrdinal])
+                            onboardingReturnOrdinal = Screen.Menu.ordinal
+                        },
                         modifier = Modifier.fillMaxSize(),
                     )
                 }

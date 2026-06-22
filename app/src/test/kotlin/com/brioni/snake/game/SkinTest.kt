@@ -36,11 +36,11 @@ class SkinTest {
 
     @Test
     fun `score milestones unlock neon and pixel`() {
-        // Neon needs 500, Pixel needs 1500 in a single run; streak irrelevant.
-        assertEquals(emptyList<Skin>(), Skin.newlyUnlocked(score = 499, streak = 0, already = emptySet()))
-        assertTrue(Skin.Neon in Skin.newlyUnlocked(score = 500, streak = 0, already = emptySet()))
-        assertFalse(Skin.Pixel in Skin.newlyUnlocked(score = 1499, streak = 0, already = emptySet()))
-        assertTrue(Skin.Pixel in Skin.newlyUnlocked(score = 1500, streak = 0, already = emptySet()))
+        // Neon needs 1500, Pixel needs 5000 in a single run; streak irrelevant.
+        assertEquals(emptyList<Skin>(), Skin.newlyUnlocked(score = 1499, streak = 0, already = emptySet()))
+        assertTrue(Skin.Neon in Skin.newlyUnlocked(score = 1500, streak = 0, already = emptySet()))
+        assertFalse(Skin.Pixel in Skin.newlyUnlocked(score = 4999, streak = 0, already = emptySet()))
+        assertTrue(Skin.Pixel in Skin.newlyUnlocked(score = 5000, streak = 0, already = emptySet()))
     }
 
     @Test
