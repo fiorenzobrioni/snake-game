@@ -121,8 +121,10 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
 
     Box(modifier = modifier.fillMaxSize()) {
         // Shared animated AGSL backdrop behind the menu-family screens — only in the
-        // dark (brand) theme; the light theme keeps its plain light surface.
-        if (darkTheme && screen != Screen.Game && screen != Screen.Intro) {
+        // dark (brand) theme; the light theme keeps its plain light surface. The
+        // Onboarding screen draws its own (always-dark) backdrop, so it is excluded
+        // here to avoid stacking two animated shaders.
+        if (darkTheme && screen != Screen.Game && screen != Screen.Intro && screen != Screen.Onboarding) {
             AnimatedShaderBackground(modifier = Modifier.fillMaxSize())
         }
 
