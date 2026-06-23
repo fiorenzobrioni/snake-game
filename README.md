@@ -138,7 +138,7 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - 💎 **Polished navigation** - an **animated GPU background** behind the menus, a **branded main menu** laid out as a "game launcher" (a glowing wordmark with a small in-game-style snake emblem that follows your selected skin as the hero, over a bottom-anchored cluster of actions grouped by type so everything fits one screen), **premium action buttons** (gradient-lit, with a tactile press), and **blur-dissolve** screen transitions.
 - ⏸️ **Auto-pause** - backgrounding the app mid-run pauses the game automatically, so the snake never keeps moving while you're away.
 - 📜 **Credits screen** - an in-app **Credits / About** page (author, license and asset attribution), reachable from the main menu.
-- 🧭 **First-run tutorial** - a brief, skippable walkthrough (objective, controls, and the food / power-up / hazard types) on first launch, re-openable any time via **How to play** in Settings.
+- 🧭 **First-run tutorial** - a premium, skippable walkthrough on first launch, re-openable any time via **How to play** in Settings. Four dark, minimal cards (over the animated brand backdrop) explain the objective, the three control styles, the food types and the power-ups / hazards - each with detailed legend rows that show the real in-game pieces, icons and colours.
 
 ### 🍽️ Food system at a glance
 
