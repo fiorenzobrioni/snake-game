@@ -4,8 +4,8 @@ import kotlin.math.abs
 import kotlin.math.min
 
 /**
- * Rules and board shapes for [GameMode.Levels]: ten designed levels that repeat
- * forever, one speed cycle faster each lap, played with a stock of lives.
+ * Rules and board shapes for [GameMode.Levels]: fifteen designed levels that
+ * repeat forever, one speed cycle faster each lap, played with a stock of lives.
  *
  * Unlike the other modes there are no scattered obstacle blocks — each level
  * reshapes the *playable area* itself through wall cells ([shapeFor]) that the
@@ -18,8 +18,8 @@ import kotlin.math.min
  */
 object LevelsMode {
 
-    /** Designed levels per speed cycle; after level 10 the cycle wraps. */
-    const val LEVEL_COUNT = 10
+    /** Designed levels per speed cycle; after level 15 the cycle wraps. */
+    const val LEVEL_COUNT = 15
 
     /** Lives at the start of a run. */
     const val START_LIVES = 3
@@ -66,7 +66,12 @@ object LevelsMode {
             7 -> octagon(board)
             8 -> colonnade(board)
             9 -> threeChambers(board)
-            else -> vault(board)
+            10 -> vault(board)
+            11 -> lattice(board)
+            12 -> pinwheel(board)
+            13 -> crossVault(board)
+            14 -> diamondField(board)
+            else -> citadel(board)
         }
         val clearZone = protectedCenter(board)
         return raw.filterTo(LinkedHashSet()) { cell ->
@@ -95,6 +100,11 @@ object LevelsMode {
             7 -> octagonHazards(board)
             9 -> threeChamberHazards(board)
             10 -> vaultHazards(board)
+            11 -> latticeHazards(board)
+            12 -> pinwheelHazards(board)
+            13 -> crossVaultHazards(board)
+            14 -> diamondFieldHazards(board)
+            15 -> citadelHazards(board)
             else -> LevelHazards.EMPTY
         }
         return sanitize(raw, board, walls)
@@ -493,6 +503,227 @@ object LevelsMode {
             walls.remove(Position(right, top + 1 + i)) // right: near the top
             walls.remove(Position(right - 1 - i, bottom)) // bottom: near the right
             walls.remove(Position(left, bottom - 1 - i)) // left: near the bottom
+        }
+        return walls
+    }
+
+    /**
+     * Level 11 — The Lattice: a dense quincunx of single-cell pillars, offset
+     * row to row so the slalom is tighter than the Colonnade's aligned grid. The
+     * pillars are isolated (never adjacent), so the board always stays connected.
+     */
+    private fun lattice(b: BoardDimensions): Set<Position> {
+        val cx = b.width / 2
+        val cy = b.height / 2
+        return buildSet {
+            for (x in 1 until b.width - 1) {
+                for (y in 1 until b.height - 1) {
+                    val u = x - cx
+                    val v = y - cy
+                    val on = if (v.mod(2) == 0) u.mod(4) == 0 else (u - 2).mod(4) == 0
+                    if (on) add(Position(x, y))
+                }
+            }
+        }
+    }
+
+    /** Level 11 — a single long teleport pair across the lattice (NW <-> SE corner). */
+    private fun latticeHazards(b: BoardDimensions): LevelHazards {
+        val qx = b.width / 4
+        val qy = b.height / 4
+        return LevelHazards(
+            teleports = listOf(
+                TeleportPair(Position(qx, qy), Position(b.width - 1 - qx, b.height - 1 - qy)),
+            ),
+        )
+    }
+
+    /**
+     * Level 12 — Pinwheel: four open-ended vanes spin out of the centre (180°
+     * rotational), each reaching off in a different direction so they never
+     * enclose a pocket. The board stays open around every vane tip.
+     */
+    private fun pinwheel(b: BoardDimensions): Set<Position> {
+        val cx = b.width / 2
+        val cy = b.height / 2
+        val arm = (min(b.width, b.height) / 3).coerceAtLeast(3)
+        val off = (cutUnit(b) + 1)
+        return buildSet {
+            for (i in 0 until arm) {
+                // Top vane sweeps right, bottom vane sweeps left.
+                add(Position((cx + i).coerceAtMost(b.width - 2), cy - off))
+                add(Position((cx - i).coerceAtLeast(1), cy + off))
+                // Left vane sweeps up, right vane sweeps down.
+                add(Position(cx - off, (cy - i).coerceAtLeast(1)))
+                add(Position(cx + off, (cy + i).coerceAtMost(b.height - 2)))
+            }
+        }
+    }
+
+    /**
+     * Level 12 — two free-standing horizontal gate bars above and below the vanes,
+     * out of phase, with open ends to slip past while the pinwheel funnels the path.
+     */
+    private fun pinwheelHazards(b: BoardDimensions): LevelHazards {
+        val margin = (b.width / 5).coerceAtLeast(2)
+        val fromX = margin
+        val toX = b.width - 1 - margin
+        if (toX - fromX < 2) return LevelHazards.EMPTY
+        val cy = b.height / 2
+        val topRow = (cy - b.height / 4).coerceAtLeast(1)
+        val bottomRow = (cy + b.height / 4).coerceAtMost(b.height - 2)
+        val half = Gate.DEFAULT_PERIOD / 2
+        return LevelHazards(
+            gates = listOf(
+                horizontalGate(fromX, toX, topRow, offset = 0),
+                horizontalGate(fromX, toX, bottomRow, offset = half),
+            ),
+        )
+    }
+
+    /**
+     * Level 13 — Cross Vault: a thin central cross whose four arms stop short of
+     * the walls, so the quadrants connect round the open border ring. The centre
+     * is cleared by the protected spawn zone. Hazards add crossed teleports and
+     * gates that threaten to seal the go-around lanes.
+     */
+    private fun crossVault(b: BoardDimensions): Set<Position> {
+        val cx = b.width / 2
+        val cy = b.height / 2
+        val m = (min(b.width, b.height) / 5).coerceAtLeast(2)
+        val t = cutUnit(b) - 1 // arm half-thickness: 0 on Cozy, 1 Classic, 2 Epic
+        return buildSet {
+            for (y in m..b.height - 1 - m) for (dx in -t..t) add(Position(cx + dx, y))
+            for (x in m..b.width - 1 - m) for (dy in -t..t) add(Position(x, cy + dy))
+        }
+    }
+
+    /**
+     * Level 13 — crossed teleports linking opposite quadrants, plus two vertical
+     * gates extending the cross's top and bottom arms toward the border (out of
+     * phase). The left/right arm ends and the portals keep the board reachable.
+     */
+    private fun crossVaultHazards(b: BoardDimensions): LevelHazards {
+        val cx = b.width / 2
+        val m = (min(b.width, b.height) / 5).coerceAtLeast(2)
+        val topGate = (1 until m).map { Position(cx, it) }.toSet()
+        val bottomGate = (b.height - m until b.height - 1).map { Position(cx, it) }.toSet()
+        val half = Gate.DEFAULT_PERIOD / 2
+        val qx = b.width / 4
+        val qy = b.height / 4
+        return LevelHazards(
+            gates = listOf(Gate(topGate, offsetTicks = 0), Gate(bottomGate, offsetTicks = half)),
+            teleports = listOf(
+                TeleportPair(Position(qx, qy), Position(b.width - 1 - qx, b.height - 1 - qy)),
+                TeleportPair(Position(b.width - 1 - qx, qy), Position(qx, b.height - 1 - qy)),
+            ),
+        )
+    }
+
+    /**
+     * Level 14 — Diamond Field: a regular lattice of small diamond pillars (a
+     * centre cell with four orthogonal arms). The diamonds are spaced well apart
+     * so the board stays connected; a teleport pair and a moving gate stir it up.
+     */
+    private fun diamondField(b: BoardDimensions): Set<Position> {
+        val cx = b.width / 2
+        val cy = b.height / 2
+        val step = if (cutUnit(b) <= 1) 6 else 5
+        return buildSet {
+            for (x in 2 until b.width - 2) {
+                for (y in 2 until b.height - 2) {
+                    if ((x - cx).mod(step) == 0 && (y - cy).mod(step) == 0) {
+                        add(Position(x, y))
+                        add(Position(x - 1, y)); add(Position(x + 1, y))
+                        add(Position(x, y - 1)); add(Position(x, y + 1))
+                    }
+                }
+            }
+        }
+    }
+
+    /** Level 14 — a vertical teleport pair plus a central moving gate bar. */
+    private fun diamondFieldHazards(b: BoardDimensions): LevelHazards {
+        val cx = b.width / 2
+        val margin = (b.width / 4).coerceAtLeast(2)
+        val fromX = margin
+        val toX = b.width - 1 - margin
+        val topTele = Position(cx, b.height / 6)
+        val bottomTele = Position(cx, b.height - 1 - b.height / 6)
+        val gateRow = (b.height / 2 - b.height / 5).coerceAtLeast(1)
+        val gates = if (toX - fromX >= 2) listOf(horizontalGate(fromX, toX, gateRow, offset = 0)) else emptyList()
+        return LevelHazards(
+            gates = gates,
+            teleports = listOf(TeleportPair(topTele, bottomTele)),
+        )
+    }
+
+    /**
+     * Level 15 — The Citadel (finale): two nested rings around the spawn, the
+     * outer one with clockwise-spiralled gaps and the inner one with centred gaps,
+     * so the path corkscrews inward. A teleport offers a daring escape and a gate
+     * re-seals one outer gap; the rings' other gaps keep everything reachable.
+     */
+    private fun citadel(b: BoardDimensions): Set<Position> {
+        val outer = ringWithGaps(b, (min(b.width, b.height) / 6).coerceAtLeast(2), cutUnit(b) + 1, spiral = true)
+        val inner = ringWithGaps(b, (min(b.width, b.height) / 3).coerceAtLeast(4), cutUnit(b) + 1, spiral = false)
+        return outer + inner
+    }
+
+    /** Level 15 — a teleport escape from deep inside to a far corner, plus a gate over one outer gap. */
+    private fun citadelHazards(b: BoardDimensions): LevelHazards {
+        val inset = (min(b.width, b.height) / 6).coerceAtLeast(2)
+        val left = inset
+        val top = inset
+        val gapW = (cutUnit(b) + 1).coerceAtLeast(2)
+        if (b.width - 1 - inset - left < 4 || b.height - 1 - inset - top < 4) return LevelHazards.EMPTY
+        // Re-seal the outer ring's top gap (carved near the left corner by spiral).
+        val topGate = (0 until gapW).map { Position(left + 1 + it, top) }.toSet()
+        val inside = Position(b.width / 2, b.height / 2 + (b.height / 3 - 1).coerceAtLeast(1))
+        val outside = Position(1, 1)
+        return LevelHazards(
+            gates = listOf(Gate(topGate)),
+            teleports = listOf(TeleportPair(inside, outside)),
+        )
+    }
+
+    /**
+     * A rectangular ring of walls at [inset] from each edge with one gap per side.
+     * [spiral] offsets the gaps clockwise (a corkscrew feel); otherwise they are
+     * centred on each side. Returns empty if the ring would be too small.
+     */
+    private fun ringWithGaps(b: BoardDimensions, inset: Int, gapW: Int, spiral: Boolean): Set<Position> {
+        val left = inset
+        val right = b.width - 1 - inset
+        val top = inset
+        val bottom = b.height - 1 - inset
+        if (right - left < 4 || bottom - top < 4) return emptySet()
+        val g = gapW.coerceAtLeast(2)
+        val walls = LinkedHashSet<Position>()
+        for (x in left..right) {
+            walls.add(Position(x, top))
+            walls.add(Position(x, bottom))
+        }
+        for (y in top..bottom) {
+            walls.add(Position(left, y))
+            walls.add(Position(right, y))
+        }
+        if (spiral) {
+            for (i in 0 until g) {
+                walls.remove(Position(left + 1 + i, top))
+                walls.remove(Position(right, top + 1 + i))
+                walls.remove(Position(right - 1 - i, bottom))
+                walls.remove(Position(left, bottom - 1 - i))
+            }
+        } else {
+            val mx = (left + right) / 2
+            val my = (top + bottom) / 2
+            for (i in 0 until g) {
+                walls.remove(Position(mx - g / 2 + i, top))
+                walls.remove(Position(mx - g / 2 + i, bottom))
+                walls.remove(Position(left, my - g / 2 + i))
+                walls.remove(Position(right, my - g / 2 + i))
+            }
         }
         return walls
     }

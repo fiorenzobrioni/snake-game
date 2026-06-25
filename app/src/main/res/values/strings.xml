@@ -151,7 +151,6 @@
     <string name="hud_level_speed">Level %1$d · Speed %2$d</string>
     <string name="hud_next_level">Next: %1$d</string>
     <string name="hud_lives">Lives: %1$d</string>
-    <string name="hud_length">Len %1$d</string>
     <!-- Active power-up timer chips -->
     <string name="effect_lightning">Lightning</string>
     <string name="effect_snail">Snail</string>

@@ -466,6 +466,11 @@ snake-game/
 
 ### Phase 7 - Play Store distribution & cleanup
 
+- [x] **Step 7.0** - Pre-publication polish: default **Back during play** is now **Keep playing** (fresh
+      installs only); the snake-length readout is removed from the HUD; the D-pad is a compact single
+      **4-wedge dial** (`GameControls.DirectionPad`) that frees board height; campaign grows from 10 to
+      **15 levels** (`LevelsMode.LEVEL_COUNT`, 5 new mirror-symmetric shapes/hazards); achievements grow
+      from 27 to **30** (3 new top-tier entries, depth-gated thresholds rebalanced for 15 levels).
 - [x] **Step 7.1** - Final app icon / adaptive icon + branded **SplashScreen API**; set `versionCode`/`versionName`.
 - [ ] **Step 7.2** - Release hardening: **R8** + resource shrinking, verify the minified build runs.
 - [ ] **Step 7.3** - **Signing**: upload keystore wired via env/CI secrets (never committed) + **Play App Signing**.

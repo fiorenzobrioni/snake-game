@@ -46,8 +46,8 @@ The classic Snake mechanics, extended with configurable features so every run fe
   and reappears elsewhere, so looping around without eating won't stall the run. Special pieces stick
   around much longer (they're rare events worth reaching) but eventually time out too.
 - ✖️ **Combo multiplier** - eating in quick succession multiplies your score (up to ×5).
-- 📏 **Live snake length** - the HUD shows your current length as you play; longer snakes also score more
-  per grow (and unlock dedicated length achievements).
+- 📏 **Length-scaled scoring** - the longer your snake gets, the more each grow is worth (and you unlock
+  dedicated length achievements as you stretch out).
 - 🚧 **Obstacles** - symmetric blocks that tend to clump into larger shapes and raise the difficulty.
 - 🎚️ **Levels & snake speed** - 5 obstacle layouts (*Beginner* → *Legend*) and 5 **independent**
   speeds (*Relaxed* → *Turbo*), mixable freely: play the dense Legend field at a gentle pace, or an
@@ -56,7 +56,7 @@ The classic Snake mechanics, extended with configurable features so every run fe
   is computed from your device's screen so it fills the display with square cells in portrait. Bigger
   boards also give food, power-ups and hazards proportionally more time before they vanish, so the
   snake can reach them across the longer distances.
-- 🎮 **Control schemes** - **swipe** by default (with adjustable sensitivity), a compact classic **D-pad**, or one-handed **tap-to-turn**.
+- 🎮 **Control schemes** - **swipe** by default (with adjustable sensitivity), a compact **wedge dial** (a single key split into four directional wedges), or one-handed **tap-to-turn**.
   A forgiving **coyote frame** makes a beat-late turn still count: the first lethal step makes the head
   hesitate one tick (instead of dying), giving you a moment to turn away - re-armed by your next safe move.
 - 🎨 **Skins** - six selectable looks, each its own palette and render style. **Retro** (the default) and
@@ -101,7 +101,7 @@ The classic Snake mechanics, extended with configurable features so every run fe
   penalty, each with a floating callout.
 - 🏆 **Records screen** - a best-score table per difficulty × board scale (and per mode), reachable
   from the main menu.
-- 🎖️ **Achievements** - twenty-seven local milestones (combos, scores, endurance, eating sprees, using
+- 🎖️ **Achievements** - thirty local milestones (combos, scores, endurance, eating sprees, using
   power-ups, growing a very long snake, keeping a Daily streak…) that unlock as you play, with a dedicated
   screen and an unlock banner on the game-over screen.
 - 📊 **Run recap** - the game-over screen shows a short summary of the run: foods eaten, best combo, time
@@ -123,18 +123,18 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - 🕹️ **Game modes** - **Endless** (speed ramps up the longer you survive; the default),
   **Time Attack** (score as much as you can in 120s) and **Campaign** (see below), selectable on the
   **Custom** setup screen.
-- 🧩 **Campaign mode** - ten **designed board shapes** (cut corners, pillars, chambers, a vault…)
-  that repeat forever, one **speed step faster** each lap. Eat **12 foods** to clear a level; you
+- 🧩 **Campaign mode** - fifteen **designed board shapes** (cut corners, pillars, chambers, a vault,
+  and a tougher late-game gauntlet…) that repeat forever, one **speed step faster** each lap. Eat **12 foods** to clear a level; you
   start with **3 lives** (a crash respawns you in the same level, keeping score and progress) and a
   rare 2×2 **extra-life** piece with a snake-head icon can bank more (up to 5). Every transition
-  plays an animated *"Level x · Speed x"* banner with a 3-second countdown. The Level and Snake speed
+  plays an animated *"Level x - Speed x"* banner with a 3-second countdown. The Level and Snake speed
   selectors are disabled here - the mode has its own layouts and pace - and the Records screen tracks both your best
   score and the deepest level you reached per board scale.
   - 🚧 **Environmental hazards** - some levels add **moving-wall gates**: glowing energy barriers that
     open and close on a rhythm (they strobe a warning before slamming shut, so time your dash through),
     and **teleport portals** - step onto one swirling pad to instantly emerge at its partner across the
     board. Gates are lethal only while closed and never seal you in; portals open up bold shortcuts.
-- ⏸️ **Pause & menus** - pause overlay with a blur effect; restart or return to the main menu at any time. Highscores are kept per (mode, level, board scale). A **Back during play** setting chooses what the system Back gesture does mid-game: **Pause** (default) or **Keep playing** (Back is ignored, and a swipe-back is fed to the snake as a turn when using swipe controls).
+- ⏸️ **Pause & menus** - pause overlay with a blur effect; restart or return to the main menu at any time. Highscores are kept per (mode, level, board scale). A **Back during play** setting chooses what the system Back gesture does mid-game: **Keep playing** (default - Back is ignored, and a swipe-back is fed to the snake as a turn when using swipe controls) or **Pause**.
 - 💎 **Polished navigation** - an **animated GPU background** behind the menus, a **branded main menu** laid out as a "game launcher" (a glowing wordmark with a small in-game-style snake emblem that follows your selected skin as the hero, over a bottom-anchored cluster of actions grouped by type so everything fits one screen), **premium action buttons** (gradient-lit, with a tactile press), and **blur-dissolve** screen transitions.
 - ⏸️ **Auto-pause** - backgrounding the app mid-run pauses the game automatically, so the snake never keeps moving while you're away.
 - 📜 **Credits screen** - an in-app **Credits / About** page (author, license and asset attribution), reachable from the main menu.
@@ -253,8 +253,9 @@ when the board gets tight (you never drop below 3 segments).
 
 **Controls (touch):** by default you **swipe** anywhere on the board to change direction, with an
 adjustable **swipe sensitivity** in Settings (the default keeps the tuned feel). Prefer buttons? Switch
-in **Settings** to a compact, premium **D-pad** (skin-tinted keys in a tight cross for quick direction
-changes). For one-handed play there is also a **tap-to-turn** scheme: tap the left half of the board to
+in **Settings** to a compact, premium **wedge dial**: a single skin-tinted key split by its diagonals
+into four directional wedges (up / right / down / left) around a dead-zone hub, so your thumb barely
+moves between turns and the board keeps more height. For one-handed play there is also a **tap-to-turn** scheme: tap the left half of the board to
 turn left, the right half to turn right. Your choice is saved. 180° reversals are blocked, so you can't
 instantly fold back into your own body. Tap **Play** on the main menu to start instantly with your
 last-used settings, or **Custom** to pick the mode, level, snake speed and board scale first; pause and
@@ -268,9 +269,9 @@ automatically pauses when you leave the app and yields to other apps' audio.
 **Game modes:** choose your mode on the **Custom** setup screen -
 **Endless** (the snake keeps accelerating the longer you survive; the default), **Time Attack** (score as much
 as possible in 120 seconds - watch for the exclusive **+5s** / **−3s** clock pieces that stretch or
-shave your remaining time), **Campaign** (clear ten shaped boards by eating 12 foods each, with 3
+shave your remaining time), **Campaign** (clear fifteen shaped boards by eating 12 foods each, with 3
 lives, an exclusive 2×2 extra-life piece, and a speed-up every completed lap - the HUD shows
-*Level x · Speed x*, your hearts and the foods still to go). Your best score is tracked per mode,
+*Level x - Speed x*, your hearts and the foods still to go). Your best score is tracked per mode,
 level and board scale; check the **Records** screen from the main menu.
 
 **Power-ups & hazards:** as a run progresses, rare special pieces start appearing on the board.
