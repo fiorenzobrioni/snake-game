@@ -21,7 +21,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,14 +36,17 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import com.brioni.snake.R
 import com.brioni.snake.game.Direction
 import kotlin.math.abs
+import kotlin.math.hypot
 import kotlin.math.min
 
 /**
@@ -118,12 +123,15 @@ fun Modifier.tapToTurn(
 }
 
 /**
- * On-screen D-pad arranged as a tight, regular cross. Complements swipe steering
- * for players who prefer buttons. The cluster is deliberately compact - small
- * buttons with a small gap - so the thumb travels as little as possible between
- * directions, which matters when the snake is moving fast. Arrows are drawn as
- * crisp, perfectly centred vector chevrons on a [Canvas] (no Unicode glyphs,
- * which sat off-centre in the button box), tinted from the active [palette].
+ * On-screen D-pad drawn as a single, compact "wedge dial": one rounded-square
+ * key split by its two diagonals into four triangular wedges (top = Up,
+ * right = Right, bottom = Down, left = Left), with a small dead-zone hub in the
+ * middle. Because it is one tight control - not a spread-out cross of separate
+ * buttons - the thumb barely moves between directions (which matters when the
+ * snake is fast), and it occupies far less height, leaving more room for the
+ * board. A tap is routed to a wedge by its angle from the centre, the pressed
+ * wedge lights up, and four directional chevrons are drawn from the active
+ * [palette]. Discrete directions are also exposed as accessibility actions.
  */
 @Composable
 fun DirectionPad(
@@ -131,67 +139,13 @@ fun DirectionPad(
     palette: SkinPalette,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(DPadGap),
-    ) {
-        DirectionButton(palette, Direction.Up, R.string.dir_up) { onDirection(Direction.Up) }
-        Row(horizontalArrangement = Arrangement.spacedBy(DPadGap), verticalAlignment = Alignment.CenterVertically) {
-            DirectionButton(palette, Direction.Left, R.string.dir_left) { onDirection(Direction.Left) }
-            // A central hub keeps the cross a regular plus (Up/Down sit directly
-            // above/below it); sized to the button so the cross stays symmetric.
-            Spacer(modifier = Modifier.size(DPadButtonSize))
-            DirectionButton(palette, Direction.Right, R.string.dir_right) { onDirection(Direction.Right) }
-        }
-        DirectionButton(palette, Direction.Down, R.string.dir_down) { onDirection(Direction.Down) }
-    }
-}
-
-private val DPadButtonSize = 58.dp
-private val DPadGap = 6.dp
-private val DPadButtonShape = RoundedCornerShape(16.dp)
-
-@Composable
-private fun DirectionButton(
-    palette: SkinPalette,
-    direction: Direction,
-    descriptionRes: Int,
-    onClick: () -> Unit,
-) {
-    ControlButton(
-        palette = palette,
-        descriptionRes = descriptionRes,
-        modifier = Modifier.size(DPadButtonSize),
-        shape = DPadButtonShape,
-        onClick = onClick,
-    ) { color -> drawDirectionArrow(color = color, direction = direction) }
-}
-
-/**
- * A premium glassy control button: a top-lit gradient fill tinted by the skin, a
- * coloured rim, a soft lift shadow, and a tactile press-scale + ripple. The icon
- * is drawn by [draw] on a full-size [Canvas] so it is always perfectly centred.
- */
-@Composable
-private fun ControlButton(
-    palette: SkinPalette,
-    descriptionRes: Int,
-    modifier: Modifier = Modifier,
-    shape: androidx.compose.foundation.shape.RoundedCornerShape = DPadButtonShape,
-    onClick: () -> Unit,
-    draw: DrawScope.(Color) -> Unit,
-) {
-    val description = stringResource(descriptionRes)
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.93f else 1f,
-        label = "controlButtonScale",
-    )
     val accent = palette.snakeHead
-    // A dark glassy panel that takes a faint tint from the skin's snake colour,
-    // lit from the top so the button reads as a raised, tactile key.
+    var pressedDir by remember { mutableStateOf<Direction?>(null) }
+    val scale by animateFloatAsState(
+        targetValue = if (pressedDir != null) 0.97f else 1f,
+        label = "dpadScale",
+    )
+    val shape = RoundedCornerShape(DPadCorner)
     val fill = Brush.verticalGradient(
         listOf(
             mix(palette.boardTop, accent, 0.16f),
@@ -201,53 +155,142 @@ private fun ControlButton(
     val rim = Brush.verticalGradient(
         listOf(accent.copy(alpha = 0.75f), accent.copy(alpha = 0.22f)),
     )
-    // The pressed state brightens the icon and lifts the accent; glow skins push
-    // the icon a touch brighter to echo their luminous identity.
-    val iconColor = if (pressed) lighten(accent, 0.25f) else accent
 
-    Box(
-        modifier = modifier
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
+    val upDesc = stringResource(R.string.dir_up)
+    val rightDesc = stringResource(R.string.dir_right)
+    val downDesc = stringResource(R.string.dir_down)
+    val leftDesc = stringResource(R.string.dir_left)
+
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier
+                .size(DPadSize)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .shadow(elevation = 10.dp, shape = shape, ambientColor = accent, spotColor = accent)
+                .clip(shape)
+                .background(fill)
+                .border(BorderStroke(1.5.dp, rim), shape)
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onPress = { offset ->
+                            val dir = wedgeOf(offset, size.width.toFloat(), size.height.toFloat())
+                            if (dir != null) {
+                                pressedDir = dir
+                                onDirection(dir)
+                            }
+                            tryAwaitRelease()
+                            pressedDir = null
+                        },
+                    )
+                }
+                .semantics {
+                    // A single control, but each direction is reachable as a
+                    // discrete action for TalkBack users.
+                    contentDescription = "$upDesc / $rightDesc / $downDesc / $leftDesc"
+                    customActions = listOf(
+                        CustomAccessibilityAction(upDesc) { onDirection(Direction.Up); true },
+                        CustomAccessibilityAction(rightDesc) { onDirection(Direction.Right); true },
+                        CustomAccessibilityAction(downDesc) { onDirection(Direction.Down); true },
+                        CustomAccessibilityAction(leftDesc) { onDirection(Direction.Left); true },
+                    )
+                },
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                drawWedgeDial(accent = accent, pressed = pressedDir, useGlow = palette.useGlow)
             }
-            .shadow(
-                elevation = if (pressed) 2.dp else 10.dp,
-                shape = shape,
-                ambientColor = accent,
-                spotColor = accent,
-            )
-            .clip(shape)
-            .background(fill)
-            .border(BorderStroke(1.5.dp, rim), shape)
-            .clickable(
-                interactionSource = interaction,
-                indication = ripple(color = accent),
-                role = Role.Button,
-                onClick = onClick,
-            )
-            .semantics { contentDescription = description },
-        contentAlignment = Alignment.Center,
-    ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            // A subtle top sheen sells the glass; then the icon.
-            drawRect(
-                brush = Brush.verticalGradient(
-                    0f to Color.White.copy(alpha = if (palette.useGlow) 0.10f else 0.06f),
-                    0.5f to Color.Transparent,
-                    startY = 0f,
-                    endY = size.height,
-                ),
-            )
-            draw(iconColor)
         }
     }
 }
 
-/** Draws a crisp, perfectly centred filled chevron pointing in [direction]. */
-private fun DrawScope.drawDirectionArrow(color: Color, direction: Direction) {
-    val center = Offset(size.width / 2f, size.height / 2f)
-    val reach = min(size.width, size.height) * 0.22f
+private val DPadSize = 156.dp
+private val DPadCorner = 28.dp
+/** Radius of the central dead zone (a fraction of the dial's short side). */
+private const val DPadDeadZoneFraction = 0.17f
+
+/**
+ * Maps a tap [offset] inside a [w] x [h] dial to the wedge it falls in, split by
+ * the two diagonals (|dx| vs |dy|). Taps inside the central dead zone return null.
+ */
+private fun wedgeOf(offset: Offset, w: Float, h: Float): Direction? {
+    val dx = offset.x - w / 2f
+    val dy = offset.y - h / 2f
+    if (hypot(dx, dy) < min(w, h) * DPadDeadZoneFraction) return null
+    return if (abs(dx) > abs(dy)) {
+        if (dx > 0) Direction.Right else Direction.Left
+    } else {
+        // Screen y grows downward, so a positive dy is Down.
+        if (dy > 0) Direction.Down else Direction.Up
+    }
+}
+
+/**
+ * Draws the wedge dial: four diagonal-split wedges (the pressed one washed with
+ * accent), faint dividers, a glassy top sheen, a directional chevron set out into
+ * each wedge, and a central hub marking the dead zone.
+ */
+private fun DrawScope.drawWedgeDial(accent: Color, pressed: Direction?, useGlow: Boolean) {
+    val w = size.width
+    val h = size.height
+    val c = Offset(w / 2f, h / 2f)
+    val tl = Offset(0f, 0f)
+    val tr = Offset(w, 0f)
+    val br = Offset(w, h)
+    val bl = Offset(0f, h)
+
+    fun wedge(a: Offset, b: Offset): Path = Path().apply {
+        moveTo(c.x, c.y)
+        lineTo(a.x, a.y)
+        lineTo(b.x, b.y)
+        close()
+    }
+    val wedges = mapOf(
+        Direction.Up to wedge(tl, tr),
+        Direction.Right to wedge(tr, br),
+        Direction.Down to wedge(br, bl),
+        Direction.Left to wedge(bl, tl),
+    )
+    // Light up the pressed wedge.
+    pressed?.let { dir ->
+        drawPath(wedges.getValue(dir), color = accent.copy(alpha = if (useGlow) 0.30f else 0.20f))
+    }
+    // Faint diagonal dividers between the wedges.
+    val divider = accent.copy(alpha = 0.22f)
+    val dividerWidth = w * 0.012f
+    drawLine(divider, tl, br, strokeWidth = dividerWidth)
+    drawLine(divider, tr, bl, strokeWidth = dividerWidth)
+    // A subtle top sheen sells the glass.
+    drawRect(
+        brush = Brush.verticalGradient(
+            0f to Color.White.copy(alpha = if (useGlow) 0.10f else 0.06f),
+            0.5f to Color.Transparent,
+            startY = 0f,
+            endY = h,
+        ),
+    )
+    // A chevron set out into each wedge, toward its edge.
+    val reach = min(w, h) * 0.085f
+    val outset = min(w, h) * 0.30f
+    val centers = mapOf(
+        Direction.Up to Offset(c.x, c.y - outset),
+        Direction.Right to Offset(c.x + outset, c.y),
+        Direction.Down to Offset(c.x, c.y + outset),
+        Direction.Left to Offset(c.x - outset, c.y),
+    )
+    for (dir in Direction.entries) {
+        val tint = if (dir == pressed) lighten(accent, 0.25f) else accent
+        drawChevron(tint, dir, centers.getValue(dir), reach)
+    }
+    // Centre hub marks the dead zone.
+    val hub = min(w, h) * DPadDeadZoneFraction
+    drawCircle(color = accent.copy(alpha = 0.14f), radius = hub, center = c)
+    drawCircle(color = accent.copy(alpha = 0.5f), radius = hub, center = c, style = Stroke(width = dividerWidth))
+}
+
+/** Draws a crisp filled chevron pointing in [direction], centred on [center]. */
+private fun DrawScope.drawChevron(color: Color, direction: Direction, center: Offset, reach: Float) {
     // Across-axis half-width; the tip leads, the two wings trail.
     val wing = reach * 1.05f
     val path = Path()

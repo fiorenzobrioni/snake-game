@@ -138,7 +138,22 @@ class LevelsModeTest {
     }
 
     @Test
-    fun `clearing level 10 wraps to level 1 at the next speed cycle`() {
+    fun `clearing the last level wraps to level 1 at the next speed cycle`() {
+        val state = levelsState(
+            foods = listOf(growFoodAt(Position(6, 5))),
+            walls = LevelsMode.shapeFor(LevelsMode.LEVEL_COUNT, board),
+            levelIndex = LevelsMode.LEVEL_COUNT,
+            levelFoodsEaten = LevelsMode.LEVEL_FOOD_GOAL - 1,
+        )
+        val next = engine.tick(state)
+        assertEquals(1, next.levelIndex)
+        assertEquals(2, next.speedCycle)
+        assertEquals(LevelsMode.shapeFor(1, board), next.walls)
+        assertTrue(next.lastEvents.any { it is GameEvent.LevelAdvanced })
+    }
+
+    @Test
+    fun `clearing a mid-lap level advances within the same speed cycle`() {
         val state = levelsState(
             foods = listOf(growFoodAt(Position(6, 5))),
             walls = LevelsMode.shapeFor(10, board),
@@ -146,9 +161,9 @@ class LevelsModeTest {
             levelFoodsEaten = LevelsMode.LEVEL_FOOD_GOAL - 1,
         )
         val next = engine.tick(state)
-        assertEquals(1, next.levelIndex)
-        assertEquals(2, next.speedCycle)
-        assertEquals(LevelsMode.shapeFor(1, board), next.walls)
+        assertEquals(11, next.levelIndex)
+        assertEquals(1, next.speedCycle)
+        assertEquals(LevelsMode.shapeFor(11, board), next.walls)
         assertTrue(next.lastEvents.any { it is GameEvent.LevelAdvanced })
     }
 

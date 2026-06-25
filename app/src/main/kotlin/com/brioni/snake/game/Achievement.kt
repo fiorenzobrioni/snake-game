@@ -66,14 +66,17 @@ enum class Achievement(
     Grandmaster("Grandmaster", "Score 5000 in a single run", { it.score >= 5000 }),
     Climber("Climber", "Reach Level 5 in Campaign mode", { it.mode == GameMode.Levels && it.maxLevelReached >= 5 }),
     TowerTopper("Tower Topper", "Reach Level 10 in Campaign mode", { it.mode == GameMode.Levels && it.maxLevelReached >= 10 }),
-    FullCircle("Full Circle", "Clear all ten levels and reach Speed 2 without losing a life", { it.mode == GameMode.Levels && it.flawlessLap }),
-    TowerMaster("Tower Master", "Reach Level 10 at Speed 2 in Campaign", { it.mode == GameMode.Levels && it.maxLevelDepth >= 20 }),
-    TowerSovereign("Tower Sovereign", "Reach Level 10 at Speed 3 in Campaign", { it.mode == GameMode.Levels && it.maxLevelDepth >= 30 }),
+    FullCircle("Full Circle", "Clear all fifteen levels and reach Speed 2 without losing a life", { it.mode == GameMode.Levels && it.flawlessLap }),
+    TowerMaster("Tower Master", "Reach Level 10 at Speed 2 in Campaign", { it.mode == GameMode.Levels && it.maxLevelDepth >= 25 }),
+    TowerSovereign("Tower Sovereign", "Reach Level 10 at Speed 3 in Campaign", { it.mode == GameMode.Levels && it.maxLevelDepth >= 40 }),
     LongHaul("Long Haul", "Grow the snake to 50 segments", { it.maxSnakeLength >= 50 }),
     Anaconda("Anaconda", "Grow the snake to 100 segments", { it.maxSnakeLength >= 100 }),
     Titanoboa("Titanoboa", "Grow the snake to 180 segments", { it.maxSnakeLength >= 180 }),
     WeekWarrior("Week Warrior", "Reach a 7-day Daily streak", { it.dailyStreak >= 7 }),
     MonthMaster("Monthly Master", "Reach a 30-day Daily streak", { it.dailyStreak >= 30 }),
+    Mythmaker("Mythmaker", "Score 10,000 in a single run", { it.score >= 10_000 }),
+    Leviathan("Leviathan", "Grow the snake to 250 segments", { it.maxSnakeLength >= 250 }),
+    TowerAscendant("Tower Ascendant", "Reach Level 15 at Speed 3 in Campaign", { it.mode == GameMode.Levels && it.maxLevelDepth >= 45 }),
     ;
 
     companion object {

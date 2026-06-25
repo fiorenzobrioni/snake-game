@@ -87,15 +87,29 @@ class AchievementTest {
 
     @Test
     fun `tower achievements gate on the deepest level depth`() {
-        // Level 10 at Speed 2 is depth 20; Level 10 at Speed 3 is depth 30.
-        assertTrue(Achievement.TowerMaster.test(stats(mode = GameMode.Levels, maxLevelDepth = 20)))
-        assertFalse(Achievement.TowerMaster.test(stats(mode = GameMode.Levels, maxLevelDepth = 19)))
-        assertFalse(Achievement.TowerMaster.test(stats(mode = GameMode.Endless, maxLevelDepth = 20)))
-        assertTrue(Achievement.TowerSovereign.test(stats(mode = GameMode.Levels, maxLevelDepth = 30)))
-        assertFalse(Achievement.TowerSovereign.test(stats(mode = GameMode.Levels, maxLevelDepth = 29)))
-        // Reaching only Level 10 of Speed 1 (depth 10) earns neither.
-        assertFalse(Achievement.TowerMaster.test(stats(mode = GameMode.Levels, maxLevelDepth = 10)))
-        assertFalse(Achievement.TowerSovereign.test(stats(mode = GameMode.Levels, maxLevelDepth = 10)))
+        // With 15 levels per lap, depth = (speedCycle - 1) * 15 + levelIndex.
+        // Level 10 at Speed 2 is depth 25; Level 10 at Speed 3 is depth 40;
+        // Level 15 at Speed 3 is depth 45.
+        assertTrue(Achievement.TowerMaster.test(stats(mode = GameMode.Levels, maxLevelDepth = 25)))
+        assertFalse(Achievement.TowerMaster.test(stats(mode = GameMode.Levels, maxLevelDepth = 24)))
+        assertFalse(Achievement.TowerMaster.test(stats(mode = GameMode.Endless, maxLevelDepth = 25)))
+        assertTrue(Achievement.TowerSovereign.test(stats(mode = GameMode.Levels, maxLevelDepth = 40)))
+        assertFalse(Achievement.TowerSovereign.test(stats(mode = GameMode.Levels, maxLevelDepth = 39)))
+        assertTrue(Achievement.TowerAscendant.test(stats(mode = GameMode.Levels, maxLevelDepth = 45)))
+        assertFalse(Achievement.TowerAscendant.test(stats(mode = GameMode.Levels, maxLevelDepth = 44)))
+        assertFalse(Achievement.TowerAscendant.test(stats(mode = GameMode.Endless, maxLevelDepth = 45)))
+        // Reaching only Level 15 of Speed 1 (depth 15) earns none of the tower tiers.
+        assertFalse(Achievement.TowerMaster.test(stats(mode = GameMode.Levels, maxLevelDepth = 15)))
+        assertFalse(Achievement.TowerSovereign.test(stats(mode = GameMode.Levels, maxLevelDepth = 15)))
+        assertFalse(Achievement.TowerAscendant.test(stats(mode = GameMode.Levels, maxLevelDepth = 15)))
+    }
+
+    @Test
+    fun `top-tier score and length achievements gate on their thresholds`() {
+        assertTrue(Achievement.Mythmaker.test(stats(score = 10_000)))
+        assertFalse(Achievement.Mythmaker.test(stats(score = 9_999)))
+        assertTrue(Achievement.Leviathan.test(stats(maxSnakeLength = 250)))
+        assertFalse(Achievement.Leviathan.test(stats(maxSnakeLength = 249)))
     }
 
     @Test

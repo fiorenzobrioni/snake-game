@@ -9,18 +9,19 @@ package com.brioni.snake.game
  * via DataStore.
  */
 enum class BackBehavior(val displayName: String) {
-    /** Back pauses the running game (the original, default behaviour). */
+    /** Back pauses the running game (the original behaviour). */
     Pause("Pause"),
 
     /**
      * Back is ignored and play continues. With **Swipe** controls, a back gesture
      * is a horizontal edge swipe, so it is still fed to the snake as a left/right
-     * direction change instead of being lost.
+     * direction change instead of being lost. This is the default a fresh install
+     * starts on - an accidental Back never ends a run.
      */
     KeepPlaying("Keep playing");
 
     companion object {
         /** The default a fresh install starts on. */
-        val DEFAULT = Pause
+        val DEFAULT = KeepPlaying
     }
 }
