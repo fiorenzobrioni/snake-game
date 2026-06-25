@@ -94,8 +94,6 @@ When writing or editing any document in this repository (`README.md`, files unde
 
 ## Deliverables to the user
 
-- **CI is the source of truth for "it builds"**: every push to `main` or a `claude/**` branch and every pull request runs `.github/workflows/ci.yml`, which assembles the debug APK, runs the unit tests and Android lint, and uploads the APK plus the test/lint reports as workflow artifacts. Correctness of a change is proven by a green CI run, not by a manual build. The authoritative debug APK is the `app-debug-apk` artifact downloadable from the workflow run.
-- **Local verification during implementation**: while working, run the lightest check that covers the change (e.g. `./gradlew compileDebugKotlin`, `./gradlew testDebugUnitTest`, or `./gradlew lintDebug`) to confirm the code is correct before committing. A full `assembleDebug` is not required just to verify compilation - CI does the authoritative build. Never commit the APK - it is a build artifact.
 - **Keep `README.md` current**: at the end of **every implementation**, review `README.md` and update it if the change affects anything user-facing (features, gameplay rules, controls, screenshots, build/run instructions). If no update is needed, no action is required.
 
 ## Documentation files - what goes where
