@@ -1,6 +1,7 @@
 package com.brioni.snake.game
 
 import kotlin.math.abs
+import kotlin.math.min
 import kotlin.random.Random
 
 /**
@@ -323,7 +324,7 @@ class GameEngine(private val random: Random = Random.Default) {
         }
 
         // Top the board back up — covers both an eaten food and a vanished one.
-        if (foods.size < FOOD_COUNT) {
+        if (foods.size < foodCountFor(board)) {
             val freezeActive = effectTimers.any { it.kind == EffectKind.Freeze }
             val specialsOnBoard = foods.count { it.category == FoodCategory.Special }
             foods = refill(
@@ -616,7 +617,7 @@ class GameEngine(private val random: Random = Random.Default) {
         return obstacles
     }
 
-    /** Tops the board up to [FOOD_COUNT] items, skipping if no cell is free. */
+    /** Tops the board up to [foodCountFor] items, skipping if no cell is free. */
     private fun refill(
         board: BoardDimensions,
         snake: List<Position>,
@@ -633,7 +634,8 @@ class GameEngine(private val random: Random = Random.Default) {
         reserved: Set<Position> = emptySet(),
     ): List<Food> {
         var foods = existing
-        while (foods.size < FOOD_COUNT) {
+        val target = foodCountFor(board)
+        while (foods.size < target) {
             // A special is allowed only while fewer than the cap are on the board.
             val allowSpecial = specialAllowed &&
                 foods.count { it.category == FoodCategory.Special } < MAX_SPECIALS_ON_BOARD
@@ -696,6 +698,17 @@ class GameEngine(private val random: Random = Random.Default) {
     companion object {
         /** Foods kept on the board at once. */
         const val FOOD_COUNT = 3
+
+        /**
+         * Large boards (Epic / Colossal, whose short side is at least this many cells)
+         * carry one extra simultaneous food, so the bigger arenas don't feel empty.
+         */
+        const val LARGE_BOARD_MIN_SIDE = 24
+        const val LARGE_BOARD_FOOD_COUNT = 4
+
+        /** Simultaneous foods to keep on [board]: one more on the largest arenas. */
+        fun foodCountFor(board: BoardDimensions): Int =
+            if (min(board.width, board.height) >= LARGE_BOARD_MIN_SIDE) LARGE_BOARD_FOOD_COUNT else FOOD_COUNT
 
         /** At most this many specials (power-ups / hazards) may share the board. */
         const val MAX_SPECIALS_ON_BOARD = 2

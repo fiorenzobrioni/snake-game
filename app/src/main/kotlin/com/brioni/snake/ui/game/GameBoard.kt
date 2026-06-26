@@ -217,10 +217,11 @@ fun GameBoard(
         val event = bodyBurst
         if (bodyBurstId != handledBurst.intValue && event != null && !reduceMotion && event.cells.isNotEmpty()) {
             handledBurst.intValue = bodyBurstId
+            // Kept just under the ViewModel's hold (DEATH_ANIM_MS / LEVEL_VANISH_MS, both
+            // ~1000 ms) so the body has fully faded by the time the overlay / countdown
+            // takes over. [blast] still selects the burst flavour below.
             val blast = event.style == BurstStyle.Blast
-            // Kept just under the ViewModel's hold (DEATH_ANIM_MS / LEVEL_VANISH_MS) so
-            // the body has fully faded by the time the overlay / countdown takes over.
-            val durationMs = if (blast) 900 else 680
+            val durationMs = 900
             dissolve.snapTo(1f)
             // Fade the body out alongside the staggered bursts.
             launch { dissolve.animateTo(0f, tween(durationMillis = durationMs, easing = FastOutLinearInEasing)) }

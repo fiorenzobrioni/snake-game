@@ -848,28 +848,30 @@ class GameViewModel(
         if (after.status == GameStatus.LevelIntro) {
             val respawn = after.lastEvents.any { it is GameEvent.LifeLost }
             val advanced = after.lastEvents.any { it is GameEvent.LevelAdvanced }
-            if (advanced && !respawn && !reduceMotion) {
-                // Level cleared: hold the completing snake on screen and dissolve it
-                // away (a teleport-style vanish) before staging the next level's
-                // countdown. The loop is stopped so the still-Running `before` state
-                // isn't ticked again during the hold; `state` keeps showing the old
-                // snake (which GameBoard fades out) until the hold elapses.
+            if ((advanced || respawn) && !reduceMotion) {
+                // Hold the old snake on screen and play its transition before staging
+                // the next board: a level-up dissolves with a teleport-style vanish, a
+                // non-final death bursts apart like the game-over explosion. The loop is
+                // stopped so the still-Running `before` state isn't ticked again during
+                // the hold; `state` keeps showing the old snake (which GameBoard fades
+                // out) until the hold elapses.
                 stopLoop()
-                bodyBurst = BodyBurstEvent(before.snake, BurstStyle.Vanish)
+                val style = if (respawn) BurstStyle.Blast else BurstStyle.Vanish
+                val holdMs = if (respawn) DEATH_ANIM_MS else LEVEL_VANISH_MS
+                bodyBurst = BodyBurstEvent(before.snake, style)
                 bodyBurstId++
                 levelVanishing = true
-                introIsRespawn = false
+                introIsRespawn = respawn
                 viewModelScope.launch {
-                    delay(LEVEL_VANISH_MS)
+                    delay(holdMs)
                     levelVanishing = false
                     resetTo(after)
                     startIntro()
                 }
                 return
             }
-            // Respawn after a lost life (or reduce-motion): stage instantly. Use
-            // resetTo — not the interpolation commit — so the renderer doesn't
-            // tween the old snake across the board to the new spawn.
+            // Reduce-motion: stage instantly. Use resetTo — not the interpolation commit
+            // — so the renderer doesn't tween the old snake across the board to the spawn.
             resetTo(after)
             introIsRespawn = respawn
             startIntro()
@@ -1037,7 +1039,7 @@ class GameViewModel(
         private const val DEATH_ANIM_MS = 1000L
 
         /** How long the completing snake dissolves on a Campaign level-up before the countdown. */
-        private const val LEVEL_VANISH_MS = 760L
+        private const val LEVEL_VANISH_MS = 1000L
 
         fun factory(
             repo: SettingsRepository,
