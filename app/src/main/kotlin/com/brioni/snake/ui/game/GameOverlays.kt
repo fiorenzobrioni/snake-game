@@ -192,6 +192,7 @@ private fun ChipSection(title: String, enabled: Boolean = true, chips: @Composab
 @Composable
 fun LevelIntroOverlay(
     levelIndex: Int,
+    levelName: String,
     speedCycle: Int,
     lives: Int,
     countdown: Int,
@@ -220,6 +221,16 @@ fun LevelIntroOverlay(
                 color = MaterialTheme.colorScheme.primary,
                 maxLines = 1,
                 textAlign = TextAlign.Center,
+            )
+            // The designed name of this level, between "Level X" and "Speed Y".
+            Text(
+                text = levelName,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.tertiary,
+                maxLines = 1,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 4.dp),
             )
             Text(
                 text = stringResource(R.string.level_intro_speed, speedCycle),

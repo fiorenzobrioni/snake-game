@@ -49,6 +49,16 @@ object LevelsMode {
     fun tickMillisFor(speedCycle: Int): Long =
         (BASE_TICK_MS - (speedCycle - 1) * STEP_PER_CYCLE_MS).coerceAtLeast(FLOOR_TICK_MS)
 
+    /** The designed name of each 1-based level, in [shapeFor] order; wraps per cycle. */
+    private val LEVEL_NAMES = listOf(
+        "Open Field", "Cut Corners", "Twin Pillars", "Crossfire", "The Hourglass",
+        "Crossed Blades", "The Octagon", "The Colonnade", "Three Chambers", "The Vault",
+        "The Lattice", "Pinwheel", "Cross Vault", "Diamond Field", "The Citadel",
+    )
+
+    /** The display name of the 1-based [levelIndex] (wrapping every [LEVEL_COUNT]). */
+    fun nameFor(levelIndex: Int): String = LEVEL_NAMES[(levelIndex - 1).mod(LEVEL_COUNT)]
+
     /**
      * The wall cells for the 1-based [levelIndex] on [board]. Deterministic —
      * shapes are designed, not random. The protected centre spawn zone is

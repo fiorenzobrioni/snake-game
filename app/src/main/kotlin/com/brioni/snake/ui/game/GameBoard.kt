@@ -7,6 +7,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -206,9 +207,16 @@ fun GameBoard(
     // Whole-snake burst: spray a per-cell burst head-to-tail and fade the body out
     // over the matching window. Death uses the fiery explosion; a level-up uses the
     // gentler vanish/teleport sparkle. Suppressed under reduce-motion.
+    //
+    // [handledBurst] is initialised to the *current* id so the first composition of a
+    // fresh GameBoard (e.g. Menu -> Game) is a no-op: without it, a leftover burst from
+    // the previous run would replay on the new snake and leave [dissolve] stuck at 0
+    // (an invisible body, only the eyes moving).
+    val handledBurst = remember { mutableIntStateOf(bodyBurstId) }
     LaunchedEffect(bodyBurstId) {
         val event = bodyBurst
-        if (bodyBurstId > 0 && event != null && !reduceMotion && event.cells.isNotEmpty()) {
+        if (bodyBurstId != handledBurst.intValue && event != null && !reduceMotion && event.cells.isNotEmpty()) {
+            handledBurst.intValue = bodyBurstId
             val blast = event.style == BurstStyle.Blast
             val durationMs = if (blast) 700 else 500
             dissolve.snapTo(1f)
@@ -1004,7 +1012,7 @@ private fun DrawScope.drawRoundHead(
         radius = r * 0.52f,
         center = center + Offset(0f, -r * 0.32f),
     )
-    drawEyes(center.x, center.y, cell, direction, palette)
+    drawEyes(center.x, center.y, cell, direction, palette, alpha)
 }
 
 /**
@@ -1059,7 +1067,7 @@ private fun DrawScope.drawBlockHead(
     drawRoundRect(palette.snakeHead.copy(alpha = alpha), tl, Size(side, side), rad)
     drawRect(lighten(palette.snakeHead, 0.2f).copy(alpha = 0.45f * alpha), Offset(tl.x, tl.y), Size(side, side * 0.4f))
     drawRoundRect(palette.snakeOutline.copy(alpha = alpha), tl, Size(side, side), rad, style = Stroke(width = cell * 0.06f))
-    drawEyes(center.x, center.y, cell, direction, palette)
+    drawEyes(center.x, center.y, cell, direction, palette, alpha)
 }
 
 private fun DrawScope.drawEyes(
@@ -1068,6 +1076,7 @@ private fun DrawScope.drawEyes(
     cell: Float,
     direction: Direction,
     palette: SkinPalette,
+    alpha: Float = 1f,
 ) {
     val forwardX = direction.dx.toFloat()
     val forwardY = direction.dy.toFloat()
@@ -1082,9 +1091,11 @@ private fun DrawScope.drawEyes(
     for (sign in intArrayOf(-1, 1)) {
         val ex = centerX + forwardX * forward + perpX * spread * sign
         val ey = centerY + forwardY * forward + perpY * spread * sign
-        drawCircle(Color.White, eyeRadius, Offset(ex, ey))
+        // Honour the head alpha so the eyes fade *with* the head during the death /
+        // level-up dissolve (otherwise they linger as floating eyes).
+        drawCircle(Color.White.copy(alpha = alpha), eyeRadius, Offset(ex, ey))
         drawCircle(
-            palette.snakeEye,
+            palette.snakeEye.copy(alpha = alpha),
             pupilRadius,
             Offset(ex + forwardX * cell * 0.03f, ey + forwardY * cell * 0.03f),
         )

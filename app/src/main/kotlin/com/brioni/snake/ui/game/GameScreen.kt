@@ -364,6 +364,7 @@ fun GameScreen(
 
             GameStatus.LevelIntro -> LevelIntroOverlay(
                 levelIndex = state.levelIndex,
+                levelName = LevelsMode.nameFor(state.levelIndex),
                 speedCycle = state.speedCycle,
                 lives = state.lives,
                 countdown = viewModel.introCountdown,
