@@ -218,7 +218,9 @@ fun GameBoard(
         if (bodyBurstId != handledBurst.intValue && event != null && !reduceMotion && event.cells.isNotEmpty()) {
             handledBurst.intValue = bodyBurstId
             val blast = event.style == BurstStyle.Blast
-            val durationMs = if (blast) 700 else 500
+            // Kept just under the ViewModel's hold (DEATH_ANIM_MS / LEVEL_VANISH_MS) so
+            // the body has fully faded by the time the overlay / countdown takes over.
+            val durationMs = if (blast) 900 else 680
             dissolve.snapTo(1f)
             // Fade the body out alongside the staggered bursts.
             launch { dissolve.animateTo(0f, tween(durationMillis = durationMs, easing = FastOutLinearInEasing)) }

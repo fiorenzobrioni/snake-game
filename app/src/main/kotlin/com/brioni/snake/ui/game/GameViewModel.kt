@@ -1034,10 +1034,10 @@ class GameViewModel(
         private const val INTRO_SECONDS = 3
 
         /** How long the snake bursts apart on death before the game-over overlay shows. */
-        private const val DEATH_ANIM_MS = 720L
+        private const val DEATH_ANIM_MS = 1000L
 
         /** How long the completing snake dissolves on a Campaign level-up before the countdown. */
-        private const val LEVEL_VANISH_MS = 520L
+        private const val LEVEL_VANISH_MS = 760L
 
         fun factory(
             repo: SettingsRepository,

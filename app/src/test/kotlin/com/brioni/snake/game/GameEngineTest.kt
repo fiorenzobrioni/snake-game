@@ -35,9 +35,9 @@ class GameEngineTest {
     )
 
     @Test
-    fun setupPlacesThreeSegmentSnakeHeadingUp() {
+    fun setupPlacesStartLengthSnakeHeadingUp() {
         val state = engine.setup(Level.Beginner, BoardDimensions(18, 26))
-        assertEquals(3, state.snake.size)
+        assertEquals(GameEngine.START_LENGTH, state.snake.size)
         assertEquals(Direction.Up, state.direction)
         assertEquals(GameStatus.Ready, state.status)
         assertTrue(state.foods.isEmpty())

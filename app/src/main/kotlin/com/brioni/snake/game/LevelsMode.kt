@@ -518,12 +518,11 @@ object LevelsMode {
     }
 
     /**
-     * Level 11 — The Lattice: a quincunx of single-cell pillars on alternate rows
-     * (the rows between are clear), offset every other pillar row so the slalom
-     * still staggers. Skipping every other row roughly halves the old all-rows
-     * density, opening proper weaving lanes while staying clearly harder than the
-     * Colonnade. The pillars are isolated (never adjacent), so the board always
-     * stays connected.
+     * Level 11 — The Lattice: a sparse quincunx of single-cell pillars on alternate
+     * rows (the rows between are clear), spaced every five columns and offset every
+     * other pillar row so the slalom still staggers. Wide lanes keep it readable -
+     * clearly harder than the Colonnade but no longer punishing. The pillars are
+     * isolated (never adjacent), so the board always stays connected.
      */
     private fun lattice(b: BoardDimensions): Set<Position> {
         val cx = b.width / 2
@@ -535,8 +534,8 @@ object LevelsMode {
                     val v = y - cy
                     val on = when {
                         v.mod(2) != 0 -> false // clear rows between the pillar rows
-                        v.mod(4) == 0 -> u.mod(4) == 0
-                        else -> (u - 2).mod(4) == 0 // offset the in-between pillar rows
+                        v.mod(4) == 0 -> u.mod(5) == 0
+                        else -> (u - 2).mod(5) == 0 // offset the in-between pillar rows
                     }
                     if (on) add(Position(x, y))
                 }

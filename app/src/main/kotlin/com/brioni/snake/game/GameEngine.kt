@@ -85,15 +85,11 @@ class GameEngine(private val random: Random = Random.Default) {
         )
     }
 
-    /** The centred three-cell spawn (heading Up) shared by setup and Levels resets. */
+    /** The centred [START_LENGTH]-cell spawn (heading Up) shared by setup and Levels resets. */
     private fun startingSnake(board: BoardDimensions): List<Position> {
         val cx = board.width / 2
         val cy = board.height / 2
-        return listOf(
-            Position(cx, cy),
-            Position(cx, cy + 1),
-            Position(cx, cy + 2),
-        )
+        return List(START_LENGTH) { Position(cx, cy + it) }
     }
 
     /** Convenience: a fresh, already-running game. */
@@ -706,6 +702,9 @@ class GameEngine(private val random: Random = Random.Default) {
 
         /** The snake never shrinks below this many segments. */
         const val MIN_SNAKE_LENGTH = 3
+
+        /** Segments the snake spawns with (it can still be shrunk down to [MIN_SNAKE_LENGTH]). */
+        const val START_LENGTH = 4
 
         /** A grow streak survives if the next grow happens within this many ticks. */
         const val COMBO_WINDOW_TICKS = 45
