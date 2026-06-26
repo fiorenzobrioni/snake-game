@@ -43,6 +43,9 @@ android {
 
     buildFeatures {
         compose = true
+        // Generates BuildConfig so debug-only UI (e.g. the theme-unlock shortcut)
+        // can gate on BuildConfig.DEBUG and be stripped from release builds.
+        buildConfig = true
     }
 
     // Kotlin source lives under src/main/kotlin (configured below) instead of

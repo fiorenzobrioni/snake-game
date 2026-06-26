@@ -117,7 +117,8 @@ The classic Snake mechanics, extended with configurable features so every run fe
   everyone that day (the twist rotates through Bonus Rush, Frenzy and Compact Arena; the obstacle layout
   and food sequence come from the day's seed). Beat your **best today** and build a **day streak** (which
   unlocks the Aurora and Ember skins at 7 and 30 days). A **This Week** screen shows your last 7 days of
-  Daily results and a weekly best / total. Reached from the main menu.
+  Daily results and a weekly best / total; tap any day there to **replay** that day's exact challenge -
+  just for fun, your recorded results are never overwritten. Reached from the main menu.
 - 🎲 **Random Challenge** - a one-off surprise run for variety: **Shuffle** for a fresh mode / level /
   board / twist mix, then play. Nothing is recorded - it's pure fun.
 - 🕹️ **Game modes** - **Endless** (speed ramps up the longer you survive; the default),

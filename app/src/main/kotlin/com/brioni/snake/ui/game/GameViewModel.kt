@@ -94,6 +94,15 @@ data class HazardWarnEvent(val cell: Position, val span: Int)
 data class TeleportEvent(val from: Position, val to: Position)
 
 /**
+ * A whole-snake particle effect to play over the body [cells] (head first). Used
+ * for the two transition flourishes: the snake bursting apart on death
+ * ([BurstStyle.Blast]) and dissolving away on a Campaign level-up
+ * ([BurstStyle.Vanish]). The renderer staggers the per-cell bursts head-to-tail
+ * and fades the snake out as they fire.
+ */
+data class BodyBurstEvent(val cells: List<Position>, val style: BurstStyle)
+
+/**
  * A compact recap of a finished run, surfaced to the game-over overlay
  * (Step 6.9.2). [deepestLevel]/[deepestSpeed] are only meaningful for Campaign
  * ([isCampaign]); the overlay hides that row in the other modes.
@@ -211,6 +220,32 @@ class GameViewModel(
     var deathEventId by mutableIntStateOf(0)
         private set
 
+    /**
+     * Latest whole-snake burst (death explosion / level-up dissolve) and a
+     * monotonic id so repeats are observable by the renderer.
+     */
+    var bodyBurst: BodyBurstEvent? = null
+        private set
+    var bodyBurstId by mutableIntStateOf(0)
+        private set
+
+    /**
+     * True for the brief window after a death while the snake bursts apart, before
+     * the game-over overlay is revealed. The board keeps animating during it (so
+     * the particles play) and the overlay waits for it to clear. Suppressed under
+     * reduce-motion (the overlay then shows instantly, as before).
+     */
+    var deathAnimating by mutableStateOf(false)
+        private set
+
+    /**
+     * True for the brief hold on a Campaign level-up while the completing snake
+     * dissolves away before the next level's countdown. Keeps the board effects
+     * loop alive across the transition.
+     */
+    var levelVanishing by mutableStateOf(false)
+        private set
+
     /** Bumped on earthquake/explosion so the UI can shake the board mid-game. */
     var shakeEventId by mutableIntStateOf(0)
         private set
@@ -298,6 +333,15 @@ class GameViewModel(
 
     /** For a Daily challenge only: the epoch day, used to route the score + best. */
     private var dailyEpochDay: Long? = null
+
+    /**
+     * For a **replay** of a past Daily (from the weekly history): the epoch day
+     * being relived. Label-only - a replay runs like a Random challenge (it stores
+     * nothing, so that day's recorded best and streak are never overwritten); this
+     * just lets the HUD show the relived date.
+     */
+    var replayDay: Long? by mutableStateOf(null)
+        private set
 
     /** True while the active challenge is a one-off Random run (no stored best). */
     val isRandomChallenge: Boolean get() = activeChallenge != null && dailyEpochDay == null
@@ -450,8 +494,23 @@ class GameViewModel(
     fun requestRandomStart(challenge: Challenge) {
         if (state.status != GameStatus.Ready) return
         dailyEpochDay = null
+        replayDay = null
         activeChallenge = challenge
         pendingChallenge = challenge
+    }
+
+    /**
+     * **Replay** a past Daily ([epochDay], from the weekly history): reruns that
+     * day's exact seeded challenge, but - by leaving [dailyEpochDay] null - it is
+     * treated like a Random run and stores nothing, so the day's recorded best and
+     * the streak stay untouched. [replayDay] is kept only for the HUD label.
+     */
+    fun requestReplayStart(epochDay: Long) {
+        if (state.status != GameStatus.Ready) return
+        dailyEpochDay = null
+        replayDay = epochDay
+        activeChallenge = Challenge.forDay(epochDay)
+        pendingChallenge = activeChallenge
     }
 
     /** Reseeds the engine and starts the [challenge] run on the measured board. */
@@ -552,6 +611,9 @@ class GameViewModel(
 
     /** Resets the per-run achievement accumulators at the start of a run. */
     private fun beginRun() {
+        // Clear any leftover transition flags so a fresh run never starts mid-fade.
+        deathAnimating = false
+        levelVanishing = false
         runFoodsEaten = 0
         runMaxCombo = 0
         runUsedExplosion = false
@@ -585,6 +647,7 @@ class GameViewModel(
             // persisted Custom setup (the settings collector won't re-emit on its own).
             activeChallenge = null
             dailyEpochDay = null
+            replayDay = null
             engine = GameEngine()
             viewModelScope.launch {
                 val s = repo.settings.first()
@@ -660,6 +723,18 @@ class GameViewModel(
                     sfx.died()
                     haptics.death()
                     onGameOver(after.score)
+                    // Burst the whole snake apart, then reveal the game-over overlay.
+                    // onGameOver already computed records/summary; only the overlay
+                    // reveal is delayed (gated on deathAnimating in GameScreen).
+                    if (!reduceMotion) {
+                        bodyBurst = BodyBurstEvent(after.snake, BurstStyle.Blast)
+                        bodyBurstId++
+                        deathAnimating = true
+                        viewModelScope.launch {
+                            delay(DEATH_ANIM_MS)
+                            deathAnimating = false
+                        }
+                    }
                 }
                 GameEvent.NearMiss -> {
                     // Throttled so hugging an edge gives an occasional tick/flash, not a buzz.
@@ -771,11 +846,32 @@ class GameViewModel(
         }
 
         if (after.status == GameStatus.LevelIntro) {
-            // Levels: the tick staged the next board (advance or respawn). Use
+            val respawn = after.lastEvents.any { it is GameEvent.LifeLost }
+            val advanced = after.lastEvents.any { it is GameEvent.LevelAdvanced }
+            if (advanced && !respawn && !reduceMotion) {
+                // Level cleared: hold the completing snake on screen and dissolve it
+                // away (a teleport-style vanish) before staging the next level's
+                // countdown. The loop is stopped so the still-Running `before` state
+                // isn't ticked again during the hold; `state` keeps showing the old
+                // snake (which GameBoard fades out) until the hold elapses.
+                stopLoop()
+                bodyBurst = BodyBurstEvent(before.snake, BurstStyle.Vanish)
+                bodyBurstId++
+                levelVanishing = true
+                introIsRespawn = false
+                viewModelScope.launch {
+                    delay(LEVEL_VANISH_MS)
+                    levelVanishing = false
+                    resetTo(after)
+                    startIntro()
+                }
+                return
+            }
+            // Respawn after a lost life (or reduce-motion): stage instantly. Use
             // resetTo — not the interpolation commit — so the renderer doesn't
             // tween the old snake across the board to the new spawn.
             resetTo(after)
-            introIsRespawn = after.lastEvents.any { it is GameEvent.LifeLost }
+            introIsRespawn = respawn
             startIntro()
             return
         }
@@ -936,6 +1032,12 @@ class GameViewModel(
 
         /** Levels mode: seconds counted down by the intro overlay. */
         private const val INTRO_SECONDS = 3
+
+        /** How long the snake bursts apart on death before the game-over overlay shows. */
+        private const val DEATH_ANIM_MS = 720L
+
+        /** How long the completing snake dissolves on a Campaign level-up before the countdown. */
+        private const val LEVEL_VANISH_MS = 520L
 
         fun factory(
             repo: SettingsRepository,

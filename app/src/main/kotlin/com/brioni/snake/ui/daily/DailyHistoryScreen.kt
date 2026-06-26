@@ -1,5 +1,6 @@
 package com.brioni.snake.ui.daily
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,14 +11,18 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -44,6 +49,7 @@ private const val HISTORY_DAYS = 7
 @Composable
 fun DailyHistoryScreen(
     repo: SettingsRepository,
+    onReplay: (Long) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -57,6 +63,10 @@ fun DailyHistoryScreen(
     val daysPlayed = bests.size
 
     val dateFormat = remember { DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM) }
+
+    // Tapping a row offers to relive that day's exact challenge. Replays never
+    // touch the stored bests, so re-running a fondly-remembered day is safe.
+    var pendingReplayDay by remember { mutableStateOf<Long?>(null) }
 
     Column(
         modifier = modifier
@@ -119,6 +129,7 @@ fun DailyHistoryScreen(
                         twist = twist,
                         score = score?.toString() ?: "-",
                         played = score != null,
+                        onClick = { pendingReplayDay = day },
                     )
                 }
             }
@@ -131,12 +142,45 @@ fun DailyHistoryScreen(
             Text(stringResource(R.string.action_menu))
         }
     }
+
+    // Replay confirmation: relive the tapped day's challenge without recording.
+    pendingReplayDay?.let { day ->
+        val date = remember(day) { LocalDate.ofEpochDay(day).format(dateFormat) }
+        val twist = remember(day) { Challenge.forDay(day).modifier.displayName }
+        AlertDialog(
+            onDismissRequest = { pendingReplayDay = null },
+            title = { Text(stringResource(R.string.daily_replay_title)) },
+            text = { Text(stringResource(R.string.daily_replay_message, date, twist)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingReplayDay = null
+                    onReplay(day)
+                }) {
+                    Text(stringResource(R.string.daily_replay_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingReplayDay = null }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
 }
 
 @Composable
-private fun HistoryRow(date: String, twist: String, score: String, played: Boolean) {
+private fun HistoryRow(
+    date: String,
+    twist: String,
+    score: String,
+    played: Boolean,
+    onClick: () -> Unit,
+) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {

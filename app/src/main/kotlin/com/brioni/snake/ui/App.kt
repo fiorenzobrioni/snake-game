@@ -201,6 +201,12 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
 
                     Screen.DailyHistory -> DailyHistoryScreen(
                         repo = repo,
+                        // Replay a past day's challenge without recording (the day's
+                        // best and streak stay as they were).
+                        onReplay = { epochDay ->
+                            gameViewModel.requestReplayStart(epochDay)
+                            navigate(Screen.Game)
+                        },
                         onBack = { navigate(Screen.Daily) },
                         modifier = Modifier.fillMaxSize(),
                     )

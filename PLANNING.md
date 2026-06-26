@@ -482,6 +482,17 @@ snake-game/
 - [x] **Step 7.7** - In-app **Credits / About** screen (author, GPL-3.0 license, asset attribution),
       reachable from the main menu; bundle the Google Gemini background music in place of the
       synthesized loops.
+- [x] **Step 7.8** - Premium polish batch: (1) **Replay a past Daily** from the weekly history -
+      `DailyHistoryScreen` rows are tappable (no layout change) and confirm before reliving that day's
+      seeded challenge; replays never record, so the day's best and the streak are untouched
+      (`GameViewModel.requestReplayStart` / `replayDay`, "Replay" HUD tag). (2) **Transition animations** -
+      the snake bursts into particles before the game-over overlay (`deathAnimating`) and dissolves with a
+      teleport sparkle before the Campaign level-up countdown (`levelVanishing`), via a whole-snake
+      `BodyBurstEvent` + a `dissolve` envelope in `GameBoard`; both honour reduce-motion. (3) **Level 11
+      (the Lattice) rebalanced** - pillars now only on alternate rows (~half the old density), still
+      isolated/connected. (4) **CRT filter** made visible (fixed ~3px scanline period + aperture grille +
+      deeper vignette in `Shaders.kt`). (5) **Debug-only "unlock all themes"** menu button gated on
+      `BuildConfig.DEBUG` (stripped from release).
 
 ---
 
