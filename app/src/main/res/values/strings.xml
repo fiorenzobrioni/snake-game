@@ -37,6 +37,12 @@
     <string name="daily_history_week_best">Best</string>
     <string name="daily_history_week_total">Total</string>
     <string name="daily_history_days_played">Days</string>
+    <string name="daily_replay_title">Replay this day?</string>
+    <!-- "<date> (<twist>)", e.g. "Jun 20, 2026 (Frenzy)" -->
+    <string name="daily_replay_message">Jump back to %1$s (%2$s)? Your records stay exactly as they are - nothing from this run is saved.</string>
+    <string name="daily_replay_confirm">Replay</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="replay_hud_prefix">Replay</string>
 
     <!-- Random Challenge -->
     <string name="random_title">Random Challenge</string>
@@ -59,6 +65,7 @@
     <!-- Note: action_play is retained for the in-game Ready overlay Play button. -->
     <string name="menu_settings">Settings</string>
     <string name="menu_credits">Credits</string>
+    <string name="menu_debug_unlock_themes">Unlock all themes (debug)</string>
     <string name="action_play">Play</string>
 
     <!-- Credits / About -->

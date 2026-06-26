@@ -36,6 +36,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,6 +51,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.brioni.snake.BuildConfig
 import com.brioni.snake.R
 import com.brioni.snake.data.SettingsRepository
 import com.brioni.snake.game.Mission
@@ -60,6 +62,7 @@ import com.brioni.snake.ui.components.SnakeButton
 import com.brioni.snake.ui.game.SnakeEmblem
 import com.brioni.snake.ui.game.paletteFor
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 /**
@@ -212,6 +215,19 @@ fun MainMenuScreen(
             modifier = Modifier.align(Alignment.TopEnd),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
+            // Debug-only shortcut: unlock every skin so they can be tried without
+            // grinding the unlock conditions. Wrapped in BuildConfig.DEBUG so it is
+            // compiled out of release APKs / the store bundle.
+            if (BuildConfig.DEBUG) {
+                val scope = rememberCoroutineScope()
+                MenuIconButton(
+                    onClick = {
+                        scope.launch { repo.addUnlockedSkins(Skin.entries.map { it.name }) }
+                    },
+                    icon = Icons.Filled.Build,
+                    contentDescription = stringResource(R.string.menu_debug_unlock_themes),
+                )
+            }
             MenuIconButton(
                 onClick = onSettings,
                 icon = Icons.Filled.Settings,

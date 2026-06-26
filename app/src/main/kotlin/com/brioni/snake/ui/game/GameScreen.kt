@@ -217,10 +217,10 @@ fun GameScreen(
                 combo = state.combo,
                 statusLabel = buildString {
                     if (viewModel.activeChallenge != null) {
-                        val tag = if (viewModel.isDailyChallenge) {
-                            stringResource(R.string.daily_hud_prefix)
-                        } else {
-                            stringResource(R.string.random_hud_prefix)
+                        val tag = when {
+                            viewModel.isDailyChallenge -> stringResource(R.string.daily_hud_prefix)
+                            viewModel.replayDay != null -> stringResource(R.string.replay_hud_prefix)
+                            else -> stringResource(R.string.random_hud_prefix)
                         }
                         append(tag).append(" · ")
                     }
@@ -310,11 +310,17 @@ fun GameScreen(
                     hazardWarnId = viewModel.hazardWarnId,
                     teleportEvent = viewModel.teleportEvent,
                     teleportEventId = viewModel.teleportEventId,
+                    bodyBurst = viewModel.bodyBurst,
+                    bodyBurstId = viewModel.bodyBurstId,
                     textMeasurer = textMeasurer,
                     palette = viewModel.palette,
                     borderColor = boardBorderColor,
                     outsideColor = MaterialTheme.colorScheme.background,
                     reduceMotion = viewModel.reduceMotion,
+                    // Keep particles/redraw alive through the death-burst and
+                    // level-vanish transitions, after `running` has gone false.
+                    effectsActive = state.status == GameStatus.Running ||
+                        viewModel.deathAnimating || viewModel.levelVanishing,
                     modifier = boardModifier,
                 )
                 // Danger frame flash, tracking the board's shake offset.
@@ -358,6 +364,7 @@ fun GameScreen(
 
             GameStatus.LevelIntro -> LevelIntroOverlay(
                 levelIndex = state.levelIndex,
+                levelName = LevelsMode.nameFor(state.levelIndex),
                 speedCycle = state.speedCycle,
                 lives = state.lives,
                 countdown = viewModel.introCountdown,
@@ -370,20 +377,24 @@ fun GameScreen(
                 onMenu = { viewModel.toSetup(); onExitToMenu() },
             )
 
-            GameStatus.GameOver -> GameOverOverlay(
-                score = state.score,
-                bestScore = viewModel.bestScore,
-                isNewBest = viewModel.isNewBest,
-                // A Random challenge is a one-off: no best to show.
-                showBest = !viewModel.isRandomChallenge,
-                summary = viewModel.lastSummary,
-                unlocked = viewModel.newlyUnlocked.map { it.title },
-                unlockedSkins = viewModel.newlyUnlockedSkins.map { it.displayName },
-                missions = viewModel.missionsProgress,
-                onPlayAgain = { viewModel.playAgain() },
-                onSetup = { viewModel.toSetup() },
-                onMenu = { viewModel.toSetup(); onExitToMenu() },
-            )
+            // Hold the overlay back while the snake bursts apart (deathAnimating);
+            // reduce-motion skips the burst so the overlay shows instantly.
+            GameStatus.GameOver -> if (!viewModel.deathAnimating) {
+                GameOverOverlay(
+                    score = state.score,
+                    bestScore = viewModel.bestScore,
+                    isNewBest = viewModel.isNewBest,
+                    // A Random challenge is a one-off: no best to show.
+                    showBest = !viewModel.isRandomChallenge,
+                    summary = viewModel.lastSummary,
+                    unlocked = viewModel.newlyUnlocked.map { it.title },
+                    unlockedSkins = viewModel.newlyUnlockedSkins.map { it.displayName },
+                    missions = viewModel.missionsProgress,
+                    onPlayAgain = { viewModel.playAgain() },
+                    onSetup = { viewModel.toSetup() },
+                    onMenu = { viewModel.toSetup(); onExitToMenu() },
+                )
+            }
 
             GameStatus.Running -> Unit
         }

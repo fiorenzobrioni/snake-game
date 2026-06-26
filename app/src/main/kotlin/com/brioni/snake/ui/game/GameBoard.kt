@@ -7,6 +7,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -46,6 +47,8 @@ import com.brioni.snake.game.isHazard
 import kotlin.math.abs
 import kotlin.math.min
 import kotlin.math.sin
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Draws the board on a Compose [Canvas]. The grid logic stays in the model;
@@ -138,11 +141,16 @@ fun GameBoard(
     hazardWarnId: Int,
     teleportEvent: TeleportEvent?,
     teleportEventId: Int,
+    bodyBurst: BodyBurstEvent?,
+    bodyBurstId: Int,
     textMeasurer: TextMeasurer,
     palette: SkinPalette,
     borderColor: Color = palette.boardBorder,
     outsideColor: Color = Color.Black,
     reduceMotion: Boolean = false,
+    // Keeps the particle/redraw loop alive across the brief death-burst and
+    // level-vanish transitions, after `running` has already gone false.
+    effectsActive: Boolean = running,
     modifier: Modifier = Modifier,
 ) {
     val particles: SnapshotStateList<Particle> = remember { emptyList<Particle>().toMutableStateList() }
@@ -168,13 +176,20 @@ fun GameBoard(
         }
     }
 
-    // A single frame-driven loop runs only while the game is running: it
-    // advances the particles and writes [frameNanos] to force a redraw each
-    // frame. When not running it clears any leftover particles.
-    LaunchedEffect(running) {
-        if (!running) {
+    // Snake dissolve envelope (1 = solid, 0 = gone): driven by a whole-snake burst
+    // so the body fades out as it explodes (death) or teleports away (level-up).
+    // Stays at 1 during normal play, and is reset to 1 whenever effects stop.
+    val dissolve = remember { Animatable(1f) }
+
+    // A single frame-driven loop runs while the game is running *or* a transition
+    // burst is still playing: it advances the particles and writes [frameNanos] to
+    // force a redraw each frame. When neither is active it clears leftover
+    // particles and resets the dissolve so the next snake draws solid.
+    LaunchedEffect(effectsActive) {
+        if (!effectsActive) {
             particles.clear()
             floatingTexts.clear()
+            dissolve.snapTo(1f)
             return@LaunchedEffect
         }
         var lastNanos = System.nanoTime()
@@ -186,6 +201,43 @@ fun GameBoard(
             updateParticles(particles, dt)
             updateFloatingTexts(floatingTexts, dt)
             frameNanos = now
+        }
+    }
+
+    // Whole-snake burst: spray a per-cell burst head-to-tail and fade the body out
+    // over the matching window. Death uses the fiery explosion; a level-up uses the
+    // gentler vanish/teleport sparkle. Suppressed under reduce-motion.
+    //
+    // [handledBurst] is initialised to the *current* id so the first composition of a
+    // fresh GameBoard (e.g. Menu -> Game) is a no-op: without it, a leftover burst from
+    // the previous run would replay on the new snake and leave [dissolve] stuck at 0
+    // (an invisible body, only the eyes moving).
+    val handledBurst = remember { mutableIntStateOf(bodyBurstId) }
+    LaunchedEffect(bodyBurstId) {
+        val event = bodyBurst
+        if (bodyBurstId != handledBurst.intValue && event != null && !reduceMotion && event.cells.isNotEmpty()) {
+            handledBurst.intValue = bodyBurstId
+            // Kept just under the ViewModel's hold (DEATH_ANIM_MS / LEVEL_VANISH_MS, both
+            // ~1000 ms) so the body has fully faded by the time the overlay / countdown
+            // takes over. [blast] still selects the burst flavour below.
+            val blast = event.style == BurstStyle.Blast
+            val durationMs = 900
+            dissolve.snapTo(1f)
+            // Fade the body out alongside the staggered bursts.
+            launch { dissolve.animateTo(0f, tween(durationMillis = durationMs, easing = FastOutLinearInEasing)) }
+            // Spread the emissions over the first ~60% of the window, head first.
+            val stepDelay = ((durationMs * 0.6f) / event.cells.size).toLong().coerceIn(5L, 36L)
+            for (cell in event.cells) {
+                val cx = cell.x + 0.5f
+                val cy = cell.y + 0.5f
+                if (blast) {
+                    emitExplosionBurst(particles, cx, cy, palette.headGlow, 1)
+                } else {
+                    emitVanishBurst(particles, cx, cy, palette.snakeBody, 1)
+                    emitEatBurst(particles, cx, cy, palette.headGlow, 1)
+                }
+                delay(stepDelay)
+            }
         }
     }
 
@@ -326,13 +378,16 @@ fun GameBoard(
                 val cy = lerp(from.y.toFloat(), to.y.toFloat(), f)
                 centers.add(Offset(originX + (cx + 0.5f) * cell, originY + (cy + 0.5f) * cell))
             }
+            // Fold in the dissolve envelope so the body fades as it bursts apart on
+            // death / vanishes on a level-up (1f during normal play = no change).
+            val fade = dissolve.value
             drawSnake(
                 centers = centers,
                 cell = cell,
                 direction = state.direction,
                 palette = palette,
-                bodyAlpha = snakeAlpha,
-                headAlpha = (snakeAlpha + 0.2f).coerceAtMost(1f),
+                bodyAlpha = snakeAlpha * fade,
+                headAlpha = (snakeAlpha + 0.2f).coerceAtMost(1f) * fade,
                 shaders = shaders,
                 time = time,
                 headGlow = hotGlow(palette.headGlow, state.combo),
@@ -960,7 +1015,7 @@ private fun DrawScope.drawRoundHead(
         radius = r * 0.52f,
         center = center + Offset(0f, -r * 0.32f),
     )
-    drawEyes(center.x, center.y, cell, direction, palette)
+    drawEyes(center.x, center.y, cell, direction, palette, alpha)
 }
 
 /**
@@ -1015,7 +1070,7 @@ private fun DrawScope.drawBlockHead(
     drawRoundRect(palette.snakeHead.copy(alpha = alpha), tl, Size(side, side), rad)
     drawRect(lighten(palette.snakeHead, 0.2f).copy(alpha = 0.45f * alpha), Offset(tl.x, tl.y), Size(side, side * 0.4f))
     drawRoundRect(palette.snakeOutline.copy(alpha = alpha), tl, Size(side, side), rad, style = Stroke(width = cell * 0.06f))
-    drawEyes(center.x, center.y, cell, direction, palette)
+    drawEyes(center.x, center.y, cell, direction, palette, alpha)
 }
 
 private fun DrawScope.drawEyes(
@@ -1024,6 +1079,7 @@ private fun DrawScope.drawEyes(
     cell: Float,
     direction: Direction,
     palette: SkinPalette,
+    alpha: Float = 1f,
 ) {
     val forwardX = direction.dx.toFloat()
     val forwardY = direction.dy.toFloat()
@@ -1038,9 +1094,11 @@ private fun DrawScope.drawEyes(
     for (sign in intArrayOf(-1, 1)) {
         val ex = centerX + forwardX * forward + perpX * spread * sign
         val ey = centerY + forwardY * forward + perpY * spread * sign
-        drawCircle(Color.White, eyeRadius, Offset(ex, ey))
+        // Honour the head alpha so the eyes fade *with* the head during the death /
+        // level-up dissolve (otherwise they linger as floating eyes).
+        drawCircle(Color.White.copy(alpha = alpha), eyeRadius, Offset(ex, ey))
         drawCircle(
-            palette.snakeEye,
+            palette.snakeEye.copy(alpha = alpha),
             pupilRadius,
             Offset(ex + forwardX * cell * 0.03f, ey + forwardY * cell * 0.03f),
         )

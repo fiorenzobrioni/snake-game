@@ -71,17 +71,27 @@ object Shaders {
         }
     """
 
-    /** Optional CRT post-filter: scanlines + vignette over the board layer. */
+    /**
+     * Optional CRT post-filter: scanlines + an aperture-grille shimmer + vignette
+     * over the board layer. Scanlines/grille use a fixed *pixel* period (rather
+     * than the old resolution-scaled frequency that aliased into near-invisibility)
+     * so the lines actually read on screen; the vignette is deeper for a tube feel.
+     */
     const val CRT = """
         uniform shader content;
         uniform float2 resolution;
         half4 main(float2 fragCoord) {
             float2 uv = fragCoord / resolution;
             half4 c = content.eval(fragCoord);
-            float scan = 0.90 + 0.10 * sin(uv.y * resolution.y * 1.5);
+            // Horizontal scanlines: a visible dark line roughly every 3 pixels.
+            float scan = 0.84 + 0.16 * sin(fragCoord.y * 2.0944);
             c.rgb *= half(scan);
+            // Aperture grille: a faint vertical RGB-ish modulation across columns.
+            float grille = 0.94 + 0.06 * sin(fragCoord.x * 2.0944);
+            c.rgb *= half(grille);
+            // Vignette: darker toward the edges for a curved-tube look.
             float vig = smoothstep(1.25, 0.35, distance(uv, float2(0.5, 0.5)));
-            c.rgb *= half(mix(0.75, 1.0, vig));
+            c.rgb *= half(mix(0.62, 1.0, vig));
             return c;
         }
     """
