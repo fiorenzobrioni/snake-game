@@ -1,34 +1,45 @@
 # DevLog
 
-Development log folder and project design notes. For roadmap, TODOs, and ideas, see `PLANNING.md`.
+Folder for development logs and design notes of the project. For the roadmap, TODOs, and ideas, see [`PLANNING.md`](../PLANNING.md).
 
 ## Structure
 
-```
+```text
 devlog/
-├── README.md   <- this file, do not modify
-├── 2025.md     <- 2025 log
-└── 2026.md     <- 2026 log (highest year = active log)
+├── README.md              <- this file, do not edit
+├── devlog.md              <- current active log
+└── devlog-YYYY-MM-DD.md   <- archived logs (the date indicates when it was archived)
 ```
 
-One file per year. The file with the highest year is always the active one: no special files, the name says it all.
+There is always exactly one active file: `devlog.md`. When this file reaches or exceeds 1000 lines, it is archived by renaming it, and a new empty one is created (using the template provided below).
 
-## Rules
+## Writing and Archiving Rules
 
-- Always write in the current year's file (`YYYY.md`). If it doesn't exist, create it using the template below.
-- When the year changes, create the new `YYYY.md` and do not touch the old one anymore.
-- Latest development always at the top of the file.
-- If a file exceeds roughly 1000 lines (rare case), split it into `YYYY-a.md` and `YYYY-b.md`.
+- **Always write in the current file:** `devlog.md`. If it doesn't exist, create it using the template below.
+- **Reverse Chronological Order:** The latest entry must **always be added at the top** of the file, right below the main title.
+- **Archiving Procedure (Over 1000 lines):**
+  1. Rename the current `devlog.md` to `devlog-YYYY-MM-DD.md` using the current day's date.
+  2. Do not edit the newly archived file anymore.
+  3. Immediately create a new `devlog.md` file inserting the base template provided below.
+  4. Write your new log entry in the new file.
 
-## Template for a new year
+## Template for a new devlog.md
+
+Copy the text below when creating a new `devlog.md` file:
 
 ```markdown
-# DEVLOG {repo name} - {YYYY}
+# DEVLOG Snake Game
 
-Development log {YYYY}. Latest development at the top. For roadmap, TODOs, and ideas, see `PLANNING.md`.
+Development diary of the project. The newest entries go at the top.
+Each entry notes what was done, decisions made, problems encountered, and what comes next.
 
-> Statuses: `✅ Done` - `🔧 In progress` - `⬜ To do`
-> Used in the section title for the overall status of the cycle, and in sub-bullet points for parts still open or in progress.
+Suggested format for each entry:
+
+## YYYY-MM-DD - Short title
+**Done:** what was completed
+**Decisions:** technical/design choices and why
+**Issues:** what got stuck and how (or if) it was resolved
+**Next:** the next step
 
 ---
 ```
