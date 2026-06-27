@@ -47,8 +47,8 @@ internal fun DrawScope.drawSpecialSymbol(
         is FoodEffect.Jackpot -> drawGlyph(textMeasurer, "$", cx, cy, r * 1.7f, color)
         is FoodEffect.Burst -> drawStarShape(cx, cy, r, points = 8, innerRatio = 0.42f, color = color)
         is FoodEffect.Quake -> drawCrack(cx, cy, r, color)
-        is FoodEffect.TimeBonus -> drawClock(cx, cy, r, color, plus = true)
-        is FoodEffect.TimePenalty -> drawClock(cx, cy, r, color, plus = false)
+        is FoodEffect.TimeBonus -> drawClock(cx, cy, r, color)
+        is FoodEffect.TimePenalty -> drawClock(cx, cy, r, color)
         is FoodEffect.ExtraLife -> drawSnakeHeadIcon(cx, cy, r, color)
         else -> Unit
     }
@@ -91,19 +91,16 @@ internal fun DrawScope.drawSnakeHeadIcon(cx: Float, cy: Float, r: Float, color: 
     }
 }
 
-/** A clock face with a small +/- badge - the Time Attack bonus / penalty blocks. */
-internal fun DrawScope.drawClock(cx: Float, cy: Float, r: Float, color: Color, plus: Boolean) {
+/**
+ * A clock face - the Time Attack bonus / penalty blocks. The gain-vs-lose meaning
+ * is carried entirely by the block's green/red accent colour, so no +/- badge is drawn.
+ */
+internal fun DrawScope.drawClock(cx: Float, cy: Float, r: Float, color: Color) {
     val ring = r * 0.74f
     drawCircle(color, ring, Offset(cx, cy), style = Stroke(width = r * 0.16f))
     // Hands: one up, one to the right.
     drawLine(color, Offset(cx, cy), Offset(cx, cy - ring * 0.58f), strokeWidth = r * 0.15f, cap = StrokeCap.Round)
     drawLine(color, Offset(cx, cy), Offset(cx + ring * 0.44f, cy), strokeWidth = r * 0.15f, cap = StrokeCap.Round)
-    // +/- badge at the bottom-right.
-    val bx = cx + r * 0.62f
-    val by = cy + r * 0.62f
-    val s = r * 0.32f
-    drawLine(color, Offset(bx - s, by), Offset(bx + s, by), strokeWidth = r * 0.17f, cap = StrokeCap.Round)
-    if (plus) drawLine(color, Offset(bx, by - s), Offset(bx, by + s), strokeWidth = r * 0.17f, cap = StrokeCap.Round)
 }
 
 /** An n-pointed star (used for Star and the spiky Explosion burst). */

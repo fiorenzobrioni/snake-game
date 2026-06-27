@@ -492,7 +492,8 @@ snake-game/
       (the Lattice) rebalanced** - pillars now only on alternate rows (~half the old density), still
       isolated/connected. (4) **CRT filter** made visible (fixed ~3px scanline period + aperture grille +
       deeper vignette in `Shaders.kt`). (5) **Debug-only "unlock all themes"** menu button gated on
-      `BuildConfig.DEBUG` (stripped from release).
+      `BuildConfig.DEBUG` (stripped from release). Currently also hidden in debug builds behind the
+      `SHOW_DEBUG_UNLOCK_SKINS` flag (default `false`); flip it to `true` to bring the shortcut back.
 
 ---
 
