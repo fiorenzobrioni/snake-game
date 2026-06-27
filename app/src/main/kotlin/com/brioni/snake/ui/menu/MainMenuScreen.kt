@@ -66,6 +66,13 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 /**
+ * Master switch for the debug-only "unlock all themes" shortcut. Kept `false` for now so
+ * the button is hidden and inert even in debug APKs; flip to `true` (and run a debug
+ * build) to bring it back when grinding the unlock conditions becomes tedious.
+ */
+private const val SHOW_DEBUG_UNLOCK_SKINS = false
+
+/**
  * The app's landing screen, laid out as a "game launcher": the brand (a skin-
  * coloured wordmark + snake emblem) is the hero in the top region, while every
  * action is grouped into a compact cluster anchored at the bottom (thumb reach).
@@ -217,8 +224,9 @@ fun MainMenuScreen(
         ) {
             // Debug-only shortcut: unlock every skin so they can be tried without
             // grinding the unlock conditions. Wrapped in BuildConfig.DEBUG so it is
-            // compiled out of release APKs / the store bundle.
-            if (BuildConfig.DEBUG) {
+            // compiled out of release APKs / the store bundle, and additionally gated by
+            // SHOW_DEBUG_UNLOCK_SKINS so it stays hidden even in debug builds for now.
+            if (BuildConfig.DEBUG && SHOW_DEBUG_UNLOCK_SKINS) {
                 val scope = rememberCoroutineScope()
                 MenuIconButton(
                     onClick = {
