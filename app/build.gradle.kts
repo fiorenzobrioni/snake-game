@@ -12,8 +12,8 @@ android {
         applicationId = "com.brioni.snake"
         minSdk = 33
         targetSdk = 36
-        versionCode = 26
-        versionName = "0.9.6"
+        versionCode = 27
+        versionName = "1.0.0"
     }
 
     buildTypes {
