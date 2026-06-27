@@ -28,7 +28,28 @@ Roadmap, work in progress, TODOs, known bugs, and ideas. For the history of deve
 
 ---
 
-> The original **C# / .NET 10 / WinForms (GDI+)** version shipped as **v1.0.0** and is now **frozen** under [`legacy/`](legacy/). It is kept only as a reference for the *game model* - no further feature work happens there. Everything below is the new app at the repository root.
+## 🚀 Releases
+
+- **Android `1.0.0`** (first Android release, GitHub) - the app exits "beta". Ships the full feature
+  set (Endless / Time Attack / Campaign, power-ups & hazards, six skins, achievements, daily missions
+  & challenge, onboarding, audio, AGSL shaders, accessibility). Distributed as a **debug-signed APK**
+  on the GitHub Releases page (tag `v1.0.0`); the Google Play track (signed AAB) is a later phase.
+  Distinct from the frozen desktop prototype's own `v1.0.0`.
+
+## 🔮 Post-1.0.0 / future versions
+
+> Deliberately deferred so 1.0.0 ships lean. Pick these up in their own chats for the next versions.
+
+- **Gameplay depth** - Step 6.9.6 player-activated power-up (one chargeable slot: Dash / Bomb).
+- **Sharing & social** - Step 6.9.11 share-your-score card via the Android share sheet.
+- **Replayability** - Step 6.9.12 translucent ghost replay of your best run.
+- **Google Play distribution** - Steps 7.2-7.6: R8/shrink verification, upload-keystore signing,
+  signed AAB + tag-driven CI, Play readiness (privacy policy, Data Safety, IARC, store listing,
+  internal testing track), and the README Play link.
+
+---
+
+> The original **C# / .NET 10 / WinForms (GDI+)** version shipped as its own desktop **v1.0.0** and is now **frozen** under [`legacy/`](legacy/). It is kept only as a reference for the *game model* - no further feature work happens there. Everything below is the new app at the repository root.
 
 ---
 
@@ -478,7 +499,10 @@ snake-game/
       upload to a Play track via service account / Gradle Play Publisher).
 - [ ] **Step 7.5** - Play readiness: privacy policy, **Data Safety** form, **IARC** rating, store listing
       (icon, feature graphic, phone screenshots), **internal testing** track.
-- [ ] **Step 7.6** - Finalize docs: README screenshots/GIFs + Play link; confirm the legacy note.
+- [-] **Step 7.6** - Finalize docs: README screenshots/GIFs + Play link; confirm the legacy note.
+      *(README screenshots refreshed to the current build (8 shots, status bar/gesture pill cropped)
+      and the legacy note reframed against the Android `1.0.0` release; the **Play link** stays
+      pending until the Play listing exists.)*
 - [x] **Step 7.7** - In-app **Credits / About** screen (author, GPL-3.0 license, asset attribution),
       reachable from the main menu; bundle the Google Gemini background music in place of the
       synthesized loops.
