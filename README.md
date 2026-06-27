@@ -16,16 +16,16 @@ on the way to a polished, **Google-Play-publishable** title with animation, part
 
 <table>
   <tr>
-    <td align="center"><img src="docs/screenshots/screenshot_menu.jpg" width="200"/><br/><sub>Main menu - the game launcher</sub></td>
-    <td align="center"><img src="docs/screenshots/screenshot_gameplay.jpg" width="200"/><br/><sub>Endless - a ×2 combo with an active Lightning power-up</sub></td>
-    <td align="center"><img src="docs/screenshots/screenshot_timeattack.jpg" width="200"/><br/><sub>Time Attack on a dense Legend board</sub></td>
-    <td align="center"><img src="docs/screenshots/screenshot_campaign.jpg" width="200"/><br/><sub>Campaign - moving-wall gates, portals &amp; an Explosion hazard</sub></td>
+    <td align="center"><img src="docs/screenshots/screenshot_menu.jpg" width="120"/><br/><sub>Main menu - the game launcher</sub></td>
+    <td align="center"><img src="docs/screenshots/screenshot_gameplay.jpg" width="120"/><br/><sub>Endless - a ×2 combo with an active Lightning power-up</sub></td>
+    <td align="center"><img src="docs/screenshots/screenshot_timeattack.jpg" width="120"/><br/><sub>Time Attack on a dense Legend board</sub></td>
+    <td align="center"><img src="docs/screenshots/screenshot_campaign.jpg" width="120"/><br/><sub>Campaign - moving-wall gates, portals &amp; an Explosion hazard</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/screenshots/screenshot_campaign_intro.jpg" width="200"/><br/><sub>Campaign - the animated "Level x - Speed x" intro</sub></td>
-    <td align="center"><img src="docs/screenshots/screenshot_custom.jpg" width="200"/><br/><sub>Custom setup - mode, level, speed &amp; board scale</sub></td>
-    <td align="center"><img src="docs/screenshots/screenshot_settings.jpg" width="200"/><br/><sub>Settings - skins, theme, hazards &amp; audio</sub></td>
-    <td align="center"><img src="docs/screenshots/screenshot_onboarding.jpg" width="200"/><br/><sub>First-run tutorial - power-ups &amp; hazards</sub></td>
+    <td align="center"><img src="docs/screenshots/screenshot_campaign_intro.jpg" width="120"/><br/><sub>Campaign - the animated "Level x - Speed x" intro</sub></td>
+    <td align="center"><img src="docs/screenshots/screenshot_custom.jpg" width="120"/><br/><sub>Custom setup - mode, level, speed &amp; board scale</sub></td>
+    <td align="center"><img src="docs/screenshots/screenshot_settings.jpg" width="120"/><br/><sub>Settings - skins, theme, hazards &amp; audio</sub></td>
+    <td align="center"><img src="docs/screenshots/screenshot_onboarding.jpg" width="120"/><br/><sub>First-run tutorial - power-ups &amp; hazards</sub></td>
   </tr>
 </table>
 
