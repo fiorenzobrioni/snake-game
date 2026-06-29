@@ -79,7 +79,7 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - 🔥 **Combo "juice"** - chain bites for a multiplier and the HUD counter punches in and warms through a
   colour ramp while the snake's head **catches fire** (its glow heats from your skin's colour toward a
   fiery orange-red) as the streak climbs.
-- ♿ **Reduce motion & flashing** - an accessibility toggle in Settings that damps the screen shake, the
+- 👁️ **Reduce motion & flashing** - an accessibility toggle in Settings that damps the screen shake, the
   particle bursts and the near-miss flash for a calmer, flash-free board.
 - ✨ **Rich 2D visuals** - the snake renders as a smooth, shaded, **tapered tube** with a glossy head
   (crisp blocks on the flat skins), food is drawn with top-lit gradients and soft shadows, and eating
