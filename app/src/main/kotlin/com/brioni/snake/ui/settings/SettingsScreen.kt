@@ -76,9 +76,13 @@ fun SettingsScreen(
     )
     val storedUnlockedSkins by repo.unlockedSkins().collectAsState(initial = emptySet())
     // The skins the player may actually select: the always-available ones plus any
-    // earned and persisted.
+    // earned and persisted. During the pre-release preview every skin is selectable.
     val unlockedSkins = remember(storedUnlockedSkins) {
-        Skin.defaultUnlocked.mapTo(mutableSetOf()) { it.name } + storedUnlockedSkins
+        if (Skin.ALL_UNLOCKED_PREVIEW) {
+            Skin.entries.mapTo(mutableSetOf()) { it.name }
+        } else {
+            Skin.defaultUnlocked.mapTo(mutableSetOf()) { it.name } + storedUnlockedSkins
+        }
     }
     val scope = rememberCoroutineScope()
 

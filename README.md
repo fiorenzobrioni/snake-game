@@ -64,13 +64,15 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - 🎨 **Skins** - six selectable looks, each its own palette and render style. **Retro** (the default) and
   **Classic** are unlocked from the start; the rest are earned: **Neon** (score 1500 in a run), **Pixel**
   (score 5000), **Aurora** (a 7-day Daily streak) and **Ember** (a 30-day Daily streak). Locked skins show
-  their unlock condition in Settings. The glow skins (Classic / Neon / Aurora / Ember) draw food and
-  power-ups as haloed round pieces; the flat skins (Retro / Pixel) render them as squares (crisp on Pixel,
-  lightly rounded on Retro). Aurora and Ember pair a glowing look with a **segmented** snake body that reads
-  beautifully through teleports and the invincibility shimmer. Power-up / hazard pieces are drawn as
-  **premium bevelled tokens** whose material changes per skin (glossy enamel, hollow neon tube, warm
-  phosphor, hard pixel tile, frosted glass, molten iron), while each effect keeps a constant identity
-  colour and symbol so its meaning never shifts between skins.
+  their unlock condition in Settings. The glow skins (Classic / Neon / Aurora / Ember) draw food as
+  haloed round pieces; the flat skins (Retro / Pixel) render food as squares (crisp on Pixel, lightly
+  rounded on Retro). Each skin also has its **own snake body**: Classic a glossy tapered tube, Retro /
+  Pixel chiselled blocks, **Neon** a hollow glowing neon tube with a pulsing filament, **Aurora** a ribbon
+  whose teal-to-violet hues flow along its length, and **Ember** dark rock veined with pulsing molten lava
+  that runs hottest at the head. Power-up / hazard pieces are drawn as **premium bevelled tokens** whose
+  material changes per skin (glossy enamel, hollow neon tube, warm phosphor, hard pixel tile, frosted
+  glass, molten iron), while each effect keeps a constant identity colour and symbol so its meaning never
+  shifts between skins.
 - 🌗 **Theme** - choose **Light**, **Dark** or **System** (follows the device) in Settings.
 - 🔊 **Music & sound effects** - looping background music that crossfades between the menu and
   gameplay, plus SFX for eating, shrinking, mystery pieces, game over and UI. Independent
@@ -84,8 +86,9 @@ The classic Snake mechanics, extended with configurable features so every run fe
   fiery orange-red) as the streak climbs.
 - 👁️ **Reduce motion & flashing** - an accessibility toggle in Settings that damps the screen shake, the
   particle bursts and the near-miss flash for a calmer, flash-free board.
-- ✨ **Rich 2D visuals** - the snake renders as a smooth, shaded, **tapered tube** with a glossy head
-  (crisp blocks on the flat skins), food is drawn with top-lit gradients and soft shadows, and eating
+- ✨ **Rich 2D visuals** - the snake renders in each skin's own body style (see **Skins** - glossy tube,
+  chiselled blocks, hollow neon, flowing aurora ribbon or molten lava), food is drawn with top-lit
+  gradients and soft shadows, and eating
   pops a shockwave ring with **combo-reactive** sparks (the burst grows hotter and bigger as your streak
   climbs); the Explosion hazard sets off a fiery two-tone detonation.
 - ✨ **GPU shader effects** - an animated background, a glowing snake head and pulsing

@@ -13,6 +13,43 @@ Suggested format for each entry:
 
 ---
 
+## 2026-07-01 - Per-skin snake bodies (Neon / Aurora / Ember) + skin unlock bypass
+
+**Done:**
+- Replaced the boolean `SkinPalette.segmentedBody` with a `SnakeStyle` enum, dispatched in
+  `GameBoard.drawSnake`, so each skin can render the snake body its own way. Three skins
+  get a bespoke, premium, subtly animated body:
+  - **Neon** - a hollow neon tube: dark core, glowing wall, a bright pulsing filament and a
+    ring head (additive `BlendMode.Plus` glow).
+  - **Aurora** - a ribbon whose teal-cyan-blue-violet-green hues flow along the body and drift
+    over time (a per-segment `auroraColor(u, time)`), with an additive glow and upper sheen.
+  - **Ember** - a dark rock crust with a pulsing molten-lava vein that runs hottest at the head.
+- Kept Classic = **tube** and Retro / Pixel = **blocks** but made both more premium while
+  keeping their identity: a crisp top specular on the tube; a volumetric diagonal gradient +
+  specular corner on the blocks (`drawChiselledBlock`).
+- Extracted a reusable `strokeChain` (round-capped capsule chain + joint discs, blend-mode
+  aware) that backs the tube / neon / molten bodies; debris (severed tails) now render through
+  the same per-skin body dispatch (`drawSnakeBody`), passed the frame `time`.
+- Added `Skin.ALL_UNLOCKED_PREVIEW = true`: while set, every skin is selectable in Settings and
+  the game-over "skin unlocked" toasts are suppressed - a temporary pre-release convenience so
+  all skins can be trialled. The `SkinUnlock` rules and `Skin.newlyUnlocked` logic are untouched.
+
+**Decisions:** Animation reuses the `time` value already threaded into `drawSnake`, so nothing
+in the coroutine game loop changed. The unlock bypass is a single model-level flag read by the
+Settings picker and the ViewModel, rather than deleting the gating - so it is a one-line revert
+and leaves `SkinTest` green.
+
+**Issues:** None. `SkinPalette` swapped a field (`segmentedBody` → `snakeStyle`), but it is
+constructed only in `paletteFor`, so all six palettes updated in one place.
+
+**Verified:** `./gradlew compileDebugKotlin testDebugUnitTest` (build successful, all unit tests
+pass). Reviewed an animated HTML/Canvas mockup of the three new bodies for sign-off first.
+
+**Next:** Refresh screenshots to show the new snake bodies; restore the unlock gating (flip
+`ALL_UNLOCKED_PREVIEW`) before an official release.
+
+---
+
 ## 2026-07-01 - Premium, per-skin power-up / hazard tokens
 
 **Done:**

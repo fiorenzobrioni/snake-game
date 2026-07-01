@@ -36,6 +36,28 @@ enum class SpecialStyle(val tokenCorner: Float?) {
 }
 
 /**
+ * How a skin renders the **snake body** (dispatched in `GameBoard.drawSnake`).
+ * Beyond the shared tube / block looks, three skins get a bespoke, premium body
+ * with its own material and (subtle) animation so the roster reads as distinct.
+ */
+enum class SnakeStyle {
+    /** Classic: a smooth, shaded, tapered tube with a glossy head. */
+    Tube,
+
+    /** Retro / Pixel: crisp, chiselled blocky segments (volumetric diagonal shading). */
+    Blocks,
+
+    /** Neon: a hollow neon tube - dark core, glowing wall and a bright pulsing filament. */
+    NeonTube,
+
+    /** Aurora: a ribbon whose teal-cyan-blue-violet-green hues flow along the body. */
+    AuroraRibbon,
+
+    /** Ember: a dark rock crust with a pulsing molten-lava vein, hottest at the head. */
+    Molten,
+}
+
+/**
  * The full set of colours and style flags the Canvas renderer needs, bundled so
  * a whole look can be swapped atomically by selecting a [Skin]. Every renderer
  * reads from a [SkinPalette] rather than a hard-coded object, which keeps the
@@ -46,10 +68,8 @@ enum class SpecialStyle(val tokenCorner: Float?) {
  *                     squares, ~0.5 → bubbly rounded). Shapes obstacles, snake
  *                     and (regular) food, so skins differ in form, not just hue.
  * @param useGlow      emit the radial head glow / food halos (false → flat styling).
- * @param segmentedBody draw the snake body as discrete tapered blocks instead of a
- *                     continuous tube. Independent of [useGlow], so a glowing skin
- *                     can still wear a per-segment body (reads better through
- *                     teleports / the invincibility shimmer).
+ * @param snakeStyle   how the snake body is drawn ([SnakeStyle]); the per-skin
+ *                     material (tube, chiselled blocks, neon, aurora, molten).
  */
 data class SkinPalette(
     // Board background — a vertical gradient with a framed border.
@@ -83,7 +103,8 @@ data class SkinPalette(
     // Style flags.
     val cornerFactor: Float,
     val useGlow: Boolean,
-    val segmentedBody: Boolean,
+    // How the snake body is rendered (see [drawSnake]).
+    val snakeStyle: SnakeStyle,
     // The material used to draw power-up / hazard tokens (see [drawSpecialToken]).
     val specialStyle: SpecialStyle,
 ) {
@@ -142,7 +163,7 @@ private val ClassicPalette = SkinPalette(
     special = Color(0xFFB388FF),
     cornerFactor = 0.30f,
     useGlow = true,
-    segmentedBody = false,
+    snakeStyle = SnakeStyle.Tube,
     specialStyle = SpecialStyle.Enamel,
 )
 
@@ -172,7 +193,7 @@ private val NeonPalette = SkinPalette(
     special = Color(0xFFFFEA00),
     cornerFactor = 0.50f,
     useGlow = true,
-    segmentedBody = false,
+    snakeStyle = SnakeStyle.NeonTube,
     specialStyle = SpecialStyle.Neon,
 )
 
@@ -202,7 +223,7 @@ private val RetroPalette = SkinPalette(
     special = Color(0xFFFFD166),
     cornerFactor = 0.16f,
     useGlow = false,
-    segmentedBody = true,
+    snakeStyle = SnakeStyle.Blocks,
     specialStyle = SpecialStyle.Phosphor,
 )
 
@@ -232,7 +253,7 @@ private val PixelPalette = SkinPalette(
     special = Color(0xFFB388FF),
     cornerFactor = 0.0f,
     useGlow = false,
-    segmentedBody = true,
+    snakeStyle = SnakeStyle.Blocks,
     specialStyle = SpecialStyle.Pixel,
 )
 
@@ -266,7 +287,7 @@ private val AuroraPalette = SkinPalette(
     special = Color(0xFFC299FF),
     cornerFactor = 0.22f,
     useGlow = true,
-    segmentedBody = true,
+    snakeStyle = SnakeStyle.AuroraRibbon,
     specialStyle = SpecialStyle.Glass,
 )
 
@@ -300,6 +321,6 @@ private val EmberPalette = SkinPalette(
     special = Color(0xFF66E0FF),
     cornerFactor = 0.18f,
     useGlow = true,
-    segmentedBody = true,
+    snakeStyle = SnakeStyle.Molten,
     specialStyle = SpecialStyle.Ember,
 )

@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -355,7 +356,7 @@ fun GameBoard(
             state.obstacles.forEach { obstacle ->
                 drawObstacle(cell, originX + obstacle.x * cell, originY + obstacle.y * cell, palette)
             }
-            drawDebris(state.debris, cell, originX, originY, palette)
+            drawDebris(state.debris, cell, originX, originY, palette, time)
             // Levels (Step 6.9.7): teleport portals and moving-wall gates, painted
             // under the snake so it reads as sliding into a barrier / through a portal.
             drawTeleports(state, seconds, cell, originX, originY, reduceMotion)
@@ -748,9 +749,9 @@ private fun DrawScope.drawSpecialFood(
 /**
  * The severed tail left behind by an Explosion, drawn with the *exact* live-snake
  * graphics in the current skin so it reads as a piece that genuinely detached -
- * the same shaded tube (rounded skins) or blocky segments (flat skins), the same
- * colours and the same trunk-to-tip taper, never a stray pellet. Only the head is
- * omitted (it is a tail) and the whole run fades out as its lethal timer expires.
+ * the same body material ([SkinPalette.snakeStyle]), colours and trunk-to-tip
+ * taper, never a stray pellet. Only the head is omitted (it is a tail) and the
+ * whole run fades out as its lethal timer expires.
  *
  * The severed tail keeps its original ordering, so contiguous debris cells are
  * grouped into chains and each chain is rendered as one continuous tapering body.
@@ -761,6 +762,7 @@ private fun DrawScope.drawDebris(
     originX: Float,
     originY: Float,
     palette: SkinPalette,
+    time: Float,
 ) {
     if (debris.isEmpty()) return
     // Split the (ordered) debris into runs of orthogonally-adjacent cells; each
@@ -785,11 +787,8 @@ private fun DrawScope.drawDebris(
         // Cells severed together share a timer, so the chain fades as one piece.
         val life = chain.minOf { it.life }
         val alpha = (0.32f + 0.6f * life).coerceIn(0f, 1f)
-        if (palette.segmentedBody) {
-            drawSnakeBlocks(centers, cell, palette, alpha)
-        } else {
-            drawSnakeTube(centers, cell, palette, alpha)
-        }
+        // Draw the debris in the skin's own body material (head omitted).
+        drawSnakeBody(centers, cell, palette, alpha, time)
     }
 }
 
@@ -834,10 +833,10 @@ private fun blockSide(i: Int, n: Int, cell: Float): Float {
 }
 
 /**
- * Draws the whole snake from interpolated cell [centers] (head = index 0). Tube
- * skins get a smooth, shaded, **tapered tube** with a glossy head; segmented skins
- * ([SkinPalette.segmentedBody]) keep crisp blocky segments. The head is drawn last,
- * on top. The head-glow halo is independent ([SkinPalette.useGlow]).
+ * Draws the whole snake from interpolated cell [centers] (head = index 0). The
+ * body material and head are chosen by [SkinPalette.snakeStyle] (tube / chiselled
+ * blocks / neon / aurora / molten); the head is drawn last, on top. The AGSL
+ * head-glow halo is independent ([SkinPalette.useGlow]).
  */
 private fun DrawScope.drawSnake(
     centers: List<Offset>,
@@ -852,7 +851,7 @@ private fun DrawScope.drawSnake(
 ) {
     if (centers.isEmpty()) return
     val head = centers.first()
-    // Head glow halo first, so it sits beneath the body/head (rounded skins only).
+    // Head glow halo first, so it sits beneath the body/head (glow skins only).
     if (palette.useGlow) {
         val glowRadius = cell * 1.15f
         shaders.glow.setFloatUniform("center", head.x, head.y)
@@ -861,19 +860,81 @@ private fun DrawScope.drawSnake(
         shaders.glow.setColorUniform("glowColor", headGlow.toArgb())
         drawCircle(brush = shaders.glowBrush, radius = glowRadius, center = head)
     }
-    if (palette.segmentedBody) {
-        drawSnakeBlocks(centers, cell, palette, bodyAlpha)
-        drawBlockHead(head, cell, direction, palette, headAlpha)
-    } else {
-        drawSnakeTube(centers, cell, palette, bodyAlpha)
-        drawRoundHead(head, cell, direction, palette, headAlpha)
+    drawSnakeBody(centers, cell, palette, bodyAlpha, time)
+    drawSnakeHeadStyled(head, cell, direction, palette, headAlpha, time)
+}
+
+/** Dispatches the body renderer for the skin's [SnakeStyle]. Shared with debris. */
+private fun DrawScope.drawSnakeBody(
+    centers: List<Offset>,
+    cell: Float,
+    palette: SkinPalette,
+    alpha: Float,
+    time: Float,
+) {
+    when (palette.snakeStyle) {
+        SnakeStyle.Tube -> drawSnakeTube(centers, cell, palette, alpha)
+        SnakeStyle.Blocks -> drawSnakeBlocks(centers, cell, palette, alpha)
+        SnakeStyle.NeonTube -> drawSnakeNeon(centers, cell, palette, alpha, time)
+        SnakeStyle.AuroraRibbon -> drawSnakeAurora(centers, cell, palette, alpha, time)
+        SnakeStyle.Molten -> drawSnakeMolten(centers, cell, palette, alpha, time)
+    }
+}
+
+/** Dispatches the head renderer for the skin's [SnakeStyle]. */
+private fun DrawScope.drawSnakeHeadStyled(
+    head: Offset,
+    cell: Float,
+    direction: Direction,
+    palette: SkinPalette,
+    alpha: Float,
+    time: Float,
+) {
+    when (palette.snakeStyle) {
+        SnakeStyle.Blocks -> drawBlockHead(head, cell, direction, palette, alpha)
+        SnakeStyle.NeonTube -> drawNeonHead(head, cell, direction, palette, alpha)
+        SnakeStyle.AuroraRibbon -> drawAuroraHead(head, cell, direction, palette, alpha, time)
+        SnakeStyle.Molten -> drawMoltenHead(head, cell, direction, palette, alpha, time)
+        SnakeStyle.Tube -> drawRoundHead(head, cell, direction, palette, alpha)
     }
 }
 
 /**
- * The rounded-skin body: a continuous, seam-free tube built from round-capped
- * capsules with tapering width, layered as drop shadow → outline → fill → a
- * centre sheen so it reads as a shaded cylinder.
+ * A continuous, seam-free chain of round-capped capsules along [centers] (with
+ * optional joint discs to fill bend notches). The reusable backbone of the tube,
+ * neon and molten bodies. [blendMode] enables additive passes for glow/filament.
+ */
+private fun DrawScope.strokeChain(
+    centers: List<Offset>,
+    joints: Boolean,
+    color: Color,
+    offset: Offset = Offset.Zero,
+    blendMode: BlendMode = BlendMode.SrcOver,
+    widthOf: (Int) -> Float,
+) {
+    val n = centers.size
+    for (i in 0 until n - 1) {
+        drawLine(
+            color,
+            centers[i] + offset,
+            centers[i + 1] + offset,
+            strokeWidth = widthOf(i).coerceAtLeast(1f),
+            cap = StrokeCap.Round,
+            blendMode = blendMode,
+        )
+    }
+    if (joints) {
+        for (i in 0 until n) {
+            val r = widthOf(i) / 2f
+            if (r > 0.4f) drawCircle(color, r, centers[i] + offset, blendMode = blendMode)
+        }
+    }
+}
+
+/**
+ * Classic tube body: a continuous, seam-free tube built from round-capped
+ * capsules with tapering width, layered as drop shadow → outline → fill → an
+ * upper sheen and a crisp top specular line so it reads as a glossy cylinder.
  */
 private fun DrawScope.drawSnakeTube(
     centers: List<Offset>,
@@ -885,7 +946,8 @@ private fun DrawScope.drawSnakeTube(
     val outline = cell * 0.055f
     val outlineColor = palette.snakeOutline.copy(alpha = alpha)
     val bodyColor = palette.snakeBody.copy(alpha = alpha)
-    val sheenColor = lighten(palette.snakeBody, 0.26f).copy(alpha = 0.5f * alpha)
+    val sheenColor = lighten(palette.snakeBody, 0.30f).copy(alpha = 0.55f * alpha)
+    val specColor = lighten(palette.snakeBody, 0.55f).copy(alpha = 0.5f * alpha)
     val shadowColor = Color.Black.copy(alpha = 0.22f * alpha)
 
     if (n == 1) {
@@ -895,27 +957,14 @@ private fun DrawScope.drawSnakeTube(
         return
     }
 
-    // joints fill the small notch on the outer side of each bend; only the opaque
-    // outline/fill passes need them (the shadow and sheen passes can skip them).
-    fun pass(color: Color, offset: Offset, joints: Boolean, widthOf: (Int) -> Float) {
-        for (i in 0 until n - 1) {
-            drawLine(color, centers[i] + offset, centers[i + 1] + offset, strokeWidth = widthOf(i).coerceAtLeast(1f), cap = StrokeCap.Round)
-        }
-        if (joints) {
-            for (i in 0 until n) {
-                val r = widthOf(i) / 2f
-                if (r > 0.4f) drawCircle(color, r, centers[i] + offset)
-            }
-        }
-    }
-
-    pass(shadowColor, Offset(cell * 0.05f, cell * 0.09f), joints = false) { snakeWidth(it, n, cell) + 2 * outline }
-    pass(outlineColor, Offset.Zero, joints = true) { snakeWidth(it, n, cell) + 2 * outline }
-    pass(bodyColor, Offset.Zero, joints = true) { snakeWidth(it, n, cell) }
-    pass(sheenColor, Offset(0f, -cell * 0.07f), joints = false) { snakeWidth(it, n, cell) * 0.45f }
+    strokeChain(centers, joints = false, color = shadowColor, offset = Offset(cell * 0.05f, cell * 0.09f)) { snakeWidth(it, n, cell) + 2 * outline }
+    strokeChain(centers, joints = true, color = outlineColor) { snakeWidth(it, n, cell) + 2 * outline }
+    strokeChain(centers, joints = true, color = bodyColor) { snakeWidth(it, n, cell) }
+    strokeChain(centers, joints = false, color = sheenColor, offset = Offset(0f, -cell * 0.07f)) { snakeWidth(it, n, cell) * 0.45f }
+    strokeChain(centers, joints = false, color = specColor, offset = Offset(0f, -cell * 0.13f)) { (snakeWidth(it, n, cell) * 0.16f).coerceAtLeast(1.5f) }
 }
 
-/** The rounded-skin head: a glossy disc with a top sheen and direction-aware eyes. */
+/** The tube head: a glossy disc with a top sheen, a crisp specular dot and eyes. */
 private fun DrawScope.drawRoundHead(
     center: Offset,
     cell: Float,
@@ -932,13 +981,19 @@ private fun DrawScope.drawRoundHead(
         radius = r * 0.52f,
         center = center + Offset(0f, -r * 0.32f),
     )
+    drawCircle(
+        color = lighten(palette.snakeHead, 0.55f).copy(alpha = 0.6f * alpha),
+        radius = r * 0.18f,
+        center = center + Offset(-r * 0.34f, -r * 0.40f),
+    )
     drawEyes(center.x, center.y, cell, direction, palette, alpha)
 }
 
 /**
- * The flat-skin body: crisp square (or lightly rounded) segments with a unified
- * drop shadow and a two-tone top-highlight / bottom-shade for a touch of volume,
- * tapering toward the tail. Preserves the blocky/pixel identity of flat skins.
+ * The flat-skin body: crisp square (or lightly rounded) segments, each with a
+ * unified drop shadow and a **volumetric diagonal gradient** (top-left lit,
+ * bottom-right shaded) plus a small specular corner, for a chiselled premium look
+ * that still preserves the blocky/pixel identity of flat skins.
  */
 private fun DrawScope.drawSnakeBlocks(
     centers: List<Offset>,
@@ -965,14 +1020,41 @@ private fun DrawScope.drawSnakeBlocks(
         val side = blockSide(i, n, cell)
         val c = centers[i]
         val tl = Offset(c.x - side / 2f, c.y - side / 2f)
-        drawRoundRect(palette.snakeBody.copy(alpha = alpha), tl, Size(side, side), rad)
-        drawRect(lighten(palette.snakeBody, 0.18f).copy(alpha = 0.45f * alpha), Offset(tl.x, tl.y), Size(side, side * 0.4f))
-        drawRect(darken(palette.snakeBody, 0.25f).copy(alpha = 0.4f * alpha), Offset(tl.x, tl.y + side * 0.64f), Size(side, side * 0.36f))
-        drawRoundRect(palette.snakeOutline.copy(alpha = alpha), tl, Size(side, side), rad, style = Stroke(width = cell * 0.06f))
+        drawChiselledBlock(tl, side, rad, palette.snakeBody, palette.snakeOutline, cell, alpha)
     }
 }
 
-/** The flat-skin head: a larger two-tone block with direction-aware eyes. */
+/** One chiselled block: diagonal-lit gradient fill, specular corner and outline. */
+private fun DrawScope.drawChiselledBlock(
+    tl: Offset,
+    side: Float,
+    rad: CornerRadius,
+    fill: Color,
+    outline: Color,
+    cell: Float,
+    alpha: Float,
+) {
+    drawRoundRect(
+        brush = Brush.linearGradient(
+            colors = listOf(lighten(fill, 0.24f), fill, darken(fill, 0.26f)),
+            start = Offset(tl.x, tl.y),
+            end = Offset(tl.x + side, tl.y + side),
+        ),
+        topLeft = tl,
+        size = Size(side, side),
+        cornerRadius = rad,
+        alpha = alpha,
+    )
+    drawRoundRect(
+        color = lighten(fill, 0.5f).copy(alpha = 0.5f * alpha),
+        topLeft = Offset(tl.x + side * 0.14f, tl.y + side * 0.12f),
+        size = Size(side * 0.34f, side * 0.16f),
+        cornerRadius = CornerRadius(side * 0.08f, side * 0.08f),
+    )
+    drawRoundRect(outline.copy(alpha = alpha), tl, Size(side, side), rad, style = Stroke(width = cell * 0.06f))
+}
+
+/** The flat-skin head: a larger chiselled block with direction-aware eyes. */
 private fun DrawScope.drawBlockHead(
     center: Offset,
     cell: Float,
@@ -984,11 +1066,186 @@ private fun DrawScope.drawBlockHead(
     val corner = cell * palette.cornerFactor
     val rad = CornerRadius(corner, corner)
     val tl = Offset(center.x - side / 2f, center.y - side / 2f)
-    drawRoundRect(palette.snakeHead.copy(alpha = alpha), tl, Size(side, side), rad)
-    drawRect(lighten(palette.snakeHead, 0.2f).copy(alpha = 0.45f * alpha), Offset(tl.x, tl.y), Size(side, side * 0.4f))
-    drawRoundRect(palette.snakeOutline.copy(alpha = alpha), tl, Size(side, side), rad, style = Stroke(width = cell * 0.06f))
+    drawChiselledBlock(tl, side, rad, palette.snakeHead, palette.snakeOutline, cell, alpha)
     drawEyes(center.x, center.y, cell, direction, palette, alpha)
 }
+
+// --- Neon skin: a hollow, glowing neon tube ------------------------------------
+
+/**
+ * Neon body: a hollow glass tube - a wide soft additive halo, a glowing wall, a
+ * dark hollow core and a bright, gently pulsing filament down the centre.
+ */
+private fun DrawScope.drawSnakeNeon(
+    centers: List<Offset>,
+    cell: Float,
+    palette: SkinPalette,
+    alpha: Float,
+    time: Float,
+) {
+    val n = centers.size
+    val glow = palette.headGlow
+    val body = palette.snakeBody
+    strokeChain(centers, joints = false, color = glow.copy(alpha = 0.10f * alpha), blendMode = BlendMode.Plus) { snakeWidth(it, n, cell) * 1.7f }
+    strokeChain(centers, joints = true, color = body.copy(alpha = 0.60f * alpha)) { snakeWidth(it, n, cell) }
+    strokeChain(centers, joints = true, color = Color(0xFF04050A).copy(alpha = 0.80f * alpha)) { snakeWidth(it, n, cell) * 0.52f }
+    val flicker = 0.6f + 0.4f * sin(time * 8.0).toFloat()
+    strokeChain(centers, joints = false, color = lighten(body, 0.55f).copy(alpha = (0.75f * flicker * alpha).coerceIn(0f, 1f)), blendMode = BlendMode.Plus) {
+        (snakeWidth(it, n, cell) * 0.16f).coerceAtLeast(1.5f)
+    }
+}
+
+/** Neon head: a glowing hollow ring with a bright inner rim and eyes. */
+private fun DrawScope.drawNeonHead(
+    center: Offset,
+    cell: Float,
+    direction: Direction,
+    palette: SkinPalette,
+    alpha: Float,
+) {
+    val r = cell * 0.46f
+    val body = palette.snakeBody
+    drawCircle(palette.headGlow.copy(alpha = 0.18f * alpha), r * 1.7f, center, blendMode = BlendMode.Plus)
+    drawCircle(body.copy(alpha = 0.9f * alpha), r * 0.8f, center, style = Stroke(width = r * 0.42f))
+    drawCircle(lighten(body, 0.5f).copy(alpha = 0.9f * alpha), r * 0.8f, center, style = Stroke(width = r * 0.12f))
+    drawEyes(center.x, center.y, cell, direction, palette, alpha)
+}
+
+// --- Aurora skin: a flowing multi-hue ribbon -----------------------------------
+
+/** The Aurora hue stops (teal → cyan → blue → violet → green), cycled along the body. */
+private val AuroraStops = listOf(
+    Color(0xFF2BE0B0),
+    Color(0xFF3AD1E0),
+    Color(0xFF7C9CFF),
+    Color(0xFFB68CFF),
+    Color(0xFF5CE6A6),
+)
+
+/** The flowing aurora colour at fractional body position [u] (0 = head) and [time]. */
+private fun auroraColor(u: Float, time: Float): Color {
+    val m = AuroraStops.size
+    var p = (u * 1.6f - time * 0.35f) % 1f
+    if (p < 0f) p += 1f
+    val seg = p * m
+    val i = seg.toInt() % m
+    val f = seg - seg.toInt()
+    return mixColor(AuroraStops[i], AuroraStops[(i + 1) % m], f)
+}
+
+/**
+ * Aurora body: a tapering ribbon whose hue flows along its length and drifts over
+ * time, with a soft additive glow beneath and an upper sheen - like a curtain of
+ * northern lights following the snake.
+ */
+private fun DrawScope.drawSnakeAurora(
+    centers: List<Offset>,
+    cell: Float,
+    palette: SkinPalette,
+    alpha: Float,
+    time: Float,
+) {
+    val n = centers.size
+    // Outer flowing glow.
+    for (i in 0 until n - 1) {
+        val col = auroraColor(i.toFloat() / n, time)
+        drawLine(col.copy(alpha = 0.12f * alpha), centers[i], centers[i + 1], strokeWidth = snakeWidth(i, n, cell) * 1.5f, cap = StrokeCap.Round, blendMode = BlendMode.Plus)
+    }
+    // Body: per-segment flowing colour with joint discs for seamless bends.
+    for (i in 0 until n - 1) {
+        val col = auroraColor(i.toFloat() / n, time).copy(alpha = 0.96f * alpha)
+        drawLine(col, centers[i], centers[i + 1], strokeWidth = snakeWidth(i, n, cell), cap = StrokeCap.Round)
+        drawCircle(col, snakeWidth(i, n, cell) / 2f, centers[i])
+    }
+    if (n > 0) {
+        val col = auroraColor((n - 1).toFloat() / n, time).copy(alpha = 0.96f * alpha)
+        drawCircle(col, snakeWidth(n - 1, n, cell) / 2f, centers[n - 1])
+    }
+    // Upper sheen.
+    for (i in 0 until n - 1) {
+        drawLine(Color.White.copy(alpha = 0.26f * alpha), centers[i] + Offset(0f, -cell * 0.09f), centers[i + 1] + Offset(0f, -cell * 0.09f), strokeWidth = snakeWidth(i, n, cell) * 0.4f, cap = StrokeCap.Round)
+    }
+}
+
+/** Aurora head: a glowing disc in the leading hue with a bright sheen and eyes. */
+private fun DrawScope.drawAuroraHead(
+    center: Offset,
+    cell: Float,
+    direction: Direction,
+    palette: SkinPalette,
+    alpha: Float,
+    time: Float,
+) {
+    val r = cell * 0.46f
+    val col = auroraColor(0f, time)
+    drawCircle(col.copy(alpha = 0.22f * alpha), r * 1.7f, center, blendMode = BlendMode.Plus)
+    drawCircle(col.copy(alpha = alpha), r, center)
+    drawCircle(Color.White.copy(alpha = 0.5f * alpha), r * 0.5f, center + Offset(0f, -r * 0.32f))
+    drawEyes(center.x, center.y, cell, direction, palette, alpha)
+}
+
+// --- Ember skin: molten rock with a lava vein ----------------------------------
+
+/** A near-white hot core the lava vein blends toward at its hottest (the head). */
+private val LavaHot = Color(0xFFFFE9A8)
+
+/**
+ * Ember body: a dark rock crust with a bright molten-lava vein running through it,
+ * hotter and brighter toward the head and gently pulsing, so the snake reads as
+ * cooling lava rather than a plain orange tube.
+ */
+private fun DrawScope.drawSnakeMolten(
+    centers: List<Offset>,
+    cell: Float,
+    palette: SkinPalette,
+    alpha: Float,
+    time: Float,
+) {
+    val n = centers.size
+    val crust = darken(palette.snakeBody, 0.72f)
+    val crustHi = darken(palette.snakeBody, 0.45f)
+    val glow = palette.headGlow
+    strokeChain(centers, joints = false, color = Color.Black.copy(alpha = 0.35f * alpha)) { snakeWidth(it, n, cell) + cell * 0.02f }
+    strokeChain(centers, joints = true, color = crust.copy(alpha = alpha)) { snakeWidth(it, n, cell) }
+    strokeChain(centers, joints = false, color = crustHi.copy(alpha = 0.6f * alpha), offset = Offset(0f, -cell * 0.06f)) { snakeWidth(it, n, cell) * 0.5f }
+    // Molten vein: additive, hotter toward the head, pulsing.
+    val denom = (n - 1).coerceAtLeast(1)
+    for (i in 0 until n - 1) {
+        val heat = 1f - i.toFloat() / denom
+        val pulse = 0.55f + 0.45f * sin(time * 4.0 - i * 0.6).toFloat()
+        val col = mixColor(glow, LavaHot, heat)
+        val a = ((0.18f + 0.7f * heat) * pulse * alpha).coerceIn(0f, 1f)
+        drawLine(col.copy(alpha = a), centers[i], centers[i + 1], strokeWidth = snakeWidth(i, n, cell) * 0.42f, cap = StrokeCap.Round, blendMode = BlendMode.Plus)
+        drawCircle(col.copy(alpha = (a * 0.9f).coerceIn(0f, 1f)), snakeWidth(i, n, cell) * 0.22f, centers[i], blendMode = BlendMode.Plus)
+    }
+}
+
+/** Ember head: a dark crust disc with a pulsing molten core, hot halo and eyes. */
+private fun DrawScope.drawMoltenHead(
+    center: Offset,
+    cell: Float,
+    direction: Direction,
+    palette: SkinPalette,
+    alpha: Float,
+    time: Float,
+) {
+    val r = cell * 0.46f
+    val crust = darken(palette.snakeBody, 0.72f)
+    val glow = palette.headGlow
+    val pulse = 0.6f + 0.4f * sin(time * 4.0).toFloat()
+    drawCircle(glow.copy(alpha = (0.28f * pulse * alpha).coerceIn(0f, 1f)), r * 1.9f, center, blendMode = BlendMode.Plus)
+    drawCircle(crust.copy(alpha = alpha), r, center)
+    drawCircle(mixColor(glow, LavaHot, 0.6f).copy(alpha = (0.85f * pulse * alpha).coerceIn(0f, 1f)), r * 0.62f, center, blendMode = BlendMode.Plus)
+    drawEyes(center.x, center.y, cell, direction, palette, alpha)
+}
+
+/** Linear interpolation between two colours (including alpha) by [f] in 0..1. */
+private fun mixColor(a: Color, b: Color, f: Float): Color = Color(
+    red = a.red + (b.red - a.red) * f,
+    green = a.green + (b.green - a.green) * f,
+    blue = a.blue + (b.blue - a.blue) * f,
+    alpha = a.alpha + (b.alpha - a.alpha) * f,
+)
 
 private fun DrawScope.drawEyes(
     centerX: Float,

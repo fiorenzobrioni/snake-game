@@ -264,10 +264,12 @@ snake-game/
 ### Phase 6 - Content & replayability
 
 - [x] **Step 6.1** - Skin system (palette + render style + optional shader). Now **six** skins: Retro
-      (default) / Classic / Neon / Pixel / Aurora / Ember. Render style is two independent `SkinPalette`
-      flags: `useGlow` (head glow + food halos) and `segmentedBody` (per-piece body vs continuous tube), so
-      Aurora / Ember glow **and** wear a segmented body (reads better through teleports / the Star shimmer).
-      Skins carry an unlock rule and only Retro + Classic are free (see Step 6.9.9).
+      (default) / Classic / Neon / Pixel / Aurora / Ember. Render style is driven by `SkinPalette.useGlow`
+      (head glow + food halos) and `SkinPalette.snakeStyle` (the per-skin snake body material). *(Updated
+      2026-07-01: the old boolean `segmentedBody` was replaced by the `SnakeStyle` enum in Step 6.9.19,
+      giving Neon / Aurora / Ember bespoke bodies.)* Skins carry an unlock rule and only Retro + Classic
+      are free (see Step 6.9.9), though a pre-release `Skin.ALL_UNLOCKED_PREVIEW` flag currently makes them
+      all selectable (see Step 6.9.19).
 - [x] **Step 6.2** - **Special food pieces / power-ups & hazards** (extends the Phase 2.5 food system).
       All are **maxi-sized** with a distinctive shape/symbol, **time-gated** (appear later in a session)
       and surfaced through the existing `GameEvent` channel + HUD timers. They add `FoodCategory.Special`,
@@ -499,6 +501,20 @@ snake-game/
       Extracted one shared renderer `drawSpecialToken` (`ui/game/SpecialIcons.kt`) used by both
       `GameBoard.drawSpecialFood` and the onboarding, and deleted the onboarding's duplicated disc drawing
       (`drawSpecialDisc` / `drawSpecialDiscAt`) so the tutorial and gameplay never drift.
+
+- [x] **Step 6.9.19 - Per-skin snake bodies + pre-release skin unlock bypass.** Replaced the boolean
+      `SkinPalette.segmentedBody` with a `SnakeStyle` enum dispatched in `GameBoard.drawSnake`, giving three
+      skins a bespoke, premium (subtly animated) body: **Neon** = a hollow neon tube (dark core, glowing
+      wall, pulsing bright filament, ring head); **Aurora** = a ribbon whose teal-cyan-blue-violet-green
+      hues flow along the body and drift over time; **Ember** = a dark rock crust with a pulsing molten-lava
+      vein that runs hottest at the head. Classic keeps the smooth **tube** and Retro / Pixel keep **blocks**,
+      both made more premium (a crisp top specular on the tube; a volumetric diagonal gradient + specular
+      corner on the blocks). Debris (severed tails) render in the same per-skin body. Animation reuses the
+      `time` already passed to `drawSnake`, so the game loop is untouched. Also added
+      `Skin.ALL_UNLOCKED_PREVIEW` (currently `true`): while set, every skin is selectable and the game-over
+      "skin unlocked" toasts are suppressed - a temporary pre-release convenience to trial all skins. The
+      underlying `SkinUnlock` rules / `Skin.newlyUnlocked` logic are untouched (still covered by `SkinTest`);
+      flip the flag to `false` to restore gating before an official release.
 
 ### Phase 7 - Play Store distribution & cleanup
 

@@ -960,7 +960,10 @@ class GameViewModel(
             // Reward progression: unlock gated skins reached by this run's score /
             // the post-run streak, and surface them in the game-over banner.
             val unlockedSkins = repo.unlockedSkins().first()
-            val newSkins = Skin.newlyUnlocked(score, streak, unlockedSkins)
+            // During the pre-release preview all skins are already available, so
+            // suppress the "skin unlocked" surfacing (the gates are bypassed).
+            val newSkins = if (Skin.ALL_UNLOCKED_PREVIEW) emptyList()
+            else Skin.newlyUnlocked(score, streak, unlockedSkins)
             if (newSkins.isNotEmpty()) {
                 repo.addUnlockedSkins(newSkins.map { it.name })
                 newlyUnlockedSkins = newSkins
