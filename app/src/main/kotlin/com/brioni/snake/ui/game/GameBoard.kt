@@ -43,6 +43,7 @@ import com.brioni.snake.game.FoodEffect
 import com.brioni.snake.game.FoodTier
 import com.brioni.snake.game.GameState
 import com.brioni.snake.game.Position
+import com.brioni.snake.game.TeleportPair
 import com.brioni.snake.game.isHazard
 import kotlin.math.abs
 import kotlin.math.min
@@ -370,14 +371,9 @@ fun GameBoard(
             // computed once above). The interpolated cell centres feed both the
             // smooth-tube renderer (rounded skins) and the blocky one (flat skins).
             val snake = state.snake
-            val centers = ArrayList<Offset>(snake.size)
-            for (k in snake.indices) {
-                val to = snake[k]
-                val from = if (previousSnake.isEmpty()) to else previousSnake[k.coerceAtMost(previousSnake.lastIndex)]
-                val cx = lerp(from.x.toFloat(), to.x.toFloat(), f)
-                val cy = lerp(from.y.toFloat(), to.y.toFloat(), f)
-                centers.add(Offset(originX + (cx + 0.5f) * cell, originY + (cy + 0.5f) * cell))
-            }
+            val centers = interpolatedSnakeCenters(
+                snake, previousSnake, state.teleports, f, cell, originX, originY,
+            )
             // Fold in the dissolve envelope so the body fades as it bursts apart on
             // death / vanishes on a level-up (1f during normal play = no change).
             val fade = dissolve.value
@@ -833,6 +829,62 @@ private fun blockSide(i: Int, n: Int, cell: Float): Float {
 }
 
 /**
+ * Interpolated pixel centres for the snake between the previous and current tick.
+ * Adjacent segments tween straight from their old cell to the new one. A segment
+ * that jumped through a teleport portal this interval (old and new cell are not
+ * neighbours) is instead **routed through the pad**: for the first half of the
+ * tick it slides from its old cell into the entry pad, then it appears at the
+ * exit pad - so the head visibly dives into the portal and re-emerges at its
+ * partner rather than streaking across the board. The two sides of a portal stay
+ * far apart on purpose; the body renderers break the tube there (see
+ * [isBrokenSpan]). A Ghost board-wrap has no pad, so it just snaps at the midpoint.
+ */
+private fun interpolatedSnakeCenters(
+    snake: List<Position>,
+    previousSnake: List<Position>,
+    teleports: List<TeleportPair>,
+    f: Float,
+    cell: Float,
+    originX: Float,
+    originY: Float,
+): List<Offset> {
+    fun toOffset(px: Float, py: Float) =
+        Offset(originX + (px + 0.5f) * cell, originY + (py + 0.5f) * cell)
+    val centers = ArrayList<Offset>(snake.size)
+    for (k in snake.indices) {
+        val to = snake[k]
+        val from = if (previousSnake.isEmpty()) to else previousSnake[k.coerceAtMost(previousSnake.lastIndex)]
+        if (abs(from.x - to.x) + abs(from.y - to.y) <= 1) {
+            centers.add(toOffset(lerp(from.x.toFloat(), to.x.toFloat(), f), lerp(from.y.toFloat(), to.y.toFloat(), f)))
+            continue
+        }
+        // Non-adjacent: a portal jump (or a Ghost wrap). `to` is the exit pad, so
+        // its partner is the entry pad the segment slid onto to trigger the jump.
+        val entry = teleports.firstNotNullOfOrNull { it.exitFor(to) }
+        if (entry != null && f < 0.5f) {
+            val t = f * 2f
+            centers.add(toOffset(lerp(from.x.toFloat(), entry.x.toFloat(), t), lerp(from.y.toFloat(), entry.y.toFloat(), t)))
+        } else {
+            // Second half of the jump, or a padless wrap: sit at the exit cell.
+            centers.add(toOffset(to.x.toFloat(), to.y.toFloat()))
+        }
+    }
+    return centers
+}
+
+/**
+ * True when two consecutive body centres are farther apart than a normal step -
+ * they sit on opposite sides of a teleport portal (or a board wrap), so the body
+ * renderers must not draw a connecting tube across the gap.
+ */
+private fun isBrokenSpan(a: Offset, b: Offset, cell: Float): Boolean {
+    val dx = a.x - b.x
+    val dy = a.y - b.y
+    val limit = 1.6f * cell
+    return dx * dx + dy * dy > limit * limit
+}
+
+/**
  * Draws the whole snake from interpolated cell [centers] (head = index 0). The
  * body material and head are chosen by [SkinPalette.snakeStyle] (tube / chiselled
  * blocks / neon / aurora / molten); the head is drawn last, on top. The AGSL
@@ -906,6 +958,7 @@ private fun DrawScope.drawSnakeHeadStyled(
  */
 private fun DrawScope.strokeChain(
     centers: List<Offset>,
+    cell: Float,
     joints: Boolean,
     color: Color,
     offset: Offset = Offset.Zero,
@@ -914,6 +967,8 @@ private fun DrawScope.strokeChain(
 ) {
     val n = centers.size
     for (i in 0 until n - 1) {
+        // Skip the capsule that would bridge a teleport portal (or wrap) seam.
+        if (isBrokenSpan(centers[i], centers[i + 1], cell)) continue
         drawLine(
             color,
             centers[i] + offset,
@@ -957,11 +1012,11 @@ private fun DrawScope.drawSnakeTube(
         return
     }
 
-    strokeChain(centers, joints = false, color = shadowColor, offset = Offset(cell * 0.05f, cell * 0.09f)) { snakeWidth(it, n, cell) + 2 * outline }
-    strokeChain(centers, joints = true, color = outlineColor) { snakeWidth(it, n, cell) + 2 * outline }
-    strokeChain(centers, joints = true, color = bodyColor) { snakeWidth(it, n, cell) }
-    strokeChain(centers, joints = false, color = sheenColor, offset = Offset(0f, -cell * 0.07f)) { snakeWidth(it, n, cell) * 0.45f }
-    strokeChain(centers, joints = false, color = specColor, offset = Offset(0f, -cell * 0.13f)) { (snakeWidth(it, n, cell) * 0.16f).coerceAtLeast(1.5f) }
+    strokeChain(centers, cell, joints = false, color = shadowColor, offset = Offset(cell * 0.05f, cell * 0.09f)) { snakeWidth(it, n, cell) + 2 * outline }
+    strokeChain(centers, cell, joints = true, color = outlineColor) { snakeWidth(it, n, cell) + 2 * outline }
+    strokeChain(centers, cell, joints = true, color = bodyColor) { snakeWidth(it, n, cell) }
+    strokeChain(centers, cell, joints = false, color = sheenColor, offset = Offset(0f, -cell * 0.07f)) { snakeWidth(it, n, cell) * 0.45f }
+    strokeChain(centers, cell, joints = false, color = specColor, offset = Offset(0f, -cell * 0.13f)) { (snakeWidth(it, n, cell) * 0.16f).coerceAtLeast(1.5f) }
 }
 
 /** The tube head: a glossy disc with a top sheen, a crisp specular dot and eyes. */
@@ -1086,11 +1141,11 @@ private fun DrawScope.drawSnakeNeon(
     val n = centers.size
     val glow = palette.headGlow
     val body = palette.snakeBody
-    strokeChain(centers, joints = false, color = glow.copy(alpha = 0.10f * alpha), blendMode = BlendMode.Plus) { snakeWidth(it, n, cell) * 1.7f }
-    strokeChain(centers, joints = true, color = body.copy(alpha = 0.60f * alpha)) { snakeWidth(it, n, cell) }
-    strokeChain(centers, joints = true, color = Color(0xFF04050A).copy(alpha = 0.80f * alpha)) { snakeWidth(it, n, cell) * 0.52f }
+    strokeChain(centers, cell, joints = false, color = glow.copy(alpha = 0.10f * alpha), blendMode = BlendMode.Plus) { snakeWidth(it, n, cell) * 1.7f }
+    strokeChain(centers, cell, joints = true, color = body.copy(alpha = 0.60f * alpha)) { snakeWidth(it, n, cell) }
+    strokeChain(centers, cell, joints = true, color = Color(0xFF04050A).copy(alpha = 0.80f * alpha)) { snakeWidth(it, n, cell) * 0.52f }
     val flicker = 0.6f + 0.4f * sin(time * 8.0).toFloat()
-    strokeChain(centers, joints = false, color = lighten(body, 0.55f).copy(alpha = (0.75f * flicker * alpha).coerceIn(0f, 1f)), blendMode = BlendMode.Plus) {
+    strokeChain(centers, cell, joints = false, color = lighten(body, 0.55f).copy(alpha = (0.75f * flicker * alpha).coerceIn(0f, 1f)), blendMode = BlendMode.Plus) {
         (snakeWidth(it, n, cell) * 0.16f).coerceAtLeast(1.5f)
     }
 }
@@ -1146,15 +1201,19 @@ private fun DrawScope.drawSnakeAurora(
     time: Float,
 ) {
     val n = centers.size
-    // Outer flowing glow.
+    // Outer flowing glow. (Broken spans skip the connecting line - a portal seam.)
     for (i in 0 until n - 1) {
+        if (isBrokenSpan(centers[i], centers[i + 1], cell)) continue
         val col = auroraColor(i.toFloat() / n, time)
         drawLine(col.copy(alpha = 0.12f * alpha), centers[i], centers[i + 1], strokeWidth = snakeWidth(i, n, cell) * 1.5f, cap = StrokeCap.Round, blendMode = BlendMode.Plus)
     }
-    // Body: per-segment flowing colour with joint discs for seamless bends.
+    // Body: per-segment flowing colour with joint discs for seamless bends. The
+    // joint disc is kept even across a portal seam so a lone segment still reads.
     for (i in 0 until n - 1) {
         val col = auroraColor(i.toFloat() / n, time).copy(alpha = 0.96f * alpha)
-        drawLine(col, centers[i], centers[i + 1], strokeWidth = snakeWidth(i, n, cell), cap = StrokeCap.Round)
+        if (!isBrokenSpan(centers[i], centers[i + 1], cell)) {
+            drawLine(col, centers[i], centers[i + 1], strokeWidth = snakeWidth(i, n, cell), cap = StrokeCap.Round)
+        }
         drawCircle(col, snakeWidth(i, n, cell) / 2f, centers[i])
     }
     if (n > 0) {
@@ -1163,6 +1222,7 @@ private fun DrawScope.drawSnakeAurora(
     }
     // Upper sheen.
     for (i in 0 until n - 1) {
+        if (isBrokenSpan(centers[i], centers[i + 1], cell)) continue
         drawLine(Color.White.copy(alpha = 0.26f * alpha), centers[i] + Offset(0f, -cell * 0.09f), centers[i + 1] + Offset(0f, -cell * 0.09f), strokeWidth = snakeWidth(i, n, cell) * 0.4f, cap = StrokeCap.Round)
     }
 }
@@ -1205,9 +1265,9 @@ private fun DrawScope.drawSnakeMolten(
     val crust = darken(palette.snakeBody, 0.72f)
     val crustHi = darken(palette.snakeBody, 0.45f)
     val glow = palette.headGlow
-    strokeChain(centers, joints = false, color = Color.Black.copy(alpha = 0.35f * alpha)) { snakeWidth(it, n, cell) + cell * 0.02f }
-    strokeChain(centers, joints = true, color = crust.copy(alpha = alpha)) { snakeWidth(it, n, cell) }
-    strokeChain(centers, joints = false, color = crustHi.copy(alpha = 0.6f * alpha), offset = Offset(0f, -cell * 0.06f)) { snakeWidth(it, n, cell) * 0.5f }
+    strokeChain(centers, cell, joints = false, color = Color.Black.copy(alpha = 0.35f * alpha)) { snakeWidth(it, n, cell) + cell * 0.02f }
+    strokeChain(centers, cell, joints = true, color = crust.copy(alpha = alpha)) { snakeWidth(it, n, cell) }
+    strokeChain(centers, cell, joints = false, color = crustHi.copy(alpha = 0.6f * alpha), offset = Offset(0f, -cell * 0.06f)) { snakeWidth(it, n, cell) * 0.5f }
     // Molten vein: additive, hotter toward the head, pulsing.
     val denom = (n - 1).coerceAtLeast(1)
     for (i in 0 until n - 1) {
@@ -1215,7 +1275,9 @@ private fun DrawScope.drawSnakeMolten(
         val pulse = 0.55f + 0.45f * sin(time * 4.0 - i * 0.6).toFloat()
         val col = mixColor(glow, LavaHot, heat)
         val a = ((0.18f + 0.7f * heat) * pulse * alpha).coerceIn(0f, 1f)
-        drawLine(col.copy(alpha = a), centers[i], centers[i + 1], strokeWidth = snakeWidth(i, n, cell) * 0.42f, cap = StrokeCap.Round, blendMode = BlendMode.Plus)
+        if (!isBrokenSpan(centers[i], centers[i + 1], cell)) {
+            drawLine(col.copy(alpha = a), centers[i], centers[i + 1], strokeWidth = snakeWidth(i, n, cell) * 0.42f, cap = StrokeCap.Round, blendMode = BlendMode.Plus)
+        }
         drawCircle(col.copy(alpha = (a * 0.9f).coerceIn(0f, 1f)), snakeWidth(i, n, cell) * 0.22f, centers[i], blendMode = BlendMode.Plus)
     }
 }

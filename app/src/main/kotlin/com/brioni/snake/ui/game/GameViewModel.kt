@@ -878,9 +878,12 @@ class GameViewModel(
             return
         }
 
-        if (after.lastEvents.any { it is GameEvent.Teleported }) {
-            // A portal jump is instantaneous: snap to the new positions so the
-            // head blinks across rather than sliding the whole way over.
+        if (reduceMotion && after.lastEvents.any { it is GameEvent.Teleported }) {
+            // Reduce motion: keep the portal jump instantaneous - snap to the new
+            // positions so the head blinks across rather than sliding. With motion
+            // on we fall through to the normal commit and let the renderer route the
+            // body through the pads (it dives into the entry portal and re-emerges
+            // at the exit) instead of streaking the head across the board.
             resetTo(after)
             return
         }

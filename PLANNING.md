@@ -402,7 +402,10 @@ snake-game/
       and emits `GameEvent.Teleported`. Premium rendering in `ui/game/GameHazards.kt`: energy-barrier gates
       with projector nodes, a sweeping scanline and a strobing close warning (smoothly eased across the
       inter-tick fraction), and swirling counter-rotating portal discs with paired colours + a jump
-      burst/whoosh; the head's portal jump snaps interpolation. Covered by `LevelHazardsTest` (phase logic,
+      burst/whoosh. The snake is routed *through* the pads: each segment dives into the entry portal and
+      re-emerges at the exit (`interpolatedSnakeCenters`), and the body tube is cut at the portal seam
+      (`isBrokenSpan`) instead of streaking across the board; reduce-motion keeps the instantaneous blink.
+      Covered by `LevelHazardsTest` (phase logic,
       determinism, connectivity-with-all-gates-closed, pad reachability, and engine teleport/gate/spawn
       behaviour).
 
