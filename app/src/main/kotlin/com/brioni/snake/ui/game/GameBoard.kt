@@ -21,7 +21,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -723,12 +722,12 @@ private fun DrawScope.drawFood(
 }
 
 /**
- * Draws a Phase 6.2 special: a maxi piece in the power-up's universal accent
- * colour (so a colour always means the same effect across skins) with a
- * distinctive symbol on top. Glow skins (Classic / Neon) render a haloed disc;
- * flat skins (Retro / Pixel) render a rounded square matching their blocky items
- * (corner from the skin's [SkinPalette.cornerFactor]), so the special pieces stay
- * in the same visual language as that skin's food and snake.
+ * Draws a Phase 6.2 special via the shared premium [drawSpecialToken]: a coined,
+ * bevelled maxi piece in the power-up's universal accent colour (so a colour
+ * always means the same effect across skins) wearing the current skin's material
+ * ([SkinPalette.specialStyle]), an embossed symbol, and a notched danger bezel
+ * for hazards. The same renderer backs the first-run tutorial, so the piece is
+ * identical wherever a player meets it.
  */
 private fun DrawScope.drawSpecialFood(
     food: Food,
@@ -739,93 +738,11 @@ private fun DrawScope.drawSpecialFood(
     textMeasurer: TextMeasurer,
     palette: SkinPalette,
 ) {
-    val accent = SpecialVisuals.accent(food.effect)
     val extent = cell * food.span
     val centerX = originX + food.position.x * cell + extent / 2f
     val centerY = originY + food.position.y * cell + extent / 2f
-    val radius = extent * 0.40f * pulse
-    val center = Offset(centerX, centerY)
-
-    if (palette.useGlow) {
-        // Glow skins: a haloed disc.
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(accent.copy(alpha = 0.5f), Color.Transparent),
-                center = center,
-                radius = radius * 2.1f,
-            ),
-            radius = radius * 2.1f,
-            center = center,
-        )
-        drawCircle(color = accent, radius = radius, center = center)
-        drawCircle(
-            color = Color.Black.copy(alpha = 0.18f),
-            radius = radius,
-            center = center,
-            style = Stroke(width = radius * 0.12f),
-        )
-        // Hazards wear a dashed "caution" ring so a dangerous piece is readable
-        // at a glance - the steady counterpart to the eat-imminent telegraph.
-        if (food.effect.isHazard) {
-            val ringRadius = radius * 1.34f
-            val dash = ringRadius * 0.52f
-            drawCircle(
-                color = HazardWarnColor.copy(alpha = 0.75f * pulse),
-                radius = ringRadius,
-                center = center,
-                style = Stroke(
-                    width = radius * 0.16f,
-                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, dash * 0.55f)),
-                ),
-            )
-        }
-    } else {
-        // Flat skins: a rounded square with a grounding shadow, top sheen and a
-        // square dashed "caution" ring for hazards.
-        val tl = Offset(centerX - radius, centerY - radius)
-        val sz = Size(radius * 2f, radius * 2f)
-        val cr = radius * 2f * palette.cornerFactor
-        val rad = CornerRadius(cr, cr)
-        drawRoundRect(
-            color = Color.Black.copy(alpha = 0.22f),
-            topLeft = Offset(tl.x + radius * 0.12f, tl.y + radius * 0.3f),
-            size = sz,
-            cornerRadius = rad,
-        )
-        drawRoundRect(color = accent, topLeft = tl, size = sz, cornerRadius = rad)
-        drawRect(
-            color = lighten(accent, 0.22f).copy(alpha = 0.4f),
-            topLeft = tl,
-            size = Size(sz.width, sz.height * 0.4f),
-        )
-        drawRoundRect(
-            color = Color.Black.copy(alpha = 0.18f),
-            topLeft = tl,
-            size = sz,
-            cornerRadius = rad,
-            style = Stroke(width = radius * 0.12f),
-        )
-        if (food.effect.isHazard) {
-            val pad = radius * 0.3f
-            val rtl = Offset(tl.x - pad, tl.y - pad)
-            val rsz = Size(sz.width + 2 * pad, sz.height + 2 * pad)
-            val rcr = cr + pad
-            val dash = rsz.width * 0.18f
-            drawRoundRect(
-                color = HazardWarnColor.copy(alpha = 0.75f * pulse),
-                topLeft = rtl,
-                size = rsz,
-                cornerRadius = CornerRadius(rcr, rcr),
-                style = Stroke(
-                    width = radius * 0.16f,
-                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, dash * 0.55f)),
-                ),
-            )
-        }
-    }
-
-    val ink = Color(0xFF10151C)
-    drawSpecialSymbol(food.effect, centerX, centerY, radius * 0.92f, ink, textMeasurer)
+    val radius = extent * 0.33f * pulse
+    drawSpecialToken(centerX, centerY, radius, food.effect, palette, textMeasurer, pulse)
 }
 
 /**

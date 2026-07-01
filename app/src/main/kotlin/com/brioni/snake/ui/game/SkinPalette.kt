@@ -7,6 +7,35 @@ import com.brioni.snake.game.FoodTier
 import com.brioni.snake.game.Skin
 
 /**
+ * The "material" a skin uses for its power-up / hazard tokens (see
+ * [drawSpecialToken]). The effect's identity accent colour stays constant across
+ * skins; only the frame's *look* changes, so a token feels native to its skin
+ * while a colour + symbol always means the same effect.
+ *
+ * [tokenCorner] is the token's corner radius as a fraction of its radius: `null`
+ * draws a disc, `0f` a hard square, higher values increasingly rounded squares.
+ */
+enum class SpecialStyle(val tokenCorner: Float?) {
+    /** Classic: a glossy enamel disc. */
+    Enamel(null),
+
+    /** Neon: a hollow neon-tube disc - dark centre, bright rim. */
+    Neon(null),
+
+    /** Retro: a warm, bevelled phosphor tile. */
+    Phosphor(0.32f),
+
+    /** Pixel: a hard-edged pixel tile with a corner highlight. */
+    Pixel(0.0f),
+
+    /** Aurora: a frosted, translucent glass gem. */
+    Glass(0.44f),
+
+    /** Ember: a molten token in a dark iron bezel. */
+    Ember(0.36f),
+}
+
+/**
  * The full set of colours and style flags the Canvas renderer needs, bundled so
  * a whole look can be swapped atomically by selecting a [Skin]. Every renderer
  * reads from a [SkinPalette] rather than a hard-coded object, which keeps the
@@ -55,6 +84,8 @@ data class SkinPalette(
     val cornerFactor: Float,
     val useGlow: Boolean,
     val segmentedBody: Boolean,
+    // The material used to draw power-up / hazard tokens (see [drawSpecialToken]).
+    val specialStyle: SpecialStyle,
 ) {
     /** Colour identity of a food, from its category and magnitude tier. */
     fun foodColor(food: Food): Color = when (food.category) {
@@ -112,6 +143,7 @@ private val ClassicPalette = SkinPalette(
     cornerFactor = 0.30f,
     useGlow = true,
     segmentedBody = false,
+    specialStyle = SpecialStyle.Enamel,
 )
 
 /** Saturated cyan/magenta on near-black with boosted glow. */
@@ -141,6 +173,7 @@ private val NeonPalette = SkinPalette(
     cornerFactor = 0.50f,
     useGlow = true,
     segmentedBody = false,
+    specialStyle = SpecialStyle.Neon,
 )
 
 /** Warm phosphor arcade palette; flat styling that pairs with the CRT filter. */
@@ -170,6 +203,7 @@ private val RetroPalette = SkinPalette(
     cornerFactor = 0.16f,
     useGlow = false,
     segmentedBody = true,
+    specialStyle = SpecialStyle.Phosphor,
 )
 
 /** Flat, square, glow-free pixel-art styling. */
@@ -199,6 +233,7 @@ private val PixelPalette = SkinPalette(
     cornerFactor = 0.0f,
     useGlow = false,
     segmentedBody = true,
+    specialStyle = SpecialStyle.Pixel,
 )
 
 /**
@@ -232,6 +267,7 @@ private val AuroraPalette = SkinPalette(
     cornerFactor = 0.22f,
     useGlow = true,
     segmentedBody = true,
+    specialStyle = SpecialStyle.Glass,
 )
 
 /**
@@ -265,4 +301,5 @@ private val EmberPalette = SkinPalette(
     cornerFactor = 0.18f,
     useGlow = true,
     segmentedBody = true,
+    specialStyle = SpecialStyle.Ember,
 )

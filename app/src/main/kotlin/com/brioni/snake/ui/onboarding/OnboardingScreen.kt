@@ -39,7 +39,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -57,13 +56,12 @@ import com.brioni.snake.game.BoardScale
 import com.brioni.snake.game.ControlScheme
 import com.brioni.snake.game.FoodEffect
 import com.brioni.snake.game.Level
-import com.brioni.snake.game.isHazard
 import com.brioni.snake.ui.AnimatedShaderBackground
 import com.brioni.snake.ui.components.SnakeButton
 import com.brioni.snake.ui.game.SkinPalette
 import com.brioni.snake.ui.game.SpecialVisuals
 import com.brioni.snake.ui.game.drawGlyph
-import com.brioni.snake.ui.game.drawSpecialSymbol
+import com.brioni.snake.ui.game.drawSpecialToken
 import com.brioni.snake.ui.game.paletteFor
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -405,13 +403,18 @@ private fun FoodBadge(
     }
 }
 
-/** A special-piece badge mirroring the in-game disc + symbol (+ caution ring for hazards). */
+/** A special-piece badge drawn by the exact in-game token renderer ([drawSpecialToken]). */
 @Composable
 private fun SpecialBadge(effect: FoodEffect, palette: SkinPalette, textMeasurer: TextMeasurer) {
-    val accent = SpecialVisuals.accent(effect)
     Canvas(modifier = Modifier.size(40.dp)) {
-        drawSpecialDisc(accent, palette, hazard = effect.isHazard)
-        drawSpecialSymbol(effect, size.width / 2f, size.height / 2f, size.minDimension * 0.30f, SpecialInk, textMeasurer)
+        drawSpecialToken(
+            cx = size.width / 2f,
+            cy = size.height / 2f,
+            radius = size.minDimension * 0.28f,
+            effect = effect,
+            palette = palette,
+            textMeasurer = textMeasurer,
+        )
     }
 }
 
@@ -520,68 +523,6 @@ private fun DrawScope.drawFood(cx: Float, cy: Float, radius: Float, color: Color
     }
 }
 
-/**
- * A static special disc, mirroring the in-game [com.brioni.snake.ui.game] rendering:
- * a haloed disc on glow skins or a rounded square on flat skins, with a dashed red
- * "caution" ring when [hazard].
- */
-private fun DrawScope.drawSpecialDisc(accent: Color, palette: SkinPalette, hazard: Boolean) {
-    val cx = size.width / 2f
-    val cy = size.height / 2f
-    val radius = size.minDimension * 0.34f
-    val center = Offset(cx, cy)
-    if (palette.useGlow) {
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(accent.copy(alpha = 0.5f), Color.Transparent),
-                center = center,
-                radius = radius * 2.1f,
-            ),
-            radius = radius * 2.1f,
-            center = center,
-        )
-        drawCircle(color = accent, radius = radius, center = center)
-        drawCircle(Color.Black.copy(alpha = 0.18f), radius = radius, center = center, style = Stroke(width = radius * 0.12f))
-        if (hazard) {
-            val ringRadius = radius * 1.34f
-            val dash = ringRadius * 0.52f
-            drawCircle(
-                color = HazardRing,
-                radius = ringRadius,
-                center = center,
-                style = Stroke(
-                    width = radius * 0.16f,
-                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, dash * 0.55f)),
-                ),
-            )
-        }
-    } else {
-        val tl = Offset(cx - radius, cy - radius)
-        val sz = Size(radius * 2f, radius * 2f)
-        val cr = radius * 2f * palette.cornerFactor
-        val rad = CornerRadius(cr, cr)
-        drawRoundRect(color = accent, topLeft = tl, size = sz, cornerRadius = rad)
-        drawRoundRect(Color.Black.copy(alpha = 0.18f), tl, sz, rad, style = Stroke(width = radius * 0.12f))
-        if (hazard) {
-            val pad = radius * 0.3f
-            val rtl = Offset(tl.x - pad, tl.y - pad)
-            val rsz = Size(sz.width + 2 * pad, sz.height + 2 * pad)
-            val rcr = cr + pad
-            val dash = rsz.width * 0.18f
-            drawRoundRect(
-                color = HazardRing,
-                topLeft = rtl,
-                size = rsz,
-                cornerRadius = CornerRadius(rcr, rcr),
-                style = Stroke(
-                    width = radius * 0.16f,
-                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, dash * 0.55f)),
-                ),
-            )
-        }
-    }
-}
-
 /** Page 0: a short snake heading toward a piece of food. */
 private fun DrawScope.drawObjectiveArt(palette: SkinPalette, textMeasurer: TextMeasurer) {
     val cell = size.height / 5f
@@ -680,7 +621,7 @@ private fun DrawScope.drawFoodArt(palette: SkinPalette, textMeasurer: TextMeasur
     }
 }
 
-/** Page 3: a power-up (Lightning), a power-up (Star) and a hazard (Explosion) disc. */
+/** Page 3: a power-up (Lightning), a power-up (Star) and a hazard (Explosion) token. */
 private fun DrawScope.drawSpecialsArt(palette: SkinPalette, textMeasurer: TextMeasurer) {
     val midY = size.height * 0.5f
     val effects = listOf(
@@ -688,74 +629,9 @@ private fun DrawScope.drawSpecialsArt(palette: SkinPalette, textMeasurer: TextMe
         0.50f to FoodEffect.Ghost(0L),
         0.76f to FoodEffect.Burst(0L),
     )
-    val discR = size.minDimension * 0.18f
+    val radius = size.minDimension * 0.17f
     effects.forEach { (fx, effect) ->
-        val cx = size.width * fx
-        val accent = SpecialVisuals.accent(effect)
-        drawSpecialDiscAt(cx, midY, discR, accent, palette, effect.isHazard)
-        drawSpecialSymbol(effect, cx, midY, discR * 0.86f, SpecialInk, textMeasurer)
-    }
-}
-
-/** [drawSpecialDisc] at an explicit centre/radius (the page-3 hero uses three of them). */
-private fun DrawScope.drawSpecialDiscAt(
-    cx: Float,
-    cy: Float,
-    radius: Float,
-    accent: Color,
-    palette: SkinPalette,
-    hazard: Boolean,
-) {
-    val center = Offset(cx, cy)
-    if (palette.useGlow) {
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(accent.copy(alpha = 0.5f), Color.Transparent),
-                center = center,
-                radius = radius * 2.1f,
-            ),
-            radius = radius * 2.1f,
-            center = center,
-        )
-        drawCircle(color = accent, radius = radius, center = center)
-        drawCircle(Color.Black.copy(alpha = 0.18f), radius = radius, center = center, style = Stroke(width = radius * 0.12f))
-        if (hazard) {
-            val ringRadius = radius * 1.34f
-            val dash = ringRadius * 0.52f
-            drawCircle(
-                color = HazardRing,
-                radius = ringRadius,
-                center = center,
-                style = Stroke(
-                    width = radius * 0.16f,
-                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, dash * 0.55f)),
-                ),
-            )
-        }
-    } else {
-        val tl = Offset(cx - radius, cy - radius)
-        val sz = Size(radius * 2f, radius * 2f)
-        val cr = radius * 2f * palette.cornerFactor
-        val rad = CornerRadius(cr, cr)
-        drawRoundRect(color = accent, topLeft = tl, size = sz, cornerRadius = rad)
-        drawRoundRect(Color.Black.copy(alpha = 0.18f), tl, sz, rad, style = Stroke(width = radius * 0.12f))
-        if (hazard) {
-            val pad = radius * 0.3f
-            val rtl = Offset(tl.x - pad, tl.y - pad)
-            val rsz = Size(sz.width + 2 * pad, sz.height + 2 * pad)
-            val rcr = cr + pad
-            val dash = rsz.width * 0.18f
-            drawRoundRect(
-                color = HazardRing,
-                topLeft = rtl,
-                size = rsz,
-                cornerRadius = CornerRadius(rcr, rcr),
-                style = Stroke(
-                    width = radius * 0.16f,
-                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, dash * 0.55f)),
-                ),
-            )
-        }
+        drawSpecialToken(size.width * fx, midY, radius, effect, palette, textMeasurer)
     }
 }
 

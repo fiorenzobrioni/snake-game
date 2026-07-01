@@ -67,7 +67,10 @@ The classic Snake mechanics, extended with configurable features so every run fe
   their unlock condition in Settings. The glow skins (Classic / Neon / Aurora / Ember) draw food and
   power-ups as haloed round pieces; the flat skins (Retro / Pixel) render them as squares (crisp on Pixel,
   lightly rounded on Retro). Aurora and Ember pair a glowing look with a **segmented** snake body that reads
-  beautifully through teleports and the invincibility shimmer.
+  beautifully through teleports and the invincibility shimmer. Power-up / hazard pieces are drawn as
+  **premium bevelled tokens** whose material changes per skin (glossy enamel, hollow neon tube, warm
+  phosphor, hard pixel tile, frosted glass, molten iron), while each effect keeps a constant identity
+  colour and symbol so its meaning never shifts between skins.
 - 🌗 **Theme** - choose **Light**, **Dark** or **System** (follows the device) in Settings.
 - 🔊 **Music & sound effects** - looping background music that crossfades between the menu and
   gameplay, plus SFX for eating, shrinking, mystery pieces, game over and UI. Independent
@@ -93,8 +96,8 @@ The classic Snake mechanics, extended with configurable features so every run fe
   **Freeze**, **Jackpot** (big bonus),
   plus the hazards **Earthquake** (a sustained screen shake for a few seconds that makes the board hard
   to read - no debris, your length is untouched) and **Explosion** (severs the last third of the snake,
-  leaving the detached tail as lethal debris that lingers for several seconds). Hazards wear a dashed
-  **caution ring** and, the moment before you would eat one, flash a **danger telegraph** (with a
+  leaving the detached tail as lethal debris that lingers for several seconds). Hazards wear a notched
+  **danger bezel** and, the moment before you would eat one, flash a **danger telegraph** (with a
   pre-haptic) so a strike never feels arbitrary - the flash respects the **Reduce motion** toggle. Active
   effects show countdown chips; up to **two specials** can share the board at once. Toggle **Hazards**
   off in Settings for a calmer run, or dial how often specials appear with the **Special blocks**

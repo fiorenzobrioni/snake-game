@@ -300,7 +300,7 @@ snake-game/
       area and the frame follows the outline) repeating forever, one **speed cycle** faster each lap
       (170 ms → 80 ms floor); advance by **eating 12 foods** per level (HUD counts down); **3 lives**
       with same-level respawns (score and progress kept) and a rare 2×2 **extra-life** special
-      (snake-head icon, capped at 5 → points); a `LevelIntro` status drives the animated
+      (heart icon, capped at 5 → points); a `LevelIntro` status drives the animated
       **"Level x · Speed x" 3-2-1 countdown** overlay (game start, every advance, every respawn).
       The difficulty selector is hidden/ignored (scores pinned to one level per scale; a "best level"
       record is also kept); three new achievements (Climber / Tower Topper / Full Circle).
@@ -322,8 +322,9 @@ snake-game/
       the rules; covered by `HazardTelegraphTest`). The ViewModel fires a distinct **pre-haptic**
       (`GameHaptics.hazardWarning`, a crisp double-tick) and the renderer flashes a universal-red danger
       telegraph over the piece (steady highlight + strobing border + an outward "radar ping" ring), gated
-      under **Reduce motion**. Hazard specials also wear a steady dashed **"caution" ring** so a dangerous
-      piece reads at a glance, the calm counterpart to the eat-imminent flash.
+      under **Reduce motion**. Hazard specials also wear a steady notched **danger bezel** so a dangerous
+      piece reads at a glance, the calm counterpart to the eat-imminent flash. *(Updated 2026-07-01: the
+      old dashed caution ring became a notched bezel with the premium per-skin tokens - see Step 6.9.18.)*
 
 - [x] **Step 6.9.2 - Richer game-over summary.** The game-over overlay now shows a run recap card under the
       best-score line: foods eaten, best combo, time survived, max length (and, in Campaign, the deepest
@@ -436,7 +437,9 @@ snake-game/
       (corner from the skin's `cornerFactor` - crisp Pixel, lightly rounded Retro), with a square grounding
       shadow, top sheen and a square dashed "caution" ring for hazards. The glow skins (Classic / Neon) are
       intentionally left as haloed discs (their strength). Implemented in `GameBoard` by branching the food /
-      special renderers on `SkinPalette.useGlow`.
+      special renderers on `SkinPalette.useGlow`. *(Superseded for the special power-up / hazard pieces by
+      Step 6.9.18, which replaced the disc/square split with premium per-skin material tokens; regular food
+      still follows this step.)*
 
 - [x] **Step 6.9.14 - Premium action buttons + menu polish.** Replaced the flat, fully-rounded Material
       `Button` / `OutlinedButton` used for the menu-style actions across the app with branded
@@ -484,6 +487,18 @@ snake-game/
       sweeps past, advances the particles and drives the redraw). The board is more **premium**: the Retro gradient
       lifted with two slow-drifting warm glows, a radial vignette for depth and a soft-haloed framed border. The
       bloom post-filter stays (now also blooming the sparks).
+
+- [x] **Step 6.9.18 - Premium, per-skin power-up / hazard tokens.** Replaced the flat coloured disc/square
+      special pieces with **bevelled "tokens"** that have depth (material body gradient, rim/bevel, glow on
+      glow skins or a drop shadow on flat skins) and an **embossed glyph**. Diversified per skin via a new
+      `SpecialStyle` on `SkinPalette` (Classic = enamel, Neon = neon tube, Retro = phosphor, Pixel = pixel
+      tile, Aurora = frosted glass, Ember = molten iron) - the effect's identity accent colour + symbol stay
+      constant across skins, only the frame's material changes. Hazards now wear a **notched danger bezel**
+      (a faint aura on glow skins) instead of the dashed ring. **Freeze**'s symbol became a faceted **ice
+      crystal** and **Extra life**'s became a **heart** (removed `drawSnowflake` / `drawSnakeHeadIcon`).
+      Extracted one shared renderer `drawSpecialToken` (`ui/game/SpecialIcons.kt`) used by both
+      `GameBoard.drawSpecialFood` and the onboarding, and deleted the onboarding's duplicated disc drawing
+      (`drawSpecialDisc` / `drawSpecialDiscAt`) so the tutorial and gameplay never drift.
 
 ### Phase 7 - Play Store distribution & cleanup
 
