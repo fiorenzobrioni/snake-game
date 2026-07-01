@@ -13,6 +13,85 @@ Suggested format for each entry:
 
 ---
 
+## 2026-07-01 - Per-skin snake bodies (Neon / Aurora / Ember) + skin unlock bypass
+
+**Done:**
+- Replaced the boolean `SkinPalette.segmentedBody` with a `SnakeStyle` enum, dispatched in
+  `GameBoard.drawSnake`, so each skin can render the snake body its own way. Three skins
+  get a bespoke, premium, subtly animated body:
+  - **Neon** - a hollow neon tube: dark core, glowing wall, a bright pulsing filament and a
+    ring head (additive `BlendMode.Plus` glow).
+  - **Aurora** - a ribbon whose teal-cyan-blue-violet-green hues flow along the body and drift
+    over time (a per-segment `auroraColor(u, time)`), with an additive glow and upper sheen.
+  - **Ember** - a dark rock crust with a pulsing molten-lava vein that runs hottest at the head.
+- Kept Classic = **tube** and Retro / Pixel = **blocks** but made both more premium while
+  keeping their identity: a crisp top specular on the tube; a volumetric diagonal gradient +
+  specular corner on the blocks (`drawChiselledBlock`).
+- Extracted a reusable `strokeChain` (round-capped capsule chain + joint discs, blend-mode
+  aware) that backs the tube / neon / molten bodies; debris (severed tails) now render through
+  the same per-skin body dispatch (`drawSnakeBody`), passed the frame `time`.
+- Added `Skin.ALL_UNLOCKED_PREVIEW = true`: while set, every skin is selectable in Settings and
+  the game-over "skin unlocked" toasts are suppressed - a temporary pre-release convenience so
+  all skins can be trialled. The `SkinUnlock` rules and `Skin.newlyUnlocked` logic are untouched.
+
+**Decisions:** Animation reuses the `time` value already threaded into `drawSnake`, so nothing
+in the coroutine game loop changed. The unlock bypass is a single model-level flag read by the
+Settings picker and the ViewModel, rather than deleting the gating - so it is a one-line revert
+and leaves `SkinTest` green.
+
+**Issues:** None. `SkinPalette` swapped a field (`segmentedBody` → `snakeStyle`), but it is
+constructed only in `paletteFor`, so all six palettes updated in one place.
+
+**Verified:** `./gradlew compileDebugKotlin testDebugUnitTest` (build successful, all unit tests
+pass). Reviewed an animated HTML/Canvas mockup of the three new bodies for sign-off first.
+
+**Next:** Refresh screenshots to show the new snake bodies; restore the unlock gating (flip
+`ALL_UNLOCKED_PREVIEW`) before an official release.
+
+---
+
+## 2026-07-01 - Premium, per-skin power-up / hazard tokens
+
+**Done:**
+- Redesigned the power-up / hazard pieces from flat coloured discs/squares into
+  **premium bevelled tokens** with depth: a material body gradient, a rim/bevel and
+  a soft glow (glow skins) or drop shadow (flat skins), plus an **embossed glyph**
+  (dark drop under a light/ink face).
+- **Diversified per skin** via a new `SpecialStyle` enum on `SkinPalette`
+  (`ui/game/SkinPalette.kt`): Classic = glossy Enamel, Neon = hollow neon-tube,
+  Retro = warm Phosphor, Pixel = hard Pixel tile, Aurora = frosted Glass, Ember =
+  molten iron. The effect's identity accent colour + symbol stay constant across
+  skins, so meaning never shifts - only the frame's material changes.
+- **Hazards** now wear a discreet **notched red danger bezel** (a faint aura on glow
+  skins) instead of the thin dashed caution ring.
+- **Freeze** symbol changed from a snowflake to a **faceted ice crystal / gem**
+  (`drawCrystal`); **Extra life** changed from a snake head to a **heart**
+  (`drawHeart`). Removed the now-unused `drawSnowflake` / `drawSnakeHeadIcon`.
+- Extracted a single shared renderer `drawSpecialToken` (in `SpecialIcons.kt`) and
+  routed both the in-game board (`GameBoard.drawSpecialFood`) and the first-run
+  tutorial through it. The onboarding previously **duplicated** the disc rendering
+  (`drawSpecialDisc` / `drawSpecialDiscAt`); those were deleted so the tutorial and
+  gameplay can never drift.
+
+**Decisions:** Kept the look **sober** (soft gradient + clean border + minimal glyph
+shadow, no heavy gloss/emboss) per the design review, while still giving each of the
+six skins a distinct material. Reused the existing `useGlow` flag for the depth cue
+and added only a `tokenCorner` per style for the token shape (disc vs rounded/hard
+square), so the change is data-driven rather than branchy.
+
+**Issues:** None. `SkinPalette` gained a required field, but it is constructed only in
+`paletteFor`, so all six palettes were updated in one place.
+
+**Verified:** `./gradlew compileDebugKotlin testDebugUnitTest` (build successful, all
+unit tests pass; the two remaining warnings are pre-existing in `LevelHazardsTest` /
+`LevelShapesTest`). Rendered HTML/Canvas mockups of the before/after and per-skin
+tokens for design sign-off before implementing.
+
+**Next:** Refresh the onboarding / gameplay screenshots in `docs/screenshots/` to show
+the new tokens (optional, cosmetic).
+
+---
+
 ## 2026-06-27 - Snake 1.0.0 release prep (version bump, screenshots, docs)
 
 **Done:**

@@ -56,6 +56,15 @@ enum class Skin(val displayName: String, val unlock: SkinUnlock) {
     ;
 
     companion object {
+        /**
+         * Pre-release override: while true, every skin is available to try and the
+         * score/streak unlock gates are bypassed in the UI (the game-over "skin
+         * unlocked" toasts are also suppressed). The underlying [unlock] rules and
+         * [newlyUnlocked] logic are left intact - flip this back to `false` to
+         * restore gating before an official release.
+         */
+        const val ALL_UNLOCKED_PREVIEW: Boolean = true
+
         /** Skins available without unlocking (their [unlock] is [SkinUnlock.Always]). */
         val defaultUnlocked: Set<Skin> = entries.filterTo(mutableSetOf()) { it.unlock is SkinUnlock.Always }
 
