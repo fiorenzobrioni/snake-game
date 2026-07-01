@@ -13,6 +13,45 @@ Suggested format for each entry:
 
 ---
 
+## 2026-07-01 - Teleport: route the snake through the pads instead of streaking
+
+**Done:**
+- Fixed the ugly portal animation. Before, a teleport only snapped the head-crossing tick
+  (`resetTo`), so the head jumped from the cell *before* the entry pad straight to the exit,
+  never touching the entry pad; and every following tick a body segment streaked across the
+  board while a continuous-body skin (tube / neon / aurora / ember) drew a tube spanning the
+  two portals.
+- The renderer now routes the body **through** the pads. New `interpolatedSnakeCenters`
+  (in `GameBoard.kt`) replaces the inline per-segment lerp: a segment whose old and new cell
+  are not neighbours is recognised as a portal jump and, for the first half of the tick, slides
+  from its old cell *into the entry pad*; for the second half it sits on the exit pad. So the
+  head visibly dives into the entry portal and re-emerges at its partner, and each body segment
+  threads through the same way.
+- The body tube is cut at the portal seam. New `isBrokenSpan` (distance > 1.6 cells) makes the
+  connected renderers skip the capsule that would bridge the two pads, while keeping the joint
+  disc so a lone in-portal segment still reads. Applied to `strokeChain` (tube / neon / ember)
+  and the aurora / molten vein loops. Blocky skins were already seam-free (per-cell squares).
+- `GameViewModel.advance` now only snaps interpolation on a teleport when **reduce-motion** is on
+  (keeps the instantaneous blink); with motion on it commits normally so the routing above runs.
+
+**Decisions:**
+- Kept the change renderer-side: no game-logic / engine change, so `LevelHazardsTest` and the
+  deterministic teleport model are untouched. The half-tick entry→exit handoff produces a brief
+  "pop" between the two pads, but both wear the swirling portal disc so it reads as the jump.
+- The seam cut is distance-based (reusing the single global `centers` list) rather than splitting
+  into sub-chains, so body width tapering stays continuous along the whole snake.
+- Ghost board-wrap (padless discontinuity) also benefits: the tube no longer streaks across the
+  board, it just breaks at the wrap.
+
+**Issues:** No local wrapper Gradle (distribution download blocked by egress policy); built and
+tested with the system Gradle at `/opt/gradle-8.14.3`. `compileDebugKotlin` and
+`testDebugUnitTest` both pass.
+
+**Next:** Watch on-device that the entry→exit handoff feels smooth for long snakes; consider a
+short alpha fade at the pads if the pop is noticeable.
+
+---
+
 ## 2026-07-01 - Per-skin snake bodies (Neon / Aurora / Ember) + skin unlock bypass
 
 **Done:**
