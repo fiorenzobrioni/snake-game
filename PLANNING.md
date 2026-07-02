@@ -628,6 +628,25 @@ snake-game/
       data-class default, ViewModel seed) and sits first in the picker; the skin-following floor was
       renamed **Default → Arcade** (constant + display name; a stale persisted "Default" value falls back
       to Meadow via the `runCatching` enum decode).
+- [x] **Step 7.14 - Premium UI pass: terrain-seeded accents, terrain menus, back headers, Settings
+      cards, bespoke icons.** (1) The **UI accent now follows the selected terrain** - the in-app
+      equivalent of Material You with the terrain as the seed: `TerrainAccents` in `ui/theme/Color.kt`
+      maps each terrain to a tuned primary/secondary pair (dark variants bright enough to fill a button
+      behind dark ink, light variants sunk for pale surfaces); `SnakeGameTheme` takes the terrain and
+      **cross-fades accent changes** (600 ms), and Meadow/Arcade keep the brand greens exactly, so a
+      fresh install looks unchanged. (2) The **menu backdrop renders the selected terrain's AGSL floor**
+      (`AnimatedShaderBackground` gained a `terrain` param; Arcade keeps the classic drifting-glows
+      gradient) under a vertical scrim - lighter behind the brand hero, heavier at the edges - so the
+      menus live in the chosen world without costing text contrast. (3) **Secondary screens follow the
+      Android back-affordance guideline**: a shared `ScreenHeader` (glassy back icon + centred title)
+      replaced every bottom "Menu" button on Settings / Records / Achievements / Daily / Daily history /
+      Random / Credits, with the content scrolling under a pinned header. (4) **Settings grouped into
+      titled glass cards** (Controls, Appearance, Gameplay, Audio & feedback, Accessibility & help) in
+      the `SnakeButtons` family look. (5) **Bespoke hand-authored menu icons** (`MenuIcons`: tune
+      sliders, calendar, die, trophy, medal) replaced the misfitting `material-icons-core` picks
+      (Refresh read as "reload", List was anonymous) without pulling in the heavy extended set; the
+      missions strip's text pips ("✓"/"○") became drawn glyphs and the missions dialog wears the glassy
+      rim.
 
 ---
 

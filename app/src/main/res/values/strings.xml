@@ -92,7 +92,13 @@
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
-    <string name="settings_control_scheme">Controls</string>
+    <!-- Section-card titles grouping the options into topics. -->
+    <string name="settings_section_controls">Controls</string>
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_section_gameplay">Gameplay</string>
+    <string name="settings_section_audio">Audio &amp; feedback</string>
+    <string name="settings_section_access">Accessibility &amp; help</string>
+    <string name="settings_control_scheme">Control scheme</string>
     <!-- "Swipe sensitivity: <percent>%" -->
     <string name="settings_swipe_sensitivity">Swipe sensitivity: %1$d%%</string>
     <string name="settings_master_volume">Master volume</string>
@@ -166,6 +172,7 @@
     <string name="action_pause">Pause</string>
     <string name="action_resume">Resume</string>
     <string name="action_menu">Menu</string>
+    <string name="action_back">Back</string>
 
     <!-- Pause overlay -->
     <string name="paused_title">Paused</string>

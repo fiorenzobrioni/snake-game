@@ -14,6 +14,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import com.brioni.snake.ui.components.ScreenHeader
 import com.brioni.snake.ui.components.SnakeButton
 import com.brioni.snake.ui.components.SnakeOutlinedButton
 import androidx.compose.runtime.Composable
@@ -62,86 +63,81 @@ fun DailyChallengeScreen(
     }
     val playedToday = lastPlayed == epochDay
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text = stringResource(R.string.daily_title),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 4.dp),
+    Column(modifier = modifier.fillMaxSize()) {
+        ScreenHeader(
+            title = stringResource(R.string.daily_title),
+            onBack = onBack,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
         )
-        Text(
-            text = today.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG)),
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(bottom = 24.dp),
-        )
-
-        Card(
-            modifier = Modifier.fillMaxWidth().widthIn(max = 480.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-            shape = RoundedCornerShape(20.dp),
-        ) {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(
-                    text = stringResource(R.string.daily_subtitle),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(bottom = 16.dp),
-                )
-                ConfigRow(stringResource(R.string.daily_row_twist), challenge.modifier.displayName)
-                ConfigRow(stringResource(R.string.daily_row_mode), challenge.mode.displayName)
-                ConfigRow(stringResource(R.string.daily_row_level), challenge.level.displayName)
-                ConfigRow(stringResource(R.string.daily_row_board), challenge.scale.displayName)
-            }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth().widthIn(max = 480.dp).padding(top = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            StatTile(
-                label = stringResource(R.string.daily_best_label),
-                value = best.toString(),
-                modifier = Modifier.weight(1f),
-            )
-            StatTile(
-                label = stringResource(R.string.daily_streak_label),
-                value = stringResource(R.string.daily_streak_value, liveStreak),
-                modifier = Modifier.weight(1f),
-            )
-        }
-
-        SnakeButton(
-            onClick = { onPlay(epochDay) },
-            modifier = Modifier.padding(top = 32.dp).widthIn(min = 220.dp),
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                stringResource(if (playedToday) R.string.daily_play_again else R.string.daily_play),
-                style = MaterialTheme.typography.titleMedium,
+                text = today.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG)),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(bottom = 24.dp),
             )
-        }
-        SnakeOutlinedButton(
-            onClick = onHistory,
-            modifier = Modifier.padding(top = 12.dp).widthIn(min = 220.dp),
-        ) {
-            Text(stringResource(R.string.daily_history_button))
-        }
-        SnakeOutlinedButton(
-            onClick = onBack,
-            modifier = Modifier.padding(top = 12.dp).widthIn(min = 220.dp),
-        ) {
-            Text(stringResource(R.string.action_menu))
+
+            Card(
+                modifier = Modifier.fillMaxWidth().widthIn(max = 480.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                shape = RoundedCornerShape(20.dp),
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        text = stringResource(R.string.daily_subtitle),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(bottom = 16.dp),
+                    )
+                    ConfigRow(stringResource(R.string.daily_row_twist), challenge.modifier.displayName)
+                    ConfigRow(stringResource(R.string.daily_row_mode), challenge.mode.displayName)
+                    ConfigRow(stringResource(R.string.daily_row_level), challenge.level.displayName)
+                    ConfigRow(stringResource(R.string.daily_row_board), challenge.scale.displayName)
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth().widthIn(max = 480.dp).padding(top = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                StatTile(
+                    label = stringResource(R.string.daily_best_label),
+                    value = best.toString(),
+                    modifier = Modifier.weight(1f),
+                )
+                StatTile(
+                    label = stringResource(R.string.daily_streak_label),
+                    value = stringResource(R.string.daily_streak_value, liveStreak),
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
+            SnakeButton(
+                onClick = { onPlay(epochDay) },
+                modifier = Modifier.padding(top = 32.dp).widthIn(min = 220.dp),
+            ) {
+                Text(
+                    stringResource(if (playedToday) R.string.daily_play_again else R.string.daily_play),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
+            SnakeOutlinedButton(
+                onClick = onHistory,
+                modifier = Modifier.padding(top = 12.dp).widthIn(min = 220.dp),
+            ) {
+                Text(stringResource(R.string.daily_history_button))
+            }
         }
     }
 }

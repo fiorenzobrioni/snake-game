@@ -6,14 +6,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import com.brioni.snake.ui.components.SnakeButton
+import com.brioni.snake.ui.components.ScreenHeader
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -47,30 +46,23 @@ fun RecordsScreen(
     val levelsProgress by repo.allLevelsProgress().collectAsState(initial = emptyMap())
     val bestOverall = scores.values.maxOrNull() ?: 0
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text = stringResource(R.string.records_title),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 8.dp),
+    Column(modifier = modifier.fillMaxSize()) {
+        ScreenHeader(
+            title = stringResource(R.string.records_title),
+            onBack = onBack,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
         )
-
-        GameMode.entries.forEach { mode ->
-            ModeRecords(mode = mode, scores = scores, levelsProgress = levelsProgress, bestOverall = bestOverall)
-        }
-
-        SnakeButton(
-            onClick = onBack,
-            modifier = Modifier.padding(top = 28.dp).widthIn(min = 200.dp),
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(stringResource(R.string.action_menu))
+            GameMode.entries.forEach { mode ->
+                ModeRecords(mode = mode, scores = scores, levelsProgress = levelsProgress, bestOverall = bestOverall)
+            }
         }
     }
 }

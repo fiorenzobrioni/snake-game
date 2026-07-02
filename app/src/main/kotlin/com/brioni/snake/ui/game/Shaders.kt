@@ -345,6 +345,21 @@ object Shaders {
             return c;
         }
     """
+
+    /**
+     * The AGSL source a full-screen backdrop (the menu family, the Settings
+     * preview cards) uses for [terrain]: the terrain's own floor, or the
+     * skin-gradient [BACKGROUND] for [BoardTerrain.Arcade] (callers must then
+     * feed `topColor`/`bottomColor`).
+     */
+    fun menuBackdropSource(terrain: BoardTerrain): String = when (terrain) {
+        BoardTerrain.Arcade -> BACKGROUND
+        BoardTerrain.Meadow -> MEADOW
+        BoardTerrain.Abyss -> ABYSS
+        BoardTerrain.Nebula -> NEBULA
+        BoardTerrain.Dunes -> DUNES
+        BoardTerrain.Glacier -> GLACIER
+    }
 }
 
 /**

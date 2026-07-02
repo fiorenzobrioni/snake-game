@@ -32,7 +32,7 @@ import androidx.compose.ui.unit.dp
 import com.brioni.snake.R
 import com.brioni.snake.data.SettingsRepository
 import com.brioni.snake.game.Challenge
-import com.brioni.snake.ui.components.SnakeButton
+import com.brioni.snake.ui.components.ScreenHeader
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -68,78 +68,72 @@ fun DailyHistoryScreen(
     // touch the stored bests, so re-running a fondly-remembered day is safe.
     var pendingReplayDay by remember { mutableStateOf<Long?>(null) }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text = stringResource(R.string.daily_history_title),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 4.dp),
+    Column(modifier = modifier.fillMaxSize()) {
+        ScreenHeader(
+            title = stringResource(R.string.daily_history_title),
+            onBack = onBack,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
         )
-        Text(
-            text = stringResource(R.string.daily_history_subtitle),
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onBackground,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(bottom = 24.dp),
-        )
-
-        // This-week aggregate tiles.
-        Row(
-            modifier = Modifier.fillMaxWidth().widthIn(max = 480.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            StatTile(
-                label = stringResource(R.string.daily_history_week_best),
-                value = weekBest.toString(),
-                modifier = Modifier.weight(1f),
+            Text(
+                text = stringResource(R.string.daily_history_subtitle),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onBackground,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(bottom = 24.dp),
             )
-            StatTile(
-                label = stringResource(R.string.daily_history_week_total),
-                value = weekTotal.toString(),
-                modifier = Modifier.weight(1f),
-            )
-            StatTile(
-                label = stringResource(R.string.daily_history_days_played),
-                value = "$daysPlayed/$HISTORY_DAYS",
-                modifier = Modifier.weight(1f),
-            )
-        }
 
-        // Per-day table, most recent first.
-        Card(
-            modifier = Modifier.fillMaxWidth().widthIn(max = 480.dp).padding(top = 16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-            shape = RoundedCornerShape(20.dp),
-        ) {
-            Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                for (offset in 0 until HISTORY_DAYS) {
-                    val day = endEpochDay - offset
-                    val date = LocalDate.ofEpochDay(day)
-                    val twist = remember(day) { Challenge.forDay(day).modifier.displayName }
-                    val score = bests[day]
-                    HistoryRow(
-                        date = date.format(dateFormat),
-                        twist = twist,
-                        score = score?.toString() ?: "-",
-                        played = score != null,
-                        onClick = { pendingReplayDay = day },
-                    )
+            // This-week aggregate tiles.
+            Row(
+                modifier = Modifier.fillMaxWidth().widthIn(max = 480.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                StatTile(
+                    label = stringResource(R.string.daily_history_week_best),
+                    value = weekBest.toString(),
+                    modifier = Modifier.weight(1f),
+                )
+                StatTile(
+                    label = stringResource(R.string.daily_history_week_total),
+                    value = weekTotal.toString(),
+                    modifier = Modifier.weight(1f),
+                )
+                StatTile(
+                    label = stringResource(R.string.daily_history_days_played),
+                    value = "$daysPlayed/$HISTORY_DAYS",
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
+            // Per-day table, most recent first.
+            Card(
+                modifier = Modifier.fillMaxWidth().widthIn(max = 480.dp).padding(top = 16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                shape = RoundedCornerShape(20.dp),
+            ) {
+                Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                    for (offset in 0 until HISTORY_DAYS) {
+                        val day = endEpochDay - offset
+                        val date = LocalDate.ofEpochDay(day)
+                        val twist = remember(day) { Challenge.forDay(day).modifier.displayName }
+                        val score = bests[day]
+                        HistoryRow(
+                            date = date.format(dateFormat),
+                            twist = twist,
+                            score = score?.toString() ?: "-",
+                            played = score != null,
+                            onClick = { pendingReplayDay = day },
+                        )
+                    }
                 }
             }
-        }
-
-        SnakeButton(
-            onClick = onBack,
-            modifier = Modifier.padding(top = 24.dp).widthIn(min = 220.dp),
-        ) {
-            Text(stringResource(R.string.action_menu))
         }
     }
 

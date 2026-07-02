@@ -5,7 +5,10 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,14 +23,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -43,7 +42,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -57,6 +60,7 @@ import com.brioni.snake.data.SettingsRepository
 import com.brioni.snake.game.Mission
 import com.brioni.snake.game.Skin
 import com.brioni.snake.ui.components.MenuIconButton
+import com.brioni.snake.ui.components.MenuIcons
 import com.brioni.snake.ui.components.MenuTile
 import com.brioni.snake.ui.components.SnakeButton
 import com.brioni.snake.ui.game.SnakeEmblem
@@ -179,19 +183,19 @@ fun MainMenuScreen(
             ) {
                 MenuTile(
                     onClick = onCustom,
-                    icon = Icons.Filled.Build,
+                    icon = MenuIcons.Tune,
                     label = stringResource(R.string.menu_custom_game),
                     modifier = Modifier.weight(1f),
                 )
                 MenuTile(
                     onClick = onDaily,
-                    icon = Icons.Filled.DateRange,
+                    icon = MenuIcons.Calendar,
                     label = stringResource(R.string.menu_daily),
                     modifier = Modifier.weight(1f),
                 )
                 MenuTile(
                     onClick = onRandom,
-                    icon = Icons.Filled.Refresh,
+                    icon = MenuIcons.Dice,
                     label = stringResource(R.string.menu_random),
                     modifier = Modifier.weight(1f),
                 )
@@ -204,13 +208,13 @@ fun MainMenuScreen(
             ) {
                 MenuTile(
                     onClick = onRecords,
-                    icon = Icons.AutoMirrored.Filled.List,
+                    icon = MenuIcons.Trophy,
                     label = stringResource(R.string.menu_records),
                     modifier = Modifier.weight(1f),
                 )
                 MenuTile(
                     onClick = onAchievements,
-                    icon = Icons.Filled.Star,
+                    icon = MenuIcons.Medal,
                     label = stringResource(R.string.menu_achievements),
                     modifier = Modifier.weight(1f),
                 )
@@ -283,14 +287,9 @@ private fun MissionsStrip(repo: SettingsRepository, modifier: Modifier = Modifie
         )
         Row(verticalAlignment = Alignment.CenterVertically) {
             missions.forEach { mission ->
-                val isDone = mission.id in done
-                Text(
-                    text = if (isDone) "✓" else "○",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isDone) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
-                    modifier = Modifier.padding(start = 8.dp),
+                MissionPip(
+                    done = mission.id in done,
+                    modifier = Modifier.padding(start = 8.dp).size(14.dp),
                 )
             }
             Text(
@@ -329,18 +328,24 @@ private fun MissionsDialog(
     done: Set<String>,
     onDismiss: () -> Unit,
 ) {
+    val scheme = MaterialTheme.colorScheme
+    // The same glassy rim the buttons and tiles wear, so the popup reads native.
+    val rim = Brush.verticalGradient(
+        listOf(scheme.primary.copy(alpha = 0.55f), scheme.primary.copy(alpha = 0.15f)),
+    )
     Dialog(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
                 .clip(RoundedCornerShape(20.dp))
-                .background(MaterialTheme.colorScheme.surface)
+                .background(scheme.surface)
+                .border(BorderStroke(1.dp, rim), RoundedCornerShape(20.dp))
                 .padding(horizontal = 20.dp, vertical = 18.dp),
         ) {
             Text(
                 text = stringResource(R.string.missions_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.secondary,
+                color = scheme.secondary,
             )
             missions.forEach { mission ->
                 val isDone = mission.id in done
@@ -348,22 +353,46 @@ private fun MissionsDialog(
                     modifier = Modifier.padding(top = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        text = if (isDone) "✓" else "○",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isDone) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                    )
+                    MissionPip(done = isDone, modifier = Modifier.size(16.dp))
                     Text(
                         text = mission.description,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = if (isDone) MaterialTheme.colorScheme.onSurface
-                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
+                        color = if (isDone) scheme.onSurface
+                        else scheme.onSurface.copy(alpha = 0.85f),
                         modifier = Modifier.padding(start = 12.dp),
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * A drawn mission pip: a filled accent disc with a dark tick when [done], a
+ * faint ring otherwise — replacing the old "✓" / "○" text glyphs, whose weight
+ * and baseline shifted with the system font.
+ */
+@Composable
+private fun MissionPip(done: Boolean, modifier: Modifier = Modifier) {
+    val fill = MaterialTheme.colorScheme.primary
+    val idle = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.35f)
+    Canvas(modifier = modifier) {
+        val w = size.width
+        if (done) {
+            drawCircle(fill)
+            // The tick, in the same dark ink the filled buttons use.
+            val tick = Path().apply {
+                moveTo(w * 0.28f, w * 0.52f)
+                lineTo(w * 0.44f, w * 0.70f)
+                lineTo(w * 0.74f, w * 0.34f)
+            }
+            drawPath(
+                path = tick,
+                color = androidx.compose.ui.graphics.Color(0xFF0A0E10),
+                style = Stroke(width = w * 0.14f, cap = StrokeCap.Round, join = StrokeJoin.Round),
+            )
+        } else {
+            drawCircle(idle, radius = w * 0.44f, style = Stroke(width = w * 0.12f))
         }
     }
 }
