@@ -59,7 +59,14 @@ object Shaders {
         uniform float2 resolution;
         uniform float time;
         uniform float cellPx;
-        float hash(float2 p) { return fract(sin(dot(p, float2(127.1, 311.7))) * 43758.5453); }
+        // Sinless hash ("Hash without Sine", Dave Hoskins, MIT): GPU sin() loses
+        // precision for large arguments, which tears value-noise into visibly
+        // misaligned rectangular patches along the lattice lines.
+        float hash(float2 p) {
+            float3 q = fract(float3(p.x, p.y, p.x) * float3(0.1031, 0.1030, 0.0973));
+            q += dot(q, float3(q.y, q.z, q.x) + 33.33);
+            return fract((q.x + q.y) * q.z);
+        }
         float vnoise(float2 p) {
             float2 i = floor(p);
             float2 f = fract(p);
@@ -130,7 +137,14 @@ object Shaders {
         uniform float2 resolution;
         uniform float time;
         uniform float cellPx;
-        float hash(float2 p) { return fract(sin(dot(p, float2(127.1, 311.7))) * 43758.5453); }
+        // Sinless hash ("Hash without Sine", Dave Hoskins, MIT): GPU sin() loses
+        // precision for large arguments, which tears value-noise into visibly
+        // misaligned rectangular patches along the lattice lines.
+        float hash(float2 p) {
+            float3 q = fract(float3(p.x, p.y, p.x) * float3(0.1031, 0.1030, 0.0973));
+            q += dot(q, float3(q.y, q.z, q.x) + 33.33);
+            return fract((q.x + q.y) * q.z);
+        }
         float vnoise(float2 p) {
             float2 i = floor(p);
             float2 f = fract(p);
@@ -179,7 +193,14 @@ object Shaders {
         uniform float2 resolution;
         uniform float time;
         uniform float cellPx;
-        float hash(float2 p) { return fract(sin(dot(p, float2(127.1, 311.7))) * 43758.5453); }
+        // Sinless hash ("Hash without Sine", Dave Hoskins, MIT): GPU sin() loses
+        // precision for large arguments, which tears value-noise into visibly
+        // misaligned rectangular patches along the lattice lines.
+        float hash(float2 p) {
+            float3 q = fract(float3(p.x, p.y, p.x) * float3(0.1031, 0.1030, 0.0973));
+            q += dot(q, float3(q.y, q.z, q.x) + 33.33);
+            return fract((q.x + q.y) * q.z);
+        }
         half4 main(float2 fragCoord) {
             float2 p = fragCoord - origin;
             float2 uv = p / resolution;
@@ -219,7 +240,14 @@ object Shaders {
         uniform float2 resolution;
         uniform float time;
         uniform float cellPx;
-        float hash(float2 p) { return fract(sin(dot(p, float2(127.1, 311.7))) * 43758.5453); }
+        // Sinless hash ("Hash without Sine", Dave Hoskins, MIT): GPU sin() loses
+        // precision for large arguments, which tears value-noise into visibly
+        // misaligned rectangular patches along the lattice lines.
+        float hash(float2 p) {
+            float3 q = fract(float3(p.x, p.y, p.x) * float3(0.1031, 0.1030, 0.0973));
+            q += dot(q, float3(q.y, q.z, q.x) + 33.33);
+            return fract((q.x + q.y) * q.z);
+        }
         float vnoise(float2 p) {
             float2 i = floor(p);
             float2 f = fract(p);

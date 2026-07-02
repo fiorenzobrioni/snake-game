@@ -62,4 +62,9 @@ repository's GPL-3.0 license.
 
 | Asset | Source | Author | License |
 |-------|--------|--------|---------|
-| Head glow / food halo / animated background / CRT filter (AGSL) | original (`ui/game/Shaders.kt`) | Snake Game project | GPL-3.0 |
+| Head glow / food halo / animated background / CRT filter / board terrains (AGSL) | original (`ui/game/Shaders.kt`) | Snake Game project | GPL-3.0 |
+
+The terrain shaders' value-noise uses the sinless integer hash from
+["Hash without Sine"](https://www.shadertoy.com/view/4djSRW) by Dave Hoskins
+(MIT) - a tiny, standard snippet used to avoid the precision tearing that
+`sin()`-based hashes exhibit on mobile GPUs.

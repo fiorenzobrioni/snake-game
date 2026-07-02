@@ -13,6 +13,28 @@ Suggested format for each entry:
 
 ---
 
+## 2026-07-02 - Fix terrain noise tearing (sinless hash)
+
+**Done:**
+- Fixed the "misaligned rectangular patches" the user reported on Glacier (visible as a floor made
+  of shifted tiles). The value-noise `hash` used `fract(sin(dot(p, k)) * 43758.5)`; on mobile GPUs
+  `sin()` is evaluated at reduced precision, so for large arguments (fragment coords are hundreds
+  to thousands of pixels; star/sparkle/crack lattices push `dot` into the tens of thousands) the
+  result degrades and the noise tears along the lattice into visibly offset blocks.
+- Replaced it with the sinless integer hash ("Hash without Sine", Dave Hoskins, MIT), which is
+  precision-stable everywhere. Applied to every terrain's `hash` (Meadow / Nebula / Dunes /
+  Glacier) since they all shared the same sin-based helper - Glacier just showed it worst because
+  of its high-contrast crack veins. Credited in `docs/CREDITS.md`.
+
+**Decisions:** Kept the smooth full-screen `sin` bands (Abyss caustics, Glacier sheen) as-is: those
+take small arguments and only shift slightly under precision loss, they don't tear.
+
+**Issues:** none - build and 164 tests green (system Gradle 8.14.3).
+
+**Next:** Confirm on-device that Glacier is now seamless across the whole board.
+
+---
+
 ## 2026-07-02 - Terrain tuning pass: sharp resume, brighter floors, Circuit → Glacier
 
 **Done (all from on-device user feedback):**
