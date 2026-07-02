@@ -165,13 +165,16 @@ fun GameBoard(
     bodyBurstId: Int,
     textMeasurer: TextMeasurer,
     palette: SkinPalette,
-    terrain: BoardTerrain = BoardTerrain.Default,
+    terrain: BoardTerrain = BoardTerrain.Arcade,
     borderColor: Color = palette.boardBorder,
     outsideColor: Color = Color.Black,
     reduceMotion: Boolean = false,
     // Pause-resume countdown: pulse a locator beacon + direction chevron on the
     // head so the player re-finds the snake before motion restarts.
     resumeHighlight: Boolean = false,
+    // Near-miss danger flash envelope (0..1): re-traces the board's exact frame
+    // (the rectangle, or the shaped Levels outline) in a hot terrain accent.
+    dangerFlash: Float = 0f,
     // Keeps the particle/redraw loop alive across the brief death-burst and
     // level-vanish transitions, after `running` has already gone false.
     effectsActive: Boolean = running,
@@ -386,7 +389,7 @@ fun GameBoard(
             drawTeleports(state, seconds, cell, originX, originY, reduceMotion)
             // Paused/intro: f is pinned to 1; feed gates 0 so a transitioning gate
             // shows its true current open/closed state rather than mid-morph.
-            drawGates(state, state.elapsedTicks, if (running) f else 0f, seconds, cell, originX, originY, reduceMotion)
+            drawGates(state, state.elapsedTicks, if (running) f else 0f, seconds, cell, originX, originY, reduceMotion, terrain)
             state.foods.forEach { food ->
                 drawFood(food, cell, originX, originY, pulse, textMeasurer, palette, shaders, time)
             }
@@ -509,23 +512,36 @@ fun GameBoard(
         // Framing border painted on top. With a shaped board (Levels mode) the
         // frame follows the playable area's outline instead of the rectangle.
         val borderWidth = (cell * 0.12f).coerceAtLeast(2f)
-        if (boundary.isEmpty()) {
-            drawRect(
-                color = borderColor,
-                topLeft = Offset(originX, originY),
-                size = Size(boardWidth, boardHeight),
-                style = Stroke(width = borderWidth),
-            )
-        } else {
-            boundary.forEach { e ->
-                drawLine(
-                    color = borderColor,
-                    start = Offset(originX + e.x1 * cell, originY + e.y1 * cell),
-                    end = Offset(originX + e.x2 * cell, originY + e.y2 * cell),
-                    strokeWidth = borderWidth,
-                    cap = StrokeCap.Square, // square caps close the corner joints
+        fun frame(color: Color, width: Float) {
+            if (boundary.isEmpty()) {
+                drawRect(
+                    color = color,
+                    topLeft = Offset(originX, originY),
+                    size = Size(boardWidth, boardHeight),
+                    style = Stroke(width = width),
                 )
+            } else {
+                boundary.forEach { e ->
+                    drawLine(
+                        color = color,
+                        start = Offset(originX + e.x1 * cell, originY + e.y1 * cell),
+                        end = Offset(originX + e.x2 * cell, originY + e.y2 * cell),
+                        strokeWidth = width,
+                        cap = StrokeCap.Square, // square caps close the corner joints
+                    )
+                }
             }
+        }
+        frame(borderColor, borderWidth)
+
+        // Near-miss danger flash: the frame itself flares in a hot version of the
+        // terrain's accent. Re-tracing the exact frame geometry gives sharp
+        // corners flush with the rectangle, and on shaped Levels boards the flash
+        // hugs the real lethal outline instead of a misleading box.
+        if (dangerFlash > 0.001f) {
+            val hot = lighten(terrainBoardBorder(terrain, palette), 0.35f)
+            frame(hot.copy(alpha = 0.35f * dangerFlash), borderWidth * 3f) // soft halo
+            frame(hot.copy(alpha = dangerFlash), borderWidth * 1.5f) // crisp flare
         }
     }
 }
@@ -574,7 +590,7 @@ private fun DrawScope.drawBoardBackground(
 ) {
     val layer = shaders.terrainLayer(terrain)
     if (layer == null) {
-        // Default terrain: the skin's own gradient brought to life with drifting
+        // Arcade terrain: the skin's own gradient brought to life with drifting
         // glows + vignette, its endpoints fed from the active palette.
         shaders.background.setFloatUniform("origin", originX, originY)
         shaders.background.setFloatUniform("resolution", boardWidth, boardHeight)
@@ -664,13 +680,13 @@ private fun DrawScope.drawResumeBeacon(
 
 /**
  * The board's framing border over a terrain floor: the skin's own border on the
- * Default floor (which wears the skin's colours), else a frame matched to the
+ * Arcade floor (which wears the skin's colours), else a frame matched to the
  * terrain - the frame belongs to the stage, not to the snake, so a Meadow lawn
  * is edged in hedge green rather than, say, Ember's orange. Used by the dark
  * theme; the light theme keeps its branded primary frame.
  */
 fun terrainBoardBorder(terrain: BoardTerrain, palette: SkinPalette): Color = when (terrain) {
-    BoardTerrain.Default -> palette.boardBorder
+    BoardTerrain.Arcade -> palette.boardBorder
     BoardTerrain.Meadow -> Color(0xFF5C9638)
     BoardTerrain.Abyss -> Color(0xFF3FB8D8)
     BoardTerrain.Nebula -> Color(0xFF8C7BFF)
@@ -684,7 +700,7 @@ fun terrainBoardBorder(terrain: BoardTerrain, palette: SkinPalette): Color = whe
  * on the glowing ones) so the grid stays legible without fighting the shader.
  */
 private fun terrainGridLine(terrain: BoardTerrain, palette: SkinPalette): Color = when (terrain) {
-    BoardTerrain.Default -> palette.gridLine
+    BoardTerrain.Arcade -> palette.gridLine
     BoardTerrain.Meadow -> Color(0x1A000000)
     BoardTerrain.Abyss -> Color(0x1466D9FF)
     BoardTerrain.Nebula -> Color(0x10FFFFFF)

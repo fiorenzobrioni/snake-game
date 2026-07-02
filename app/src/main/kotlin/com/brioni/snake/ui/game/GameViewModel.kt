@@ -176,7 +176,7 @@ class GameViewModel(
         private set
 
     /** The board's animated backdrop (loaded from settings), independent of [skin]. */
-    var terrain by mutableStateOf(BoardTerrain.Default)
+    var terrain by mutableStateOf(BoardTerrain.Meadow)
         private set
 
     /** Whether harmful specials (earthquake/explosion/snail) may spawn (setting). */

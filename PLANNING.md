@@ -565,7 +565,8 @@ snake-game/
       (two-layer twinkling star field over drifting nebula wisps), **Dunes** (stacked moonlit dune ridges +
       rare sand sparkles) and a fifth grid-aligned floor. *(That fifth floor shipped as Circuit - dark PCB
       traces with travelling pulses - and was replaced by **Glacier** in Step 7.11, which also brightened
-      Meadow / Abyss / Dunes.)* Terrains are deliberately calm and slowly animated (stages, not
+      Meadow / Abyss / Dunes. Step 7.13 then renamed **Default** to **Arcade** and made **Meadow** the
+      out-of-the-box default terrain.)* Terrains are deliberately calm and slowly animated (stages, not
       protagonists) and each carries its own subtle grid-line tint (`terrainGridLine`). The Settings picker
       sits right under the skins as
       **live animated shader preview cards**; all terrains are free (no unlock gating - can be revisited
@@ -612,6 +613,21 @@ snake-game/
       cloud shadows, its own vignette) framed in Meadow's hedge green, replacing the bespoke Retro
       gradient + warm glows + extra vignette; the crawling snake and the SNAKE wordmark stay **Retro**
       snake-body pieces, and the splash grid line became a subtle dark tint to sit on grass.
+- [x] **Step 7.13 - Terrain integration batch (user feedback).** (1) **Intro frame fully visible**: the
+      splash board is now inset by a 10dp margin on every side (rows sized with floor instead of ceil),
+      so the framed border + halo no longer run off the top/bottom of the canvas. (2) The **near-miss
+      danger flash moved into the renderer** (`GameBoard`'s new `dangerFlash` envelope param, the old
+      overlay `Box` in `GameScreen` removed): it re-traces the board's exact frame geometry - sharp
+      corners flush with the border (no more rounded-rect overlap), on shaped Campaign boards it follows
+      the real playable outline, it inherits the board shake for free, and it flares in a hot version of
+      the terrain's accent (`lighten(terrainBoardBorder, 0.35)`). (3) The **board frame** (dark theme)
+      already followed the terrain (Step 7.12); now the **Campaign gates** do too: `gateEnergyFor` in
+      `GameHazards.kt` maps each terrain to a plasma family (Arcade warm orange, Meadow golden, Abyss
+      aqua, Nebula violet, Dunes ember, Glacier electric blue); the amber closing-strobe stays universal
+      as a warning cue. (4) **Meadow is the default terrain** on fresh installs (Settings decode fallback,
+      data-class default, ViewModel seed) and sits first in the picker; the skin-following floor was
+      renamed **Default → Arcade** (constant + display name; a stale persisted "Default" value falls back
+      to Meadow via the `runCatching` enum decode).
 
 ---
 

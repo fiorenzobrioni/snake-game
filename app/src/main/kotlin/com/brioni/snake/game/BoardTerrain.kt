@@ -11,14 +11,16 @@ package com.brioni.snake.game
  * Terrains are stages, not protagonists: every one is kept calm (mid-to-dark,
  * softly saturated) and slowly animated so gameplay readability never suffers
  * under any skin. The enum order is the order shown in the Settings picker; all
- * are available from the start (no unlock gating, unlike skins).
+ * are available from the start (no unlock gating, unlike skins). [Meadow] is the
+ * out-of-the-box default (fresh installs land on the lawn, matching the brand
+ * intro); [Arcade] is the skin-following floor the game originally shipped with.
  */
 enum class BoardTerrain(val displayName: String) {
-    /** The skin's own board: its gradient with drifting glows. Default. */
-    Default("Default"),
-
-    /** A mowed lawn: two-tone grass checker, blade texture, drifting cloud shadows. */
+    /** A mowed lawn: two-tone grass checker, blade texture, drifting cloud shadows. Default. */
     Meadow("Meadow"),
+
+    /** The skin's own board: its dark arcade gradient with drifting glows. */
+    Arcade("Arcade"),
 
     /** Deep ocean floor: near-black blue, animated caustics, faint light shafts. */
     Abyss("Abyss"),

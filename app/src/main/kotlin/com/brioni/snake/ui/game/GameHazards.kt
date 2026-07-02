@@ -8,6 +8,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import com.brioni.snake.game.BoardTerrain
 import com.brioni.snake.game.Gate
 import com.brioni.snake.game.GameState
 import com.brioni.snake.game.Position
@@ -24,11 +25,24 @@ import kotlin.math.sin
  * a portal. Geometry stays in the model; this only translates state to pixels.
  */
 
-/** Hot plasma energy for a closed gate barrier - reads as "danger" on every skin. */
-private val GateEnergy = Color(0xFFFF6E40)
-private val GateEnergyHot = Color(0xFFFFE0B2)
+/**
+ * The gate barrier's plasma family (base energy, hot core) for a terrain, so the
+ * "electric walls" feel native to the stage they stand on: warm plasma on the
+ * dark Arcade floor, golden sunlight on the Meadow lawn, bioluminescent aqua in
+ * the Abyss, violet plasma under the Nebula, ember heat on the Dunes and a cold
+ * electric blue on the Glacier. Every pair stays hot/saturated enough to read as
+ * "danger" against its own floor.
+ */
+private fun gateEnergyFor(terrain: BoardTerrain): Pair<Color, Color> = when (terrain) {
+    BoardTerrain.Arcade -> Color(0xFFFF6E40) to Color(0xFFFFE0B2)
+    BoardTerrain.Meadow -> Color(0xFFFFB300) to Color(0xFFFFF3C4)
+    BoardTerrain.Abyss -> Color(0xFF40E8FF) to Color(0xFFE0FBFF)
+    BoardTerrain.Nebula -> Color(0xFFB05CFF) to Color(0xFFF0DDFF)
+    BoardTerrain.Dunes -> Color(0xFFFF8A3D) to Color(0xFFFFE8C2)
+    BoardTerrain.Glacier -> Color(0xFF2E8BFF) to Color(0xFFD6E8FF)
+}
 
-/** The strobe colour while a gate is about to slam shut. */
+/** The strobe colour while a gate is about to slam shut (universal warning cue). */
 private val GateWarn = Color(0xFFFFD54F)
 
 /** The metallic projector nodes the barrier spans between. */
@@ -62,7 +76,7 @@ private fun gateSolidity(gate: Gate, tick: Int, f: Float): Float {
     }
 }
 
-/** Draws every gate on [state] for the current frame. */
+/** Draws every gate on [state] for the current frame, in [terrain]-themed plasma. */
 fun DrawScope.drawGates(
     state: GameState,
     tick: Int,
@@ -72,10 +86,12 @@ fun DrawScope.drawGates(
     originX: Float,
     originY: Float,
     reduceMotion: Boolean,
+    terrain: BoardTerrain = BoardTerrain.Arcade,
 ) {
     if (state.gates.isEmpty()) return
+    val (energy, energyHot) = gateEnergyFor(terrain)
     state.gates.forEach { gate ->
-        drawGate(gate, tick, f, seconds, cell, originX, originY, reduceMotion)
+        drawGate(gate, tick, f, seconds, cell, originX, originY, reduceMotion, energy, energyHot)
     }
 }
 
@@ -88,6 +104,8 @@ private fun DrawScope.drawGate(
     originX: Float,
     originY: Float,
     reduceMotion: Boolean,
+    energy: Color,
+    energyHot: Color,
 ) {
     val solidity = gateSolidity(gate, tick, f)
     val closingSoon = gate.isClosingSoonAt(tick)
@@ -98,7 +116,7 @@ private fun DrawScope.drawGate(
     gate.cells.forEach { c ->
         val tl = Offset(originX + c.x * cell, originY + c.y * cell)
         drawRoundRect(
-            color = GateEnergy.copy(alpha = 0.10f + 0.05f * solidity),
+            color = energy.copy(alpha = 0.10f + 0.05f * solidity),
             topLeft = Offset(tl.x + cell * 0.18f, tl.y + cell * 0.18f),
             size = Size(cell * 0.64f, cell * 0.64f),
             cornerRadius = corner,
@@ -116,7 +134,7 @@ private fun DrawScope.drawGate(
             val sz = Size(cell + 0.5f, cell + 0.5f)
             // Soft outer glow.
             drawRoundRect(
-                color = GateEnergy.copy(alpha = 0.28f * solidity * flicker),
+                color = energy.copy(alpha = 0.28f * solidity * flicker),
                 topLeft = Offset(left - cell * 0.06f, top - cell * 0.06f),
                 size = Size(sz.width + cell * 0.12f, sz.height + cell * 0.12f),
                 cornerRadius = CornerRadius(corner.x * 1.4f, corner.y * 1.4f),
@@ -125,9 +143,9 @@ private fun DrawScope.drawGate(
             drawRoundRect(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        GateEnergy.copy(alpha = 0.85f * solidity),
-                        GateEnergyHot.copy(alpha = 0.95f * solidity * flicker),
-                        GateEnergy.copy(alpha = 0.85f * solidity),
+                        energy.copy(alpha = 0.85f * solidity),
+                        energyHot.copy(alpha = 0.95f * solidity * flicker),
+                        energy.copy(alpha = 0.85f * solidity),
                     ),
                     startY = top,
                     endY = top + cell,
@@ -145,7 +163,7 @@ private fun DrawScope.drawGate(
                 val sweep = ((sin(seconds * 3.0 + c.x * 0.6 + c.y * 0.6) + 1.0) / 2.0).toFloat()
                 val ly = top + sweep * cell
                 drawLine(
-                    color = GateEnergyHot.copy(alpha = 0.5f * solidity),
+                    color = energyHot.copy(alpha = 0.5f * solidity),
                     start = Offset(left, ly),
                     end = Offset(left + cell, ly),
                     strokeWidth = cell * 0.08f,
@@ -177,7 +195,7 @@ private fun DrawScope.drawGate(
         val center = Offset(originX + (c.x + 0.5f) * cell, originY + (c.y + 0.5f) * cell)
         drawCircle(GateNode, cell * 0.22f, center)
         drawCircle(
-            color = (if (solidity > 0.5f) GateEnergyHot else GateNode).copy(alpha = 0.9f),
+            color = (if (solidity > 0.5f) energyHot else GateNode).copy(alpha = 0.9f),
             radius = cell * 0.11f,
             center = center,
         )

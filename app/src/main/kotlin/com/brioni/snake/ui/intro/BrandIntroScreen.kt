@@ -34,6 +34,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
 import com.brioni.snake.game.BoardTerrain
 import com.brioni.snake.game.Skin
 import com.brioni.snake.ui.game.Particle
@@ -45,7 +47,6 @@ import com.brioni.snake.ui.game.paletteFor
 import com.brioni.snake.ui.game.terrainBoardBorder
 import com.brioni.snake.ui.game.updateParticles
 import kotlinx.coroutines.delay
-import kotlin.math.ceil
 
 // Total time on screen before handing off to the menu; the last EXIT_FADE_MS are
 // a fade-out. It's also tap-to-skip.
@@ -202,9 +203,13 @@ fun BrandIntroScreen(onFinished: () -> Unit, modifier: Modifier = Modifier) {
         val widthPx = constraints.maxWidth.toFloat()
         val heightPx = constraints.maxHeight.toFloat()
         val cols = TARGET_COLS
-        val cell = widthPx / cols
-        val rows = ceil(heightPx / cell).toInt()
-        val originX = 0f
+        // Inset the board on every side so the framed border (a stroke centred
+        // on the board edge, plus its soft halo) is fully visible all around -
+        // sizing rows with ceil used to push the top/bottom border off-canvas.
+        val margin = with(LocalDensity.current) { 10.dp.toPx() }
+        val cell = (widthPx - 2 * margin) / cols
+        val rows = ((heightPx - 2 * margin) / cell).toInt().coerceAtLeast(12)
+        val originX = (widthPx - cols * cell) / 2f
         val originY = (heightPx - rows * cell) / 2f
 
         // Word layout: centred horizontally, on the board's mid band.

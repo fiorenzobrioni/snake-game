@@ -293,7 +293,7 @@ fun GameScreen(
                 // The board interior stays dark, but its frame follows the theme:
                 // a branded green border on the light surround; in dark mode it
                 // frames the *stage* - the selected terrain's accent (the skin's
-                // own border when the Default floor is active).
+                // own border when the Arcade floor is active).
                 val isLightTheme = MaterialTheme.colorScheme.background.luminance() > 0.5f
                 val boardBorderColor = if (isLightTheme) {
                     MaterialTheme.colorScheme.primary
@@ -323,6 +323,10 @@ fun GameScreen(
                     outsideColor = MaterialTheme.colorScheme.background,
                     reduceMotion = viewModel.reduceMotion,
                     resumeHighlight = viewModel.resumeCountdown > 0,
+                    // Near-miss danger flash: drawn by the renderer along the
+                    // board's exact frame (sharp corners, shaped Levels outlines,
+                    // terrain-accented) and inheriting the board's shake.
+                    dangerFlash = nearMissFlash.value,
                     // Keep particles/redraw alive through the death-burst and
                     // level-vanish transitions (after `running` has gone false)
                     // and while the resume countdown pulses the head beacon.
@@ -331,19 +335,6 @@ fun GameScreen(
                         viewModel.resumeCountdown > 0,
                     modifier = boardModifier,
                 )
-                // Danger frame flash, tracking the board's shake offset.
-                if (nearMissFlash.value > 0f) {
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .offset { IntOffset(shakeX.roundToInt(), shakeY.roundToInt()) }
-                            .border(
-                                width = 3.dp,
-                                color = NearMissFlashColor.copy(alpha = nearMissFlash.value),
-                                shape = RoundedCornerShape(14.dp),
-                            ),
-                    )
-                }
             }
 
             if (playing) {
@@ -424,9 +415,6 @@ fun GameScreen(
  * row would appear/disappear with each power-up and visibly resize the board,
  * making the snake seem to jump.
  */
-/** The warning colour used by the near-miss / grace-dodge danger flash. */
-private val NearMissFlashColor = Color(0xFFFF6E40)
-
 /** The combo multiplier's colour, warming through tiers as the streak climbs. */
 @Composable
 private fun comboTierColor(combo: Int): Color = when {

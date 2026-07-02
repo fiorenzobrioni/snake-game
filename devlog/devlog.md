@@ -13,6 +13,47 @@ Suggested format for each entry:
 
 ---
 
+## 2026-07-02 - Terrain integration batch: intro frame, shaped danger flash, themed gates, Meadow default
+
+**Done (all from on-device user feedback):**
+- **Intro frame fully visible**: the splash board filled the whole height (`rows = ceil(...)`), so
+  the top/bottom border was drawn off-canvas (only the side borders showed). The board is now inset
+  by a 10dp margin on all sides (`rows` sized with floor, board centred), so the framed border and
+  its halo read on the full perimeter. Note: the app already applies `safeDrawingPadding()`, so it
+  was never *under* the status bar/gesture area - just off the canvas.
+- **Near-miss danger flash rebuilt inside the renderer**. The old implementation was an overlay
+  `Box` with a 14dp rounded-corner border that overlapped the board's sharp corners. `GameBoard`
+  now takes a `dangerFlash` envelope (0..1) and re-traces the board's *exact* frame geometry:
+  sharp corners flush with the border on rectangular boards, and on shaped Campaign boards
+  (hourglass etc.) the flash follows the real playable outline - the user asked whether it should,
+  and it should: the flash warns about the lethal boundary, so on shaped boards a rectangle lies.
+  It flares in a hot version of the selected terrain's accent (soft wide halo + crisp stroke) and
+  inherits the board shake for free. The overlay Box and `NearMissFlashColor` were removed.
+- **Campaign gates now themed to the terrain**: new `gateEnergyFor(terrain)` in `GameHazards.kt`
+  maps each floor to a plasma family (base + hot core): Arcade keeps the warm orange, Meadow gets
+  golden sunlight, Abyss bioluminescent aqua, Nebula violet plasma, Dunes ember heat, Glacier a
+  cold electric blue. The amber closing-strobe stays universal (it is a warning cue, part of the
+  game grammar), as do the metal projector nodes.
+- **Meadow is the new default terrain** (fresh installs land on the lawn, matching the brand
+  intro): it moved to first place in the picker and is the fallback in `SettingsRepository`
+  (decode + data-class default) and the `GameViewModel` seed. The skin-following floor was renamed
+  **Default → Arcade** (constant and display name; the behaviour - the skin's dark gradient with
+  drifting glows - is unchanged). A stale persisted `"Default"` value decodes to Meadow via the
+  existing `runCatching` fallback. `BoardTerrainTest` updated (Meadow first, Arcade second).
+
+**Decisions:**
+- The gate warn strobe deliberately stays amber everywhere: danger cues keep one meaning across
+  cosmetics (same rule as the effect tokens' identity colours).
+- The flash colour is `lighten(terrainBoardBorder, 0.35)`: the frame itself appears to flare,
+  which ties the cue to the boundary it warns about.
+
+**Issues:** none - build and 164 tests green (system Gradle 8.14.3).
+
+**Next:** Device pass: gate legibility per terrain (especially golden gates on Meadow), and the
+danger flash visibility on Glacier's pale ice.
+
+---
+
 ## 2026-07-02 - Terrain-accented frame, "Snake skin" label, Meadow brand intro
 
 **Done:**

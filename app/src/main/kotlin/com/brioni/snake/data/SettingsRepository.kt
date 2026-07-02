@@ -44,8 +44,8 @@ data class Settings(
     /** Accessibility: damp screen shake, particle bursts and near-miss flashes (default off). */
     val reduceMotion: Boolean = false,
     val skin: Skin = Skin.Retro,
-    /** The board's animated backdrop, independent of the skin (Default follows it). */
-    val terrain: BoardTerrain = BoardTerrain.Default,
+    /** The board's animated backdrop, independent of the skin (Arcade follows it). */
+    val terrain: BoardTerrain = BoardTerrain.Meadow,
     val hazardsEnabled: Boolean = true,
     val specialFrequency: SpecialFrequency = SpecialFrequency.Standard,
     val mode: GameMode = GameMode.Endless,
@@ -90,7 +90,7 @@ class SettingsRepository(private val context: Context) {
             hapticsEnabled = prefs[HAPTICS_ENABLED] ?: true,
             reduceMotion = prefs[REDUCE_MOTION] ?: false,
             skin = prefs[SKIN].toEnum(Skin::valueOf) ?: Skin.Retro,
-            terrain = prefs[TERRAIN].toEnum(BoardTerrain::valueOf) ?: BoardTerrain.Default,
+            terrain = prefs[TERRAIN].toEnum(BoardTerrain::valueOf) ?: BoardTerrain.Meadow,
             hazardsEnabled = prefs[HAZARDS_ENABLED] ?: true,
             specialFrequency = prefs[SPECIAL_FREQUENCY].toEnum(SpecialFrequency::valueOf) ?: SpecialFrequency.Standard,
             mode = prefs[MODE].toEnum(GameMode::valueOf) ?: GameMode.Endless,

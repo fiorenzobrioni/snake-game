@@ -393,9 +393,9 @@ private fun SkinCard(
 /**
  * Board terrain picker: like the skin picker, a grid of tappable preview cards -
  * but each card is a **live miniature of the terrain's AGSL shader**, so the
- * choice shows the real animated floor rather than a static swatch. The Default
+ * choice shows the real animated floor rather than a static swatch. The Arcade
  * card renders the skin's own gradient from [skinPalette], matching what the
- * board actually shows when no standalone terrain is selected.
+ * board actually shows when the skin-following floor is selected.
  */
 @Composable
 private fun TerrainSection(
@@ -467,7 +467,7 @@ private fun TerrainCard(
             layer.shader.setFloatUniform("origin", 0f, 0f)
             layer.shader.setFloatUniform("resolution", size.width, size.height)
             layer.shader.setFloatUniform("time", time)
-            if (terrain == BoardTerrain.Default) {
+            if (terrain == BoardTerrain.Arcade) {
                 layer.shader.setColorUniform("topColor", skinPalette.boardTop.toArgb())
                 layer.shader.setColorUniform("bottomColor", skinPalette.boardBottom.toArgb())
             } else {
@@ -487,9 +487,9 @@ private fun TerrainCard(
     }
 }
 
-/** The AGSL source behind each terrain's preview card (Default = the skin gradient). */
+/** The AGSL source behind each terrain's preview card (Arcade = the skin gradient). */
 private fun terrainShaderSource(terrain: BoardTerrain): String = when (terrain) {
-    BoardTerrain.Default -> Shaders.BACKGROUND
+    BoardTerrain.Arcade -> Shaders.BACKGROUND
     BoardTerrain.Meadow -> Shaders.MEADOW
     BoardTerrain.Abyss -> Shaders.ABYSS
     BoardTerrain.Nebula -> Shaders.NEBULA

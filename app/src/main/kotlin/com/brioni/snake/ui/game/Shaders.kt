@@ -380,11 +380,11 @@ class BoardShaders {
 
     /**
      * The floor layer for [terrain], compiled on first use — or null for
-     * [BoardTerrain.Default], which paints the skin's own gradient via
+     * [BoardTerrain.Arcade], which paints the skin's own gradient via
      * [background] instead.
      */
     fun terrainLayer(terrain: BoardTerrain): TerrainLayer? = when (terrain) {
-        BoardTerrain.Default -> null
+        BoardTerrain.Arcade -> null
         BoardTerrain.Meadow -> meadow
         BoardTerrain.Abyss -> abyss
         BoardTerrain.Nebula -> nebula

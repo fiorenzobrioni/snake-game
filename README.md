@@ -77,21 +77,24 @@ The classic Snake mechanics, extended with configurable features so every run fe
   glass, molten iron), while each effect keeps a constant identity colour and symbol so its meaning never
   shifts between skins.
 - 🏞️ **Board terrains** - six selectable animated floors for the board, independent of the skin
-  (picked in Settings right under the skins, with live animated preview cards). **Default** plays on
-  the skin's own gradient (with its drifting glows), or swap the stage entirely: **Meadow** (a mowed
-  two-tone lawn under drifting cloud shadows), **Abyss** (a deep-ocean floor lit by animated caustics
-  and faint light shafts), **Nebula** (a twinkling star field over slowly drifting nebula wisps),
-  **Dunes** (a night desert with moonlit dune crests and sparkling sand) and **Glacier** (a frozen
-  lake veined with bright cracks, an internal drifting sheen and cool glints). Every terrain is an
-  AGSL shader, kept calm and slowly animated so the snake, food and obstacles stay perfectly readable,
-  and the board's frame takes the selected terrain's accent colour (the skin's own border on Default).
+  (picked in Settings right under the skins, with live animated preview cards). **Meadow** (a mowed
+  two-tone lawn under drifting cloud shadows) is the out-of-the-box default; **Arcade** plays on the
+  skin's own dark gradient (with its drifting glows), or swap the stage entirely: **Abyss** (a
+  deep-ocean floor lit by animated caustics and faint light shafts), **Nebula** (a twinkling star
+  field over slowly drifting nebula wisps), **Dunes** (a night desert with moonlit dune crests and
+  sparkling sand) and **Glacier** (a frozen lake veined with bright cracks, an internal drifting
+  sheen and cool glints). Every terrain is an AGSL shader, kept calm and slowly animated so the
+  snake, food and obstacles stay perfectly readable; the board's frame - and the Campaign gates'
+  energy colour - take the selected terrain's accent (the skin's own border on Arcade).
 - 🌗 **Theme** - choose **Light**, **Dark** or **System** (follows the device) in Settings.
 - 🔊 **Music & sound effects** - looping background music that crossfades between the menu and
   gameplay, plus SFX for eating, shrinking, mystery pieces, game over and UI. Independent
   **master / music / SFX** volume sliders in Settings; audio pauses when the app is backgrounded.
 - 📳 **Haptics & near-miss feedback** - vibration cues scaled by event (a light tap on eating, a
   firmer click on power-ups, the strongest buzz on death) plus a faint **near-miss** tick and a brief
-  on-screen **danger flash** whenever the head grazes a wall, obstacle or debris without crashing.
+  **danger flash** traced along the board's actual frame - sharp corners flush with the border, the
+  terrain's accent colour, and on shaped Campaign boards it follows the real outline - whenever the
+  head grazes a wall, obstacle or debris without crashing.
   Toggle it off with **Vibration feedback** in Settings.
 - 🔥 **Combo "juice"** - chain bites for a multiplier and the HUD counter punches in and warms through a
   colour ramp while the snake's head **catches fire** (its glow heats from your skin's colour toward a
@@ -152,7 +155,8 @@ The classic Snake mechanics, extended with configurable features so every run fe
   (*"Level 3/15"*) plus the speed lap. The Level and Snake speed
   selectors are disabled here - the mode has its own layouts and pace - and the Records screen tracks both your best
   score and the deepest level you reached per board scale.
-  - 🚧 **Environmental hazards** - some levels add **moving-wall gates**: glowing energy barriers that
+  - 🚧 **Environmental hazards** - some levels add **moving-wall gates**: glowing energy barriers,
+    tinted to match the selected board terrain, that
     open and close on a rhythm (they strobe a warning before slamming shut, so time your dash through),
     and **teleport portals** - step onto one swirling pad to instantly emerge at its partner across the
     board. Gates are lethal only while closed and never seal you in; portals open up bold shortcuts.

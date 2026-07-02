@@ -23,7 +23,8 @@ class BoardTerrainTest {
     }
 
     @Test
-    fun `the skin-following terrain is the first, default-facing entry`() {
-        assertEquals(BoardTerrain.Default, BoardTerrain.entries[0])
+    fun `meadow is the first, default-facing entry, the skin-following arcade second`() {
+        assertEquals(BoardTerrain.Meadow, BoardTerrain.entries[0])
+        assertEquals(BoardTerrain.Arcade, BoardTerrain.entries[1])
     }
 }
