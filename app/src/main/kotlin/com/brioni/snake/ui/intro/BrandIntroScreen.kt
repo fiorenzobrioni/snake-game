@@ -34,17 +34,18 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
+import com.brioni.snake.game.BoardTerrain
 import com.brioni.snake.game.Skin
 import com.brioni.snake.ui.game.Particle
+import com.brioni.snake.ui.game.Shaders
 import com.brioni.snake.ui.game.SkinPalette
+import com.brioni.snake.ui.game.TerrainLayer
 import com.brioni.snake.ui.game.emitExplosionBurst
 import com.brioni.snake.ui.game.paletteFor
+import com.brioni.snake.ui.game.terrainBoardBorder
 import com.brioni.snake.ui.game.updateParticles
 import kotlinx.coroutines.delay
 import kotlin.math.ceil
-import kotlin.math.cos
-import kotlin.math.max
-import kotlin.math.sin
 
 // Total time on screen before handing off to the menu; the last EXIT_FADE_MS are
 // a fade-out. It's also tap-to-skip.
@@ -110,13 +111,14 @@ private data class Cell(val row: Int, val col: Int)
 // — to make the splash feel alive. They reuse the in-game explosion burst
 // (emitExplosionBurst): fast hot sparks, falling embers and drifting smoke, so the
 // splash shares the gameplay's "juice" rather than a bespoke shader effect. The
-// accent tints the lead sparks; warm tones keep them in the Retro palette's family.
+// warm accents tint the lead sparks — fireworks over the lawn, matching the Retro
+// snake's warm family so they pop against the green.
 private val BlastAccentTop = Color(0xFFFFC107)    // gold
 private val BlastAccentBottom = Color(0xFFFF8A3D) // warm orange
 
-// Splash-only grid colour — a touch brighter than the in-game Retro palette so the
-// board's squares read clearly here (the game's palette is left untouched).
-private val SplashGridLine = Color(0x26FFB000)
+// Splash-only grid colour — a subtle dark line, like the in-game Meadow grid tint,
+// so the pixel-art squares read over the lawn (the game's palette is untouched).
+private val SplashGridLine = Color(0x22000000)
 
 // Bloom post-filter (AGSL, API 33+). Samples bright neighbours of each pixel and
 // screen-adds them, so the snake, the glowing letters and the explosion sparks gain
@@ -149,20 +151,23 @@ half4 main(float2 coord) {
 """
 
 /**
- * The first thing the player sees on a cold launch: the game board itself, drawn in
- * the game's **Retro skin** (warm gradient, square cells, grid, framed border). A
- * snake crawls in from the left, and the word **SNAKE** forms from retro snake-body
- * pieces in its wake — each column settling as the head passes. Two particle
- * detonations pop above and below the word (the in-game explosion burst), the snake
- * exits to the right, the word holds, then the whole splash fades to the menu.
+ * The first thing the player sees on a cold launch: the game board itself, laid on
+ * the **Meadow terrain** (the in-game mowed-lawn shader, cloud shadows included)
+ * and framed in the terrain's hedge green. A **Retro-skin** snake crawls in from
+ * the left, and the word **SNAKE** forms from Retro snake-body pieces in its wake
+ * — each column settling as the head passes. Two particle detonations pop above
+ * and below the word (the in-game explosion burst), the snake exits to the right,
+ * the word holds, then the whole splash fades to the menu.
  *
  * Auto-advances after [INTRO_DURATION_MS]; a tap skips it. Either way it calls
- * [onFinished] exactly once. The premium board (drifting warm glows + vignette) and
- * the bloom are GPU-cheap at the app's minSdk 33.
+ * [onFinished] exactly once. The animated lawn and the bloom are GPU-cheap at the
+ * app's minSdk 33.
  */
 @Composable
 fun BrandIntroScreen(onFinished: () -> Unit, modifier: Modifier = Modifier) {
     val palette = remember { paletteFor(Skin.Retro).copy(gridLine = SplashGridLine) }
+    // The splash floor: the same compiled Meadow shader the gameplay board uses.
+    val meadow = remember { TerrainLayer(Shaders.MEADOW) }
 
     // A bloom RuntimeShader adds a soft glow around the bright snake / letters /
     // sparks. Built defensively: a compile failure falls back to null, not a crash.
@@ -262,7 +267,7 @@ fun BrandIntroScreen(onFinished: () -> Unit, modifier: Modifier = Modifier) {
                 }
                 .pointerInput(Unit) { detectTapGestures { finish() } },
         ) {
-            drawBoard(originX, originY, cell, cols, rows, palette, timeSec)
+            drawBoard(originX, originY, cell, cols, rows, palette, timeSec, meadow)
 
             val headCol = startCol + (endCol - startCol) * travel.value
 
@@ -328,9 +333,10 @@ private fun wordCells(wordStartCol: Int, bandTop: Int): List<Cell> {
 }
 
 /**
- * Premium board background: the Retro vertical gradient lifted with two slow-drifting
- * warm glows, a soft radial vignette for depth, a 1px grid, and a framed border with
- * a soft outer halo — richer than a flat fill, while staying in the Retro family.
+ * Premium board background: the in-game **Meadow terrain shader** (mowed-lawn
+ * checker aligned to the splash grid, blade texture, drifting cloud shadows and
+ * its own soft vignette), a 1px grid, and a framed border in the terrain's hedge
+ * green with a soft outer halo — the real gameplay floor, not a mock-up.
  */
 private fun DrawScope.drawBoard(
     originX: Float,
@@ -340,49 +346,21 @@ private fun DrawScope.drawBoard(
     rows: Int,
     palette: SkinPalette,
     time: Float,
+    meadow: TerrainLayer,
 ) {
     val boardW = cell * cols
     val boardH = cell * rows
     val topLeft = Offset(originX, originY)
     val boardSize = Size(boardW, boardH)
+    // The animated lawn, grid-aligned via cellPx like the gameplay board.
+    meadow.shader.setFloatUniform("origin", originX, originY)
+    meadow.shader.setFloatUniform("resolution", boardW, boardH)
+    meadow.shader.setFloatUniform("time", time)
+    meadow.shader.setFloatUniform("cellPx", cell)
     drawRect(
-        brush = Brush.verticalGradient(
-            colors = listOf(palette.boardTop, palette.boardBottom),
-            startY = originY,
-            endY = originY + boardH,
-        ),
+        brush = meadow.brush,
         topLeft = topLeft,
         size = boardSize,
-    )
-
-    // Two slow-drifting warm glows for life (additive, low alpha).
-    val g1 = Offset(
-        originX + boardW * (0.30f + 0.10f * sin(time * 0.45f)),
-        originY + boardH * (0.32f + 0.08f * cos(time * 0.38f)),
-    )
-    drawCircle(
-        brush = Brush.radialGradient(
-            colors = listOf(Color(0xFFFF9A3D).copy(alpha = 0.12f), Color.Transparent),
-            center = g1,
-            radius = boardW * 0.55f,
-        ),
-        radius = boardW * 0.55f,
-        center = g1,
-        blendMode = BlendMode.Plus,
-    )
-    val g2 = Offset(
-        originX + boardW * (0.72f + 0.10f * cos(time * 0.33f)),
-        originY + boardH * (0.68f + 0.08f * sin(time * 0.42f)),
-    )
-    drawCircle(
-        brush = Brush.radialGradient(
-            colors = listOf(Color(0xFFFFC24D).copy(alpha = 0.10f), Color.Transparent),
-            center = g2,
-            radius = boardW * 0.50f,
-        ),
-        radius = boardW * 0.50f,
-        center = g2,
-        blendMode = BlendMode.Plus,
     )
 
     if (cell > 10f) {
@@ -397,26 +375,17 @@ private fun DrawScope.drawBoard(
         }
     }
 
-    // Radial vignette: darken the corners for depth.
+    // Framed border: a soft outer halo under a crisp inner line, in the Meadow
+    // terrain's hedge green (the frame belongs to the stage, like in-game).
+    val frame = terrainBoardBorder(BoardTerrain.Meadow, palette)
     drawRect(
-        brush = Brush.radialGradient(
-            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.34f)),
-            center = Offset(originX + boardW / 2f, originY + boardH / 2f),
-            radius = max(boardW, boardH) * 0.62f,
-        ),
-        topLeft = topLeft,
-        size = boardSize,
-    )
-
-    // Framed border: a soft outer halo under a crisp inner line.
-    drawRect(
-        color = palette.boardBorder.copy(alpha = 0.30f),
+        color = frame.copy(alpha = 0.30f),
         topLeft = topLeft,
         size = boardSize,
         style = Stroke(width = cell * 0.34f),
     )
     drawRect(
-        color = palette.boardBorder,
+        color = frame,
         topLeft = topLeft,
         size = boardSize,
         style = Stroke(width = (cell * 0.12f).coerceAtLeast(2f)),

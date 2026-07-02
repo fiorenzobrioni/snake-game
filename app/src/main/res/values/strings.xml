@@ -104,7 +104,8 @@
     <string name="settings_reduce_motion">Reduce motion &amp; flashing</string>
     <string name="settings_crt_filter">Retro CRT filter</string>
     <string name="settings_back_behavior">Back during play</string>
-    <string name="settings_skin">Skin</string>
+    <!-- Paired headers: the two cosmetic pickers read as "Snake skin" / "Board terrain". -->
+    <string name="settings_skin">Snake skin</string>
     <string name="settings_terrain">Board terrain</string>
     <string name="skin_locked">Locked</string>
     <string name="skin_unlocked">Skin unlocked!</string>

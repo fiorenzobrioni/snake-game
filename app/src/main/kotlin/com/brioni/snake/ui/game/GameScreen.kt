@@ -291,13 +291,14 @@ fun GameScreen(
                     }
                 }
                 // The board interior stays dark, but its frame follows the theme:
-                // a branded green border on the light surround, the skin's subtle
-                // border in dark mode.
+                // a branded green border on the light surround; in dark mode it
+                // frames the *stage* - the selected terrain's accent (the skin's
+                // own border when the Default floor is active).
                 val isLightTheme = MaterialTheme.colorScheme.background.luminance() > 0.5f
                 val boardBorderColor = if (isLightTheme) {
                     MaterialTheme.colorScheme.primary
                 } else {
-                    viewModel.palette.boardBorder
+                    terrainBoardBorder(viewModel.terrain, viewModel.palette)
                 }
                 GameBoard(
                     state = state,

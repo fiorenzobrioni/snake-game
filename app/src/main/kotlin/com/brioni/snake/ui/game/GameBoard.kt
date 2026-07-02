@@ -663,6 +663,22 @@ private fun DrawScope.drawResumeBeacon(
 }
 
 /**
+ * The board's framing border over a terrain floor: the skin's own border on the
+ * Default floor (which wears the skin's colours), else a frame matched to the
+ * terrain - the frame belongs to the stage, not to the snake, so a Meadow lawn
+ * is edged in hedge green rather than, say, Ember's orange. Used by the dark
+ * theme; the light theme keeps its branded primary frame.
+ */
+fun terrainBoardBorder(terrain: BoardTerrain, palette: SkinPalette): Color = when (terrain) {
+    BoardTerrain.Default -> palette.boardBorder
+    BoardTerrain.Meadow -> Color(0xFF5C9638)
+    BoardTerrain.Abyss -> Color(0xFF3FB8D8)
+    BoardTerrain.Nebula -> Color(0xFF8C7BFF)
+    BoardTerrain.Dunes -> Color(0xFFC08A4E)
+    BoardTerrain.Glacier -> Color(0xFF9CCFE8)
+}
+
+/**
  * The grid-line tint over a terrain floor: the skin's own line on the Default
  * floor, else a whisper matched to the terrain (dark on the lit floors, tinted
  * on the glowing ones) so the grid stays legible without fighting the shader.

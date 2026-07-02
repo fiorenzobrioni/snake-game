@@ -36,8 +36,9 @@ on the way to a polished, **Google-Play-publishable** title with animation, part
 The classic Snake mechanics, extended with configurable features so every run feels different:
 
 - 🚀 **Branded launch** - an animated splash flows into a short, skippable brand intro played out on
-  the game board itself: a snake crawls across and the word **SNAKE** forms in glowing cells in its
-  wake, then it slips off-screen and the menu fades in.
+  the game board itself, laid on the animated **Meadow** lawn: a Retro-skin snake crawls across and
+  the word **SNAKE** forms from Retro snake-body pieces in its wake, then it slips off-screen and
+  the menu fades in.
 - 🍽️ **Two food categories** - **grow** food makes the snake longer; **shrink** food trims it back.
 - 🔠 **Magnitude tiers + maxi sizes** - each category comes in several strengths, and a 2×2 **maxi**
   variant that amplifies the effect.
@@ -82,7 +83,8 @@ The classic Snake mechanics, extended with configurable features so every run fe
   and faint light shafts), **Nebula** (a twinkling star field over slowly drifting nebula wisps),
   **Dunes** (a night desert with moonlit dune crests and sparkling sand) and **Glacier** (a frozen
   lake veined with bright cracks, an internal drifting sheen and cool glints). Every terrain is an
-  AGSL shader, kept calm and slowly animated so the snake, food and obstacles stay perfectly readable.
+  AGSL shader, kept calm and slowly animated so the snake, food and obstacles stay perfectly readable,
+  and the board's frame takes the selected terrain's accent colour (the skin's own border on Default).
 - 🌗 **Theme** - choose **Light**, **Dark** or **System** (follows the device) in Settings.
 - 🔊 **Music & sound effects** - looping background music that crossfades between the menu and
   gameplay, plus SFX for eating, shrinking, mystery pieces, game over and UI. Independent

@@ -598,6 +598,20 @@ snake-game/
       mottled surface, two ridged-noise layers of bright static crack veins, a diagonal internal sheen
       drifting through the ice and cool twinkling glints. The old persisted `Circuit` value decodes to
       the `Default` terrain via the existing `runCatching` enum fallback, so stale prefs cannot crash.
+      *(Follow-up in the same step family: the terrain value-noise `hash` was switched from the classic
+      `fract(sin(dot))` to the sinless "Hash without Sine" (Dave Hoskins, MIT, credited in
+      `docs/CREDITS.md`) - mobile-GPU `sin()` loses precision at large arguments and tore the noise into
+      visibly misaligned rectangular patches, worst on Glacier's crack veins and Meadow's cloud shadows.)*
+- [x] **Step 7.12 - Terrain-accented frame, "Snake skin" label, Meadow brand intro.** (1) In dark mode
+      the board's framing border now follows the **selected terrain** (`terrainBoardBorder` in
+      `GameBoard.kt`: hedge green for Meadow, caustic teal for Abyss, violet for Nebula, sand for Dunes,
+      icy blue for Glacier; the Default floor keeps the skin's own border, and the light theme keeps its
+      branded primary frame) - the frame belongs to the stage, not to the snake. (2) The Settings header
+      **"Skin" was renamed "Snake skin"** so the two cosmetic pickers read as a pair with "Board terrain".
+      (3) The **brand intro** now plays on the real **Meadow terrain shader** (grid-aligned lawn checker,
+      cloud shadows, its own vignette) framed in Meadow's hedge green, replacing the bespoke Retro
+      gradient + warm glows + extra vignette; the crawling snake and the SNAKE wordmark stay **Retro**
+      snake-body pieces, and the splash grid line became a subtle dark tint to sit on grass.
 
 ---
 

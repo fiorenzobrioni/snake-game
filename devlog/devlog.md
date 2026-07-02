@@ -13,6 +13,40 @@ Suggested format for each entry:
 
 ---
 
+## 2026-07-02 - Terrain-accented frame, "Snake skin" label, Meadow brand intro
+
+**Done:**
+- Confirmed the Meadow "sharp vertical/horizontal shadow seams" the user screenshotted were the
+  same lattice-tearing bug fixed by the sinless hash (the cloud-shadow value noise shared the
+  broken `sin` hash) - no further change needed, all four noise-based terrains got the fix.
+- **The board frame now follows the selected terrain** in dark mode (`terrainBoardBorder` in
+  `GameBoard.kt`): Meadow wears a hedge green, Abyss a caustic teal, Nebula a violet, Dunes a warm
+  sand, Glacier an icy blue; the Default floor keeps the skin's own border and the light theme its
+  branded primary frame. Rationale: the frame edges the stage, not the snake - Ember's orange
+  around a green lawn read as a mismatch.
+- Settings: the **"Skin" header renamed "Snake skin"**, so the two cosmetic pickers read as a
+  matched pair with "Board terrain" (string change only, key untouched).
+- **Brand intro rebased onto the Meadow terrain**: `BrandIntroScreen.drawBoard` now paints the
+  real in-game Meadow shader (lawn checker grid-aligned via `cellPx`, drifting cloud shadows,
+  built-in vignette) and frames it with Meadow's hedge green, replacing the bespoke Retro gradient
+  + two warm glows + extra vignette (and their now-unused imports). The crawling snake and the
+  SNAKE wordmark stay **Retro** snake-body pieces as requested; the splash grid line became a
+  subtle dark tint (0x22000000) to sit on grass, and the gold/orange detonations stay - fireworks
+  over the lawn.
+
+**Decisions:**
+- Kept the warm blast accents instead of recoloring them green: complementary warm-on-green pops
+  and stays in the Retro family of the snake itself.
+- The intro reuses the gameplay `TerrainLayer(Shaders.MEADOW)` rather than a copy, so any future
+  Meadow tuning updates the splash automatically.
+
+**Issues:** none - build and 164 tests green (system Gradle 8.14.3).
+
+**Next:** Device pass on the intro (Retro lime pieces on the lawn - if the wordmark doesn't pop
+enough, brighten the letter fill or deepen the lawn under the word band).
+
+---
+
 ## 2026-07-02 - Fix terrain noise tearing (sinless hash)
 
 **Done:**
