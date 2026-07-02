@@ -13,6 +13,52 @@ Suggested format for each entry:
 
 ---
 
+## 2026-07-02 - Board terrains (6 selectable AGSL floors) + Settings cleanup
+
+**Done:**
+- Added **board terrains**: the board's animated floor is now selectable in Settings independently
+  of the skin. New pure-model enum `game/BoardTerrain` (Default / Meadow / Abyss / Nebula / Dunes /
+  Circuit), persisted in DataStore as `board_terrain` and covered by `BoardTerrainTest`; snake,
+  foods, obstacles and tokens keep the active skin's look, only the floor swaps.
+- Five new AGSL terrain shaders in `Shaders.kt`, sharing one uniform interface (`origin`,
+  `resolution`, `time`, `cellPx`) and compiled lazily through `BoardShaders.terrainLayer`:
+  - **Meadow**: mowed-lawn checker aligned to the play grid via `cellPx`, blade-noise texture,
+    cloud shadows drifting over the field.
+  - **Abyss**: deep-ocean blues with an animated caustic web and faint light shafts.
+  - **Nebula**: violet/teal nebula wisps under a two-layer star field with per-star twinkle rates.
+  - **Dunes**: night desert with three stacked moonlit dune ridges and rare twinkling sand glints.
+  - **Circuit**: dark PCB with a soft pad per cell and hash-picked grid traces carrying pulses.
+- Fixed a latent bug the feature surfaced: the in-game `BACKGROUND` shader had Classic's board
+  colours **hardcoded**, so all six skins shared the same floor in play (the palette's
+  `boardTop`/`boardBottom` were only honoured in previews). The shader now takes both as
+  `layout(color)` uniforms; the Default terrain feeds them from the active palette and the menu
+  backdrop (`AnimatedShaderBackground`) pins the brand colours explicitly.
+- Grid lines get a per-terrain tint (`terrainGridLine` in `GameBoard.kt`) so they whisper over each
+  floor instead of fighting it.
+- Settings: a **Board terrain** section right under the skins, rendered as live animated shader
+  preview cards (a shared 120 s linear clock drives every card; the Default card previews the
+  active skin's gradient). Also **removed** the Level / Snake speed / Board scale selectors from
+  Settings - they duplicated the Custom Game setup screen, which edits the same persisted
+  preferences - so Settings now holds only app-wide options (their strings were dropped too).
+
+**Decisions:**
+- Terrains are designed as *stages, not protagonists*: dark, desaturated, slowly animated, so
+  gameplay readability holds under any of the 6 skins x 6 terrains = 36 combinations.
+- All terrains are free (no unlock gating) for now; gates can be added later the way skins do it.
+- `cellPx` grid-aligns terrain features (Meadow checker, Circuit traces) with the actual board
+  cells, which makes the floors feel native to the game rather than wallpaper behind it.
+
+**Issues:** The Kotlin compile daemon died once on first launch (transient, known flaky in this
+container); the retry built cleanly. Built and tested with the system Gradle at
+`/opt/gradle-8.14.3` (wrapper download still blocked by egress policy): `assembleDebug` and
+`testDebugUnitTest` (164 tests) both pass.
+
+**Next:** Eyeball the six terrains on a device (especially Meadow's brightness under the Classic
+lime snake and Circuit's trace density on Colossal boards); consider unlock gating for terrains
+once the skin gates are re-enabled for release.
+
+---
+
 ## 2026-07-01 - Teleport: route the snake through the pads instead of streaking
 
 **Done:**

@@ -19,6 +19,7 @@ import com.brioni.snake.game.Achievement
 import com.brioni.snake.game.BackBehavior
 import com.brioni.snake.game.BoardDimensions
 import com.brioni.snake.game.BoardScale
+import com.brioni.snake.game.BoardTerrain
 import com.brioni.snake.game.ControlScheme
 import com.brioni.snake.game.Challenge
 import com.brioni.snake.game.EffectKind
@@ -172,6 +173,10 @@ class GameViewModel(
 
     /** Active visual skin (loaded from settings); drives the renderer [palette]. */
     var skin by mutableStateOf(Skin.Retro)
+        private set
+
+    /** The board's animated backdrop (loaded from settings), independent of [skin]. */
+    var terrain by mutableStateOf(BoardTerrain.Default)
         private set
 
     /** Whether harmful specials (earthquake/explosion/snail) may spawn (setting). */
@@ -372,6 +377,7 @@ class GameViewModel(
                 crtEnabled = settings.crtEnabled
                 reduceMotion = settings.reduceMotion
                 skin = settings.skin
+                terrain = settings.terrain
                 // The Daily Challenge pins the spawn-affecting toggles so the run is
                 // identical for everyone; only sync them from settings outside it.
                 if (activeChallenge == null) {

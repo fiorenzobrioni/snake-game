@@ -34,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import com.brioni.snake.game.BoardDimensions
+import com.brioni.snake.game.BoardTerrain
 import com.brioni.snake.game.Debris
 import com.brioni.snake.game.Direction
 import com.brioni.snake.game.EffectKind
@@ -146,6 +147,7 @@ fun GameBoard(
     bodyBurstId: Int,
     textMeasurer: TextMeasurer,
     palette: SkinPalette,
+    terrain: BoardTerrain = BoardTerrain.Default,
     borderColor: Color = palette.boardBorder,
     outsideColor: Color = Color.Black,
     reduceMotion: Boolean = false,
@@ -340,7 +342,7 @@ fun GameBoard(
             1f
         }
 
-        drawBoardBackground(board, cell, originX, originY, boardWidth, boardHeight, palette, shaders, time)
+        drawBoardBackground(board, cell, originX, originY, boardWidth, boardHeight, palette, terrain, shaders, time)
 
         // Clip dynamic content to the board so the head can slide "into" a wall
         // on the fatal tick without painting over the HUD.
@@ -537,28 +539,57 @@ private fun DrawScope.drawBoardBackground(
     boardWidth: Float,
     boardHeight: Float,
     palette: SkinPalette,
+    terrain: BoardTerrain,
     shaders: BoardShaders,
     time: Float,
 ) {
-    // AGSL: the gradient brought to life with drifting glows + vignette.
-    shaders.background.setFloatUniform("origin", originX, originY)
-    shaders.background.setFloatUniform("resolution", boardWidth, boardHeight)
-    shaders.background.setFloatUniform("time", time)
+    val layer = shaders.terrainLayer(terrain)
+    if (layer == null) {
+        // Default terrain: the skin's own gradient brought to life with drifting
+        // glows + vignette, its endpoints fed from the active palette.
+        shaders.background.setFloatUniform("origin", originX, originY)
+        shaders.background.setFloatUniform("resolution", boardWidth, boardHeight)
+        shaders.background.setFloatUniform("time", time)
+        shaders.background.setColorUniform("topColor", palette.boardTop.toArgb())
+        shaders.background.setColorUniform("bottomColor", palette.boardBottom.toArgb())
+    } else {
+        // A standalone terrain floor; cellPx grid-aligns its features (Meadow
+        // checker, Circuit traces).
+        layer.shader.setFloatUniform("origin", originX, originY)
+        layer.shader.setFloatUniform("resolution", boardWidth, boardHeight)
+        layer.shader.setFloatUniform("time", time)
+        layer.shader.setFloatUniform("cellPx", cell)
+    }
     drawRect(
-        brush = shaders.backgroundBrush,
+        brush = layer?.brush ?: shaders.backgroundBrush,
         topLeft = Offset(originX, originY),
         size = Size(boardWidth, boardHeight),
     )
 
     if (cell < 10f) return // skip the grid on dense boards where it is just noise
+    val gridLine = terrainGridLine(terrain, palette)
     for (x in 0..board.width) {
         val lineX = originX + x * cell
-        drawLine(palette.gridLine, Offset(lineX, originY), Offset(lineX, originY + boardHeight), 1f)
+        drawLine(gridLine, Offset(lineX, originY), Offset(lineX, originY + boardHeight), 1f)
     }
     for (y in 0..board.height) {
         val lineY = originY + y * cell
-        drawLine(palette.gridLine, Offset(originX, lineY), Offset(originX + boardWidth, lineY), 1f)
+        drawLine(gridLine, Offset(originX, lineY), Offset(originX + boardWidth, lineY), 1f)
     }
+}
+
+/**
+ * The grid-line tint over a terrain floor: the skin's own line on the Default
+ * floor, else a whisper matched to the terrain (dark on the lit floors, tinted
+ * on the glowing ones) so the grid stays legible without fighting the shader.
+ */
+private fun terrainGridLine(terrain: BoardTerrain, palette: SkinPalette): Color = when (terrain) {
+    BoardTerrain.Default -> palette.gridLine
+    BoardTerrain.Meadow -> Color(0x16000000)
+    BoardTerrain.Abyss -> Color(0x1466D9FF)
+    BoardTerrain.Nebula -> Color(0x10FFFFFF)
+    BoardTerrain.Dunes -> Color(0x12000000)
+    BoardTerrain.Circuit -> Color(0x1400FFD0)
 }
 
 private fun DrawScope.drawObstacle(cell: Float, left: Float, top: Float, palette: SkinPalette) {

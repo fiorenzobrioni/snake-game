@@ -314,6 +314,7 @@ fun GameScreen(
                     bodyBurstId = viewModel.bodyBurstId,
                     textMeasurer = textMeasurer,
                     palette = viewModel.palette,
+                    terrain = viewModel.terrain,
                     borderColor = boardBorderColor,
                     outsideColor = MaterialTheme.colorScheme.background,
                     reduceMotion = viewModel.reduceMotion,

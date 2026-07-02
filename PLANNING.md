@@ -552,6 +552,23 @@ snake-game/
       deeper vignette in `Shaders.kt`). (5) **Debug-only "unlock all themes"** menu button gated on
       `BuildConfig.DEBUG` (stripped from release). Currently also hidden in debug builds behind the
       `SHOW_DEBUG_UNLOCK_SKINS` flag (default `false`); flip it to `true` to bring the shortcut back.
+- [x] **Step 7.9 - Board terrains + Settings cleanup.** The board floor is now selectable independently
+      of the skin: a new pure-model `BoardTerrain` enum (Default / Meadow / Abyss / Nebula / Dunes /
+      Circuit, persisted as `board_terrain`, guarded by `BoardTerrainTest`) picks the animated AGSL
+      backdrop while the snake / foods / obstacles / tokens keep the skin's look. `Default` plays on the
+      skin's own gradient - the shared `BACKGROUND` shader now takes the palette's `boardTop`/`boardBottom`
+      as colour uniforms, fixing a latent bug where the in-game board wore Classic's hardcoded colours
+      under every skin (the menu backdrop pins those colours explicitly). The five standalone terrains are
+      new AGSL shaders sharing one uniform interface (`origin`/`resolution`/`time`/`cellPx`), compiled
+      lazily via `BoardShaders.terrainLayer`: **Meadow** (grid-aligned mowed-lawn checker, blade-noise
+      texture, drifting cloud shadows), **Abyss** (deep-ocean caustic web + light shafts), **Nebula**
+      (two-layer twinkling star field over drifting nebula wisps), **Dunes** (stacked moonlit dune ridges +
+      rare sand sparkles) and **Circuit** (grid-aligned PCB traces with travelling pulses). Terrains are
+      deliberately dark, desaturated and slowly animated (stages, not protagonists) and each carries its
+      own subtle grid-line tint (`terrainGridLine`). The Settings picker sits right under the skins as
+      **live animated shader preview cards**; all terrains are free (no unlock gating - can be revisited
+      later). Settings also got **cleaner**: the Level / Snake speed / Board scale selectors were removed,
+      since they duplicated the Custom Game setup screen (both edit the same persisted preferences).
 
 ---
 
@@ -604,8 +621,9 @@ snake-game/
   Relaxed→Turbo, the old per-level tick values), persisted via DataStore (`Settings.snakeSpeed`,
   default `SnakeSpeed.DEFAULT = Relaxed`) and stamped onto `GameState.snakeSpeed`. The base tick is
   read from `snakeSpeed.tickMillis` in `GameState.tickIntervalMillis` for Time Attack (Endless and
-  Campaign still override it). Both selectors sit on the **Custom** setup screen and in Settings (speed
-  under Level), and are disabled in the modes that ignore them. Highscores stay keyed on `(mode, level,
+  Campaign still override it). Both selectors sit on the **Custom** setup screen only (speed under
+  Level; their Settings duplicates were removed in Step 7.9), and are disabled in the modes that
+  ignore them. Highscores stay keyed on `(mode, level,
   scale)` only - speed is **not** part of `ScoreKey`, so all speeds share a level/scale's best score.
 - **Back-during-play behaviour is a setting** (`BackBehavior`: `Pause` (default) / `KeepPlaying`,
   persisted as `back_behavior`): it only affects a **Running** game (paused / game-over / Ready always

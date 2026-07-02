@@ -1,5 +1,11 @@
 package com.brioni.snake.ui.settings
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -38,6 +44,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -47,21 +54,25 @@ import com.brioni.snake.data.Settings
 import com.brioni.snake.data.SettingsRepository
 import com.brioni.snake.game.BackBehavior
 import com.brioni.snake.game.BoardScale
+import com.brioni.snake.game.BoardTerrain
 import com.brioni.snake.game.ControlScheme
 import com.brioni.snake.game.Level
 import com.brioni.snake.game.Skin
-import com.brioni.snake.game.SnakeSpeed
 import com.brioni.snake.game.SpecialFrequency
 import com.brioni.snake.game.ThemeMode
+import com.brioni.snake.ui.game.Shaders
+import com.brioni.snake.ui.game.SkinPalette
+import com.brioni.snake.ui.game.TerrainLayer
 import com.brioni.snake.ui.game.paletteFor
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /**
- * Settings screen: control scheme, difficulty level, board scale and the three
+ * Settings screen: control scheme, skin, board terrain, theme and the three
  * audio volumes (master / music / SFX), all persisted via [repo]'s DataStore.
  * Volume changes preview live through [audio] while dragging and persist when
- * the gesture ends.
+ * the gesture ends. Per-run choices (level, snake speed, board scale) live on
+ * the Custom Game setup screen instead, so they are not duplicated here.
  */
 @Composable
 fun SettingsScreen(
@@ -126,34 +137,20 @@ fun SettingsScreen(
             )
         }
 
-        ChoiceSection(
-            title = stringResource(R.string.settings_level),
-            options = Level.entries,
-            selected = settings.level,
-            label = { it.label },
-            onSelected = { level -> scope.launch { repo.setLevel(level) } },
-        )
-
-        ChoiceSection(
-            title = stringResource(R.string.settings_snake_speed),
-            options = SnakeSpeed.entries,
-            selected = settings.snakeSpeed,
-            label = { it.label },
-            onSelected = { speed -> scope.launch { repo.setSnakeSpeed(speed) } },
-        )
-
-        ChoiceSection(
-            title = stringResource(R.string.settings_board_scale),
-            options = BoardScale.entries,
-            selected = settings.scale,
-            label = { it.label },
-            onSelected = { scale -> scope.launch { repo.setScale(scale) } },
-        )
+        // Level, Snake speed and Board scale deliberately do NOT appear here:
+        // they live on the Custom Game setup screen (same persisted preferences),
+        // so Settings stays a home for the app-wide, non-per-run options.
 
         SkinSection(
             selected = settings.skin,
             unlocked = unlockedSkins,
             onSelected = { skin -> scope.launch { repo.setSkin(skin) } },
+        )
+
+        TerrainSection(
+            selected = settings.terrain,
+            skinPalette = paletteFor(settings.skin),
+            onSelected = { terrain -> scope.launch { repo.setTerrain(terrain) } },
         )
 
         ChoiceSection(
@@ -373,6 +370,125 @@ private fun SkinCard(skin: Skin, selected: Boolean, locked: Boolean, onClick: ()
         }
     }
 }
+
+/**
+ * Board terrain picker: like the skin picker, a grid of tappable preview cards -
+ * but each card is a **live miniature of the terrain's AGSL shader**, so the
+ * choice shows the real animated floor rather than a static swatch. The Default
+ * card renders the skin's own gradient from [skinPalette], matching what the
+ * board actually shows when no standalone terrain is selected.
+ */
+@Composable
+private fun TerrainSection(
+    selected: BoardTerrain,
+    skinPalette: SkinPalette,
+    onSelected: (BoardTerrain) -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = stringResource(R.string.settings_terrain),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(bottom = 8.dp),
+        )
+        // One slow shared clock drives every card's shader animation.
+        val transition = rememberInfiniteTransition(label = "terrainPreview")
+        val time by transition.animateFloat(
+            initialValue = 0f,
+            targetValue = TERRAIN_PREVIEW_LOOP_SECONDS,
+            animationSpec = infiniteRepeatable(
+                tween(durationMillis = (TERRAIN_PREVIEW_LOOP_SECONDS * 1000).toInt(), easing = LinearEasing),
+            ),
+            label = "terrainTime",
+        )
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            BoardTerrain.entries.chunked(2).forEach { rowTerrains ->
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    rowTerrains.forEach { terrain ->
+                        TerrainCard(
+                            terrain = terrain,
+                            selected = terrain == selected,
+                            skinPalette = skinPalette,
+                            time = time,
+                            onClick = { onSelected(terrain) },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TerrainCard(
+    terrain: BoardTerrain,
+    selected: Boolean,
+    skinPalette: SkinPalette,
+    time: Float,
+    onClick: () -> Unit,
+) {
+    val layer = remember(terrain) { TerrainLayer(terrainShaderSource(terrain)) }
+    val border = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .border(
+                width = if (selected) 2.dp else 1.dp,
+                color = border,
+                shape = RoundedCornerShape(12.dp),
+            )
+            // Always dark, like the skin cards, so the light caption reads in both themes.
+            .background(androidx.compose.ui.graphics.Color(0xFF0B0F14), RoundedCornerShape(12.dp))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        Canvas(
+            modifier = Modifier
+                .size(width = 116.dp, height = 58.dp)
+                .clip(RoundedCornerShape(8.dp)),
+        ) {
+            layer.shader.setFloatUniform("origin", 0f, 0f)
+            layer.shader.setFloatUniform("resolution", size.width, size.height)
+            layer.shader.setFloatUniform("time", time)
+            if (terrain == BoardTerrain.Default) {
+                layer.shader.setColorUniform("topColor", skinPalette.boardTop.toArgb())
+                layer.shader.setColorUniform("bottomColor", skinPalette.boardBottom.toArgb())
+            } else {
+                // A miniature grid pitch so cell-aligned features (Meadow checker,
+                // Circuit traces) read at card scale.
+                layer.shader.setFloatUniform("cellPx", size.width / 9f)
+            }
+            drawRect(brush = layer.brush)
+        }
+        Text(
+            text = terrain.displayName,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (selected) MaterialTheme.colorScheme.primary
+            else androidx.compose.ui.graphics.Color.White,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+    }
+}
+
+/** The AGSL source behind each terrain's preview card (Default = the skin gradient). */
+private fun terrainShaderSource(terrain: BoardTerrain): String = when (terrain) {
+    BoardTerrain.Default -> Shaders.BACKGROUND
+    BoardTerrain.Meadow -> Shaders.MEADOW
+    BoardTerrain.Abyss -> Shaders.ABYSS
+    BoardTerrain.Nebula -> Shaders.NEBULA
+    BoardTerrain.Dunes -> Shaders.DUNES
+    BoardTerrain.Circuit -> Shaders.CIRCUIT
+}
+
+/** Preview shader clock length; long enough that the restart jump is a non-event. */
+private const val TERRAIN_PREVIEW_LOOP_SECONDS = 120f
 
 @Composable
 private fun Swatch(color: androidx.compose.ui.graphics.Color) {

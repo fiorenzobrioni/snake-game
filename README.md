@@ -73,6 +73,14 @@ The classic Snake mechanics, extended with configurable features so every run fe
   material changes per skin (glossy enamel, hollow neon tube, warm phosphor, hard pixel tile, frosted
   glass, molten iron), while each effect keeps a constant identity colour and symbol so its meaning never
   shifts between skins.
+- 🏞️ **Board terrains** - six selectable animated floors for the board, independent of the skin
+  (picked in Settings right under the skins, with live animated preview cards). **Default** plays on
+  the skin's own gradient (with its drifting glows), or swap the stage entirely: **Meadow** (a mowed
+  two-tone lawn under drifting cloud shadows), **Abyss** (a deep-ocean floor lit by animated caustics
+  and faint light shafts), **Nebula** (a twinkling star field over slowly drifting nebula wisps),
+  **Dunes** (a night desert with moonlit dune crests and sparkling sand) and **Circuit** (a dark
+  circuit board whose grid-aligned traces carry travelling pulses). Every terrain is an AGSL shader,
+  kept dark and slowly animated so the snake, food and obstacles stay perfectly readable.
 - 🌗 **Theme** - choose **Light**, **Dark** or **System** (follows the device) in Settings.
 - 🔊 **Music & sound effects** - looping background music that crossfades between the menu and
   gameplay, plus SFX for eating, shrinking, mystery pieces, game over and UI. Independent
@@ -186,7 +194,7 @@ scattering as isolated cells.
 
 ### 🏃 Snake speed
 
-A separate setting (shown under *Level* on the **Custom** setup screen and in Settings) controls the
+A separate setting (shown under *Level* on the **Custom** setup screen) controls the
 pace, independent of the obstacle layout. It applies to **Time Attack**; Endless ramps its own pace
 and Campaign uses its per-lap speed cycle.
 
