@@ -97,6 +97,9 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
                     // so the loop never ticks unseen. We deliberately do not auto-resume
                     // on ON_START - the player resumes from the pause overlay.
                     if (gameViewModel.state.status == GameStatus.Running) gameViewModel.togglePause()
+                    // A pending resume countdown must not tick down (and restart
+                    // the run) unseen either - abort it back to the paused overlay.
+                    gameViewModel.cancelResume()
                 }
                 Lifecycle.Event.ON_START -> audio.resumeMusic()
                 else -> Unit

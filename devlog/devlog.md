@@ -13,6 +13,48 @@ Suggested format for each entry:
 
 ---
 
+## 2026-07-02 - Live skin previews, pause-resume countdown, Campaign level progress
+
+**Done:**
+- **Settings skin cards went live**: the four static swatches became a **slithering mini snake**
+  drawn through the real gameplay renderer. `SnakeEmblem` gained optional `time`, `waveAmplitude`,
+  `cellFraction` and `contentAlpha` parameters (all defaulted so the menu wordmark emblem stays
+  static): a sine wave travels tailward along the segment centres so the head reads as leading,
+  and the advancing clock animates each skin's body material exactly as in play (Neon's filament,
+  Aurora's flowing hues, Ember's breathing lava). Grow/shrink food swatches stay on the card; skin
+  and terrain cards now share one 120 s linear preview clock (`rememberPreviewClock`).
+- **Pause no longer resumes instantly.** Resume now runs a **3-2-1 countdown**
+  (`GameViewModel.resumeFromPause`, `RESUME_COUNTDOWN_SECONDS = 3`): the paused scrim clears and a
+  scrim-free `ResumeCountdownOverlay` shows the ticking digit in a pulsing ring over a small
+  grounding disc - the board stays fully visible the whole time. Meanwhile the renderer pulses a
+  **locator beacon** on the snake's head (`GameBoard.drawResumeBeacon`, new `resumeHighlight`
+  param): a steady skin-accent ring + soft glow, two expanding sonar rings and a pulsing chevron
+  one cell ahead pointing along the current direction, so the player re-finds the snake and plans
+  the first move. `resumeHighlight` also extends `effectsActive`, keeping the per-frame clock
+  alive while the game itself stays paused. Reduce-motion keeps the steady ring/chevron but drops
+  the expanding pulses.
+  - Safety: the countdown is cancelled on Back/menu (`toSetup`) and on app backgrounding
+    (`cancelResume` wired into `App`'s ON_STOP next to the auto-pause), so a run can never
+    restart unseen; `togglePause` also clears it defensively.
+- **Campaign intro shows lap progress**: the banner now reads **"Level 3/15"** - the
+  `level_intro_level` string gained a total placeholder and `LevelIntroOverlay` a `levelCount`
+  param fed from `LevelsMode.LEVEL_COUNT`, so adding levels later updates the intro automatically.
+
+**Decisions:**
+- The resume countdown reuses the Levels-intro visual language (digit + expanding ring, same
+  600 ms pop) for consistency, but deliberately drops the scrim: seeing the snake IS the feature.
+- Fixed light-on-dark colours for the countdown digits: the board interior is always the dark
+  arcade surface in both themes, so theme-driven `onBackground` would break in light mode.
+- The beacon is drawn inside the board's `clipRect` after the snake pass, in the skin's head-glow
+  accent + white, so it reads on all six terrains under all six skins.
+
+**Issues:** none - build and tests green on the first run (system Gradle 8.14.3, 164 tests).
+
+**Next:** On-device pass over the resume flow (does 3 s feel right with the beacon? drop to 2 s if
+it drags); consider a soft tick SFX per countdown second.
+
+---
+
 ## 2026-07-02 - Board terrains (6 selectable AGSL floors) + Settings cleanup
 
 **Done:**

@@ -87,21 +87,37 @@ private fun darken(c: Color, f: Float): Color = Color(
 )
 
 /**
- * A static, in-game-accurate snake emblem (used under the menu wordmark). It
- * draws through the exact same [drawSnake] renderer as gameplay - the tapered,
- * shaded tube with a glossy glowing head for glow skins, two-tone blocky segments
- * for flat skins - so it reflects the selected [palette] faithfully. It is drawn
- * straight and still (no slither), head leading on the right, and the chain fills
- * the given width so callers can match it to the title's width.
+ * An in-game-accurate snake emblem (used under the menu wordmark and on the
+ * Settings skin cards). It draws through the exact same [drawSnake] renderer as
+ * gameplay - the tapered, shaded tube with a glossy glowing head for glow skins,
+ * two-tone blocky segments for flat skins - so it reflects the selected
+ * [palette] faithfully. Head leading on the right, the chain fills the given
+ * width so callers can match it to the title's width.
+ *
+ * With the defaults it is drawn straight and still (the menu wordmark's static
+ * emblem). Passing an advancing [time] animates the per-skin body materials
+ * (Neon's filament, Aurora's flowing hues, Ember's lava), and a non-zero
+ * [waveAmplitude] (as a fraction of the height) makes the body **slither**: a
+ * sine wave travelling tailward so the head reads as leading the motion.
+ * [cellFraction] sets the segment size from the height (smaller leaves room for
+ * the wave); [contentAlpha] dims the whole snake (locked skin cards).
  */
 @Composable
-fun SnakeEmblem(palette: SkinPalette, modifier: Modifier = Modifier) {
+fun SnakeEmblem(
+    palette: SkinPalette,
+    modifier: Modifier = Modifier,
+    time: Float = 0f,
+    waveAmplitude: Float = 0f,
+    cellFraction: Float = 0.72f,
+    contentAlpha: Float = 1f,
+) {
     val shaders = remember { BoardShaders() }
     Canvas(modifier = modifier) {
         if (size.width <= 0f || size.height <= 0f) return@Canvas
         // Cell size from the height, leaving headroom so the head glow / drop
-        // shadow can bleed softly (the Canvas draw is not clipped to its bounds).
-        val cell = size.height * 0.72f
+        // shadow / slither wave can bleed softly (the Canvas draw is not clipped
+        // to its bounds).
+        val cell = size.height * cellFraction
         if (cell <= 0f) return@Canvas
         val cy = size.height / 2f
         val step = cell // one cell of spacing between centres, like adjacent board cells
@@ -109,20 +125,22 @@ fun SnakeEmblem(palette: SkinPalette, modifier: Modifier = Modifier) {
         val n = (span / step).toInt().coerceAtLeast(1) + 1
         val totalWidth = step * (n - 1)
         val startX = (size.width - totalWidth) / 2f
+        val amp = size.height * waveAmplitude
         // Head is index 0 (rightmost); increasing index walks left toward the tail.
         val centers = ArrayList<Offset>(n)
         for (i in 0 until n) {
-            centers.add(Offset(startX + step * (n - 1 - i), cy))
+            val y = if (amp > 0f) cy + amp * sin(i * 0.85f - time * 2.6f) else cy
+            centers.add(Offset(startX + step * (n - 1 - i), y))
         }
         drawSnake(
             centers = centers,
             cell = cell,
             direction = Direction.Right,
             palette = palette,
-            bodyAlpha = 1f,
-            headAlpha = 1f,
+            bodyAlpha = contentAlpha,
+            headAlpha = contentAlpha,
             shaders = shaders,
-            time = 0f,
+            time = time,
             headGlow = palette.headGlow,
         )
     }
@@ -151,6 +169,9 @@ fun GameBoard(
     borderColor: Color = palette.boardBorder,
     outsideColor: Color = Color.Black,
     reduceMotion: Boolean = false,
+    // Pause-resume countdown: pulse a locator beacon + direction chevron on the
+    // head so the player re-finds the snake before motion restarts.
+    resumeHighlight: Boolean = false,
     // Keeps the particle/redraw loop alive across the brief death-burst and
     // level-vanish transitions, after `running` has already gone false.
     effectsActive: Boolean = running,
@@ -393,6 +414,14 @@ fun GameBoard(
             // A lighter portal pass over the snake: where the body lies on a pad it
             // shows through as half-transparent, selling that the snake phases through.
             drawTeleports(state, seconds, cell, originX, originY, reduceMotion, overlay = true)
+            // Resume locator: while the pause-resume countdown ticks, a beacon
+            // pulses on the head and a chevron points along the travel direction,
+            // so the eye finds the snake and the first move can be planned.
+            if (resumeHighlight) {
+                centers.firstOrNull()?.let { head ->
+                    drawResumeBeacon(head, state.direction, cell, palette, seconds, reduceMotion)
+                }
+            }
             // Hazard telegraph: a danger flash over the piece the snake is about
             // to eat (one tick before contact). Suppressed under reduce-motion -
             // the envelope simply stays at 0 there.
@@ -576,6 +605,61 @@ private fun DrawScope.drawBoardBackground(
         val lineY = originY + y * cell
         drawLine(gridLine, Offset(originX, lineY), Offset(originX + boardWidth, lineY), 1f)
     }
+}
+
+/**
+ * The pause-resume locator: a steady ring + soft glow hugging the snake's head,
+ * two expanding pulse rings (suppressed under reduce-motion) and a pulsing
+ * chevron one cell ahead pointing along the current travel [direction]. Drawn
+ * in the skin's head-glow accent plus white, so it reads on every terrain.
+ */
+private fun DrawScope.drawResumeBeacon(
+    head: Offset,
+    direction: Direction,
+    cell: Float,
+    palette: SkinPalette,
+    seconds: Double,
+    reduceMotion: Boolean,
+) {
+    val accent = lighten(palette.headGlow, 0.25f)
+    // Soft fill glow, then a steady ring hugging the head.
+    drawCircle(accent.copy(alpha = 0.16f), radius = cell * 1.5f, center = head)
+    drawCircle(accent.copy(alpha = 0.9f), radius = cell * 0.85f, center = head, style = Stroke(cell * 0.10f))
+    if (!reduceMotion) {
+        // Two expanding, fading sonar rings, half a period apart.
+        for (k in 0..1) {
+            val t = ((seconds * 0.9 + k * 0.5) % 1.0).toFloat()
+            drawCircle(
+                color = Color.White.copy(alpha = (1f - t) * 0.5f),
+                radius = cell * (0.9f + 2.2f * t),
+                center = head,
+                style = Stroke(cell * 0.08f),
+            )
+        }
+    }
+    // Direction chevron ahead of the head: base corners across the travel axis,
+    // tip pointing where the snake will go on the first tick.
+    val (dx, dy) = when (direction) {
+        Direction.Up -> 0f to -1f
+        Direction.Down -> 0f to 1f
+        Direction.Left -> -1f to 0f
+        Direction.Right -> 1f to 0f
+    }
+    val px = -dy
+    val py = dx
+    val pulse = if (reduceMotion) 1f else 0.7f + 0.3f * sin(seconds * 5.0).toFloat()
+    val tip = Offset(head.x + dx * cell * 1.95f, head.y + dy * cell * 1.95f)
+    val baseX = head.x + dx * cell * 1.35f
+    val baseY = head.y + dy * cell * 1.35f
+    val halfW = cell * 0.42f
+    val chevron = Path().apply {
+        moveTo(tip.x, tip.y)
+        lineTo(baseX + px * halfW, baseY + py * halfW)
+        lineTo(baseX - px * halfW, baseY - py * halfW)
+        close()
+    }
+    drawPath(chevron, color = accent.copy(alpha = 0.55f * pulse))
+    drawPath(chevron, color = Color.White.copy(alpha = 0.85f * pulse), style = Stroke(cell * 0.07f))
 }
 
 /**

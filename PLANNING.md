@@ -569,6 +569,24 @@ snake-game/
       **live animated shader preview cards**; all terrains are free (no unlock gating - can be revisited
       later). Settings also got **cleaner**: the Level / Snake speed / Board scale selectors were removed,
       since they duplicated the Custom Game setup screen (both edit the same persisted preferences).
+- [x] **Step 7.10 - Premium polish batch 2: live skin previews, pause-resume countdown, Campaign
+      level progress.** (1) The Settings **skin cards** now show a **live, slithering mini snake**
+      instead of static swatches: `SnakeEmblem` gained optional `time` / `waveAmplitude` /
+      `cellFraction` / `contentAlpha` params (defaults keep the menu emblem static), so the card
+      previews each skin's real animated body material (Neon filament, Aurora flow, Ember lava)
+      through the actual gameplay renderer; skin and terrain cards share one preview clock
+      (`rememberPreviewClock`). (2) **Resuming from pause runs a 3-2-1 countdown** instead of
+      restarting instantly (`GameViewModel.resumeFromPause` / `resumeCountdown`,
+      `RESUME_COUNTDOWN_SECONDS = 3`): the paused scrim clears, the board stays fully visible under a
+      scrim-free `ResumeCountdownOverlay` (digit in a pulsing ring over a small grounding disc), and
+      the renderer pulses a **locator beacon** on the snake's head - steady accent ring + soft glow,
+      two expanding sonar rings (suppressed under reduce-motion) and a pulsing chevron pointing along
+      the travel direction (`GameBoard.drawResumeBeacon`, driven by the new `resumeHighlight` flag,
+      which also keeps `effectsActive` alive so the pulse animates while paused). The countdown is
+      cancelled by Back/menu (`toSetup`) and on app backgrounding (`cancelResume` from `App`'s
+      ON_STOP), so it can never restart the run unseen. (3) The Campaign intro banner shows lap
+      progress - **"Level 3/15"** - via `LevelIntroOverlay`'s new `levelCount` param fed from
+      `LevelsMode.LEVEL_COUNT`, so a future level-count change updates it automatically.
 
 ---
 

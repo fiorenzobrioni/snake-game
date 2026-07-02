@@ -192,6 +192,7 @@ private fun ChipSection(title: String, enabled: Boolean = true, chips: @Composab
 @Composable
 fun LevelIntroOverlay(
     levelIndex: Int,
+    levelCount: Int,
     levelName: String,
     speedCycle: Int,
     lives: Int,
@@ -215,7 +216,7 @@ fun LevelIntroOverlay(
             },
         ) {
             Text(
-                text = stringResource(R.string.level_intro_level, levelIndex),
+                text = stringResource(R.string.level_intro_level, levelIndex, levelCount),
                 style = MaterialTheme.typography.displaySmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
@@ -297,6 +298,72 @@ fun LevelIntroOverlay(
                     },
                 )
             }
+        }
+    }
+}
+
+/**
+ * Pause-resume countdown: deliberately **no scrim** - the whole point is that
+ * the board (and the head locator beacon the renderer pulses during it) stays
+ * fully visible while 3-2-1 ticks, so the player re-finds the snake and plans
+ * the first move. Just the digit in a pulsing ring over a small translucent
+ * disc (for readability wherever it lands), plus a "Get ready!" caption.
+ * Colours are fixed light-on-dark: the board behind is always the dark arcade
+ * surface, in both themes.
+ */
+@Composable
+fun ResumeCountdownOverlay(countdown: Int) {
+    val pulse = remember { Animatable(1f) }
+    LaunchedEffect(countdown) {
+        if (countdown > 0) {
+            pulse.snapTo(0f)
+            pulse.animateTo(1f, tween(durationMillis = 600, easing = FastOutSlowInEasing))
+        }
+    }
+    Column(
+        modifier = Modifier.fillMaxSize().padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        if (countdown > 0) {
+            Box(
+                modifier = Modifier.size(132.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    // A grounding disc so the digit reads over any board content,
+                    // then the expanding ring re-fired on each tick.
+                    drawCircle(
+                        color = Color.Black.copy(alpha = 0.38f),
+                        radius = size.minDimension / 2f * 0.52f,
+                    )
+                    val t = pulse.value
+                    drawCircle(
+                        color = Color.White.copy(alpha = (1f - t) * 0.8f),
+                        radius = size.minDimension / 2f * (0.4f + 0.6f * t),
+                        style = Stroke(width = size.minDimension * 0.04f),
+                    )
+                }
+                Text(
+                    text = countdown.toString(),
+                    style = MaterialTheme.typography.displayLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    modifier = Modifier.graphicsLayer {
+                        val t = pulse.value
+                        scaleX = 1.6f - 0.6f * t
+                        scaleY = 1.6f - 0.6f * t
+                        alpha = (0.4f + 0.6f * t).coerceIn(0f, 1f)
+                    },
+                )
+            }
+            Text(
+                text = stringResource(R.string.level_intro_ready),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.White.copy(alpha = 0.9f),
+                modifier = Modifier.padding(top = 10.dp),
+            )
         }
     }
 }

@@ -169,8 +169,9 @@
     <!-- Pause overlay -->
     <string name="paused_title">Paused</string>
 
-    <!-- Campaign mode intro overlay (two stacked lines so the title never wraps) -->
-    <string name="level_intro_level">Level %1$d</string>
+    <!-- Campaign mode intro overlay (two stacked lines so the title never wraps).
+         The level line shows progress as current/total, e.g. "Level 3/15". -->
+    <string name="level_intro_level">Level %1$d/%2$d</string>
     <string name="level_intro_speed">Speed %1$d</string>
     <string name="level_intro_ready">Get ready!</string>
 

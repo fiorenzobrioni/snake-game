@@ -61,7 +61,9 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - 🎮 **Control schemes** - **swipe** by default (with adjustable sensitivity), a compact **wedge dial** (a single key split into four directional wedges), or one-handed **tap-to-turn**.
   A forgiving **coyote frame** makes a beat-late turn still count: the first lethal step makes the head
   hesitate one tick (instead of dying), giving you a moment to turn away - re-armed by your next safe move.
-- 🎨 **Skins** - six selectable looks, each its own palette and render style. **Retro** (the default) and
+- 🎨 **Skins** - six selectable looks, each its own palette and render style, picked in Settings from
+  **live preview cards**: each card shows the skin's snake slithering in place, drawn through the real
+  gameplay renderer so its animated body material previews exactly as it plays. **Retro** (the default) and
   **Classic** are unlocked from the start; the rest are earned: **Neon** (score 1500 in a run), **Pixel**
   (score 5000), **Aurora** (a 7-day Daily streak) and **Ember** (a 30-day Daily streak). Locked skins show
   their unlock condition in Settings. The glow skins (Classic / Neon / Aurora / Ember) draw food as
@@ -144,14 +146,15 @@ The classic Snake mechanics, extended with configurable features so every run fe
   and a tougher late-game gauntlet…) that repeat forever, one **speed step faster** each lap. Eat **12 foods** to clear a level; you
   start with **3 lives** (a crash respawns you in the same level, keeping score and progress) and a
   rare 2×2 **extra-life** piece with a snake-head icon can bank more (up to 5). Every transition
-  plays an animated *"Level x - Speed x"* banner with a 3-second countdown. The Level and Snake speed
+  plays an animated banner with a 3-second countdown showing your progress through the lap
+  (*"Level 3/15"*) plus the speed lap. The Level and Snake speed
   selectors are disabled here - the mode has its own layouts and pace - and the Records screen tracks both your best
   score and the deepest level you reached per board scale.
   - 🚧 **Environmental hazards** - some levels add **moving-wall gates**: glowing energy barriers that
     open and close on a rhythm (they strobe a warning before slamming shut, so time your dash through),
     and **teleport portals** - step onto one swirling pad to instantly emerge at its partner across the
     board. Gates are lethal only while closed and never seal you in; portals open up bold shortcuts.
-- ⏸️ **Pause & menus** - pause overlay with a blur effect; restart or return to the main menu at any time. Highscores are kept per (mode, level, board scale). A **Back during play** setting chooses what the system Back gesture does mid-game: **Keep playing** (default - Back is ignored, and a swipe-back is fed to the snake as a turn when using swipe controls) or **Pause**.
+- ⏸️ **Pause & menus** - pause overlay with a blur effect; restart or return to the main menu at any time. Resuming never catches you off guard: a **3-2-1 countdown** plays over the fully visible board while a **locator beacon** pulses around the snake's head with a chevron pointing where it will move, so you re-find the snake and plan the first turn before motion restarts. Highscores are kept per (mode, level, board scale). A **Back during play** setting chooses what the system Back gesture does mid-game: **Keep playing** (default - Back is ignored, and a swipe-back is fed to the snake as a turn when using swipe controls) or **Pause**.
 - 💎 **Polished navigation** - an **animated GPU background** behind the menus, a **branded main menu** laid out as a "game launcher" (a glowing wordmark with a small in-game-style snake emblem that follows your selected skin as the hero, over a bottom-anchored cluster of actions grouped by type so everything fits one screen), **premium action buttons** (gradient-lit, with a tactile press), and **blur-dissolve** screen transitions.
 - ⏸️ **Auto-pause** - backgrounding the app mid-run pauses the game automatically, so the snake never keeps moving while you're away.
 - 📜 **Credits screen** - an in-app **Credits / About** page (author, license and asset attribution), reachable from the main menu.

@@ -62,6 +62,7 @@ import com.brioni.snake.game.SpecialFrequency
 import com.brioni.snake.game.ThemeMode
 import com.brioni.snake.ui.game.Shaders
 import com.brioni.snake.ui.game.SkinPalette
+import com.brioni.snake.ui.game.SnakeEmblem
 import com.brioni.snake.ui.game.TerrainLayer
 import com.brioni.snake.ui.game.paletteFor
 import kotlinx.coroutines.launch
@@ -269,9 +270,11 @@ private fun <T> ChoiceSection(
 }
 
 /**
- * Skin picker: a row of tappable preview cards, each showing the skin's snake +
- * food swatches so the choice is visual rather than a bare label. The selected
- * card is outlined in the theme's primary colour.
+ * Skin picker: a row of tappable preview cards. Each card shows a **live,
+ * slithering mini snake** drawn through the real gameplay renderer (so Neon's
+ * filament pulses, Aurora's hues flow and Ember's lava breathes exactly as they
+ * do in play) over the skin's board gradient, plus the grow/shrink food
+ * swatches. The selected card is outlined in the theme's primary colour.
  */
 @Composable
 private fun SkinSection(
@@ -289,6 +292,7 @@ private fun SkinSection(
             color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(bottom = 8.dp),
         )
+        val time = rememberPreviewClock()
         // Two cards per row, centred, so the fourth never gets squeezed.
         Column(
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -301,6 +305,7 @@ private fun SkinSection(
                             skin = skin,
                             selected = skin == selected,
                             locked = skin.name !in unlocked,
+                            time = time,
                             onClick = { onSelected(skin) },
                         )
                     }
@@ -311,7 +316,13 @@ private fun SkinSection(
 }
 
 @Composable
-private fun SkinCard(skin: Skin, selected: Boolean, locked: Boolean, onClick: () -> Unit) {
+private fun SkinCard(
+    skin: Skin,
+    selected: Boolean,
+    locked: Boolean,
+    time: Float,
+    onClick: () -> Unit,
+) {
     val palette = remember(skin) { paletteFor(skin) }
     val border = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
     // A locked card is dimmed, shows a lock badge and its unlock hint, and can't be
@@ -333,12 +344,20 @@ private fun SkinCard(skin: Skin, selected: Boolean, locked: Boolean, onClick: ()
             )
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
+        // The living preview: the in-game snake renderer, slithering in place.
+        SnakeEmblem(
+            palette = palette,
+            time = time,
+            waveAmplitude = 0.16f,
+            cellFraction = 0.42f,
+            contentAlpha = contentAlpha,
+            modifier = Modifier.size(width = 116.dp, height = 44.dp),
+        )
         Row(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(top = 6.dp),
         ) {
-            Swatch(palette.snakeHead.copy(alpha = contentAlpha))
-            Swatch(palette.snakeBody.copy(alpha = contentAlpha))
             Swatch(palette.growMedium.copy(alpha = contentAlpha))
             Swatch(palette.shrinkMedium.copy(alpha = contentAlpha))
             if (locked) {
@@ -394,16 +413,7 @@ private fun TerrainSection(
             color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(bottom = 8.dp),
         )
-        // One slow shared clock drives every card's shader animation.
-        val transition = rememberInfiniteTransition(label = "terrainPreview")
-        val time by transition.animateFloat(
-            initialValue = 0f,
-            targetValue = TERRAIN_PREVIEW_LOOP_SECONDS,
-            animationSpec = infiniteRepeatable(
-                tween(durationMillis = (TERRAIN_PREVIEW_LOOP_SECONDS * 1000).toInt(), easing = LinearEasing),
-            ),
-            label = "terrainTime",
-        )
+        val time = rememberPreviewClock()
         Column(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -487,8 +497,27 @@ private fun terrainShaderSource(terrain: BoardTerrain): String = when (terrain) 
     BoardTerrain.Circuit -> Shaders.CIRCUIT
 }
 
-/** Preview shader clock length; long enough that the restart jump is a non-event. */
-private const val TERRAIN_PREVIEW_LOOP_SECONDS = 120f
+/**
+ * One slow, linear seconds-clock shared by the animated preview cards (the
+ * slithering skin snakes and the terrain shaders), so every preview breathes in
+ * the same rhythm.
+ */
+@Composable
+private fun rememberPreviewClock(): Float {
+    val transition = rememberInfiniteTransition(label = "previewClock")
+    val time by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = PREVIEW_LOOP_SECONDS,
+        animationSpec = infiniteRepeatable(
+            tween(durationMillis = (PREVIEW_LOOP_SECONDS * 1000).toInt(), easing = LinearEasing),
+        ),
+        label = "previewTime",
+    )
+    return time
+}
+
+/** Preview clock length; long enough that the restart jump is a non-event. */
+private const val PREVIEW_LOOP_SECONDS = 120f
 
 @Composable
 private fun Swatch(color: androidx.compose.ui.graphics.Color) {

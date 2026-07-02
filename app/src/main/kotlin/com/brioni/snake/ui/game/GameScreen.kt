@@ -318,10 +318,13 @@ fun GameScreen(
                     borderColor = boardBorderColor,
                     outsideColor = MaterialTheme.colorScheme.background,
                     reduceMotion = viewModel.reduceMotion,
+                    resumeHighlight = viewModel.resumeCountdown > 0,
                     // Keep particles/redraw alive through the death-burst and
-                    // level-vanish transitions, after `running` has gone false.
+                    // level-vanish transitions (after `running` has gone false)
+                    // and while the resume countdown pulses the head beacon.
                     effectsActive = state.status == GameStatus.Running ||
-                        viewModel.deathAnimating || viewModel.levelVanishing,
+                        viewModel.deathAnimating || viewModel.levelVanishing ||
+                        viewModel.resumeCountdown > 0,
                     modifier = boardModifier,
                 )
                 // Danger frame flash, tracking the board's shake offset.
@@ -365,6 +368,7 @@ fun GameScreen(
 
             GameStatus.LevelIntro -> LevelIntroOverlay(
                 levelIndex = state.levelIndex,
+                levelCount = LevelsMode.LEVEL_COUNT,
                 levelName = LevelsMode.nameFor(state.levelIndex),
                 speedCycle = state.speedCycle,
                 lives = state.lives,
@@ -372,11 +376,18 @@ fun GameScreen(
                 isRespawn = viewModel.introIsRespawn,
             )
 
-            GameStatus.Paused -> PausedOverlay(
-                onResume = { audio.playPause(); viewModel.togglePause() },
-                onSetup = { viewModel.toSetup() },
-                onMenu = { viewModel.toSetup(); onExitToMenu() },
-            )
+            // Resume runs through a 3-2-1 countdown: the paused menu clears and
+            // the board stays fully visible (with the head beacon pulsing) so
+            // the player re-finds the snake before motion restarts.
+            GameStatus.Paused -> if (viewModel.resumeCountdown > 0) {
+                ResumeCountdownOverlay(countdown = viewModel.resumeCountdown)
+            } else {
+                PausedOverlay(
+                    onResume = { audio.playPause(); viewModel.resumeFromPause() },
+                    onSetup = { viewModel.toSetup() },
+                    onMenu = { viewModel.toSetup(); onExitToMenu() },
+                )
+            }
 
             // Hold the overlay back while the snake bursts apart (deathAnimating);
             // reduce-motion skips the burst so the overlay shows instantly.
