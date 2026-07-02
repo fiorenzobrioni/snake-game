@@ -19,6 +19,7 @@ import com.brioni.snake.game.Achievement
 import com.brioni.snake.game.BackBehavior
 import com.brioni.snake.game.BoardDimensions
 import com.brioni.snake.game.BoardScale
+import com.brioni.snake.game.BoardTerrain
 import com.brioni.snake.game.ControlScheme
 import com.brioni.snake.game.Challenge
 import com.brioni.snake.game.EffectKind
@@ -174,6 +175,10 @@ class GameViewModel(
     var skin by mutableStateOf(Skin.Retro)
         private set
 
+    /** The board's animated backdrop (loaded from settings), independent of [skin]. */
+    var terrain by mutableStateOf(BoardTerrain.Meadow)
+        private set
+
     /** Whether harmful specials (earthquake/explosion/snail) may spawn (setting). */
     var hazardsEnabled by mutableStateOf(true)
         private set
@@ -296,6 +301,10 @@ class GameViewModel(
     var introCountdown by mutableIntStateOf(0)
         private set
 
+    /** Seconds left on the pause-resume countdown (0 when not counting). */
+    var resumeCountdown by mutableIntStateOf(0)
+        private set
+
     /** Levels mode: true when the current intro follows a life loss. */
     var introIsRespawn by mutableStateOf(false)
         private set
@@ -318,6 +327,7 @@ class GameViewModel(
     private var loop: Job? = null
     private var bestJob: Job? = null
     private var introJob: Job? = null
+    private var resumeJob: Job? = null
     private var lastAspect = DEFAULT_ASPECT
 
     /** Set by Quick Play: start the run as soon as the board has been measured. */
@@ -372,6 +382,7 @@ class GameViewModel(
                 crtEnabled = settings.crtEnabled
                 reduceMotion = settings.reduceMotion
                 skin = settings.skin
+                terrain = settings.terrain
                 // The Daily Challenge pins the spawn-affecting toggles so the run is
                 // identical for everyone; only sync them from settings outside it.
                 if (activeChallenge == null) {
@@ -561,8 +572,41 @@ class GameViewModel(
     }
 
     fun togglePause() {
+        cancelResume()
         state = engine.togglePause(state)
         if (state.status == GameStatus.Running) runLoop() else stopLoop()
+    }
+
+    /**
+     * Resumes from pause through a short 3-2-1 countdown instead of instantly:
+     * the paused overlay clears, the board stays fully visible (with a locator
+     * beacon on the head, see `GameBoard`'s `resumeHighlight`) while the digits
+     * tick, then the loop restarts - so the player re-finds the snake and plans
+     * the first move before motion returns.
+     */
+    fun resumeFromPause() {
+        if (state.status != GameStatus.Paused || resumeJob != null) return
+        resumeJob = viewModelScope.launch {
+            resumeCountdown = RESUME_COUNTDOWN_SECONDS
+            while (resumeCountdown > 0) {
+                delay(1_000)
+                resumeCountdown--
+            }
+            resumeJob = null
+            state = engine.togglePause(state)
+            runLoop()
+        }
+    }
+
+    /**
+     * Aborts a pending resume countdown, falling back to the paused overlay.
+     * Also called when the app is backgrounded, so a countdown can never tick
+     * down (and restart the run) unseen.
+     */
+    fun cancelResume() {
+        resumeJob?.cancel()
+        resumeJob = null
+        resumeCountdown = 0
     }
 
     fun playAgain() {
@@ -640,6 +684,7 @@ class GameViewModel(
     fun toSetup() {
         stopLoop()
         cancelIntro()
+        cancelResume()
         pendingQuickStart = false
         pendingChallenge = null
         if (activeChallenge != null) {
@@ -1031,6 +1076,7 @@ class GameViewModel(
     override fun onCleared() {
         stopLoop()
         cancelIntro()
+        cancelResume()
     }
 
     companion object {
@@ -1040,6 +1086,13 @@ class GameViewModel(
 
         /** Levels mode: seconds counted down by the intro overlay. */
         private const val INTRO_SECONDS = 3
+
+        /**
+         * Seconds counted down before a paused run resumes, so the player can
+         * re-locate the snake and get ready (kept in sync with the Levels intro
+         * cadence; must stay >= 2 s to actually give the eye time).
+         */
+        private const val RESUME_COUNTDOWN_SECONDS = 3
 
         /** How long the snake bursts apart on death before the game-over overlay shows. */
         private const val DEATH_ANIM_MS = 1000L

@@ -12,6 +12,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.brioni.snake.game.BoardScale
+import com.brioni.snake.game.BoardTerrain
 import com.brioni.snake.game.BackBehavior
 import com.brioni.snake.game.ControlScheme
 import com.brioni.snake.game.GameMode
@@ -43,6 +44,8 @@ data class Settings(
     /** Accessibility: damp screen shake, particle bursts and near-miss flashes (default off). */
     val reduceMotion: Boolean = false,
     val skin: Skin = Skin.Retro,
+    /** The board's animated backdrop, independent of the skin (Arcade follows it). */
+    val terrain: BoardTerrain = BoardTerrain.Meadow,
     val hazardsEnabled: Boolean = true,
     val specialFrequency: SpecialFrequency = SpecialFrequency.Standard,
     val mode: GameMode = GameMode.Endless,
@@ -87,6 +90,7 @@ class SettingsRepository(private val context: Context) {
             hapticsEnabled = prefs[HAPTICS_ENABLED] ?: true,
             reduceMotion = prefs[REDUCE_MOTION] ?: false,
             skin = prefs[SKIN].toEnum(Skin::valueOf) ?: Skin.Retro,
+            terrain = prefs[TERRAIN].toEnum(BoardTerrain::valueOf) ?: BoardTerrain.Meadow,
             hazardsEnabled = prefs[HAZARDS_ENABLED] ?: true,
             specialFrequency = prefs[SPECIAL_FREQUENCY].toEnum(SpecialFrequency::valueOf) ?: SpecialFrequency.Standard,
             mode = prefs[MODE].toEnum(GameMode::valueOf) ?: GameMode.Endless,
@@ -133,6 +137,9 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setSkin(skin: Skin) =
         edit { it[SKIN] = skin.name }
+
+    suspend fun setTerrain(terrain: BoardTerrain) =
+        edit { it[TERRAIN] = terrain.name }
 
     suspend fun setHazardsEnabled(enabled: Boolean) =
         edit { it[HAZARDS_ENABLED] = enabled }
@@ -324,6 +331,7 @@ class SettingsRepository(private val context: Context) {
         val HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
         val REDUCE_MOTION = booleanPreferencesKey("reduce_motion")
         val SKIN = stringPreferencesKey("skin")
+        val TERRAIN = stringPreferencesKey("board_terrain")
         val HAZARDS_ENABLED = booleanPreferencesKey("hazards_enabled")
         val SPECIAL_FREQUENCY = stringPreferencesKey("special_frequency")
         val MODE = stringPreferencesKey("game_mode")

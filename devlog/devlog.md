@@ -13,6 +13,228 @@ Suggested format for each entry:
 
 ---
 
+## 2026-07-02 - Terrain integration batch: intro frame, shaped danger flash, themed gates, Meadow default
+
+**Done (all from on-device user feedback):**
+- **Intro frame fully visible**: the splash board filled the whole height (`rows = ceil(...)`), so
+  the top/bottom border was drawn off-canvas (only the side borders showed). The board is now inset
+  by a 10dp margin on all sides (`rows` sized with floor, board centred), so the framed border and
+  its halo read on the full perimeter. Note: the app already applies `safeDrawingPadding()`, so it
+  was never *under* the status bar/gesture area - just off the canvas.
+- **Near-miss danger flash rebuilt inside the renderer**. The old implementation was an overlay
+  `Box` with a 14dp rounded-corner border that overlapped the board's sharp corners. `GameBoard`
+  now takes a `dangerFlash` envelope (0..1) and re-traces the board's *exact* frame geometry:
+  sharp corners flush with the border on rectangular boards, and on shaped Campaign boards
+  (hourglass etc.) the flash follows the real playable outline - the user asked whether it should,
+  and it should: the flash warns about the lethal boundary, so on shaped boards a rectangle lies.
+  It flares in a hot version of the selected terrain's accent (soft wide halo + crisp stroke) and
+  inherits the board shake for free. The overlay Box and `NearMissFlashColor` were removed.
+- **Campaign gates now themed to the terrain**: new `gateEnergyFor(terrain)` in `GameHazards.kt`
+  maps each floor to a plasma family (base + hot core): Arcade keeps the warm orange, Meadow gets
+  golden sunlight, Abyss bioluminescent aqua, Nebula violet plasma, Dunes ember heat, Glacier a
+  cold electric blue. The amber closing-strobe stays universal (it is a warning cue, part of the
+  game grammar), as do the metal projector nodes.
+- **Meadow is the new default terrain** (fresh installs land on the lawn, matching the brand
+  intro): it moved to first place in the picker and is the fallback in `SettingsRepository`
+  (decode + data-class default) and the `GameViewModel` seed. The skin-following floor was renamed
+  **Default → Arcade** (constant and display name; the behaviour - the skin's dark gradient with
+  drifting glows - is unchanged). A stale persisted `"Default"` value decodes to Meadow via the
+  existing `runCatching` fallback. `BoardTerrainTest` updated (Meadow first, Arcade second).
+
+**Decisions:**
+- The gate warn strobe deliberately stays amber everywhere: danger cues keep one meaning across
+  cosmetics (same rule as the effect tokens' identity colours).
+- The flash colour is `lighten(terrainBoardBorder, 0.35)`: the frame itself appears to flare,
+  which ties the cue to the boundary it warns about.
+
+**Issues:** none - build and 164 tests green (system Gradle 8.14.3).
+
+**Next:** Device pass: gate legibility per terrain (especially golden gates on Meadow), and the
+danger flash visibility on Glacier's pale ice.
+
+---
+
+## 2026-07-02 - Terrain-accented frame, "Snake skin" label, Meadow brand intro
+
+**Done:**
+- Confirmed the Meadow "sharp vertical/horizontal shadow seams" the user screenshotted were the
+  same lattice-tearing bug fixed by the sinless hash (the cloud-shadow value noise shared the
+  broken `sin` hash) - no further change needed, all four noise-based terrains got the fix.
+- **The board frame now follows the selected terrain** in dark mode (`terrainBoardBorder` in
+  `GameBoard.kt`): Meadow wears a hedge green, Abyss a caustic teal, Nebula a violet, Dunes a warm
+  sand, Glacier an icy blue; the Default floor keeps the skin's own border and the light theme its
+  branded primary frame. Rationale: the frame edges the stage, not the snake - Ember's orange
+  around a green lawn read as a mismatch.
+- Settings: the **"Skin" header renamed "Snake skin"**, so the two cosmetic pickers read as a
+  matched pair with "Board terrain" (string change only, key untouched).
+- **Brand intro rebased onto the Meadow terrain**: `BrandIntroScreen.drawBoard` now paints the
+  real in-game Meadow shader (lawn checker grid-aligned via `cellPx`, drifting cloud shadows,
+  built-in vignette) and frames it with Meadow's hedge green, replacing the bespoke Retro gradient
+  + two warm glows + extra vignette (and their now-unused imports). The crawling snake and the
+  SNAKE wordmark stay **Retro** snake-body pieces as requested; the splash grid line became a
+  subtle dark tint (0x22000000) to sit on grass, and the gold/orange detonations stay - fireworks
+  over the lawn.
+
+**Decisions:**
+- Kept the warm blast accents instead of recoloring them green: complementary warm-on-green pops
+  and stays in the Retro family of the snake itself.
+- The intro reuses the gameplay `TerrainLayer(Shaders.MEADOW)` rather than a copy, so any future
+  Meadow tuning updates the splash automatically.
+
+**Issues:** none - build and 164 tests green (system Gradle 8.14.3).
+
+**Next:** Device pass on the intro (Retro lime pieces on the lawn - if the wordmark doesn't pop
+enough, brighten the letter fill or deepen the lawn under the word band).
+
+---
+
+## 2026-07-02 - Fix terrain noise tearing (sinless hash)
+
+**Done:**
+- Fixed the "misaligned rectangular patches" the user reported on Glacier (visible as a floor made
+  of shifted tiles). The value-noise `hash` used `fract(sin(dot(p, k)) * 43758.5)`; on mobile GPUs
+  `sin()` is evaluated at reduced precision, so for large arguments (fragment coords are hundreds
+  to thousands of pixels; star/sparkle/crack lattices push `dot` into the tens of thousands) the
+  result degrades and the noise tears along the lattice into visibly offset blocks.
+- Replaced it with the sinless integer hash ("Hash without Sine", Dave Hoskins, MIT), which is
+  precision-stable everywhere. Applied to every terrain's `hash` (Meadow / Nebula / Dunes /
+  Glacier) since they all shared the same sin-based helper - Glacier just showed it worst because
+  of its high-contrast crack veins. Credited in `docs/CREDITS.md`.
+
+**Decisions:** Kept the smooth full-screen `sin` bands (Abyss caustics, Glacier sheen) as-is: those
+take small arguments and only shift slightly under precision loss, they don't tear.
+
+**Issues:** none - build and 164 tests green (system Gradle 8.14.3).
+
+**Next:** Confirm on-device that Glacier is now seamless across the whole board.
+
+---
+
+## 2026-07-02 - Terrain tuning pass: sharp resume, brighter floors, Circuit → Glacier
+
+**Done (all from on-device user feedback):**
+- **Resume countdown is now sharp.** The step-3.4 pause blur stayed at 14dp through the 3-2-1
+  because the status is still `Paused` while counting - defeating the countdown's whole purpose.
+  The blur target now also checks `resumeCountdown == 0`, so tapping Resume animates 14dp→0 and
+  the board is as crisp as during play while the digits tick (the animated un-blur doubles as a
+  nice "snapping back into focus" transition).
+- **Meadow / Abyss / Dunes brightened** - they read too dark in play:
+  - Meadow: grass checker lifted ~50% (0.090/0.205 base), stronger blade contrast, cloud range
+    widened to 0.80-1.10, vignette floor 0.80 → 0.84.
+  - Abyss: water column roughly doubled in key (top 0.034/0.100/0.160), caustics widened
+    (exponent 4.0 → 3.5) and brightened (0.10/0.32/0.38), stronger light shafts, vignette 0.82.
+  - Dunes: sand gradient lifted ~60% (top 0.170/0.112/0.064), deeper below-crest shading (0.84)
+    with warmer, stronger crest glints, sparkle gain 0.45 → 0.55, vignette 0.84.
+- **Circuit replaced by Glacier** (the PCB floor didn't land): a **frozen lake**, deliberately the
+  brightest floor of the set as requested - a pale icy blue surface (top 0.150/0.230/0.330)
+  mottled by soft noise, veined with **bright static cracks** (two ridged-noise layers, coarse +
+  fine, sharpened via smoothstep+pow), an internal sheen band drifting diagonally through the ice
+  and cool twinkling glints. Grid line: a subtle dark blue (0x1A0A2038). All `Circuit` references
+  renamed across the enum, shader map, grid tints, the Settings preview map and docs; a stale
+  persisted `"Circuit"` pref decodes to `Default` through the existing `runCatching` fallback.
+
+**Decisions:**
+- Brightness went up by raising the base gradients and effect gains rather than flattening the
+  vignette entirely - the floors keep depth, they just sit a register higher. Ready to tune
+  further per-floor if anything still reads muddy on device.
+- Glacier's cracks are static (real ice doesn't crawl); only the sheen and glints animate, in
+  keeping with the "stage, not protagonist" rule even on the brightest floor.
+
+**Issues:** none - build and 164 tests green (system Gradle 8.14.3).
+
+**Next:** Device pass over the three brightened floors and Glacier's key (snake/food contrast on
+the pale ice is the thing to eyeball; the obstacle grays should still separate).
+
+---
+
+## 2026-07-02 - Live skin previews, pause-resume countdown, Campaign level progress
+
+**Done:**
+- **Settings skin cards went live**: the four static swatches became a **slithering mini snake**
+  drawn through the real gameplay renderer. `SnakeEmblem` gained optional `time`, `waveAmplitude`,
+  `cellFraction` and `contentAlpha` parameters (all defaulted so the menu wordmark emblem stays
+  static): a sine wave travels tailward along the segment centres so the head reads as leading,
+  and the advancing clock animates each skin's body material exactly as in play (Neon's filament,
+  Aurora's flowing hues, Ember's breathing lava). Grow/shrink food swatches stay on the card; skin
+  and terrain cards now share one 120 s linear preview clock (`rememberPreviewClock`).
+- **Pause no longer resumes instantly.** Resume now runs a **3-2-1 countdown**
+  (`GameViewModel.resumeFromPause`, `RESUME_COUNTDOWN_SECONDS = 3`): the paused scrim clears and a
+  scrim-free `ResumeCountdownOverlay` shows the ticking digit in a pulsing ring over a small
+  grounding disc - the board stays fully visible the whole time. Meanwhile the renderer pulses a
+  **locator beacon** on the snake's head (`GameBoard.drawResumeBeacon`, new `resumeHighlight`
+  param): a steady skin-accent ring + soft glow, two expanding sonar rings and a pulsing chevron
+  one cell ahead pointing along the current direction, so the player re-finds the snake and plans
+  the first move. `resumeHighlight` also extends `effectsActive`, keeping the per-frame clock
+  alive while the game itself stays paused. Reduce-motion keeps the steady ring/chevron but drops
+  the expanding pulses.
+  - Safety: the countdown is cancelled on Back/menu (`toSetup`) and on app backgrounding
+    (`cancelResume` wired into `App`'s ON_STOP next to the auto-pause), so a run can never
+    restart unseen; `togglePause` also clears it defensively.
+- **Campaign intro shows lap progress**: the banner now reads **"Level 3/15"** - the
+  `level_intro_level` string gained a total placeholder and `LevelIntroOverlay` a `levelCount`
+  param fed from `LevelsMode.LEVEL_COUNT`, so adding levels later updates the intro automatically.
+
+**Decisions:**
+- The resume countdown reuses the Levels-intro visual language (digit + expanding ring, same
+  600 ms pop) for consistency, but deliberately drops the scrim: seeing the snake IS the feature.
+- Fixed light-on-dark colours for the countdown digits: the board interior is always the dark
+  arcade surface in both themes, so theme-driven `onBackground` would break in light mode.
+- The beacon is drawn inside the board's `clipRect` after the snake pass, in the skin's head-glow
+  accent + white, so it reads on all six terrains under all six skins.
+
+**Issues:** none - build and tests green on the first run (system Gradle 8.14.3, 164 tests).
+
+**Next:** On-device pass over the resume flow (does 3 s feel right with the beacon? drop to 2 s if
+it drags); consider a soft tick SFX per countdown second.
+
+---
+
+## 2026-07-02 - Board terrains (6 selectable AGSL floors) + Settings cleanup
+
+**Done:**
+- Added **board terrains**: the board's animated floor is now selectable in Settings independently
+  of the skin. New pure-model enum `game/BoardTerrain` (Default / Meadow / Abyss / Nebula / Dunes /
+  Circuit), persisted in DataStore as `board_terrain` and covered by `BoardTerrainTest`; snake,
+  foods, obstacles and tokens keep the active skin's look, only the floor swaps.
+- Five new AGSL terrain shaders in `Shaders.kt`, sharing one uniform interface (`origin`,
+  `resolution`, `time`, `cellPx`) and compiled lazily through `BoardShaders.terrainLayer`:
+  - **Meadow**: mowed-lawn checker aligned to the play grid via `cellPx`, blade-noise texture,
+    cloud shadows drifting over the field.
+  - **Abyss**: deep-ocean blues with an animated caustic web and faint light shafts.
+  - **Nebula**: violet/teal nebula wisps under a two-layer star field with per-star twinkle rates.
+  - **Dunes**: night desert with three stacked moonlit dune ridges and rare twinkling sand glints.
+  - **Circuit**: dark PCB with a soft pad per cell and hash-picked grid traces carrying pulses.
+- Fixed a latent bug the feature surfaced: the in-game `BACKGROUND` shader had Classic's board
+  colours **hardcoded**, so all six skins shared the same floor in play (the palette's
+  `boardTop`/`boardBottom` were only honoured in previews). The shader now takes both as
+  `layout(color)` uniforms; the Default terrain feeds them from the active palette and the menu
+  backdrop (`AnimatedShaderBackground`) pins the brand colours explicitly.
+- Grid lines get a per-terrain tint (`terrainGridLine` in `GameBoard.kt`) so they whisper over each
+  floor instead of fighting it.
+- Settings: a **Board terrain** section right under the skins, rendered as live animated shader
+  preview cards (a shared 120 s linear clock drives every card; the Default card previews the
+  active skin's gradient). Also **removed** the Level / Snake speed / Board scale selectors from
+  Settings - they duplicated the Custom Game setup screen, which edits the same persisted
+  preferences - so Settings now holds only app-wide options (their strings were dropped too).
+
+**Decisions:**
+- Terrains are designed as *stages, not protagonists*: dark, desaturated, slowly animated, so
+  gameplay readability holds under any of the 6 skins x 6 terrains = 36 combinations.
+- All terrains are free (no unlock gating) for now; gates can be added later the way skins do it.
+- `cellPx` grid-aligns terrain features (Meadow checker, Circuit traces) with the actual board
+  cells, which makes the floors feel native to the game rather than wallpaper behind it.
+
+**Issues:** The Kotlin compile daemon died once on first launch (transient, known flaky in this
+container); the retry built cleanly. Built and tested with the system Gradle at
+`/opt/gradle-8.14.3` (wrapper download still blocked by egress policy): `assembleDebug` and
+`testDebugUnitTest` (164 tests) both pass.
+
+**Next:** Eyeball the six terrains on a device (especially Meadow's brightness under the Classic
+lime snake and Circuit's trace density on Colossal boards); consider unlock gating for terrains
+once the skin gates are re-enabled for release.
+
+---
+
 ## 2026-07-01 - Teleport: route the snake through the pads instead of streaking
 
 **Done:**

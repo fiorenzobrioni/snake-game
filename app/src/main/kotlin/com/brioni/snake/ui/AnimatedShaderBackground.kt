@@ -21,7 +21,14 @@ import com.brioni.snake.ui.game.Shaders
  */
 @Composable
 fun AnimatedShaderBackground(modifier: Modifier = Modifier) {
-    val shader = remember { RuntimeShader(Shaders.BACKGROUND) }
+    val shader = remember {
+        RuntimeShader(Shaders.BACKGROUND).apply {
+            // The menus keep the brand's dark-arcade gradient (the Classic board
+            // colours); in-game the board feeds these from the active skin.
+            setColorUniform("topColor", MENU_TOP_COLOR)
+            setColorUniform("bottomColor", MENU_BOTTOM_COLOR)
+        }
+    }
     val brush = remember { ShaderBrush(shader) }
     var timeSeconds by remember { mutableFloatStateOf(0f) }
 
@@ -39,3 +46,7 @@ fun AnimatedShaderBackground(modifier: Modifier = Modifier) {
         drawRect(brush)
     }
 }
+
+/** The menu backdrop's fixed gradient endpoints (the Classic board colours). */
+private val MENU_TOP_COLOR = 0xFF121A22.toInt()
+private val MENU_BOTTOM_COLOR = 0xFF0A0E13.toInt()

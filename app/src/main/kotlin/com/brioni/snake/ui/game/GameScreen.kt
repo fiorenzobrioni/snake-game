@@ -192,8 +192,11 @@ fun GameScreen(
     }
 
     // Pause blur (step 3.4): blurs the frozen board behind the overlay scrim.
+    // It lifts during the resume countdown - the whole point of the 3-2-1 is
+    // re-finding the snake, so the board must be as sharp as during play (the
+    // animated 14dp→0 makes the resume read as "snapping back into focus").
     val blurRadius by animateDpAsState(
-        targetValue = if (state.status == GameStatus.Paused) 14.dp else 0.dp,
+        targetValue = if (state.status == GameStatus.Paused && viewModel.resumeCountdown == 0) 14.dp else 0.dp,
         label = "pauseBlur",
     )
 
@@ -288,13 +291,14 @@ fun GameScreen(
                     }
                 }
                 // The board interior stays dark, but its frame follows the theme:
-                // a branded green border on the light surround, the skin's subtle
-                // border in dark mode.
+                // a branded green border on the light surround; in dark mode it
+                // frames the *stage* - the selected terrain's accent (the skin's
+                // own border when the Arcade floor is active).
                 val isLightTheme = MaterialTheme.colorScheme.background.luminance() > 0.5f
                 val boardBorderColor = if (isLightTheme) {
                     MaterialTheme.colorScheme.primary
                 } else {
-                    viewModel.palette.boardBorder
+                    terrainBoardBorder(viewModel.terrain, viewModel.palette)
                 }
                 GameBoard(
                     state = state,
@@ -314,28 +318,23 @@ fun GameScreen(
                     bodyBurstId = viewModel.bodyBurstId,
                     textMeasurer = textMeasurer,
                     palette = viewModel.palette,
+                    terrain = viewModel.terrain,
                     borderColor = boardBorderColor,
                     outsideColor = MaterialTheme.colorScheme.background,
                     reduceMotion = viewModel.reduceMotion,
+                    resumeHighlight = viewModel.resumeCountdown > 0,
+                    // Near-miss danger flash: drawn by the renderer along the
+                    // board's exact frame (sharp corners, shaped Levels outlines,
+                    // terrain-accented) and inheriting the board's shake.
+                    dangerFlash = nearMissFlash.value,
                     // Keep particles/redraw alive through the death-burst and
-                    // level-vanish transitions, after `running` has gone false.
+                    // level-vanish transitions (after `running` has gone false)
+                    // and while the resume countdown pulses the head beacon.
                     effectsActive = state.status == GameStatus.Running ||
-                        viewModel.deathAnimating || viewModel.levelVanishing,
+                        viewModel.deathAnimating || viewModel.levelVanishing ||
+                        viewModel.resumeCountdown > 0,
                     modifier = boardModifier,
                 )
-                // Danger frame flash, tracking the board's shake offset.
-                if (nearMissFlash.value > 0f) {
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .offset { IntOffset(shakeX.roundToInt(), shakeY.roundToInt()) }
-                            .border(
-                                width = 3.dp,
-                                color = NearMissFlashColor.copy(alpha = nearMissFlash.value),
-                                shape = RoundedCornerShape(14.dp),
-                            ),
-                    )
-                }
             }
 
             if (playing) {
@@ -364,6 +363,7 @@ fun GameScreen(
 
             GameStatus.LevelIntro -> LevelIntroOverlay(
                 levelIndex = state.levelIndex,
+                levelCount = LevelsMode.LEVEL_COUNT,
                 levelName = LevelsMode.nameFor(state.levelIndex),
                 speedCycle = state.speedCycle,
                 lives = state.lives,
@@ -371,11 +371,18 @@ fun GameScreen(
                 isRespawn = viewModel.introIsRespawn,
             )
 
-            GameStatus.Paused -> PausedOverlay(
-                onResume = { audio.playPause(); viewModel.togglePause() },
-                onSetup = { viewModel.toSetup() },
-                onMenu = { viewModel.toSetup(); onExitToMenu() },
-            )
+            // Resume runs through a 3-2-1 countdown: the paused menu clears and
+            // the board stays fully visible (with the head beacon pulsing) so
+            // the player re-finds the snake before motion restarts.
+            GameStatus.Paused -> if (viewModel.resumeCountdown > 0) {
+                ResumeCountdownOverlay(countdown = viewModel.resumeCountdown)
+            } else {
+                PausedOverlay(
+                    onResume = { audio.playPause(); viewModel.resumeFromPause() },
+                    onSetup = { viewModel.toSetup() },
+                    onMenu = { viewModel.toSetup(); onExitToMenu() },
+                )
+            }
 
             // Hold the overlay back while the snake bursts apart (deathAnimating);
             // reduce-motion skips the burst so the overlay shows instantly.
@@ -408,9 +415,6 @@ fun GameScreen(
  * row would appear/disappear with each power-up and visibly resize the board,
  * making the snake seem to jump.
  */
-/** The warning colour used by the near-miss / grace-dodge danger flash. */
-private val NearMissFlashColor = Color(0xFFFF6E40)
-
 /** The combo multiplier's colour, warming through tiers as the streak climbs. */
 @Composable
 private fun comboTierColor(combo: Int): Color = when {

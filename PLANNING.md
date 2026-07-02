@@ -552,6 +552,82 @@ snake-game/
       deeper vignette in `Shaders.kt`). (5) **Debug-only "unlock all themes"** menu button gated on
       `BuildConfig.DEBUG` (stripped from release). Currently also hidden in debug builds behind the
       `SHOW_DEBUG_UNLOCK_SKINS` flag (default `false`); flip it to `true` to bring the shortcut back.
+- [x] **Step 7.9 - Board terrains + Settings cleanup.** The board floor is now selectable independently
+      of the skin: a new pure-model `BoardTerrain` enum (Default / Meadow / Abyss / Nebula / Dunes /
+      Circuit, persisted as `board_terrain`, guarded by `BoardTerrainTest`) picks the animated AGSL
+      backdrop while the snake / foods / obstacles / tokens keep the skin's look. `Default` plays on the
+      skin's own gradient - the shared `BACKGROUND` shader now takes the palette's `boardTop`/`boardBottom`
+      as colour uniforms, fixing a latent bug where the in-game board wore Classic's hardcoded colours
+      under every skin (the menu backdrop pins those colours explicitly). The five standalone terrains are
+      new AGSL shaders sharing one uniform interface (`origin`/`resolution`/`time`/`cellPx`), compiled
+      lazily via `BoardShaders.terrainLayer`: **Meadow** (grid-aligned mowed-lawn checker, blade-noise
+      texture, drifting cloud shadows), **Abyss** (deep-ocean caustic web + light shafts), **Nebula**
+      (two-layer twinkling star field over drifting nebula wisps), **Dunes** (stacked moonlit dune ridges +
+      rare sand sparkles) and a fifth grid-aligned floor. *(That fifth floor shipped as Circuit - dark PCB
+      traces with travelling pulses - and was replaced by **Glacier** in Step 7.11, which also brightened
+      Meadow / Abyss / Dunes. Step 7.13 then renamed **Default** to **Arcade** and made **Meadow** the
+      out-of-the-box default terrain.)* Terrains are deliberately calm and slowly animated (stages, not
+      protagonists) and each carries its own subtle grid-line tint (`terrainGridLine`). The Settings picker
+      sits right under the skins as
+      **live animated shader preview cards**; all terrains are free (no unlock gating - can be revisited
+      later). Settings also got **cleaner**: the Level / Snake speed / Board scale selectors were removed,
+      since they duplicated the Custom Game setup screen (both edit the same persisted preferences).
+- [x] **Step 7.10 - Premium polish batch 2: live skin previews, pause-resume countdown, Campaign
+      level progress.** (1) The Settings **skin cards** now show a **live, slithering mini snake**
+      instead of static swatches: `SnakeEmblem` gained optional `time` / `waveAmplitude` /
+      `cellFraction` / `contentAlpha` params (defaults keep the menu emblem static), so the card
+      previews each skin's real animated body material (Neon filament, Aurora flow, Ember lava)
+      through the actual gameplay renderer; skin and terrain cards share one preview clock
+      (`rememberPreviewClock`). (2) **Resuming from pause runs a 3-2-1 countdown** instead of
+      restarting instantly (`GameViewModel.resumeFromPause` / `resumeCountdown`,
+      `RESUME_COUNTDOWN_SECONDS = 3`): the paused scrim clears, the board stays fully visible under a
+      scrim-free `ResumeCountdownOverlay` (digit in a pulsing ring over a small grounding disc), and
+      the renderer pulses a **locator beacon** on the snake's head - steady accent ring + soft glow,
+      two expanding sonar rings (suppressed under reduce-motion) and a pulsing chevron pointing along
+      the travel direction (`GameBoard.drawResumeBeacon`, driven by the new `resumeHighlight` flag,
+      which also keeps `effectsActive` alive so the pulse animates while paused). The countdown is
+      cancelled by Back/menu (`toSetup`) and on app backgrounding (`cancelResume` from `App`'s
+      ON_STOP), so it can never restart the run unseen. (3) The Campaign intro banner shows lap
+      progress - **"Level 3/15"** - via `LevelIntroOverlay`'s new `levelCount` param fed from
+      `LevelsMode.LEVEL_COUNT`, so a future level-count change updates it automatically.
+- [x] **Step 7.11 - Terrain tuning pass (user feedback).** (1) The **pause blur now lifts during the
+      resume countdown**: the 3-2-1 exists to re-find the snake, so the board snaps back into focus
+      (animated 14dp→0) the moment Resume is tapped, staying as sharp as during play. (2) **Meadow,
+      Abyss and Dunes brightened** - higher-key base gradients, stronger caustics/crest glints/cloud
+      contrast and a shallower vignette - after feedback that they read too dark in play. (3) **Circuit
+      replaced by Glacier**: a frozen lake, deliberately the brightest floor of the set - pale icy blue
+      mottled surface, two ridged-noise layers of bright static crack veins, a diagonal internal sheen
+      drifting through the ice and cool twinkling glints. The old persisted `Circuit` value decodes to
+      the `Default` terrain via the existing `runCatching` enum fallback, so stale prefs cannot crash.
+      *(Follow-up in the same step family: the terrain value-noise `hash` was switched from the classic
+      `fract(sin(dot))` to the sinless "Hash without Sine" (Dave Hoskins, MIT, credited in
+      `docs/CREDITS.md`) - mobile-GPU `sin()` loses precision at large arguments and tore the noise into
+      visibly misaligned rectangular patches, worst on Glacier's crack veins and Meadow's cloud shadows.)*
+- [x] **Step 7.12 - Terrain-accented frame, "Snake skin" label, Meadow brand intro.** (1) In dark mode
+      the board's framing border now follows the **selected terrain** (`terrainBoardBorder` in
+      `GameBoard.kt`: hedge green for Meadow, caustic teal for Abyss, violet for Nebula, sand for Dunes,
+      icy blue for Glacier; the Default floor keeps the skin's own border, and the light theme keeps its
+      branded primary frame) - the frame belongs to the stage, not to the snake. (2) The Settings header
+      **"Skin" was renamed "Snake skin"** so the two cosmetic pickers read as a pair with "Board terrain".
+      (3) The **brand intro** now plays on the real **Meadow terrain shader** (grid-aligned lawn checker,
+      cloud shadows, its own vignette) framed in Meadow's hedge green, replacing the bespoke Retro
+      gradient + warm glows + extra vignette; the crawling snake and the SNAKE wordmark stay **Retro**
+      snake-body pieces, and the splash grid line became a subtle dark tint to sit on grass.
+- [x] **Step 7.13 - Terrain integration batch (user feedback).** (1) **Intro frame fully visible**: the
+      splash board is now inset by a 10dp margin on every side (rows sized with floor instead of ceil),
+      so the framed border + halo no longer run off the top/bottom of the canvas. (2) The **near-miss
+      danger flash moved into the renderer** (`GameBoard`'s new `dangerFlash` envelope param, the old
+      overlay `Box` in `GameScreen` removed): it re-traces the board's exact frame geometry - sharp
+      corners flush with the border (no more rounded-rect overlap), on shaped Campaign boards it follows
+      the real playable outline, it inherits the board shake for free, and it flares in a hot version of
+      the terrain's accent (`lighten(terrainBoardBorder, 0.35)`). (3) The **board frame** (dark theme)
+      already followed the terrain (Step 7.12); now the **Campaign gates** do too: `gateEnergyFor` in
+      `GameHazards.kt` maps each terrain to a plasma family (Arcade warm orange, Meadow golden, Abyss
+      aqua, Nebula violet, Dunes ember, Glacier electric blue); the amber closing-strobe stays universal
+      as a warning cue. (4) **Meadow is the default terrain** on fresh installs (Settings decode fallback,
+      data-class default, ViewModel seed) and sits first in the picker; the skin-following floor was
+      renamed **Default → Arcade** (constant + display name; a stale persisted "Default" value falls back
+      to Meadow via the `runCatching` enum decode).
 
 ---
 
@@ -604,8 +680,9 @@ snake-game/
   Relaxed→Turbo, the old per-level tick values), persisted via DataStore (`Settings.snakeSpeed`,
   default `SnakeSpeed.DEFAULT = Relaxed`) and stamped onto `GameState.snakeSpeed`. The base tick is
   read from `snakeSpeed.tickMillis` in `GameState.tickIntervalMillis` for Time Attack (Endless and
-  Campaign still override it). Both selectors sit on the **Custom** setup screen and in Settings (speed
-  under Level), and are disabled in the modes that ignore them. Highscores stay keyed on `(mode, level,
+  Campaign still override it). Both selectors sit on the **Custom** setup screen only (speed under
+  Level; their Settings duplicates were removed in Step 7.9), and are disabled in the modes that
+  ignore them. Highscores stay keyed on `(mode, level,
   scale)` only - speed is **not** part of `ScoreKey`, so all speeds share a level/scale's best score.
 - **Back-during-play behaviour is a setting** (`BackBehavior`: `Pause` (default) / `KeepPlaying`,
   persisted as `back_behavior`): it only affects a **Running** game (paused / game-over / Ready always

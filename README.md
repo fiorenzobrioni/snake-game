@@ -36,8 +36,9 @@ on the way to a polished, **Google-Play-publishable** title with animation, part
 The classic Snake mechanics, extended with configurable features so every run feels different:
 
 - 🚀 **Branded launch** - an animated splash flows into a short, skippable brand intro played out on
-  the game board itself: a snake crawls across and the word **SNAKE** forms in glowing cells in its
-  wake, then it slips off-screen and the menu fades in.
+  the game board itself, laid on the animated **Meadow** lawn: a Retro-skin snake crawls across and
+  the word **SNAKE** forms from Retro snake-body pieces in its wake, then it slips off-screen and
+  the menu fades in.
 - 🍽️ **Two food categories** - **grow** food makes the snake longer; **shrink** food trims it back.
 - 🔠 **Magnitude tiers + maxi sizes** - each category comes in several strengths, and a 2×2 **maxi**
   variant that amplifies the effect.
@@ -61,7 +62,9 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - 🎮 **Control schemes** - **swipe** by default (with adjustable sensitivity), a compact **wedge dial** (a single key split into four directional wedges), or one-handed **tap-to-turn**.
   A forgiving **coyote frame** makes a beat-late turn still count: the first lethal step makes the head
   hesitate one tick (instead of dying), giving you a moment to turn away - re-armed by your next safe move.
-- 🎨 **Skins** - six selectable looks, each its own palette and render style. **Retro** (the default) and
+- 🎨 **Skins** - six selectable looks, each its own palette and render style, picked in Settings from
+  **live preview cards**: each card shows the skin's snake slithering in place, drawn through the real
+  gameplay renderer so its animated body material previews exactly as it plays. **Retro** (the default) and
   **Classic** are unlocked from the start; the rest are earned: **Neon** (score 1500 in a run), **Pixel**
   (score 5000), **Aurora** (a 7-day Daily streak) and **Ember** (a 30-day Daily streak). Locked skins show
   their unlock condition in Settings. The glow skins (Classic / Neon / Aurora / Ember) draw food as
@@ -73,13 +76,25 @@ The classic Snake mechanics, extended with configurable features so every run fe
   material changes per skin (glossy enamel, hollow neon tube, warm phosphor, hard pixel tile, frosted
   glass, molten iron), while each effect keeps a constant identity colour and symbol so its meaning never
   shifts between skins.
+- 🏞️ **Board terrains** - six selectable animated floors for the board, independent of the skin
+  (picked in Settings right under the skins, with live animated preview cards). **Meadow** (a mowed
+  two-tone lawn under drifting cloud shadows) is the out-of-the-box default; **Arcade** plays on the
+  skin's own dark gradient (with its drifting glows), or swap the stage entirely: **Abyss** (a
+  deep-ocean floor lit by animated caustics and faint light shafts), **Nebula** (a twinkling star
+  field over slowly drifting nebula wisps), **Dunes** (a night desert with moonlit dune crests and
+  sparkling sand) and **Glacier** (a frozen lake veined with bright cracks, an internal drifting
+  sheen and cool glints). Every terrain is an AGSL shader, kept calm and slowly animated so the
+  snake, food and obstacles stay perfectly readable; the board's frame - and the Campaign gates'
+  energy colour - take the selected terrain's accent (the skin's own border on Arcade).
 - 🌗 **Theme** - choose **Light**, **Dark** or **System** (follows the device) in Settings.
 - 🔊 **Music & sound effects** - looping background music that crossfades between the menu and
   gameplay, plus SFX for eating, shrinking, mystery pieces, game over and UI. Independent
   **master / music / SFX** volume sliders in Settings; audio pauses when the app is backgrounded.
 - 📳 **Haptics & near-miss feedback** - vibration cues scaled by event (a light tap on eating, a
   firmer click on power-ups, the strongest buzz on death) plus a faint **near-miss** tick and a brief
-  on-screen **danger flash** whenever the head grazes a wall, obstacle or debris without crashing.
+  **danger flash** traced along the board's actual frame - sharp corners flush with the border, the
+  terrain's accent colour, and on shaped Campaign boards it follows the real outline - whenever the
+  head grazes a wall, obstacle or debris without crashing.
   Toggle it off with **Vibration feedback** in Settings.
 - 🔥 **Combo "juice"** - chain bites for a multiplier and the HUD counter punches in and warms through a
   colour ramp while the snake's head **catches fire** (its glow heats from your skin's colour toward a
@@ -136,14 +151,16 @@ The classic Snake mechanics, extended with configurable features so every run fe
   and a tougher late-game gauntlet…) that repeat forever, one **speed step faster** each lap. Eat **12 foods** to clear a level; you
   start with **3 lives** (a crash respawns you in the same level, keeping score and progress) and a
   rare 2×2 **extra-life** piece with a snake-head icon can bank more (up to 5). Every transition
-  plays an animated *"Level x - Speed x"* banner with a 3-second countdown. The Level and Snake speed
+  plays an animated banner with a 3-second countdown showing your progress through the lap
+  (*"Level 3/15"*) plus the speed lap. The Level and Snake speed
   selectors are disabled here - the mode has its own layouts and pace - and the Records screen tracks both your best
   score and the deepest level you reached per board scale.
-  - 🚧 **Environmental hazards** - some levels add **moving-wall gates**: glowing energy barriers that
+  - 🚧 **Environmental hazards** - some levels add **moving-wall gates**: glowing energy barriers,
+    tinted to match the selected board terrain, that
     open and close on a rhythm (they strobe a warning before slamming shut, so time your dash through),
     and **teleport portals** - step onto one swirling pad to instantly emerge at its partner across the
     board. Gates are lethal only while closed and never seal you in; portals open up bold shortcuts.
-- ⏸️ **Pause & menus** - pause overlay with a blur effect; restart or return to the main menu at any time. Highscores are kept per (mode, level, board scale). A **Back during play** setting chooses what the system Back gesture does mid-game: **Keep playing** (default - Back is ignored, and a swipe-back is fed to the snake as a turn when using swipe controls) or **Pause**.
+- ⏸️ **Pause & menus** - pause overlay with a blur effect; restart or return to the main menu at any time. Resuming never catches you off guard: a **3-2-1 countdown** plays over the fully visible board while a **locator beacon** pulses around the snake's head with a chevron pointing where it will move, so you re-find the snake and plan the first turn before motion restarts. Highscores are kept per (mode, level, board scale). A **Back during play** setting chooses what the system Back gesture does mid-game: **Keep playing** (default - Back is ignored, and a swipe-back is fed to the snake as a turn when using swipe controls) or **Pause**.
 - 💎 **Polished navigation** - an **animated GPU background** behind the menus, a **branded main menu** laid out as a "game launcher" (a glowing wordmark with a small in-game-style snake emblem that follows your selected skin as the hero, over a bottom-anchored cluster of actions grouped by type so everything fits one screen), **premium action buttons** (gradient-lit, with a tactile press), and **blur-dissolve** screen transitions.
 - ⏸️ **Auto-pause** - backgrounding the app mid-run pauses the game automatically, so the snake never keeps moving while you're away.
 - 📜 **Credits screen** - an in-app **Credits / About** page (author, license and asset attribution), reachable from the main menu.
@@ -186,7 +203,7 @@ scattering as isolated cells.
 
 ### 🏃 Snake speed
 
-A separate setting (shown under *Level* on the **Custom** setup screen and in Settings) controls the
+A separate setting (shown under *Level* on the **Custom** setup screen) controls the
 pace, independent of the obstacle layout. It applies to **Time Attack**; Endless ramps its own pace
 and Campaign uses its per-lap speed cycle.
 
