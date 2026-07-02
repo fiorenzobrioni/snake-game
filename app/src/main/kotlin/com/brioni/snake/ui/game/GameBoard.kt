@@ -582,8 +582,8 @@ private fun DrawScope.drawBoardBackground(
         shaders.background.setColorUniform("topColor", palette.boardTop.toArgb())
         shaders.background.setColorUniform("bottomColor", palette.boardBottom.toArgb())
     } else {
-        // A standalone terrain floor; cellPx grid-aligns its features (Meadow
-        // checker, Circuit traces).
+        // A standalone terrain floor; cellPx grid-aligns its features (e.g.
+        // the Meadow checker).
         layer.shader.setFloatUniform("origin", originX, originY)
         layer.shader.setFloatUniform("resolution", boardWidth, boardHeight)
         layer.shader.setFloatUniform("time", time)
@@ -669,11 +669,11 @@ private fun DrawScope.drawResumeBeacon(
  */
 private fun terrainGridLine(terrain: BoardTerrain, palette: SkinPalette): Color = when (terrain) {
     BoardTerrain.Default -> palette.gridLine
-    BoardTerrain.Meadow -> Color(0x16000000)
+    BoardTerrain.Meadow -> Color(0x1A000000)
     BoardTerrain.Abyss -> Color(0x1466D9FF)
     BoardTerrain.Nebula -> Color(0x10FFFFFF)
-    BoardTerrain.Dunes -> Color(0x12000000)
-    BoardTerrain.Circuit -> Color(0x1400FFD0)
+    BoardTerrain.Dunes -> Color(0x16000000)
+    BoardTerrain.Glacier -> Color(0x1A0A2038)
 }
 
 private fun DrawScope.drawObstacle(cell: Float, left: Float, top: Float, palette: SkinPalette) {

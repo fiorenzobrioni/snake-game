@@ -563,9 +563,11 @@ snake-game/
       lazily via `BoardShaders.terrainLayer`: **Meadow** (grid-aligned mowed-lawn checker, blade-noise
       texture, drifting cloud shadows), **Abyss** (deep-ocean caustic web + light shafts), **Nebula**
       (two-layer twinkling star field over drifting nebula wisps), **Dunes** (stacked moonlit dune ridges +
-      rare sand sparkles) and **Circuit** (grid-aligned PCB traces with travelling pulses). Terrains are
-      deliberately dark, desaturated and slowly animated (stages, not protagonists) and each carries its
-      own subtle grid-line tint (`terrainGridLine`). The Settings picker sits right under the skins as
+      rare sand sparkles) and a fifth grid-aligned floor. *(That fifth floor shipped as Circuit - dark PCB
+      traces with travelling pulses - and was replaced by **Glacier** in Step 7.11, which also brightened
+      Meadow / Abyss / Dunes.)* Terrains are deliberately calm and slowly animated (stages, not
+      protagonists) and each carries its own subtle grid-line tint (`terrainGridLine`). The Settings picker
+      sits right under the skins as
       **live animated shader preview cards**; all terrains are free (no unlock gating - can be revisited
       later). Settings also got **cleaner**: the Level / Snake speed / Board scale selectors were removed,
       since they duplicated the Custom Game setup screen (both edit the same persisted preferences).
@@ -587,6 +589,15 @@ snake-game/
       ON_STOP), so it can never restart the run unseen. (3) The Campaign intro banner shows lap
       progress - **"Level 3/15"** - via `LevelIntroOverlay`'s new `levelCount` param fed from
       `LevelsMode.LEVEL_COUNT`, so a future level-count change updates it automatically.
+- [x] **Step 7.11 - Terrain tuning pass (user feedback).** (1) The **pause blur now lifts during the
+      resume countdown**: the 3-2-1 exists to re-find the snake, so the board snaps back into focus
+      (animated 14dp→0) the moment Resume is tapped, staying as sharp as during play. (2) **Meadow,
+      Abyss and Dunes brightened** - higher-key base gradients, stronger caustics/crest glints/cloud
+      contrast and a shallower vignette - after feedback that they read too dark in play. (3) **Circuit
+      replaced by Glacier**: a frozen lake, deliberately the brightest floor of the set - pale icy blue
+      mottled surface, two ridged-noise layers of bright static crack veins, a diagonal internal sheen
+      drifting through the ice and cool twinkling glints. The old persisted `Circuit` value decodes to
+      the `Default` terrain via the existing `runCatching` enum fallback, so stale prefs cannot crash.
 
 ---
 

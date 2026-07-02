@@ -192,8 +192,11 @@ fun GameScreen(
     }
 
     // Pause blur (step 3.4): blurs the frozen board behind the overlay scrim.
+    // It lifts during the resume countdown - the whole point of the 3-2-1 is
+    // re-finding the snake, so the board must be as sharp as during play (the
+    // animated 14dp→0 makes the resume read as "snapping back into focus").
     val blurRadius by animateDpAsState(
-        targetValue = if (state.status == GameStatus.Paused) 14.dp else 0.dp,
+        targetValue = if (state.status == GameStatus.Paused && viewModel.resumeCountdown == 0) 14.dp else 0.dp,
         label = "pauseBlur",
     )
 

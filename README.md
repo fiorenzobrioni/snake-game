@@ -80,9 +80,9 @@ The classic Snake mechanics, extended with configurable features so every run fe
   the skin's own gradient (with its drifting glows), or swap the stage entirely: **Meadow** (a mowed
   two-tone lawn under drifting cloud shadows), **Abyss** (a deep-ocean floor lit by animated caustics
   and faint light shafts), **Nebula** (a twinkling star field over slowly drifting nebula wisps),
-  **Dunes** (a night desert with moonlit dune crests and sparkling sand) and **Circuit** (a dark
-  circuit board whose grid-aligned traces carry travelling pulses). Every terrain is an AGSL shader,
-  kept dark and slowly animated so the snake, food and obstacles stay perfectly readable.
+  **Dunes** (a night desert with moonlit dune crests and sparkling sand) and **Glacier** (a frozen
+  lake veined with bright cracks, an internal drifting sheen and cool glints). Every terrain is an
+  AGSL shader, kept calm and slowly animated so the snake, food and obstacles stay perfectly readable.
 - 🌗 **Theme** - choose **Light**, **Dark** or **System** (follows the device) in Settings.
 - 🔊 **Music & sound effects** - looping background music that crossfades between the menu and
   gameplay, plus SFX for eating, shrinking, mystery pieces, game over and UI. Independent

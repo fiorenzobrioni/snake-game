@@ -13,6 +13,43 @@ Suggested format for each entry:
 
 ---
 
+## 2026-07-02 - Terrain tuning pass: sharp resume, brighter floors, Circuit → Glacier
+
+**Done (all from on-device user feedback):**
+- **Resume countdown is now sharp.** The step-3.4 pause blur stayed at 14dp through the 3-2-1
+  because the status is still `Paused` while counting - defeating the countdown's whole purpose.
+  The blur target now also checks `resumeCountdown == 0`, so tapping Resume animates 14dp→0 and
+  the board is as crisp as during play while the digits tick (the animated un-blur doubles as a
+  nice "snapping back into focus" transition).
+- **Meadow / Abyss / Dunes brightened** - they read too dark in play:
+  - Meadow: grass checker lifted ~50% (0.090/0.205 base), stronger blade contrast, cloud range
+    widened to 0.80-1.10, vignette floor 0.80 → 0.84.
+  - Abyss: water column roughly doubled in key (top 0.034/0.100/0.160), caustics widened
+    (exponent 4.0 → 3.5) and brightened (0.10/0.32/0.38), stronger light shafts, vignette 0.82.
+  - Dunes: sand gradient lifted ~60% (top 0.170/0.112/0.064), deeper below-crest shading (0.84)
+    with warmer, stronger crest glints, sparkle gain 0.45 → 0.55, vignette 0.84.
+- **Circuit replaced by Glacier** (the PCB floor didn't land): a **frozen lake**, deliberately the
+  brightest floor of the set as requested - a pale icy blue surface (top 0.150/0.230/0.330)
+  mottled by soft noise, veined with **bright static cracks** (two ridged-noise layers, coarse +
+  fine, sharpened via smoothstep+pow), an internal sheen band drifting diagonally through the ice
+  and cool twinkling glints. Grid line: a subtle dark blue (0x1A0A2038). All `Circuit` references
+  renamed across the enum, shader map, grid tints, the Settings preview map and docs; a stale
+  persisted `"Circuit"` pref decodes to `Default` through the existing `runCatching` fallback.
+
+**Decisions:**
+- Brightness went up by raising the base gradients and effect gains rather than flattening the
+  vignette entirely - the floors keep depth, they just sit a register higher. Ready to tune
+  further per-floor if anything still reads muddy on device.
+- Glacier's cracks are static (real ice doesn't crawl); only the sheen and glints animate, in
+  keeping with the "stage, not protagonist" rule even on the brightest floor.
+
+**Issues:** none - build and 164 tests green (system Gradle 8.14.3).
+
+**Next:** Device pass over the three brightened floors and Glacier's key (snake/food contrast on
+the pale ice is the thing to eyeball; the obstacle grays should still separate).
+
+---
+
 ## 2026-07-02 - Live skin previews, pause-resume countdown, Campaign level progress
 
 **Done:**

@@ -471,8 +471,8 @@ private fun TerrainCard(
                 layer.shader.setColorUniform("topColor", skinPalette.boardTop.toArgb())
                 layer.shader.setColorUniform("bottomColor", skinPalette.boardBottom.toArgb())
             } else {
-                // A miniature grid pitch so cell-aligned features (Meadow checker,
-                // Circuit traces) read at card scale.
+                // A miniature grid pitch so cell-aligned features (e.g. the
+                // Meadow checker) read at card scale.
                 layer.shader.setFloatUniform("cellPx", size.width / 9f)
             }
             drawRect(brush = layer.brush)
@@ -494,7 +494,7 @@ private fun terrainShaderSource(terrain: BoardTerrain): String = when (terrain) 
     BoardTerrain.Abyss -> Shaders.ABYSS
     BoardTerrain.Nebula -> Shaders.NEBULA
     BoardTerrain.Dunes -> Shaders.DUNES
-    BoardTerrain.Circuit -> Shaders.CIRCUIT
+    BoardTerrain.Glacier -> Shaders.GLACIER
 }
 
 /**

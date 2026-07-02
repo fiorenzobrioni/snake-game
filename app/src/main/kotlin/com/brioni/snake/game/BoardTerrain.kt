@@ -8,10 +8,10 @@ package com.brioni.snake.game
  * model only as an identifier + label; the concrete shaders are mapped in the UI
  * layer (`ui/game/Shaders` / `GameBoard.drawBoardBackground`).
  *
- * Terrains are stages, not protagonists: every one is kept dark, desaturated and
- * slowly animated so gameplay readability never suffers under any skin. The enum
- * order is the order shown in the Settings picker; all are available from the
- * start (no unlock gating, unlike skins).
+ * Terrains are stages, not protagonists: every one is kept calm (mid-to-dark,
+ * softly saturated) and slowly animated so gameplay readability never suffers
+ * under any skin. The enum order is the order shown in the Settings picker; all
+ * are available from the start (no unlock gating, unlike skins).
  */
 enum class BoardTerrain(val displayName: String) {
     /** The skin's own board: its gradient with drifting glows. Default. */
@@ -29,6 +29,6 @@ enum class BoardTerrain(val displayName: String) {
     /** Night desert: layered dune ridges with crest glints and sparkling sand. */
     Dunes("Dunes"),
 
-    /** Dark circuit board: grid-aligned traces with pulses travelling along them. */
-    Circuit("Circuit"),
+    /** Frozen lake: pale icy blue with bright crack veins, a drifting sheen and sparkles. */
+    Glacier("Glacier"),
 }
