@@ -5,12 +5,14 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
@@ -27,7 +29,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import com.brioni.snake.ui.components.SnakeButton
+import com.brioni.snake.ui.components.ScreenHeader
+import com.brioni.snake.ui.components.SnakeOutlinedButton
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.material3.MaterialTheme
@@ -74,6 +77,10 @@ import kotlin.math.roundToInt
  * Volume changes preview live through [audio] while dragging and persist when
  * the gesture ends. Per-run choices (level, snake speed, board scale) live on
  * the Custom Game setup screen instead, so they are not duplicated here.
+ *
+ * The options are grouped into titled glass cards ([SettingsCard]) — Controls /
+ * Appearance / Gameplay / Audio & feedback / Accessibility & help — so the long
+ * list scans as a handful of topics instead of a flat column.
  */
 @Composable
 fun SettingsScreen(
@@ -98,137 +105,180 @@ fun SettingsScreen(
     }
     val scope = rememberCoroutineScope()
 
+    Column(modifier = modifier.fillMaxSize()) {
+        ScreenHeader(
+            title = stringResource(R.string.settings_title),
+            onBack = onBack,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(start = 20.dp, end = 20.dp, bottom = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            SettingsCard(title = stringResource(R.string.settings_section_controls)) {
+                ChoiceSection(
+                    title = stringResource(R.string.settings_control_scheme),
+                    options = ControlScheme.entries,
+                    selected = settings.controlScheme,
+                    label = { it.displayName },
+                    onSelected = { scheme -> scope.launch { repo.setControlScheme(scheme) } },
+                )
+
+                // The swipe-distance threshold only applies to the Swipe scheme, so it
+                // is surfaced just when that scheme is active.
+                if (settings.controlScheme == ControlScheme.Swipe) {
+                    SensitivitySection(
+                        value = settings.swipeSensitivity,
+                        onCommit = { scope.launch { repo.setSwipeSensitivity(it) } },
+                    )
+                }
+
+                ChoiceSection(
+                    title = stringResource(R.string.settings_back_behavior),
+                    options = BackBehavior.entries,
+                    selected = settings.backBehavior,
+                    label = { it.displayName },
+                    onSelected = { behavior -> scope.launch { repo.setBackBehavior(behavior) } },
+                )
+            }
+
+            // Level, Snake speed and Board scale deliberately do NOT appear here:
+            // they live on the Custom Game setup screen (same persisted preferences),
+            // so Settings stays a home for the app-wide, non-per-run options.
+
+            SettingsCard(title = stringResource(R.string.settings_section_appearance)) {
+                SkinSection(
+                    selected = settings.skin,
+                    unlocked = unlockedSkins,
+                    onSelected = { skin -> scope.launch { repo.setSkin(skin) } },
+                )
+
+                TerrainSection(
+                    selected = settings.terrain,
+                    skinPalette = paletteFor(settings.skin),
+                    onSelected = { terrain -> scope.launch { repo.setTerrain(terrain) } },
+                )
+
+                ChoiceSection(
+                    title = stringResource(R.string.settings_theme),
+                    options = ThemeMode.entries,
+                    selected = settings.themeMode,
+                    label = { it.displayName },
+                    onSelected = { themeMode -> scope.launch { repo.setThemeMode(themeMode) } },
+                )
+
+                ToggleSection(
+                    title = stringResource(R.string.settings_crt_filter),
+                    checked = settings.crtEnabled,
+                    onCheckedChange = { enabled -> scope.launch { repo.setCrtEnabled(enabled) } },
+                )
+            }
+
+            SettingsCard(title = stringResource(R.string.settings_section_gameplay)) {
+                ToggleSection(
+                    title = stringResource(R.string.settings_hazards),
+                    checked = settings.hazardsEnabled,
+                    onCheckedChange = { enabled -> scope.launch { repo.setHazardsEnabled(enabled) } },
+                )
+
+                ChoiceSection(
+                    title = stringResource(R.string.settings_special_frequency),
+                    options = SpecialFrequency.entries,
+                    selected = settings.specialFrequency,
+                    label = { it.displayName },
+                    onSelected = { value -> scope.launch { repo.setSpecialFrequency(value) } },
+                )
+            }
+
+            SettingsCard(title = stringResource(R.string.settings_section_audio)) {
+                VolumeSection(
+                    title = stringResource(R.string.settings_master_volume),
+                    value = settings.masterVolume,
+                    onPreview = { audio.previewVolumes(it, settings.musicVolume, settings.sfxVolume) },
+                    onCommit = { scope.launch { repo.setMasterVolume(it) } },
+                )
+
+                VolumeSection(
+                    title = stringResource(R.string.settings_music_volume),
+                    value = settings.musicVolume,
+                    onPreview = { audio.previewVolumes(settings.masterVolume, it, settings.sfxVolume) },
+                    onCommit = { scope.launch { repo.setMusicVolume(it) } },
+                )
+
+                VolumeSection(
+                    title = stringResource(R.string.settings_sfx_volume),
+                    value = settings.sfxVolume,
+                    onPreview = { audio.previewVolumes(settings.masterVolume, settings.musicVolume, it) },
+                    onCommit = { scope.launch { repo.setSfxVolume(it) } },
+                )
+
+                ToggleSection(
+                    title = stringResource(R.string.settings_haptics),
+                    checked = settings.hapticsEnabled,
+                    onCheckedChange = { enabled -> scope.launch { repo.setHapticsEnabled(enabled) } },
+                )
+            }
+
+            SettingsCard(title = stringResource(R.string.settings_section_access)) {
+                ToggleSection(
+                    title = stringResource(R.string.settings_reduce_motion),
+                    checked = settings.reduceMotion,
+                    onCheckedChange = { enabled -> scope.launch { repo.setReduceMotion(enabled) } },
+                )
+
+                // Replay the first-run tutorial on demand (Step 6.9.16).
+                SnakeOutlinedButton(
+                    onClick = onShowTutorial,
+                    modifier = Modifier
+                        .padding(top = 16.dp)
+                        .widthIn(min = 200.dp)
+                        .align(Alignment.CenterHorizontally),
+                ) {
+                    Text(stringResource(R.string.settings_how_to_play))
+                }
+            }
+        }
+    }
+}
+
+/**
+ * A titled glass card grouping related settings: the faint gradient fill and
+ * primary-tinted rim of the `SnakeButtons` family, so the whole Settings screen
+ * reads as one system with the menus.
+ */
+@Composable
+private fun SettingsCard(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val shape = RoundedCornerShape(18.dp)
+    val fill = Brush.verticalGradient(
+        listOf(scheme.onBackground.copy(alpha = 0.07f), scheme.onBackground.copy(alpha = 0.02f)),
+    )
+    val rim = Brush.verticalGradient(
+        listOf(scheme.primary.copy(alpha = 0.45f), scheme.primary.copy(alpha = 0.12f)),
+    )
     Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 16.dp)
+            .clip(shape)
+            .background(fill)
+            .border(BorderStroke(1.dp, rim), shape)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
         Text(
-            text = stringResource(R.string.settings_title),
-            style = MaterialTheme.typography.headlineMedium,
+            text = title,
+            style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 8.dp),
+            color = MaterialTheme.colorScheme.secondary,
         )
-
-        // Replay the first-run tutorial on demand (Step 6.9.16).
-        SnakeButton(
-            onClick = onShowTutorial,
-            modifier = Modifier.padding(top = 4.dp, bottom = 4.dp).widthIn(min = 200.dp),
-        ) {
-            Text(stringResource(R.string.settings_how_to_play))
-        }
-
-        ChoiceSection(
-            title = stringResource(R.string.settings_control_scheme),
-            options = ControlScheme.entries,
-            selected = settings.controlScheme,
-            label = { it.displayName },
-            onSelected = { scheme -> scope.launch { repo.setControlScheme(scheme) } },
-        )
-
-        // The swipe-distance threshold only applies to the Swipe scheme, so it is
-        // surfaced just when that scheme is active.
-        if (settings.controlScheme == ControlScheme.Swipe) {
-            SensitivitySection(
-                value = settings.swipeSensitivity,
-                onCommit = { scope.launch { repo.setSwipeSensitivity(it) } },
-            )
-        }
-
-        // Level, Snake speed and Board scale deliberately do NOT appear here:
-        // they live on the Custom Game setup screen (same persisted preferences),
-        // so Settings stays a home for the app-wide, non-per-run options.
-
-        SkinSection(
-            selected = settings.skin,
-            unlocked = unlockedSkins,
-            onSelected = { skin -> scope.launch { repo.setSkin(skin) } },
-        )
-
-        TerrainSection(
-            selected = settings.terrain,
-            skinPalette = paletteFor(settings.skin),
-            onSelected = { terrain -> scope.launch { repo.setTerrain(terrain) } },
-        )
-
-        ChoiceSection(
-            title = stringResource(R.string.settings_theme),
-            options = ThemeMode.entries,
-            selected = settings.themeMode,
-            label = { it.displayName },
-            onSelected = { themeMode -> scope.launch { repo.setThemeMode(themeMode) } },
-        )
-
-        ToggleSection(
-            title = stringResource(R.string.settings_hazards),
-            checked = settings.hazardsEnabled,
-            onCheckedChange = { enabled -> scope.launch { repo.setHazardsEnabled(enabled) } },
-        )
-
-        ChoiceSection(
-            title = stringResource(R.string.settings_special_frequency),
-            options = SpecialFrequency.entries,
-            selected = settings.specialFrequency,
-            label = { it.displayName },
-            onSelected = { value -> scope.launch { repo.setSpecialFrequency(value) } },
-        )
-
-        VolumeSection(
-            title = stringResource(R.string.settings_master_volume),
-            value = settings.masterVolume,
-            onPreview = { audio.previewVolumes(it, settings.musicVolume, settings.sfxVolume) },
-            onCommit = { scope.launch { repo.setMasterVolume(it) } },
-        )
-
-        VolumeSection(
-            title = stringResource(R.string.settings_music_volume),
-            value = settings.musicVolume,
-            onPreview = { audio.previewVolumes(settings.masterVolume, it, settings.sfxVolume) },
-            onCommit = { scope.launch { repo.setMusicVolume(it) } },
-        )
-
-        VolumeSection(
-            title = stringResource(R.string.settings_sfx_volume),
-            value = settings.sfxVolume,
-            onPreview = { audio.previewVolumes(settings.masterVolume, settings.musicVolume, it) },
-            onCommit = { scope.launch { repo.setSfxVolume(it) } },
-        )
-
-        ToggleSection(
-            title = stringResource(R.string.settings_haptics),
-            checked = settings.hapticsEnabled,
-            onCheckedChange = { enabled -> scope.launch { repo.setHapticsEnabled(enabled) } },
-        )
-
-        ToggleSection(
-            title = stringResource(R.string.settings_reduce_motion),
-            checked = settings.reduceMotion,
-            onCheckedChange = { enabled -> scope.launch { repo.setReduceMotion(enabled) } },
-        )
-
-        ToggleSection(
-            title = stringResource(R.string.settings_crt_filter),
-            checked = settings.crtEnabled,
-            onCheckedChange = { enabled -> scope.launch { repo.setCrtEnabled(enabled) } },
-        )
-
-        ChoiceSection(
-            title = stringResource(R.string.settings_back_behavior),
-            options = BackBehavior.entries,
-            selected = settings.backBehavior,
-            label = { it.displayName },
-            onSelected = { behavior -> scope.launch { repo.setBackBehavior(behavior) } },
-        )
-
-        SnakeButton(
-            onClick = onBack,
-            modifier = Modifier.padding(top = 32.dp).widthIn(min = 200.dp),
-        ) {
-            Text(stringResource(R.string.action_menu))
-        }
+        content()
     }
 }
 
@@ -242,7 +292,7 @@ private fun <T> ChoiceSection(
     onSelected: (T) -> Unit,
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
@@ -283,7 +333,7 @@ private fun SkinSection(
     onSelected: (Skin) -> Unit,
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
@@ -404,7 +454,7 @@ private fun TerrainSection(
     onSelected: (BoardTerrain) -> Unit,
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
@@ -443,7 +493,7 @@ private fun TerrainCard(
     time: Float,
     onClick: () -> Unit,
 ) {
-    val layer = remember(terrain) { TerrainLayer(terrainShaderSource(terrain)) }
+    val layer = remember(terrain) { TerrainLayer(Shaders.menuBackdropSource(terrain)) }
     val border = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -485,16 +535,6 @@ private fun TerrainCard(
             modifier = Modifier.padding(top = 8.dp),
         )
     }
-}
-
-/** The AGSL source behind each terrain's preview card (Arcade = the skin gradient). */
-private fun terrainShaderSource(terrain: BoardTerrain): String = when (terrain) {
-    BoardTerrain.Arcade -> Shaders.BACKGROUND
-    BoardTerrain.Meadow -> Shaders.MEADOW
-    BoardTerrain.Abyss -> Shaders.ABYSS
-    BoardTerrain.Nebula -> Shaders.NEBULA
-    BoardTerrain.Dunes -> Shaders.DUNES
-    BoardTerrain.Glacier -> Shaders.GLACIER
 }
 
 /**
@@ -543,7 +583,7 @@ private fun SensitivitySection(
     LaunchedEffect(value) { sliderValue = value }
 
     Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
@@ -569,7 +609,7 @@ private fun ToggleSection(
     onCheckedChange: (Boolean) -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -600,7 +640,7 @@ private fun VolumeSection(
     LaunchedEffect(value) { sliderValue = value }
 
     Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(

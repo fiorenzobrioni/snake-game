@@ -5,14 +5,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import com.brioni.snake.ui.components.SnakeButton
+import com.brioni.snake.ui.components.ScreenHeader
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -37,35 +36,30 @@ fun AchievementsScreen(
 ) {
     val unlocked by repo.unlockedAchievements().collectAsState(initial = emptySet())
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text = stringResource(R.string.achievements_title),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
+    Column(modifier = modifier.fillMaxSize()) {
+        ScreenHeader(
+            title = stringResource(R.string.achievements_title),
+            onBack = onBack,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
         )
-        Text(
-            text = stringResource(R.string.achievements_progress, unlocked.size, Achievement.entries.size),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-            modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
-        )
-
-        Achievement.entries.forEach { achievement ->
-            AchievementCard(achievement, isUnlocked = achievement.name in unlocked)
-        }
-
-        SnakeButton(
-            onClick = onBack,
-            modifier = Modifier.padding(top = 28.dp).widthIn(min = 200.dp),
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(stringResource(R.string.action_menu))
+            Text(
+                text = stringResource(R.string.achievements_progress, unlocked.size, Achievement.entries.size),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+
+            Achievement.entries.forEach { achievement ->
+                AchievementCard(achievement, isUnlocked = achievement.name in unlocked)
+            }
         }
     }
 }

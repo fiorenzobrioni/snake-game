@@ -14,6 +14,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import com.brioni.snake.ui.components.ScreenHeader
 import com.brioni.snake.ui.components.SnakeButton
 import com.brioni.snake.ui.components.SnakeOutlinedButton
 import androidx.compose.runtime.Composable
@@ -43,61 +44,55 @@ fun RandomChallengeScreen(
 ) {
     var challenge by remember { mutableStateOf(Challenge.random()) }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text = stringResource(R.string.random_title),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 24.dp),
+    Column(modifier = modifier.fillMaxSize()) {
+        ScreenHeader(
+            title = stringResource(R.string.random_title),
+            onBack = onBack,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
         )
-
-        Card(
-            modifier = Modifier.fillMaxWidth().widthIn(max = 480.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-            shape = RoundedCornerShape(20.dp),
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+            Card(
+                modifier = Modifier.fillMaxWidth().widthIn(max = 480.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                shape = RoundedCornerShape(20.dp),
             ) {
-                Text(
-                    text = stringResource(R.string.random_subtitle),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(bottom = 16.dp),
-                )
-                ConfigRow(stringResource(R.string.daily_row_twist), challenge.modifier.displayName)
-                ConfigRow(stringResource(R.string.daily_row_mode), challenge.mode.displayName)
-                ConfigRow(stringResource(R.string.daily_row_level), challenge.level.displayName)
-                ConfigRow(stringResource(R.string.daily_row_board), challenge.scale.displayName)
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        text = stringResource(R.string.random_subtitle),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(bottom = 16.dp),
+                    )
+                    ConfigRow(stringResource(R.string.daily_row_twist), challenge.modifier.displayName)
+                    ConfigRow(stringResource(R.string.daily_row_mode), challenge.mode.displayName)
+                    ConfigRow(stringResource(R.string.daily_row_level), challenge.level.displayName)
+                    ConfigRow(stringResource(R.string.daily_row_board), challenge.scale.displayName)
+                }
             }
-        }
 
-        SnakeOutlinedButton(
-            onClick = { challenge = Challenge.random() },
-            modifier = Modifier.padding(top = 20.dp).widthIn(min = 220.dp),
-        ) {
-            Text(stringResource(R.string.random_shuffle))
-        }
-        SnakeButton(
-            onClick = { onPlay(challenge) },
-            modifier = Modifier.padding(top = 12.dp).widthIn(min = 220.dp),
-        ) {
-            Text(stringResource(R.string.random_play), style = MaterialTheme.typography.titleMedium)
-        }
-        SnakeOutlinedButton(
-            onClick = onBack,
-            modifier = Modifier.padding(top = 12.dp).widthIn(min = 220.dp),
-        ) {
-            Text(stringResource(R.string.action_menu))
+            SnakeOutlinedButton(
+                onClick = { challenge = Challenge.random() },
+                modifier = Modifier.padding(top = 20.dp).widthIn(min = 220.dp),
+            ) {
+                Text(stringResource(R.string.random_shuffle))
+            }
+            SnakeButton(
+                onClick = { onPlay(challenge) },
+                modifier = Modifier.padding(top = 12.dp).widthIn(min = 220.dp),
+            ) {
+                Text(stringResource(R.string.random_play), style = MaterialTheme.typography.titleMedium)
+            }
         }
     }
 }

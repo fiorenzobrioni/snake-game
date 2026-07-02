@@ -100,7 +100,9 @@ class MainActivity : ComponentActivity() {
                 applyBarAppearance()
                 onDispose {}
             }
-            SnakeGameTheme(darkTheme = darkTheme) {
+            // The selected terrain seeds the UI accent colours (see SnakeGameTheme),
+            // so the whole interface recolours with the player's chosen world.
+            SnakeGameTheme(terrain = settings.terrain, darkTheme = darkTheme) {
                 SnakeApp(repo)
             }
         }

@@ -13,6 +13,56 @@ Suggested format for each entry:
 
 ---
 
+## 2026-07-02 - Premium UI pass: terrain-seeded accents, terrain menus, back headers, Settings cards, bespoke icons
+
+**Done (Step 7.14):**
+- **The UI accent colour now follows the selected Board terrain.** New `TerrainAccents` +
+  `darkTerrainAccents` / `lightTerrainAccents` in `ui/theme/Color.kt`: each terrain seeds a tuned
+  primary/secondary pair into the Material scheme (Meadow chartreuse/green - identical to the old
+  brand, Abyss cyan, Nebula lavender, Dunes amber, Glacier ice; Arcade stays on brand green).
+  `SnakeGameTheme` takes the terrain from the persisted settings (via `MainActivity`) and animates
+  accent changes with a 600 ms colour cross-fade, so picking a terrain in Settings recolours the
+  whole app smoothly. The `SnakeButton` ink was neutralised (`0xFF0A0E10`) to stay crisp under
+  every accent family.
+- **The menu backdrop renders the selected terrain.** `AnimatedShaderBackground` gained a
+  `terrain` param and now compiles the terrain's own AGSL floor (shared source mapping moved to
+  `Shaders.menuBackdropSource`, also reused by the Settings preview cards); Arcade keeps the
+  classic drifting-glows gradient. Terrain floors are tuned for gameplay, not reading, so a
+  vertical scrim (heavy at the edges, lighter behind the brand hero) keeps menu text at full
+  contrast while the world stays visible as ambience.
+- **Back navigation moved to the top, per the Android guidelines.** New shared `ScreenHeader`
+  (glassy `MenuIconButton` back arrow + centred title) pinned above the scrolling content on
+  Settings, Records, Achievements, Daily, Daily history, Random and Credits; every bottom
+  "Menu" `SnakeButton` was removed (the system back gesture already routed correctly).
+- **Settings grouped into titled glass cards** - Controls / Appearance / Gameplay /
+  Audio & feedback / Accessibility & help - wearing the same faint gradient fill + primary-tinted
+  rim as the `SnakeButtons` family; the "Control scheme" label was renamed from "Controls" to not
+  clash with its section title, and "How to play" moved into the help card as an outlined button.
+- **Bespoke menu icons.** New `MenuIcons` (hand-authored 24x24 `ImageVector`s: tune sliders for
+  Custom Game, pinned calendar for Daily, five-face die for Random, trophy for Records, ribboned
+  medal for Achievements) replace the misfitting `material-icons-core` picks. The missions strip's
+  "✓"/"○" text pips became drawn glyphs (`MissionPip`) immune to system-font drift, and the
+  missions dialog got the glassy rim.
+
+**Decisions:**
+- *Fixed green vs dynamic accent*: went dynamic-by-terrain (user-confirmed). Terrain is the only
+  always-unlocked "world" choice, the per-terrain accent precedent already existed in-game
+  (`terrainBoardBorder`, Step 7.12), and the default (Meadow) preserves the green brand exactly.
+  The accents are hand-tuned per theme rather than derived from the frame colours, which are too
+  muted to carry a filled button.
+- *No `material-icons-extended`*: it would bloat the APK while R8 (Step 7.2) is still pending;
+  five hand-drawn vectors match the game's drawn-in-code art direction anyway.
+
+**Verification:** `gradle assembleDebug` + `gradle testDebugUnitTest` green (system Gradle 8.14.3;
+the sandbox's egress policy blocked the wrapper's distribution download - on a dev machine
+`./gradlew` remains the way). On-device smoke test still owed on: accent cross-fade when switching
+terrain, menu scrim legibility over the brighter floors (Meadow/Glacier), light-theme accents,
+and the icon shapes at tile size.
+
+**Next:** gather feedback on the terrain-accented menus; release hardening (Step 7.2).
+
+---
+
 ## 2026-07-02 - Terrain integration batch: intro frame, shaped danger flash, themed gates, Meadow default
 
 **Done (all from on-device user feedback):**

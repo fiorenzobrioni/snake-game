@@ -94,8 +94,9 @@ fun SnakeButton(
         targetValue = if (pressed && enabled) 0.96f else 1f,
         label = "snakeButtonScale",
     )
-    // A near-black green ink keeps the label crisp on the bright fill, on any skin.
-    val ink = Color(0xFF08120A)
+    // A neutral near-black ink keeps the label crisp on the bright fill under
+    // every terrain accent (green, cyan, violet, amber, ice).
+    val ink = Color(0xFF0A0E10)
     val fill = Brush.verticalGradient(
         listOf(lighten(primary, 0.18f), primary, darken(primary, 0.22f)),
     )

@@ -7,14 +7,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import com.brioni.snake.ui.components.SnakeButton
+import com.brioni.snake.ui.components.ScreenHeader
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -44,67 +43,60 @@ fun CreditsScreen(
         }.getOrNull().orEmpty()
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text = stringResource(R.string.credits_title),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 4.dp),
+    Column(modifier = modifier.fillMaxSize()) {
+        ScreenHeader(
+            title = stringResource(R.string.credits_title),
+            onBack = onBack,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
         )
-
-        // App identity block.
-        Text(
-            text = stringResource(R.string.app_name),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.tertiary,
-        )
-        if (version.isNotEmpty()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            // App identity block.
             Text(
-                text = stringResource(R.string.credits_version, version),
-                style = MaterialTheme.typography.bodyMedium,
+                text = stringResource(R.string.app_name),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.tertiary,
+            )
+            if (version.isNotEmpty()) {
+                Text(
+                    text = stringResource(R.string.credits_version, version),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                )
+            }
+            Text(
+                text = stringResource(R.string.credits_author),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            Text(
+                text = stringResource(R.string.credits_copyright),
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
             )
-        }
-        Text(
-            text = stringResource(R.string.credits_author),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(top = 4.dp),
-        )
-        Text(
-            text = stringResource(R.string.credits_copyright),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-        )
-        Text(
-            text = stringResource(R.string.credits_tagline),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 12.dp),
-        )
+            Text(
+                text = stringResource(R.string.credits_tagline),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 12.dp),
+            )
 
-        CreditSection(R.string.credits_section_license, R.string.credits_license_body)
-        CreditLinkSection(R.string.credits_section_source, R.string.credits_source_body)
-        CreditSection(R.string.credits_section_music, R.string.credits_music_body)
-        CreditSection(R.string.credits_section_sfx, R.string.credits_sfx_body)
-        CreditSection(R.string.credits_section_fonts, R.string.credits_fonts_body)
-        CreditSection(R.string.credits_section_art, R.string.credits_art_body)
-        CreditSection(R.string.credits_section_built, R.string.credits_built_body)
-
-        SnakeButton(
-            onClick = onBack,
-            modifier = Modifier.padding(top = 28.dp).widthIn(min = 200.dp),
-        ) {
-            Text(stringResource(R.string.action_menu))
+            CreditSection(R.string.credits_section_license, R.string.credits_license_body)
+            CreditLinkSection(R.string.credits_section_source, R.string.credits_source_body)
+            CreditSection(R.string.credits_section_music, R.string.credits_music_body)
+            CreditSection(R.string.credits_section_sfx, R.string.credits_sfx_body)
+            CreditSection(R.string.credits_section_fonts, R.string.credits_fonts_body)
+            CreditSection(R.string.credits_section_art, R.string.credits_art_body)
+            CreditSection(R.string.credits_section_built, R.string.credits_built_body)
         }
     }
 }

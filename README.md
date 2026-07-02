@@ -85,7 +85,11 @@ The classic Snake mechanics, extended with configurable features so every run fe
   sparkling sand) and **Glacier** (a frozen lake veined with bright cracks, an internal drifting
   sheen and cool glints). Every terrain is an AGSL shader, kept calm and slowly animated so the
   snake, food and obstacles stay perfectly readable; the board's frame - and the Campaign gates'
-  energy colour - take the selected terrain's accent (the skin's own border on Arcade).
+  energy colour - take the selected terrain's accent (the skin's own border on Arcade). The terrain
+  also **themes the whole interface**: the menus play its animated floor as their backdrop (under a
+  soft dark scrim) and seed the app's accent colour from it - Meadow keeps the classic green, Abyss
+  turns the chrome cyan, Nebula lavender, Dunes amber, Glacier ice - cross-fading smoothly when you
+  switch.
 - 🌗 **Theme** - choose **Light**, **Dark** or **System** (follows the device) in Settings.
 - 🔊 **Music & sound effects** - looping background music that crossfades between the menu and
   gameplay, plus SFX for eating, shrinking, mystery pieces, game over and UI. Independent

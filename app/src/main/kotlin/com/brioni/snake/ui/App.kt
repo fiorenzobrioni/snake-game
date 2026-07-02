@@ -35,6 +35,7 @@ import com.brioni.snake.audio.GameAudio
 import com.brioni.snake.audio.HapticController
 import com.brioni.snake.audio.MusicTrack
 import com.brioni.snake.data.SettingsRepository
+import com.brioni.snake.game.BoardTerrain
 import com.brioni.snake.game.GameStatus
 import com.brioni.snake.ui.game.GameScreen
 import com.brioni.snake.ui.game.GameViewModel
@@ -48,6 +49,7 @@ import com.brioni.snake.ui.menu.MainMenuScreen
 import com.brioni.snake.ui.onboarding.OnboardingScreen
 import com.brioni.snake.ui.records.RecordsScreen
 import com.brioni.snake.ui.settings.SettingsScreen
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /** The top-level destinations. [Intro] is the cold-launch brand splash. */
@@ -73,6 +75,10 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
     val scope = rememberCoroutineScope()
     // First-run flag: drives whether the splash hands off to the tutorial or the menu.
     val onboardingCompleted by repo.onboardingCompleted().collectAsState(initial = false)
+    // The selected terrain drives the shared menu backdrop (and, via the theme,
+    // the accent colours), so the menus live in the player's chosen world.
+    val terrainFlow = remember(repo) { repo.settings.map { it.terrain } }
+    val terrain by terrainFlow.collectAsState(initial = BoardTerrain.Meadow)
 
     var ordinal by rememberSaveable { mutableIntStateOf(Screen.Intro.ordinal) }
     val screen = Screen.entries[ordinal]
@@ -128,7 +134,7 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
         // Onboarding screen draws its own (always-dark) backdrop, so it is excluded
         // here to avoid stacking two animated shaders.
         if (darkTheme && screen != Screen.Game && screen != Screen.Intro && screen != Screen.Onboarding) {
-            AnimatedShaderBackground(modifier = Modifier.fillMaxSize())
+            AnimatedShaderBackground(modifier = Modifier.fillMaxSize(), terrain = terrain)
         }
 
         AnimatedContent(
