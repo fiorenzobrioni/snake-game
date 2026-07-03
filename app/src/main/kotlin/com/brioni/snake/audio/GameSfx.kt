@@ -33,6 +33,15 @@ interface GameSfx {
     /** Levels mode: the head jumped through a teleport pad. */
     fun teleport()
 
+    /** Time Attack: the clock entered the Fever Time finale. */
+    fun feverStarted()
+
+    /** Endless: the speed ramp stepped up a tier. */
+    fun speedTierUp()
+
+    /** The live score just passed the stored best mid-run. */
+    fun recordBroken()
+
     /** No-op sink — the ViewModel's default, so it runs and tests without audio. */
     object None : GameSfx {
         override fun ate(food: Food, combo: Int) {}
@@ -43,5 +52,8 @@ interface GameSfx {
         override fun lifeLost() {}
         override fun levelUp() {}
         override fun teleport() {}
+        override fun feverStarted() {}
+        override fun speedTierUp() {}
+        override fun recordBroken() {}
     }
 }

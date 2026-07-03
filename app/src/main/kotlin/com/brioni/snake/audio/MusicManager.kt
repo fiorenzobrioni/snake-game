@@ -44,6 +44,9 @@ class MusicManager(context: Context, private val scope: CoroutineScope) {
     private var masterVolume = 1f
     private var musicVolume = 1f
 
+    /** Playback tempo (1f = normal); >1 during the Time Attack Fever Time. */
+    private var tempo = 1f
+
     /** Whether the player should be sounding (vs. lifecycle-paused). */
     private var active = false
 
@@ -84,6 +87,7 @@ class MusicManager(context: Context, private val scope: CoroutineScope) {
             val target = effectiveVolume()
             incoming.setVolume(0f, 0f)
             incoming.start()
+            applyTempo(incoming)
             for (i in 1..FADE_STEPS) {
                 val f = i.toFloat() / FADE_STEPS
                 setVolume(incoming, target * f)
@@ -108,6 +112,7 @@ class MusicManager(context: Context, private val scope: CoroutineScope) {
         ensureFocus()
         setVolume(current, effectiveVolume())
         current?.takeIf { !it.isPlaying }?.start()
+        applyTempo(current)
     }
 
     fun setMasterVolume(value: Float) {
@@ -118,6 +123,28 @@ class MusicManager(context: Context, private val scope: CoroutineScope) {
     fun setMusicVolume(value: Float) {
         musicVolume = value.coerceIn(0f, 1f)
         if (fadeJob?.isActive != true) setVolume(current, effectiveVolume())
+    }
+
+    /**
+     * Speeds the current track up or back down (tempo only, pitch preserved) —
+     * the "music accelerates" cue for the Time Attack Fever Time. Applied to
+     * the live player and remembered for players created by later crossfades.
+     */
+    fun setTempo(rate: Float) {
+        val clamped = rate.coerceIn(0.5f, 2f)
+        if (clamped == tempo) return
+        tempo = clamped
+        applyTempo(current)
+    }
+
+    /** Applies the remembered [tempo] to [player]; only touches a live player. */
+    private fun applyTempo(player: MediaPlayer?) {
+        val p = player ?: return
+        runCatching {
+            // Setting playbackParams on a paused player would start it, so only
+            // retune while actually sounding; resume()/create() re-apply it.
+            if (p.isPlaying) p.playbackParams = p.playbackParams.setSpeed(tempo)
+        }
     }
 
     fun release() {

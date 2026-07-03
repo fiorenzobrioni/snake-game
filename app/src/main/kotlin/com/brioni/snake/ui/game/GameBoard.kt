@@ -175,6 +175,12 @@ fun GameBoard(
     // Near-miss danger flash envelope (0..1): re-traces the board's exact frame
     // (the rectangle, or the shaped Levels outline) in a hot terrain accent.
     dangerFlash: Float = 0f,
+    // Time Attack Fever Time: a sustained amber frame glow (0..1, pulsed by the
+    // caller) that keeps burning while the double-points finale runs.
+    feverGlow: Float = 0f,
+    // Endless speed-tier step: a one-shot golden frame flare (1→0 envelope) so
+    // every pace change is visible on the board itself, not just the HUD.
+    surgeFlash: Float = 0f,
     // Keeps the particle/redraw loop alive across the brief death-burst and
     // level-vanish transitions, after `running` has already gone false.
     effectsActive: Boolean = running,
@@ -542,6 +548,21 @@ fun GameBoard(
             val hot = lighten(terrainBoardBorder(terrain, palette), 0.35f)
             frame(hot.copy(alpha = 0.35f * dangerFlash), borderWidth * 3f) // soft halo
             frame(hot.copy(alpha = dangerFlash), borderWidth * 1.5f) // crisp flare
+        }
+
+        // Fever Time: the frame smoulders amber for the whole double-points
+        // finale — a sustained glow (pulsed by the caller), not a one-shot flash.
+        if (feverGlow > 0.001f) {
+            val amber = SpecialVisuals.FeverColor
+            frame(amber.copy(alpha = 0.30f * feverGlow), borderWidth * 3.2f) // outer heat
+            frame(amber.copy(alpha = 0.85f * feverGlow), borderWidth * 1.4f) // burning line
+        }
+
+        // Endless speed-up surge: a quick golden flare along the frame.
+        if (surgeFlash > 0.001f) {
+            val gold = SpecialVisuals.SurgeColor
+            frame(gold.copy(alpha = 0.30f * surgeFlash), borderWidth * 3f)
+            frame(gold.copy(alpha = 0.9f * surgeFlash), borderWidth * 1.5f)
         }
     }
 }

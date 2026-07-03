@@ -18,6 +18,6 @@ enum class GameMode(val displayName: String) {
     /** Score as much as possible before a fixed time runs out. */
     TimeAttack("Time Attack"),
 
-    /** Ten shaped boards cycling forever, faster each cycle, with lives. */
+    /** Fifteen shaped boards cycling forever, faster each cycle, with lives. */
     Levels("Campaign"),
 }

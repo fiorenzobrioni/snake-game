@@ -54,10 +54,15 @@ data class Settings(
     val onboardingCompleted: Boolean = false,
 )
 
-/** Default audio levels (also used as the in-memory fallback before load). */
+/**
+ * Default audio levels (also used as the in-memory fallback before load).
+ * Tuned quiet by design: the music should sit as a light backdrop under the
+ * gameplay and the SFX should punctuate without startling — players who want
+ * more can raise the sliders in Settings.
+ */
 const val DEFAULT_MASTER_VOLUME = 1f
-const val DEFAULT_MUSIC_VOLUME = 0.5f
-const val DEFAULT_SFX_VOLUME = 0.8f
+const val DEFAULT_MUSIC_VOLUME = 0.3f
+const val DEFAULT_SFX_VOLUME = 0.6f
 
 /**
  * Default swipe sensitivity. 0.5 is the midpoint and maps to the carefully tuned
@@ -209,6 +214,27 @@ class SettingsRepository(private val context: Context) {
         return best
     }
 
+    /**
+     * Campaign: the furthest 1-based level ever reached (the checkpoint), from
+     * which practice starts may begin. 1 until the player first advances.
+     */
+    fun campaignCheckpoint(): Flow<Int> =
+        context.dataStore.data.map { (it[CAMPAIGN_CHECKPOINT] ?: 1).coerceAtLeast(1) }
+
+    /** Raises the stored checkpoint to [levelIndex] iff it is further (monotonic). */
+    suspend fun submitCampaignCheckpoint(levelIndex: Int) =
+        edit { prefs ->
+            prefs[CAMPAIGN_CHECKPOINT] = max(prefs[CAMPAIGN_CHECKPOINT] ?: 1, levelIndex)
+        }
+
+    /** Campaign: the player's chosen starting level for the next run (default 1). */
+    fun campaignStartLevel(): Flow<Int> =
+        context.dataStore.data.map { (it[CAMPAIGN_START_LEVEL] ?: 1).coerceAtLeast(1) }
+
+    /** Persists the chosen Campaign starting level. */
+    suspend fun setCampaignStartLevel(levelIndex: Int) =
+        edit { it[CAMPAIGN_START_LEVEL] = levelIndex.coerceAtLeast(1) }
+
     /** The stored Daily Challenge best for [epochDay] (0 if not played yet). */
     fun dailyBest(epochDay: Long): Flow<Int> =
         context.dataStore.data.map { it[dailyBestKey(epochDay)] ?: 0 }
@@ -342,5 +368,7 @@ class SettingsRepository(private val context: Context) {
         val COMPLETED_MISSIONS = stringSetPreferencesKey("completed_missions")
         val DAILY_STREAK = intPreferencesKey("daily_streak")
         val DAILY_LAST_DAY = longPreferencesKey("daily_last_day")
+        val CAMPAIGN_CHECKPOINT = intPreferencesKey("campaign_checkpoint")
+        val CAMPAIGN_START_LEVEL = intPreferencesKey("campaign_start_level")
     }
 }

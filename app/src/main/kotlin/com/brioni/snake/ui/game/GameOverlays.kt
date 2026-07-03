@@ -84,10 +84,13 @@ fun ReadyOverlay(
     selectedLevel: Level,
     selectedSnakeSpeed: SnakeSpeed,
     selectedScale: BoardScale,
+    campaignCheckpoint: Int,
+    campaignStartLevel: Int,
     onModeSelected: (GameMode) -> Unit,
     onLevelSelected: (Level) -> Unit,
     onSnakeSpeedSelected: (SnakeSpeed) -> Unit,
     onScaleSelected: (BoardScale) -> Unit,
+    onCampaignStartSelected: (Int) -> Unit,
     onPlay: () -> Unit,
 ) {
     OverlayScrim(alpha = 0.55f) {
@@ -108,11 +111,47 @@ fun ReadyOverlay(
             }
         }
 
+        // Campaign checkpoints: once the player has reached past level 1, the
+        // run may start from any reached level. Starting past 1 is a practice
+        // run (records count from a Level 1 start), which the caption states.
+        if (selectedMode == GameMode.Levels && campaignCheckpoint > 1) {
+            ChipSection(
+                title = stringResource(R.string.menu_campaign_start),
+                caption = if (campaignStartLevel > 1) {
+                    stringResource(R.string.menu_campaign_practice_note)
+                } else {
+                    null
+                },
+            ) {
+                (1..campaignCheckpoint).forEach { levelIndex ->
+                    FilterChip(
+                        selected = levelIndex == campaignStartLevel,
+                        onClick = { onCampaignStartSelected(levelIndex) },
+                        label = { Text(levelIndex.toString()) },
+                    )
+                }
+            }
+        }
+
         // Campaign mode has its own speed curve and shaped boards: the difficulty
         // selector stays in place but is disabled (and ignored by the ViewModel)
         // while it is active, so the menu layout never reflows.
         val levelSelectable = selectedMode != GameMode.Levels
-        ChipSection(title = stringResource(R.string.menu_level), enabled = levelSelectable) {
+        ChipSection(
+            title = stringResource(R.string.menu_level),
+            enabled = levelSelectable,
+            // Endless: spell out what the difficulty actually changes — the
+            // obstacle density and where its speed ramp starts.
+            caption = if (selectedMode == GameMode.Endless) {
+                stringResource(
+                    R.string.menu_endless_level_hint,
+                    selectedLevel.obstacleCount,
+                    1 + selectedLevel.endlessTierHeadStart,
+                )
+            } else {
+                null
+            },
+        ) {
             Level.entries.forEach { level ->
                 FilterChip(
                     selected = level == selectedLevel,
@@ -125,14 +164,23 @@ fun ReadyOverlay(
 
         // Snake speed is independent of the level's obstacle layout. Endless ramps
         // its own pace and Levels paces by its speed cycle, so the selector is
-        // disabled (and ignored) in those modes - the layout never reflows.
+        // disabled (and ignored) in those modes - the layout never reflows. In
+        // Time Attack the pace also declares its score multiplier on each chip.
         val speedSelectable = selectedMode == GameMode.TimeAttack
-        ChipSection(title = stringResource(R.string.menu_snake_speed), enabled = speedSelectable) {
+        ChipSection(
+            title = stringResource(R.string.menu_snake_speed),
+            enabled = speedSelectable,
+            caption = if (speedSelectable) stringResource(R.string.menu_speed_multiplier_hint) else null,
+        ) {
             SnakeSpeed.entries.forEach { speed ->
                 FilterChip(
                     selected = speed == selectedSnakeSpeed,
                     onClick = { onSnakeSpeedSelected(speed) },
-                    label = { Text(speed.label) },
+                    label = {
+                        Text(
+                            if (speedSelectable) "${speed.label} · ${speed.timeAttackFactorLabel}" else speed.label,
+                        )
+                    },
                     enabled = speedSelectable,
                 )
             }
@@ -160,7 +208,13 @@ fun ReadyOverlay(
 }
 
 @Composable
-private fun ChipSection(title: String, enabled: Boolean = true, chips: @Composable () -> Unit) {
+private fun ChipSection(
+    title: String,
+    enabled: Boolean = true,
+    /** An optional explanatory line under the chips (what this choice changes). */
+    caption: String? = null,
+    chips: @Composable () -> Unit,
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -180,6 +234,15 @@ private fun ChipSection(title: String, enabled: Boolean = true, chips: @Composab
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         ) {
             chips()
+        }
+        if (caption != null) {
+            Text(
+                text = caption,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 6.dp),
+            )
         }
     }
 }
@@ -411,6 +474,8 @@ fun GameOverOverlay(
     onSetup: () -> Unit,
     onMenu: () -> Unit,
     showBest: Boolean = true,
+    /** True after a Campaign practice start: the run's score was not recorded. */
+    practiceRun: Boolean = false,
     summary: RunSummary? = null,
     missions: List<MissionProgress> = emptyList(),
 ) {
@@ -439,6 +504,14 @@ fun GameOverOverlay(
                 fontWeight = if (isNewBest) FontWeight.Bold else FontWeight.Normal,
                 color = if (isNewBest) MaterialTheme.colorScheme.primary
                 else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        }
+        if (practiceRun) {
+            Text(
+                text = stringResource(R.string.game_over_practice),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                 modifier = Modifier.padding(top = 6.dp),
             )
         }

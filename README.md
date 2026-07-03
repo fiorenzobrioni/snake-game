@@ -141,16 +141,21 @@ The classic Snake mechanics, extended with configurable features so every run fe
   settings; a separate **Custom** entry opens the full pre-game setup (mode, level, snake speed, board
   scale) when you want to tweak everything.
 - 📅 **Daily Challenge** - a date-seeded run with the same mode, level, board and **daily twist** for
-  everyone that day (the twist rotates through Bonus Rush, Frenzy and Compact Arena; the obstacle layout
-  and food sequence come from the day's seed). Beat your **best today** and build a **day streak** (which
+  everyone that day (the twist rotates through **nine** flavours - Bonus Rush, Frenzy, Compact Arena,
+  Grand Arena, Maxi Feast, Combo Rush, Overdrive, Old School or plain Standard - each described on the
+  Daily card; the obstacle layout and food sequence come from the day's seed). Beat your **best today** and build a **day streak** (which
   unlocks the Aurora and Ember skins at 7 and 30 days). A **This Week** screen shows your last 7 days of
   Daily results and a weekly best / total; tap any day there to **replay** that day's exact challenge -
   just for fun, your recorded results are never overwritten. Reached from the main menu.
 - 🎲 **Random Challenge** - a one-off surprise run for variety: **Shuffle** for a fresh mode / level /
   board / twist mix, then play. Nothing is recorded - it's pure fun.
-- 🕹️ **Game modes** - **Endless** (speed ramps up the longer you survive; the default),
-  **Time Attack** (score as much as you can in 120s) and **Campaign** (see below), selectable on the
-  **Custom** setup screen.
+- 🕹️ **Game modes** - **Endless** (the default: the pace climbs through announced **speed tiers**
+  the longer you survive - each step flashes a *"Speed N!"* banner, a golden board flare and a zap,
+  with the live tier in the HUD; harder difficulty levels start the ramp hotter), **Time Attack**
+  (score as much as you can in 120s - your chosen pace sets a declared **score multiplier**, up to
+  ×1.5 at Turbo, and the final 20 seconds are **Fever Time**: double points under an amber board
+  glow while the music speeds up) and **Campaign** (see below), selectable on the **Custom** setup
+  screen. Beating your stored best mid-run pops a live **"New record!"** celebration in any mode.
 - 🧩 **Campaign mode** - fifteen **designed board shapes** (cut corners, pillars, chambers, a vault,
   and a tougher late-game gauntlet…) that repeat forever, one **speed step faster** each lap. Eat **12 foods** to clear a level; you
   start with **3 lives** (a crash respawns you in the same level, keeping score and progress) and a
@@ -159,6 +164,10 @@ The classic Snake mechanics, extended with configurable features so every run fe
   (*"Level 3/15"*) plus the speed lap. The Level and Snake speed
   selectors are disabled here - the mode has its own layouts and pace - and the Records screen tracks both your best
   score and the deepest level you reached per board scale.
+  - 🚩 **Checkpoints** - every level you reach stays unlocked as a starting point: a **Start level**
+    selector appears on the setup screen once you get past level 1, so you can jump straight to the
+    later designed boards. Starting past level 1 is a **practice run** - great for learning a level,
+    but records and Campaign achievements only count from a Level 1 start (the game says so up front).
   - 🚧 **Environmental hazards** - some levels add **moving-wall gates**: glowing energy barriers,
     tinted to match the selected board terrain, that
     open and close on a rhythm (they strobe a warning before slamming shut, so time your dash through),
@@ -185,16 +194,17 @@ floats the amount of segments gained or lost (**+N** / **−N**) at the food.
 
 ### ⚔️ Levels (obstacles)
 
-The **Level** sets only how many obstacles are placed; it no longer affects speed (see *Snake speed*
-below), so any level can be paired with any pace.
+The **Level** sets how many obstacles are placed and, in **Endless**, how hot the speed ramp starts
+(a per-level tier head start, so Legend is faster from the first tick as well as denser); the
+selectable pace (see *Snake speed* below) stays independent.
 
-| Level | Name        | Obstacles (Cozy) |
-|-------|-------------|------------------|
-| 1     | Beginner    | 0                |
-| 2     | Adventurer  | 8                |
-| 3     | Warrior     | 15               |
-| 4     | Champion    | 25               |
-| 5     | Legend      | 40               |
+| Level | Name        | Obstacles (Cozy) | Endless ramp starts at |
+|-------|-------------|------------------|------------------------|
+| 1     | Beginner    | 0                | Speed 1                |
+| 2     | Adventurer  | 8                | Speed 2                |
+| 3     | Warrior     | 15               | Speed 3                |
+| 4     | Champion    | 25               | Speed 4                |
+| 5     | Legend      | 40               | Speed 5                |
 
 The counts above are tuned for the smallest (Cozy) board; on larger board scales they are **scaled
 up with the board's area** so the obstacle density stays constant instead of thinning out (e.g. Epic,
@@ -208,16 +218,18 @@ scattering as isolated cells.
 ### 🏃 Snake speed
 
 A separate setting (shown under *Level* on the **Custom** setup screen) controls the
-pace, independent of the obstacle layout. It applies to **Time Attack**; Endless ramps its own pace
-and Campaign uses its per-lap speed cycle.
+pace, independent of the obstacle layout. It applies to **Time Attack**, where it also sets a
+declared **score multiplier** - a faster snake covers more board in the fixed 120 seconds, so the
+pace choice is an open risk/reward dial and every record slot stays fair. Endless ramps its own
+pace and Campaign uses its per-lap speed cycle.
 
-| Speed | Name    | Tick (ms) |
-|-------|---------|-----------|
-| 1     | Relaxed | 175       |
-| 2     | Steady  | 150       |
-| 3     | Brisk   | 125       |
-| 4     | Rapid   | 100       |
-| 5     | Turbo   | 75        |
+| Speed | Name    | Tick (ms) | Time Attack score |
+|-------|---------|-----------|-------------------|
+| 1     | Relaxed | 175       | ×1                |
+| 2     | Steady  | 150       | ×1.1              |
+| 3     | Brisk   | 125       | ×1.2              |
+| 4     | Rapid   | 100       | ×1.35             |
+| 5     | Turbo   | 75        | ×1.5              |
 
 ### 📐 Board scale
 
@@ -297,10 +309,12 @@ sound effects for eating, shrinking, mystery pieces, game over and button taps. 
 automatically pauses when you leave the app and yields to other apps' audio.
 
 **Game modes:** choose your mode on the **Custom** setup screen -
-**Endless** (the snake keeps accelerating the longer you survive; the default), **Time Attack** (score as much
-as possible in 120 seconds - watch for the exclusive **+5s** / **−3s** clock pieces that stretch or
-shave your remaining time), **Campaign** (clear fifteen shaped boards by eating 12 foods each, with 3
-lives, an exclusive 2×2 extra-life piece, and a speed-up every completed lap - the HUD shows
+**Endless** (the snake keeps accelerating through announced speed tiers the longer you survive; the
+default), **Time Attack** (score as much as possible in 120 seconds - your pace sets a declared
+score multiplier, the exclusive **+5s** / **−3s** clock pieces stretch or shave your remaining time,
+and the last 20 seconds are **Fever Time** with double points), **Campaign** (clear fifteen shaped
+boards by eating 12 foods each, with 3 lives, an exclusive 2×2 extra-life piece, a speed-up every
+completed lap and **checkpoint starts** from any level you have reached - the HUD shows
 *Level x - Speed x*, your hearts and the foods still to go). Your best score is tracked per mode,
 level and board scale; check the **Records** screen from the main menu.
 

@@ -94,6 +94,25 @@ data class HazardWarnEvent(val cell: Position, val span: Int)
  */
 data class TeleportEvent(val from: Position, val to: Position)
 
+/** Which run-level announcement the HUD banner should flash. */
+enum class BannerKind {
+    /** Time Attack: Fever Time just started — double points until the end. */
+    Fever,
+
+    /** Endless: the speed ramp stepped up; the banner shows the new tier. */
+    SpeedUp,
+
+    /** The live score just passed the stored best for this slot. */
+    NewRecord,
+}
+
+/**
+ * A short, centred announcement flashed over the board ([kind] selects the text
+ * and colour; [value] carries the Endless speed tier). Surfaced with a monotonic
+ * id so repeats are observable.
+ */
+data class BannerEvent(val kind: BannerKind, val value: Int = 0)
+
 /**
  * A whole-snake particle effect to play over the body [cells] (head first). Used
  * for the two transition flourishes: the snake bursting apart on death
@@ -271,6 +290,28 @@ class GameViewModel(
     var teleportEventId by mutableIntStateOf(0)
         private set
 
+    /** Latest HUD announcement (fever / speed-up / record) and its monotonic id. */
+    var bannerEvent: BannerEvent? = null
+        private set
+    var bannerEventId by mutableIntStateOf(0)
+        private set
+
+    /** Campaign: the furthest level ever reached (start levels 1..this are open). */
+    var campaignCheckpoint by mutableIntStateOf(1)
+        private set
+
+    /** Campaign: the chosen starting level for the next run (1 = a record run). */
+    var campaignStartLevel by mutableIntStateOf(1)
+        private set
+
+    /**
+     * True when the finished run was a Campaign practice start from a checkpoint
+     * (started past level 1): its score is not recorded, so the game-over overlay
+     * hides the best-score row instead of comparing apples to oranges.
+     */
+    var lastRunFromCheckpoint by mutableStateOf(false)
+        private set
+
     /** Best score for the current (level, scale), and whether the last run beat it. */
     var bestScore by mutableIntStateOf(0)
         private set
@@ -312,6 +353,8 @@ class GameViewModel(
     // Per-run accumulators feeding the achievement check at game over.
     private var runFoodsEaten = 0
     private var runMaxCombo = 0
+    private var runStartLevelIndex = 1
+    private var recordCelebrated = false
     private var runUsedExplosion = false
     private var runUsedStar = false
     private var runUsedJackpot = false
@@ -372,6 +415,22 @@ class GameViewModel(
     val combo: Int get() = state.combo
 
     init {
+        // Campaign checkpoints: track the furthest level ever reached and restore
+        // the last chosen starting level (clamped to the checkpoint). If the
+        // saved start level arrives after the initial setup staged level 1,
+        // restage the board so the preview and the actual run agree.
+        viewModelScope.launch {
+            repo.campaignCheckpoint().collect { campaignCheckpoint = it.coerceIn(1, LevelsMode.LEVEL_COUNT) }
+        }
+        viewModelScope.launch {
+            val saved = repo.campaignStartLevel().first().coerceIn(1, LevelsMode.LEVEL_COUNT)
+            campaignStartLevel = saved
+            if (saved > 1 && mode == GameMode.Levels && state.status == GameStatus.Ready &&
+                activeChallenge == null && state.levelIndex != campaignStartFor(mode)
+            ) {
+                resetTo(engine.setup(LevelsMode.SCORE_LEVEL, state.board, mode, snakeSpeed, startLevelIndex = campaignStartFor(mode)))
+            }
+        }
         // Seed level/scale/scheme from persisted settings; only re-apply while
         // Ready so a mid-game preference change can't disturb a live board.
         viewModelScope.launch {
@@ -402,7 +461,7 @@ class GameViewModel(
                     scale = settings.scale
                     snakeSpeed = settings.snakeSpeed
                     if (levelChanged || modeChanged) {
-                        resetTo(engine.setup(targetLevel, boardFor(scale, lastAspect), mode, snakeSpeed))
+                        resetTo(engine.setup(targetLevel, boardFor(scale, lastAspect), mode, snakeSpeed, startLevelIndex = campaignStartFor(mode)))
                     } else if (speedChanged) {
                         // Pace only: no board/obstacle rebuild needed, just restamp
                         // the speed so the loop reads it from the next tick on.
@@ -440,9 +499,28 @@ class GameViewModel(
         // Levels pins its score level; leaving it, the settings collector
         // restores the user's persisted difficulty right after this reset.
         val level = if (newMode == GameMode.Levels) LevelsMode.SCORE_LEVEL else state.level
-        resetTo(engine.setup(level, state.board, newMode, snakeSpeed))
+        resetTo(engine.setup(level, state.board, newMode, snakeSpeed, startLevelIndex = campaignStartFor(newMode)))
         refreshBest()
     }
+
+    /**
+     * Campaign: picks the starting level for the next run among the reached
+     * checkpoints (1..[campaignCheckpoint]). Starting past level 1 is a practice
+     * run — its score and progress are not recorded (records count from a
+     * Level 1 start), which keeps the leaderboard honest.
+     */
+    fun selectCampaignStartLevel(levelIndex: Int) {
+        if (state.status != GameStatus.Ready || mode != GameMode.Levels) return
+        val clamped = levelIndex.coerceIn(1, campaignCheckpoint)
+        campaignStartLevel = clamped
+        viewModelScope.launch { repo.setCampaignStartLevel(clamped) }
+        resetTo(engine.setup(LevelsMode.SCORE_LEVEL, state.board, mode, snakeSpeed, startLevelIndex = clamped))
+        refreshBest()
+    }
+
+    /** The Campaign starting level for [mode]: the clamped pick, or 1 elsewhere. */
+    private fun campaignStartFor(mode: GameMode): Int =
+        if (mode == GameMode.Levels) campaignStartLevel.coerceIn(1, campaignCheckpoint) else 1
 
     fun selectScale(scale: BoardScale) {
         if (state.status != GameStatus.Ready) return
@@ -531,12 +609,14 @@ class GameViewModel(
         engine = GameEngine(Random(challenge.seed))
         mode = challenge.mode
         scale = challenge.scale
-        snakeSpeed = SnakeSpeed.DEFAULT
+        snakeSpeed = challenge.modifier.speedOverride ?: SnakeSpeed.DEFAULT
         // Pin the spawn-affecting toggles so a seeded run is reproducible,
-        // applying the modifier (Bonus Rush, Frenzy, ...) on top.
+        // applying the modifier (Bonus Rush, Frenzy, ...) on top; the remaining
+        // twists (Maxi Feast, Combo Rush, Old School, Overdrive's Endless boost)
+        // ride along inside the state's modifier for the engine to honour.
         hazardsEnabled = challenge.modifier.hazardsOverride ?: true
         specialFrequency = challenge.modifier.specialFrequencyOverride ?: SpecialFrequency.Standard
-        resetTo(engine.setup(challenge.level, boardFor(scale, lastAspect), mode, snakeSpeed))
+        resetTo(engine.setup(challenge.level, boardFor(scale, lastAspect), mode, snakeSpeed, challenge.modifier))
         resetTo(engine.start(state))
         isNewBest = false
         refreshBest()
@@ -546,7 +626,9 @@ class GameViewModel(
 
     private fun reconfigureBoard() {
         val dims = boardFor(scale, lastAspect)
-        if (dims != state.board) resetTo(engine.setup(state.level, dims, mode, snakeSpeed))
+        if (dims != state.board) {
+            resetTo(engine.setup(state.level, dims, mode, snakeSpeed, state.modifier, campaignStartFor(mode)))
+        }
     }
 
     fun start() {
@@ -613,7 +695,7 @@ class GameViewModel(
         // A Daily Challenge replays the exact same seeded run (retry for a better
         // score); a normal run just starts a fresh game with the current config.
         activeChallenge?.let { startChallenge(it); return }
-        resetTo(engine.newGame(state.level, state.board, mode, snakeSpeed))
+        resetTo(engine.newGame(state.level, state.board, mode, snakeSpeed, startLevelIndex = campaignStartFor(mode)))
         isNewBest = false
         beginRun()
         afterReset()
@@ -660,11 +742,14 @@ class GameViewModel(
         levelVanishing = false
         runFoodsEaten = 0
         runMaxCombo = 0
+        runStartLevelIndex = state.levelIndex
+        recordCelebrated = false
+        lastRunFromCheckpoint = false
         runUsedExplosion = false
         runUsedStar = false
         runUsedJackpot = false
         runStartMs = System.currentTimeMillis()
-        runMaxLevel = 1
+        runMaxLevel = state.levelIndex
         runMaxCycle = 1
         runMaxDepth = levelDepth(state.levelIndex, state.speedCycle)
         runLivesLost = 0
@@ -704,12 +789,12 @@ class GameViewModel(
                 hazardsEnabled = s.hazardsEnabled
                 specialFrequency = s.specialFrequency
                 val level = if (mode == GameMode.Levels) LevelsMode.SCORE_LEVEL else s.level
-                resetTo(engine.setup(level, boardFor(scale, lastAspect), mode, snakeSpeed))
+                resetTo(engine.setup(level, boardFor(scale, lastAspect), mode, snakeSpeed, startLevelIndex = campaignStartFor(mode)))
                 refreshBest()
             }
             return
         }
-        resetTo(engine.setup(state.level, state.board, mode, snakeSpeed))
+        resetTo(engine.setup(state.level, state.board, mode, snakeSpeed, startLevelIndex = campaignStartFor(mode)))
         refreshBest()
     }
 
@@ -852,6 +937,18 @@ class GameViewModel(
                     if (event.kind == EffectKind.Ghost) runUsedStar = true
                 }
                 is GameEvent.EffectExpired -> Unit
+                GameEvent.FeverStarted -> {
+                    // Time Attack finale: double points until the clock runs out.
+                    banner(BannerKind.Fever)
+                    sfx.feverStarted()
+                    haptics.special()
+                }
+                is GameEvent.SpeedTierUp -> {
+                    // Endless ramp step: seen (banner + frame flash) and heard.
+                    banner(BannerKind.SpeedUp, event.tier)
+                    sfx.speedTierUp()
+                    haptics.special()
+                }
                 is GameEvent.LevelAdvanced -> {
                     sfx.levelUp()
                     haptics.levelUp()
@@ -860,6 +957,10 @@ class GameViewModel(
                     runMaxDepth = max(runMaxDepth, levelDepth(event.levelIndex, event.speedCycle))
                     // First full lap cleared with no life lost so far: a flawless lap.
                     if (event.speedCycle >= 2 && runLivesLost == 0) runFlawlessLap = true
+                    // Reaching a level opens it as a Campaign starting checkpoint
+                    // (wrapping to level 1 of the next cycle proves the full lap).
+                    val reached = if (event.levelIndex == 1) LevelsMode.LEVEL_COUNT else event.levelIndex
+                    viewModelScope.launch { repo.submitCampaignCheckpoint(reached) }
                 }
                 is GameEvent.LifeLost -> {
                     // A non-final crash: the lighter quake shake, not the death one.
@@ -888,6 +989,17 @@ class GameViewModel(
                     if (!event.capped) runExtraLives++
                 }
             }
+        }
+
+        // The live score just passed the stored best: celebrate once per run,
+        // right when it happens, instead of only revealing it at game over.
+        if (!recordCelebrated && bestScore > 0 && after.score > bestScore &&
+            after.status == GameStatus.Running && !lastRunFromCheckpointCandidate()
+        ) {
+            recordCelebrated = true
+            banner(BannerKind.NewRecord)
+            sfx.recordBroken()
+            haptics.special()
         }
 
         if (after.status == GameStatus.LevelIntro) {
@@ -944,8 +1056,23 @@ class GameViewModel(
         setDirection(direction)
     }
 
+    /** True while the current run is a Campaign practice start (past level 1). */
+    private fun lastRunFromCheckpointCandidate(): Boolean =
+        mode == GameMode.Levels && runStartLevelIndex > 1
+
+    /** Flashes a HUD announcement [kind] (with an optional [value]). */
+    private fun banner(kind: BannerKind, value: Int = 0) {
+        bannerEvent = BannerEvent(kind, value)
+        bannerEventId++
+    }
+
     private fun onGameOver(score: Int) {
-        isNewBest = score > bestScore
+        // A Campaign practice start (from a checkpoint) is not record-eligible:
+        // no highscore, no progress record, no Campaign achievements — records
+        // count from a Level 1 start, so the leaderboard stays honest.
+        val fromCheckpoint = lastRunFromCheckpointCandidate()
+        lastRunFromCheckpoint = fromCheckpoint
+        isNewBest = !fromCheckpoint && score > bestScore
         val durationMs = System.currentTimeMillis() - runStartMs
         // Run recap for the game-over overlay (Step 6.9.2).
         lastSummary = RunSummary(
@@ -966,10 +1093,12 @@ class GameViewModel(
             usedExplosion = runUsedExplosion,
             usedStar = runUsedStar,
             usedJackpot = runUsedJackpot,
-            maxLevelReached = if (mode == GameMode.Levels) runMaxLevel else 0,
-            maxSpeedCycle = runMaxCycle,
-            maxLevelDepth = if (mode == GameMode.Levels) runMaxDepth else 0,
-            flawlessLap = mode == GameMode.Levels && runFlawlessLap,
+            // Campaign depth stats are zeroed for a checkpoint practice start,
+            // so the tower-climb achievements can only be earned from Level 1.
+            maxLevelReached = if (mode == GameMode.Levels && !fromCheckpoint) runMaxLevel else 0,
+            maxSpeedCycle = if (fromCheckpoint) 1 else runMaxCycle,
+            maxLevelDepth = if (mode == GameMode.Levels && !fromCheckpoint) runMaxDepth else 0,
+            flawlessLap = mode == GameMode.Levels && runFlawlessLap && !fromCheckpoint,
             extraLivesGained = runExtraLives,
             maxSnakeLength = runMaxLength,
         )
@@ -986,6 +1115,7 @@ class GameViewModel(
                     repo.dailyStreak().first()
                 }
                 activeChallenge != null -> 0 // Random challenge: not recorded.
+                fromCheckpoint -> 0 // Campaign practice start: not recorded.
                 else -> {
                     repo.submitScore(mode, state.level, scale, score)
                     if (mode == GameMode.Levels) {

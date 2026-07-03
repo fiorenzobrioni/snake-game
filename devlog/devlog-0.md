@@ -13,6 +13,65 @@ Suggested format for each entry:
 
 ---
 
+## 2026-07-03 - Mode depth pass: Campaign checkpoints, Fever Time, live Endless ramp, wider Daily pool
+
+**Done:**
+- **Campaign checkpoints.** The furthest level ever reached is persisted (`campaign_checkpoint`)
+  and the pre-game setup grows a "Start level" chip row (levels 1..checkpoint) once the player has
+  advanced past level 1. `GameEngine.setup`/`newGame` take a `startLevelIndex` and stage that
+  level's walls/hazards directly. A start past level 1 is a **practice run**: no highscore, no
+  Levels-progress record, no Campaign achievements (depth stats are zeroed in `RunStats`), and the
+  game-over overlay shows "Practice run - not recorded" instead of the best row. The chosen start
+  is persisted and clamped to the checkpoint; records always count from a Level 1 start.
+- **Time Attack pace multiplier.** `SnakeSpeed.timeAttackScoreFactor` (x1.0/x1.1/x1.2/x1.35/x1.5)
+  scales every point earned in the mode, fixing the record-fairness hole where a Turbo run
+  structurally out-scored a Relaxed one on the same `ScoreKey` slot. The multiplier is declared on
+  the setup speed chips ("5. Turbo - x1.5") and appended to the HUD status line.
+- **Time Attack Fever Time.** The last 20 s (`GameState.FEVER_MS`) double every point
+  (`FEVER_SCORE_FACTOR`, applied on top of the pace multiplier). Entering emits
+  `GameEvent.FeverStarted`; the presentation is deliberately loud: pulsing amber board-frame glow
+  (`feverGlow` in `GameBoard`), the HUD clock turns hot and pops, a "Fever x2!" banner, a low
+  jackpot sting, and the music tempo steps up 12% (`MusicManager.setTempo`, pitch preserved via
+  `PlaybackParams`, reset on dispose so no other screen inherits it). A time bonus can lift the
+  clock back out of the window; the event re-fires when it drains back in.
+- **Endless ramp reworked (it flatlined).** The old linear ramp (190ms - 0.22ms/tick) hit its 70ms
+  floor after ~90 seconds - matching the reported "stops getting faster". Replaced with **stepped
+  speed tiers**: 20 s of play per tier, each multiplying the pace by 0.94 down to a 60ms floor, so
+  the ramp stays alive for ~6-7 minutes and endgames run slightly hotter. Difficulty now gives the
+  ramp a head start (`Level.endlessTierHeadStart`, Beginner +0 .. Legend +4) so "harder" finally
+  means faster from the first tick, not just denser; the setup screen states it ("40 obstacles -
+  pace starts at Speed 5"). Every step emits `GameEvent.SpeedTierUp` -> "Speed N!" banner, golden
+  frame flare, rising zap SFX, haptic; the HUD's auxiliary slot shows the live tier. Announcements
+  stop once the pace has floored (nothing to feel).
+- **Mid-run record celebration.** Passing the stored best now fires once per run, live ("New
+  record!" banner + chime) instead of only being revealed at game over.
+- **Daily/Random challenge pool widened** from 4 to 9 modifiers: kept None / Bonus Rush / Frenzy /
+  Compact Arena, added **Grand Arena** (Colossal board), **Maxi Feast** (all food 2x2, engine
+  `forceMaxi` through `FoodTable.roll`), **Combo Rush** (halved combo window), **Overdrive**
+  (Endless tier boost +4, Turbo pace in Time Attack) and **Old School** (no specials at all). The
+  twist now travels inside `GameState.modifier` so the pure engine honours it per tick; each
+  modifier carries a one-line description shown on the Daily/Random cards. A plain "Standard" day
+  drops from 1-in-4 to 1-in-9.
+- **Quieter default audio.** Music 0.5 -> 0.3, SFX 0.8 -> 0.6 (master unchanged): the music now
+  sits as a light backdrop on a fresh install; existing installs keep their saved sliders.
+
+**Verified:** 185 unit tests green (21 new across `EndlessRampTest`, `FeverTimeTest`,
+`CampaignCheckpointTest`, `ChallengeModifierTest`; `GameModeTest`'s ramp test ported to the tier
+curve), plus a full `assembleDebug`.
+
+**Decisions:**
+- Checkpoint runs are "practice" rather than a parallel record family - one honest leaderboard,
+  zero extra record UI.
+- The fever window is defined purely as remaining-time <= 20 s, so clock blocks interact with it
+  deterministically (no hidden latches in the state).
+- Endless tiers are computed from `playedMs` (wall-clock play), not ticks, so the tier cadence is
+  speed-independent; `SpeedTierUp` is derived by comparing the tier across one tick.
+
+**Next:** Play Store phase (Steps 7.2-7.6); consider the deferred ghost replay (6.9.12) and share
+card (6.9.11) next.
+
+---
+
 ## 2026-07-03 - Premium launcher icon: the "Serpentine" on the Meadow board
 
 **Done (Step 7.15):**

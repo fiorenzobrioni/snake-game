@@ -46,7 +46,8 @@ enum class GameStatus {
  *                         from time-bonus / time-penalty blocks (positive adds
  *                         time, negative removes it). Kept separate from
  *                         [playedMs] so the elapsed clock stays truthful.
- * @param levelIndex       Levels mode only: the 1-based designed level (1..10).
+ * @param levelIndex       Levels mode only: the 1-based designed level
+ *                         (1..[LevelsMode.LEVEL_COUNT]).
  * @param speedCycle       Levels mode only: the 1-based cycle ("Speed x"); it
  *                         increments each time the ten levels wrap and drives
  *                         the pace via [LevelsMode.tickMillisFor].
@@ -70,6 +71,12 @@ data class GameState(
     val board: BoardDimensions,
     val level: Level,
     val snakeSpeed: SnakeSpeed = SnakeSpeed.DEFAULT,
+    /**
+     * The challenge twist this run was configured with ([ChallengeModifier.None]
+     * outside the Daily / Random challenges). Kept on the state so the engine's
+     * pure rules (spawn table, combo window, pace) can consult it per tick.
+     */
+    val modifier: ChallengeModifier = ChallengeModifier.None,
     val snake: List<Position>,
     val direction: Direction,
     val pendingDirection: Direction,
@@ -134,10 +141,11 @@ data class GameState(
      */
     val tickIntervalMillis: Long
         get() {
-            // Endless overrides the level pace with a curve that quickens over
-            // time; Levels paces by its speed cycle instead of the difficulty.
+            // Endless overrides the level pace with a stepped tier curve that
+            // quickens over play time; Levels paces by its speed cycle instead
+            // of the difficulty.
             var ms = when (mode) {
-                GameMode.Endless -> endlessBaseMs(elapsedTicks)
+                GameMode.Endless -> endlessTickMs(endlessSpeedTier)
                 GameMode.Levels -> LevelsMode.tickMillisFor(speedCycle).toDouble()
                 else -> snakeSpeed.tickMillis.toDouble()
             }
@@ -147,8 +155,28 @@ data class GameState(
             return ms.toLong().coerceIn(MIN_TICK_MS, MAX_TICK_MS)
         }
 
+    /**
+     * Endless mode: the current 1-based speed tier ("Speed x" in the HUD). It
+     * steps up every [ENDLESS_TIER_MS] of play, starts higher on harder
+     * difficulty levels ([Level.endlessTierHeadStart]) and under the Overdrive
+     * challenge twist ([ChallengeModifier.endlessTierBoost]), and keeps climbing
+     * visibly for many minutes before the pace bottoms out at [ENDLESS_FLOOR_MS].
+     */
+    val endlessSpeedTier: Int
+        get() = endlessTierFor(playedMs, level, modifier)
+
     /** Time Attack only: milliseconds left in the run (0 once expired). */
     val timeRemainingMs: Long get() = (TIME_ATTACK_MS + timeAdjustMs - playedMs).coerceAtLeast(0)
+
+    /**
+     * Time Attack only: true while the run is inside its Fever Time finale —
+     * the last [FEVER_MS] on the clock, during which every point is doubled
+     * ([FEVER_SCORE_FACTOR]) and the UI turns up the heat. A time-bonus block
+     * can push the clock back out of the window (fever pauses until it drains
+     * back in), so the window is a pure function of the remaining time.
+     */
+    val inFeverTime: Boolean
+        get() = mode == GameMode.TimeAttack && timeRemainingMs in 1..FEVER_MS
 
     companion object {
         /** Tick-interval multipliers per speed effect (compounding if stacked). */
@@ -160,15 +188,40 @@ data class GameState(
         const val MIN_TICK_MS = 40L
         const val MAX_TICK_MS = 400L
 
-        /** Endless ramp: starts gentle and quickens to a floor as ticks accrue. */
+        /**
+         * Endless ramp (stepped tiers): the pace starts at [ENDLESS_BASE_MS]
+         * and each tier multiplies it by [ENDLESS_TIER_FACTOR], flooring at
+         * [ENDLESS_FLOOR_MS]. A tier lasts [ENDLESS_TIER_MS] of play, so the
+         * ramp stays alive for ~6-7 minutes (the old linear ramp flatlined
+         * after ~90 seconds) and every step is announced to the player.
+         */
         const val ENDLESS_BASE_MS = 190.0
-        const val ENDLESS_FLOOR_MS = 70.0
-        private const val ENDLESS_RAMP_PER_TICK = 0.22
+        const val ENDLESS_FLOOR_MS = 60.0
+        const val ENDLESS_TIER_FACTOR = 0.94
+        const val ENDLESS_TIER_MS = 20_000L
 
         /** Time Attack run length. */
         const val TIME_ATTACK_MS = 120_000L
 
-        private fun endlessBaseMs(elapsedTicks: Int): Double =
-            (ENDLESS_BASE_MS - elapsedTicks * ENDLESS_RAMP_PER_TICK).coerceAtLeast(ENDLESS_FLOOR_MS)
+        /** Time Attack: the Fever Time window at the end of the clock. */
+        const val FEVER_MS = 20_000L
+
+        /** Time Attack: score multiplier while Fever Time runs. */
+        const val FEVER_SCORE_FACTOR = 2
+
+        /** The Endless speed tier for a given play time, difficulty and twist. */
+        fun endlessTierFor(playedMs: Long, level: Level, modifier: ChallengeModifier): Int =
+            1 + (playedMs / ENDLESS_TIER_MS).toInt() +
+                level.endlessTierHeadStart + modifier.endlessTierBoost
+
+        /** The Endless tick interval (ms) for a 1-based speed [tier], floored. */
+        fun endlessTickMs(tier: Int): Double {
+            var ms = ENDLESS_BASE_MS
+            repeat((tier - 1).coerceAtLeast(0)) {
+                ms *= ENDLESS_TIER_FACTOR
+                if (ms <= ENDLESS_FLOOR_MS) return ENDLESS_FLOOR_MS
+            }
+            return ms.coerceAtLeast(ENDLESS_FLOOR_MS)
+        }
     }
 }

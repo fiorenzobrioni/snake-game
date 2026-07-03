@@ -18,22 +18,28 @@ class GameEngine(private val random: Random = Random.Default) {
     /**
      * Builds a [GameStatus.Ready] state: snake centred, obstacles generated for
      * [level], no food yet. The menu is shown over this until [start]. In
-     * [GameMode.Levels] the random obstacles are replaced by the first level's
-     * designed wall shape and the lives stock is filled.
+     * [GameMode.Levels] the random obstacles are replaced by the designed wall
+     * shape of [startLevelIndex] (1 for a fresh run; a reached checkpoint for a
+     * practice start) and the lives stock is filled. A challenge run passes its
+     * [modifier] so the engine's per-tick rules can honour the twist.
      */
     fun setup(
         level: Level,
         board: BoardDimensions,
         mode: GameMode = GameMode.Endless,
         snakeSpeed: SnakeSpeed = SnakeSpeed.DEFAULT,
+        modifier: ChallengeModifier = ChallengeModifier.None,
+        startLevelIndex: Int = 1,
     ): GameState {
         val snake = startingSnake(board)
         val isLevels = mode == GameMode.Levels
-        val hazards = if (isLevels) LevelsMode.hazardsFor(1, board) else LevelHazards.EMPTY
+        val startLevel = if (isLevels) startLevelIndex.coerceIn(1, LevelsMode.LEVEL_COUNT) else 1
+        val hazards = if (isLevels) LevelsMode.hazardsFor(startLevel, board) else LevelHazards.EMPTY
         return GameState(
             board = board,
             level = level,
             snakeSpeed = snakeSpeed,
+            modifier = modifier,
             snake = snake,
             direction = Direction.Up,
             pendingDirection = Direction.Up,
@@ -43,8 +49,9 @@ class GameEngine(private val random: Random = Random.Default) {
             pendingGrowth = 0,
             status = GameStatus.Ready,
             mode = mode,
+            levelIndex = startLevel,
             lives = if (isLevels) LevelsMode.START_LIVES else 0,
-            walls = if (isLevels) LevelsMode.shapeFor(1, board) else emptySet(),
+            walls = if (isLevels) LevelsMode.shapeFor(startLevel, board) else emptySet(),
             gates = hazards.gates,
             teleports = hazards.teleports,
             graceAvailable = true,
@@ -63,7 +70,7 @@ class GameEngine(private val random: Random = Random.Default) {
             foods = refill(
                 state.board, state.snake, state.obstacles, state.walls, emptyList(),
                 elapsedTicks = 0, level = state.level, baseTickMillis = state.snakeSpeed.tickMillis,
-                mode = state.mode, reserved = state.hazardSpawnCells,
+                mode = state.mode, reserved = state.hazardSpawnCells, modifier = state.modifier,
             ),
             status = GameStatus.Running,
         )
@@ -80,7 +87,7 @@ class GameEngine(private val random: Random = Random.Default) {
                 state.board, state.snake, state.obstacles, state.walls, emptyList(),
                 elapsedTicks = state.elapsedTicks, level = state.level,
                 baseTickMillis = state.snakeSpeed.tickMillis, mode = state.mode,
-                reserved = state.hazardSpawnCells,
+                reserved = state.hazardSpawnCells, modifier = state.modifier,
             ),
             status = GameStatus.Running,
         )
@@ -99,8 +106,10 @@ class GameEngine(private val random: Random = Random.Default) {
         board: BoardDimensions,
         mode: GameMode = GameMode.Endless,
         snakeSpeed: SnakeSpeed = SnakeSpeed.DEFAULT,
+        modifier: ChallengeModifier = ChallengeModifier.None,
+        startLevelIndex: Int = 1,
     ): GameState =
-        start(setup(level, board, mode, snakeSpeed))
+        start(setup(level, board, mode, snakeSpeed, modifier, startLevelIndex))
 
     /**
      * Buffers a direction change for the next tick. A 180° reversal of the
@@ -162,6 +171,39 @@ class GameEngine(private val random: Random = Random.Default) {
         val direction = state.pendingDirection
         val events = ArrayList<GameEvent>(3)
 
+        // Time Attack Fever Time: the last FEVER_MS of the clock double every
+        // point. Judged against this tick's clock *before* any clock block eaten
+        // this tick, so the transition is well-defined; entering fires an event
+        // (a time bonus can lift the clock back out, and the event re-fires when
+        // it drains back in).
+        val feverBefore = state.mode == GameMode.TimeAttack &&
+            (GameState.TIME_ATTACK_MS + state.timeAdjustMs - state.playedMs) in 1..GameState.FEVER_MS
+        val feverNow = state.mode == GameMode.TimeAttack &&
+            (GameState.TIME_ATTACK_MS + state.timeAdjustMs - playedMs) in 1..GameState.FEVER_MS
+        if (feverNow && !feverBefore) events.add(GameEvent.FeverStarted)
+
+        // Every point earned this tick is scaled by the declared Time Attack
+        // pace multiplier (a faster snake risks more, so it earns more) and by
+        // the Fever Time doubling while the finale runs.
+        val scoreBoost: Float = if (state.mode == GameMode.TimeAttack) {
+            state.snakeSpeed.timeAttackScoreFactor *
+                (if (feverNow) GameState.FEVER_SCORE_FACTOR else 1)
+        } else {
+            1f
+        }
+
+        // Endless: announce every audible/visible step of the speed ramp — but
+        // only while the step actually changes the pace (silent once floored).
+        if (state.mode == GameMode.Endless) {
+            val tierBefore = GameState.endlessTierFor(state.playedMs, state.level, state.modifier)
+            val tierNow = GameState.endlessTierFor(playedMs, state.level, state.modifier)
+            if (tierNow > tierBefore &&
+                GameState.endlessTickMs(tierNow) < GameState.endlessTickMs(tierBefore)
+            ) {
+                events.add(GameEvent.SpeedTierUp(tierNow))
+            }
+        }
+
         // Age timed effects; expired ones fire an event and drop out.
         var effectTimers = state.effectTimers.map { it.copy(remainingMs = it.remainingMs - elapsedMs) }
         effectTimers.filter { it.remainingMs <= 0 }.forEach { events.add(GameEvent.EffectExpired(it.kind)) }
@@ -210,11 +252,14 @@ class GameEngine(private val random: Random = Random.Default) {
             when (val effect = eaten.effect) {
                 is FoodEffect.Grow -> {
                     // A fresh streak, or extend the running one if still in time.
+                    // The window can be tightened by a challenge twist (Combo Rush).
                     combo = if (elapsedTicks <= comboDeadlineTick) combo + 1 else 1
-                    comboDeadlineTick = elapsedTicks + COMBO_WINDOW_TICKS
+                    comboDeadlineTick = elapsedTicks +
+                        (COMBO_WINDOW_TICKS * state.modifier.comboWindowFactor).toInt()
                     // Longer snakes earn proportionally more per bite (up to a cap),
                     // so the same food is worth far more late in a run than early on.
-                    val points = (effect.segments * 10 * combo.coerceAtMost(MAX_COMBO) * lengthScoreFactor(body.size)).toInt()
+                    val points = (effect.segments * 10 * combo.coerceAtMost(MAX_COMBO) *
+                        lengthScoreFactor(body.size) * scoreBoost).toInt()
                     score += points
                     pendingGrowth += effect.segments - 1 // head already added this tick
                     events.add(GameEvent.Ate(eaten, points, combo.coerceAtMost(MAX_COMBO)))
@@ -224,7 +269,8 @@ class GameEngine(private val random: Random = Random.Default) {
                     // trims the tail down to the floor and pays a token score.
                     pendingGrowth = 0
                     val removed = trimTail(body, effect.segments)
-                    val points = if (eaten.size == FoodSize.Maxi) SHRINK_POINTS_MAXI else SHRINK_POINTS
+                    val base = if (eaten.size == FoodSize.Maxi) SHRINK_POINTS_MAXI else SHRINK_POINTS
+                    val points = (base * scoreBoost).toInt()
                     score += points
                     events.add(GameEvent.Shrunk(eaten, removed, points))
                 }
@@ -269,9 +315,10 @@ class GameEngine(private val random: Random = Random.Default) {
                     events.add(GameEvent.EffectStarted(EffectKind.Freeze, eaten))
                 }
                 is FoodEffect.Jackpot -> {
-                    score += effect.bonus
+                    val bonus = (effect.bonus * scoreBoost).toInt()
+                    score += bonus
                     pendingGrowth += effect.growth
-                    events.add(GameEvent.JackpotHit(eaten, effect.bonus, effect.growth))
+                    events.add(GameEvent.JackpotHit(eaten, bonus, effect.growth))
                 }
                 is FoodEffect.TimeBonus -> {
                     // Time Attack: extend the clock. Pure effect — keep length.
@@ -335,6 +382,7 @@ class GameEngine(private val random: Random = Random.Default) {
                 specialFrequency = specialFrequency,
                 mode = state.mode,
                 reserved = state.hazardSpawnCells,
+                modifier = state.modifier,
             )
         }
 
@@ -632,14 +680,16 @@ class GameEngine(private val random: Random = Random.Default) {
         specialFrequency: SpecialFrequency = SpecialFrequency.Standard,
         mode: GameMode = GameMode.Endless,
         reserved: Set<Position> = emptySet(),
+        modifier: ChallengeModifier = ChallengeModifier.None,
     ): List<Food> {
         var foods = existing
         val target = foodCountFor(board)
         while (foods.size < target) {
-            // A special is allowed only while fewer than the cap are on the board.
-            val allowSpecial = specialAllowed &&
+            // A special is allowed only while fewer than the cap are on the board
+            // (and never under the Old School challenge twist).
+            val allowSpecial = specialAllowed && !modifier.suppressSpecials &&
                 foods.count { it.category == FoodCategory.Special } < MAX_SPECIALS_ON_BOARD
-            val food = spawnFood(board, snake, obstacles, walls, foods, elapsedTicks, level, baseTickMillis, hazardsEnabled, allowSpecial, specialFrequency, mode, reserved) ?: break
+            val food = spawnFood(board, snake, obstacles, walls, foods, elapsedTicks, level, baseTickMillis, hazardsEnabled, allowSpecial, specialFrequency, mode, reserved, modifier) ?: break
             foods = foods + food
         }
         return foods
@@ -664,8 +714,12 @@ class GameEngine(private val random: Random = Random.Default) {
         specialFrequency: SpecialFrequency,
         mode: GameMode,
         reserved: Set<Position>,
+        modifier: ChallengeModifier = ChallengeModifier.None,
     ): Food? {
-        val spec = FoodTable.roll(random, elapsedTicks, level, baseTickMillis, hazardsEnabled, specialAllowed, specialFrequency, mode)
+        val spec = FoodTable.roll(
+            random, elapsedTicks, level, baseTickMillis, hazardsEnabled, specialAllowed,
+            specialFrequency, mode, forceMaxi = modifier.forceMaxiFood,
+        )
         val span = spec.size.cellSpan
         // Top-left cell range that keeps the whole square off the border.
         val maxX = board.width - span
