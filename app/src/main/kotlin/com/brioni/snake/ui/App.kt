@@ -36,6 +36,7 @@ import com.brioni.snake.audio.HapticController
 import com.brioni.snake.audio.MusicTrack
 import com.brioni.snake.data.SettingsRepository
 import com.brioni.snake.game.BoardTerrain
+import com.brioni.snake.game.GameMode
 import com.brioni.snake.game.GameStatus
 import com.brioni.snake.ui.game.GameScreen
 import com.brioni.snake.ui.game.GameViewModel
@@ -88,8 +89,15 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
     var onboardingReturnOrdinal by rememberSaveable { mutableIntStateOf(Screen.Menu.ordinal) }
 
     // Crossfade music to match the screen (menu/settings share the menu track).
-    LaunchedEffect(screen) {
-        audio.setMusic(if (screen == Screen.Game) MusicTrack.Gameplay else MusicTrack.Menu)
+    // Zen borrows the calmer menu track during play - the gameplay loop is too
+    // driving for the relaxed mode, and the crossfade makes the swap seamless.
+    LaunchedEffect(screen, gameViewModel.mode) {
+        val track = if (screen == Screen.Game && gameViewModel.mode != GameMode.Zen) {
+            MusicTrack.Gameplay
+        } else {
+            MusicTrack.Menu
+        }
+        audio.setMusic(track)
     }
 
     // Lifecycle-aware music + resource cleanup.

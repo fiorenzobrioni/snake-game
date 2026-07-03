@@ -181,6 +181,9 @@ fun GameBoard(
     // Endless speed-tier step: a one-shot golden frame flare (1→0 envelope) so
     // every pace change is visible on the board itself, not just the HUD.
     surgeFlash: Float = 0f,
+    // Zen: a slow "breathing" glow of the frame (0..1, pulsed by the caller) in
+    // a soft teal - the visual signature that the edges are open, not walls.
+    zenGlow: Float = 0f,
     // Keeps the particle/redraw loop alive across the brief death-burst and
     // level-vanish transitions, after `running` has already gone false.
     effectsActive: Boolean = running,
@@ -404,7 +407,7 @@ fun GameBoard(
             // smooth-tube renderer (rounded skins) and the blocky one (flat skins).
             val snake = state.snake
             val centers = interpolatedSnakeCenters(
-                snake, previousSnake, state.teleports, f, cell, originX, originY,
+                snake, previousSnake, state.teleports, state.board, f, cell, originX, originY,
             )
             // Fold in the dissolve envelope so the body fades as it bursts apart on
             // death / vanishes on a level-up (1f during normal play = no change).
@@ -563,6 +566,14 @@ fun GameBoard(
             val gold = SpecialVisuals.SurgeColor
             frame(gold.copy(alpha = 0.30f * surgeFlash), borderWidth * 3f)
             frame(gold.copy(alpha = 0.9f * surgeFlash), borderWidth * 1.5f)
+        }
+
+        // Zen: the frame breathes a soft teal, slowly - a calm signal that the
+        // edges are open doorways (the snake wraps through), never walls.
+        if (zenGlow > 0.001f) {
+            val calm = SpecialVisuals.ZenColor
+            frame(calm.copy(alpha = 0.22f * zenGlow), borderWidth * 3.4f) // soft aura
+            frame(calm.copy(alpha = 0.55f * zenGlow), borderWidth * 1.3f) // gentle line
         }
     }
 }
@@ -1005,12 +1016,20 @@ private fun blockSide(i: Int, n: Int, cell: Float): Float {
  * exit pad - so the head visibly dives into the portal and re-emerges at its
  * partner rather than streaking across the board. The two sides of a portal stay
  * far apart on purpose; the body renderers break the tube there (see
- * [isBrokenSpan]). A Ghost board-wrap has no pad, so it just snaps at the midpoint.
+ * [isBrokenSpan]).
+ *
+ * A **board wrap** (Zen's torus, or a Ghost pass through the edge) has no pad:
+ * the segment slides continuously along the toroidal shortest path — out
+ * through one edge for the first half of the tick, in from the opposite edge
+ * for the second — so the crossing reads as one smooth glide (the board's
+ * clipRect trims the overhang and [isBrokenSpan] keeps the tube from being
+ * drawn across the gap).
  */
 private fun interpolatedSnakeCenters(
     snake: List<Position>,
     previousSnake: List<Position>,
     teleports: List<TeleportPair>,
+    board: BoardDimensions,
     f: Float,
     cell: Float,
     originX: Float,
@@ -1018,6 +1037,13 @@ private fun interpolatedSnakeCenters(
 ): List<Offset> {
     fun toOffset(px: Float, py: Float) =
         Offset(originX + (px + 0.5f) * cell, originY + (py + 0.5f) * cell)
+    // The signed 1-cell step a wrap actually took: a jump of (size-1) cells in
+    // grid space is a 1-cell move the other way around the torus.
+    fun toroidalDelta(d: Int, size: Int): Float = when {
+        d > size / 2 -> (d - size).toFloat()
+        d < -size / 2 -> (d + size).toFloat()
+        else -> d.toFloat()
+    }
     val centers = ArrayList<Offset>(snake.size)
     for (k in snake.indices) {
         val to = snake[k]
@@ -1026,14 +1052,31 @@ private fun interpolatedSnakeCenters(
             centers.add(toOffset(lerp(from.x.toFloat(), to.x.toFloat(), f), lerp(from.y.toFloat(), to.y.toFloat(), f)))
             continue
         }
-        // Non-adjacent: a portal jump (or a Ghost wrap). `to` is the exit pad, so
+        // Non-adjacent: a portal jump or a board wrap. `to` is the exit pad, so
         // its partner is the entry pad the segment slid onto to trigger the jump.
         val entry = teleports.firstNotNullOfOrNull { it.exitFor(to) }
-        if (entry != null && f < 0.5f) {
-            val t = f * 2f
-            centers.add(toOffset(lerp(from.x.toFloat(), entry.x.toFloat(), t), lerp(from.y.toFloat(), entry.y.toFloat(), t)))
+        if (entry != null) {
+            if (f < 0.5f) {
+                val t = f * 2f
+                centers.add(toOffset(lerp(from.x.toFloat(), entry.x.toFloat(), t), lerp(from.y.toFloat(), entry.y.toFloat(), t)))
+            } else {
+                centers.add(toOffset(to.x.toFloat(), to.y.toFloat()))
+            }
+            continue
+        }
+        // Board wrap: glide along the toroidal shortest path. First half of the
+        // tick the segment leaves through its edge; second half it enters from
+        // the opposite one. Continuous speed, clipped cleanly at the frame.
+        val dx = toroidalDelta(to.x - from.x, board.width)
+        val dy = toroidalDelta(to.y - from.y, board.height)
+        if (abs(dx) <= 1f && abs(dy) <= 1f && (dx != 0f || dy != 0f)) {
+            if (f < 0.5f) {
+                centers.add(toOffset(from.x + dx * f, from.y + dy * f))
+            } else {
+                centers.add(toOffset(to.x - dx * (1f - f), to.y - dy * (1f - f)))
+            }
         } else {
-            // Second half of the jump, or a padless wrap: sit at the exit cell.
+            // Anything stranger (e.g. a mid-run reset): just sit at the target.
             centers.add(toOffset(to.x.toFloat(), to.y.toFloat()))
         }
     }

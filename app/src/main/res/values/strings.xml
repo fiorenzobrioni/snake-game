@@ -15,6 +15,9 @@
     <string name="menu_endless_level_hint">%1$d obstacles · pace starts at Speed %2$d</string>
     <!-- Time Attack setup: the pace picks a declared score multiplier. -->
     <string name="menu_speed_multiplier_hint">Faster pace, bigger score multiplier</string>
+    <!-- Zen setup captions: why difficulty sleeps, and what speed means here. -->
+    <string name="menu_zen_level_hint">No obstacles here · the edges wrap around</string>
+    <string name="menu_zen_speed_hint">Pick your rhythm · the pace never ramps</string>
     <string name="menu_play">Play</string>
     <string name="menu_custom">Custom</string>
     <string name="menu_daily">Daily Challenge</string>

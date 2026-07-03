@@ -143,7 +143,8 @@ data class GameState(
         get() {
             // Endless overrides the level pace with a stepped tier curve that
             // quickens over play time; Levels paces by its speed cycle instead
-            // of the difficulty.
+            // of the difficulty. Time Attack and Zen run at the selected
+            // [SnakeSpeed], fixed for the whole run (Zen never ramps by design).
             var ms = when (mode) {
                 GameMode.Endless -> endlessTickMs(endlessSpeedTier)
                 GameMode.Levels -> LevelsMode.tickMillisFor(speedCycle).toDouble()

@@ -20,4 +20,11 @@ enum class GameMode(val displayName: String) {
 
     /** Fifteen shaped boards cycling forever, faster each cycle, with lives. */
     Levels("Campaign"),
+
+    /**
+     * The calm mode: a borderless (wrap-around) arena with no obstacles and no
+     * specials, at a fixed pace of the player's choice. Only the snake's own
+     * body can end the run (see [ZenMode]).
+     */
+    Zen("Zen"),
 }

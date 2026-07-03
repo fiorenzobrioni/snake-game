@@ -154,8 +154,9 @@ The classic Snake mechanics, extended with configurable features so every run fe
   with the live tier in the HUD; harder difficulty levels start the ramp hotter), **Time Attack**
   (score as much as you can in 120s - your chosen pace sets a declared **score multiplier**, up to
   ×1.5 at Turbo, and the final 20 seconds are **Fever Time**: double points under an amber board
-  glow while the music speeds up) and **Campaign** (see below), selectable on the **Custom** setup
-  screen. Beating your stored best mid-run pops a live **"New record!"** celebration in any mode.
+  glow while the music speeds up), **Campaign** and **Zen** (see below), selectable on the
+  **Custom** setup screen. Beating your stored best mid-run pops a live **"New record!"**
+  celebration in any mode.
 - 🧩 **Campaign mode** - fifteen **designed board shapes** (cut corners, pillars, chambers, a vault,
   and a tougher late-game gauntlet…) that repeat forever, one **speed step faster** each lap. Eat **12 foods** to clear a level; you
   start with **3 lives** (a crash respawns you in the same level, keeping score and progress) and a
@@ -173,6 +174,15 @@ The classic Snake mechanics, extended with configurable features so every run fe
     open and close on a rhythm (they strobe a warning before slamming shut, so time your dash through),
     and **teleport portals** - step onto one swirling pad to instantly emerge at its partner across the
     board. Gates are lethal only while closed and never seal you in; portals open up bold shortcuts.
+- 🧘 **Zen mode** - the calm way to play: a **borderless arena** where the board is a torus - the
+  snake slides off one edge and glides back in from the opposite one (a smooth, continuous
+  crossing, never a teleport-style jump). **No obstacles, no hazards, no power-ups**: just the food
+  progression, a **fixed pace you choose** (it never ramps) and the one rule that matters - don't
+  bite your own body. The combo window is stretched so an unhurried eating rhythm keeps the streak
+  alive (flow over frenzy), the board frame **breathes** a soft teal to signal the open edges, and
+  the run plays the calmer menu soundtrack. Perfect for a five-minute wind-down; records are kept
+  per board scale, and three dedicated achievements (*Inner Peace*, *Ouroboros*, *Eternal Flow*)
+  reward long flows.
 - ⏸️ **Pause & menus** - pause overlay with a blur effect; restart or return to the main menu at any time. Resuming never catches you off guard: a **3-2-1 countdown** plays over the fully visible board while a **locator beacon** pulses around the snake's head with a chevron pointing where it will move, so you re-find the snake and plan the first turn before motion restarts. Highscores are kept per (mode, level, board scale). A **Back during play** setting chooses what the system Back gesture does mid-game: **Keep playing** (default - Back is ignored, and a swipe-back is fed to the snake as a turn when using swipe controls) or **Pause**.
 - 💎 **Polished navigation** - an **animated GPU background** behind the menus, a **branded main menu** laid out as a "game launcher" (a glowing wordmark with a small in-game-style snake emblem that follows your selected skin as the hero, over a bottom-anchored cluster of actions grouped by type so everything fits one screen), **premium action buttons** (gradient-lit, with a tactile press), and **blur-dissolve** screen transitions.
 - ⏸️ **Auto-pause** - backgrounding the app mid-run pauses the game automatically, so the snake never keeps moving while you're away.
@@ -220,8 +230,9 @@ scattering as isolated cells.
 A separate setting (shown under *Level* on the **Custom** setup screen) controls the
 pace, independent of the obstacle layout. It applies to **Time Attack**, where it also sets a
 declared **score multiplier** - a faster snake covers more board in the fixed 120 seconds, so the
-pace choice is an open risk/reward dial and every record slot stays fair. Endless ramps its own
-pace and Campaign uses its per-lap speed cycle.
+pace choice is an open risk/reward dial and every record slot stays fair - and to **Zen**, where it
+simply fixes the run's rhythm (no multiplier, no ramp). Endless ramps its own pace and Campaign
+uses its per-lap speed cycle.
 
 | Speed | Name    | Tick (ms) | Time Attack score |
 |-------|---------|-----------|-------------------|
@@ -315,8 +326,10 @@ score multiplier, the exclusive **+5s** / **−3s** clock pieces stretch or shav
 and the last 20 seconds are **Fever Time** with double points), **Campaign** (clear fifteen shaped
 boards by eating 12 foods each, with 3 lives, an exclusive 2×2 extra-life piece, a speed-up every
 completed lap and **checkpoint starts** from any level you have reached - the HUD shows
-*Level x - Speed x*, your hearts and the foods still to go). Your best score is tracked per mode,
-level and board scale; check the **Records** screen from the main menu.
+*Level x - Speed x*, your hearts and the foods still to go), **Zen** (a calm borderless torus: the
+snake wraps through the edges, nothing spawns but food, the pace you pick never ramps, and only
+your own body can end the run). Your best score is tracked per mode, level and board scale; check
+the **Records** screen from the main menu.
 
 **Power-ups & hazards:** as a run progresses, rare special pieces start appearing on the board.
 Power-ups help: **Lightning** speeds the snake up, **Snail** slows it down, **Star** grants brief

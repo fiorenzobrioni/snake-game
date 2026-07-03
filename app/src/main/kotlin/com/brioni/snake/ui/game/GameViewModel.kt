@@ -38,6 +38,7 @@ import com.brioni.snake.game.Position
 import com.brioni.snake.game.RunStats
 import com.brioni.snake.game.Skin
 import com.brioni.snake.game.SnakeSpeed
+import com.brioni.snake.game.ZenMode
 import com.brioni.snake.game.SpecialFrequency
 import com.brioni.snake.game.boardFor
 import kotlinx.coroutines.Job
@@ -451,9 +452,10 @@ class GameViewModel(
                 // While a challenge is configured its fixed mode/level/scale must
                 // stick, so skip the persisted-settings sync below.
                 if (state.status == GameStatus.Ready && activeChallenge == null) {
-                    // Levels mode ignores the difficulty selector: it is pinned
-                    // to its score level so this collector can't keep resetting.
-                    val targetLevel = if (settings.mode == GameMode.Levels) LevelsMode.SCORE_LEVEL else settings.level
+                    // Levels and Zen ignore the difficulty selector: each is
+                    // pinned to its score level so this collector can't keep
+                    // resetting.
+                    val targetLevel = pinnedLevelFor(settings.mode) ?: settings.level
                     val levelChanged = targetLevel != state.level
                     val modeChanged = settings.mode != mode
                     val speedChanged = settings.snakeSpeed != snakeSpeed
@@ -478,10 +480,20 @@ class GameViewModel(
 
     fun selectLevel(level: Level) {
         if (state.status != GameStatus.Ready) return
-        if (mode == GameMode.Levels) return // the selector is disabled and ignored
+        if (pinnedLevelFor(mode) != null) return // the selector is disabled and ignored
         viewModelScope.launch { repo.setLevel(level) }
         resetTo(engine.setup(level, state.board, mode, snakeSpeed))
         refreshBest()
+    }
+
+    /**
+     * The score level a mode is pinned to (its difficulty selector is disabled),
+     * or null for the modes where difficulty is a real choice.
+     */
+    private fun pinnedLevelFor(mode: GameMode): Level? = when (mode) {
+        GameMode.Levels -> LevelsMode.SCORE_LEVEL
+        GameMode.Zen -> ZenMode.SCORE_LEVEL
+        else -> null
     }
 
     fun selectSnakeSpeed(speed: SnakeSpeed) {
@@ -496,9 +508,9 @@ class GameViewModel(
         if (state.status != GameStatus.Ready) return
         mode = newMode
         viewModelScope.launch { repo.setGameMode(newMode) }
-        // Levels pins its score level; leaving it, the settings collector
+        // Levels/Zen pin their score level; leaving them, the settings collector
         // restores the user's persisted difficulty right after this reset.
-        val level = if (newMode == GameMode.Levels) LevelsMode.SCORE_LEVEL else state.level
+        val level = pinnedLevelFor(newMode) ?: state.level
         resetTo(engine.setup(level, state.board, newMode, snakeSpeed, startLevelIndex = campaignStartFor(newMode)))
         refreshBest()
     }
@@ -788,7 +800,7 @@ class GameViewModel(
                 // collector only re-emits on an actual change).
                 hazardsEnabled = s.hazardsEnabled
                 specialFrequency = s.specialFrequency
-                val level = if (mode == GameMode.Levels) LevelsMode.SCORE_LEVEL else s.level
+                val level = pinnedLevelFor(mode) ?: s.level
                 resetTo(engine.setup(level, boardFor(scale, lastAspect), mode, snakeSpeed, startLevelIndex = campaignStartFor(mode)))
                 refreshBest()
             }

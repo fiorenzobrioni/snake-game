@@ -35,6 +35,9 @@ class GameEngine(private val random: Random = Random.Default) {
         val isLevels = mode == GameMode.Levels
         val startLevel = if (isLevels) startLevelIndex.coerceIn(1, LevelsMode.LEVEL_COUNT) else 1
         val hazards = if (isLevels) LevelsMode.hazardsFor(startLevel, board) else LevelHazards.EMPTY
+        // Levels replaces random obstacles with its designed walls; Zen is an
+        // open torus — never any obstacles, whatever difficulty is passed in.
+        val noObstacles = isLevels || mode == GameMode.Zen
         return GameState(
             board = board,
             level = level,
@@ -44,7 +47,7 @@ class GameEngine(private val random: Random = Random.Default) {
             direction = Direction.Up,
             pendingDirection = Direction.Up,
             foods = emptyList(),
-            obstacles = if (isLevels) emptySet() else generateObstacles(level, board, snake),
+            obstacles = if (noObstacles) emptySet() else generateObstacles(level, board, snake),
             score = 0,
             pendingGrowth = 0,
             status = GameStatus.Ready,
@@ -216,9 +219,12 @@ class GameEngine(private val random: Random = Random.Default) {
         }
 
         val ghost = effectTimers.any { it.kind == EffectKind.Ghost }
+        // The board wraps under a Ghost effect — and always in Zen, whose arena
+        // is a torus with no lethal edges.
+        val wrapAround = ghost || state.mode == GameMode.Zen
         val board = state.board
         val stepped = state.head.step(direction)
-        val movedHead = if (ghost) {
+        val movedHead = if (wrapAround) {
             Position((stepped.x + board.width) % board.width, (stepped.y + board.height) % board.height)
         } else {
             stepped
@@ -252,10 +258,13 @@ class GameEngine(private val random: Random = Random.Default) {
             when (val effect = eaten.effect) {
                 is FoodEffect.Grow -> {
                     // A fresh streak, or extend the running one if still in time.
-                    // The window can be tightened by a challenge twist (Combo Rush).
+                    // The window can be tightened by a challenge twist (Combo
+                    // Rush) and is stretched in Zen, where streaks reward an
+                    // unhurried flow rather than a race against the timer.
                     combo = if (elapsedTicks <= comboDeadlineTick) combo + 1 else 1
+                    val zenStretch = if (state.mode == GameMode.Zen) ZenMode.COMBO_WINDOW_FACTOR else 1f
                     comboDeadlineTick = elapsedTicks +
-                        (COMBO_WINDOW_TICKS * state.modifier.comboWindowFactor).toInt()
+                        (COMBO_WINDOW_TICKS * state.modifier.comboWindowFactor * zenStretch).toInt()
                     // Longer snakes earn proportionally more per bite (up to a cap),
                     // so the same food is worth far more late in a run than early on.
                     val points = (effect.segments * 10 * combo.coerceAtMost(MAX_COMBO) *
@@ -405,6 +414,8 @@ class GameEngine(private val random: Random = Random.Default) {
         val timeUp = state.mode == GameMode.TimeAttack &&
             (playedMs - timeAdjustMs) >= GameState.TIME_ATTACK_MS
         // Gates that are closed *now* (this tick's clock) are lethal like walls.
+        // In Zen the wrap already keeps the head in bounds and there are no
+        // obstacles/walls/gates/debris — only the snake's own body can kill.
         val closedGates = state.closedGateCells(elapsedTicks)
         val crashed = !ghost && (
             isOutOfBounds(newHead, board) ||
@@ -455,8 +466,11 @@ class GameEngine(private val random: Random = Random.Default) {
         if (dead) events.add(GameEvent.Died)
 
         // Near-miss: the head survived but is grazing a static hazard. Skipped
-        // while invincible (Ghost passes through everything anyway).
-        if (!dead && !ghost && isNearMiss(newHead, board, state.obstacles, state.walls, closedGates, debris)) {
+        // while invincible (Ghost passes through everything anyway); on a
+        // wrapping board the edge is a doorway, not a hazard, so it never counts.
+        if (!dead && !ghost &&
+            isNearMiss(newHead, board, state.obstacles, state.walls, closedGates, debris, edgeLethal = !wrapAround)
+        ) {
             events.add(GameEvent.NearMiss)
         }
 
@@ -465,7 +479,7 @@ class GameEngine(private val random: Random = Random.Default) {
         // still turn away - so it is advisory only and never affects the rules.
         if (!dead) {
             val aheadStep = newHead.step(direction)
-            val ahead = if (ghost) {
+            val ahead = if (wrapAround) {
                 Position((aheadStep.x + board.width) % board.width, (aheadStep.y + board.height) % board.height)
             } else {
                 aheadStep
@@ -567,8 +581,9 @@ class GameEngine(private val random: Random = Random.Default) {
 
     /**
      * True when any orthogonal neighbour of [head] is a static lethal cell - the
-     * board edge, an obstacle, a level wall or lingering debris. The snake's own
-     * body is intentionally not considered (coiling beside yourself is normal).
+     * board edge (only while [edgeLethal]; a wrapping board has no lethal edge),
+     * an obstacle, a level wall or lingering debris. The snake's own body is
+     * intentionally not considered (coiling beside yourself is normal).
      */
     private fun isNearMiss(
         head: Position,
@@ -577,9 +592,10 @@ class GameEngine(private val random: Random = Random.Default) {
         walls: Set<Position>,
         closedGates: Set<Position>,
         debris: List<Debris>,
+        edgeLethal: Boolean = true,
     ): Boolean = Direction.entries.any { dir ->
         val n = head.step(dir)
-        isOutOfBounds(n, board) || n in obstacles || n in walls ||
+        (edgeLethal && isOutOfBounds(n, board)) || n in obstacles || n in walls ||
             n in closedGates || debris.any { it.cell == n }
     }
 
@@ -686,8 +702,10 @@ class GameEngine(private val random: Random = Random.Default) {
         val target = foodCountFor(board)
         while (foods.size < target) {
             // A special is allowed only while fewer than the cap are on the board
-            // (and never under the Old School challenge twist).
+            // (never under the Old School twist, and never in Zen - the calm
+            // mode spawns only the regular food progression).
             val allowSpecial = specialAllowed && !modifier.suppressSpecials &&
+                mode != GameMode.Zen &&
                 foods.count { it.category == FoodCategory.Special } < MAX_SPECIALS_ON_BOARD
             val food = spawnFood(board, snake, obstacles, walls, foods, elapsedTicks, level, baseTickMillis, hazardsEnabled, allowSpecial, specialFrequency, mode, reserved, modifier) ?: break
             foods = foods + food

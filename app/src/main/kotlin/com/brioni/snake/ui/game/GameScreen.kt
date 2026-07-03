@@ -219,6 +219,27 @@ fun GameScreen(
         else -> feverPulse
     }
 
+    // Zen: the board frame "breathes" - a slow, calm teal pulse (~5 s cycle)
+    // that tells the eye the edges are open doorways, not walls. Under
+    // reduce-motion it holds a steady soft glow instead.
+    val zenActive = state.mode == GameMode.Zen &&
+        (playing || state.status == GameStatus.GameOver)
+    val zenTransition = rememberInfiniteTransition(label = "zenBreath")
+    val zenBreath by zenTransition.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            tween(durationMillis = 2600, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "zenBreathPulse",
+    )
+    val zenGlow = when {
+        !zenActive -> 0f
+        viewModel.reduceMotion -> 0.6f
+        else -> zenBreath
+    }
+
     // Endless speed-tier surge: a one-shot golden flare of the board frame each
     // time the ramp steps up, so the pace change is visible where the eyes are.
     val surgeFlash = remember { Animatable(0f) }
@@ -273,6 +294,10 @@ fun GameScreen(
                         when {
                             inLevels -> stringResource(R.string.hud_level_speed, state.levelIndex, state.speedCycle) +
                                 " · " + viewModel.scale.displayName
+                            // Zen pins its difficulty (no obstacles by design),
+                            // so the level would be noise: mode, pace and board.
+                            state.mode == GameMode.Zen ->
+                                "${state.mode.displayName} · ${viewModel.snakeSpeed.displayName} · ${viewModel.scale.displayName}"
                             else -> "${state.mode.displayName} · ${state.level.displayName} · ${viewModel.scale.displayName}"
                         },
                     )
@@ -376,6 +401,7 @@ fun GameScreen(
                     dangerFlash = nearMissFlash.value,
                     feverGlow = feverGlow,
                     surgeFlash = surgeFlash.value,
+                    zenGlow = zenGlow,
                     // Keep particles/redraw alive through the death-burst and
                     // level-vanish transitions (after `running` has gone false)
                     // and while the resume countdown pulses the head beacon.

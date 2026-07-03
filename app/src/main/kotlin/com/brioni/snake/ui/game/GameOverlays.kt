@@ -133,23 +133,25 @@ fun ReadyOverlay(
             }
         }
 
-        // Campaign mode has its own speed curve and shaped boards: the difficulty
-        // selector stays in place but is disabled (and ignored by the ViewModel)
-        // while it is active, so the menu layout never reflows.
-        val levelSelectable = selectedMode != GameMode.Levels
+        // Campaign has its own speed curve and shaped boards, and Zen is an open
+        // torus with no obstacles: in both, the difficulty selector stays in
+        // place but is disabled (and ignored by the ViewModel), so the menu
+        // layout never reflows.
+        val levelSelectable = selectedMode != GameMode.Levels && selectedMode != GameMode.Zen
         ChipSection(
             title = stringResource(R.string.menu_level),
             enabled = levelSelectable,
             // Endless: spell out what the difficulty actually changes — the
-            // obstacle density and where its speed ramp starts.
-            caption = if (selectedMode == GameMode.Endless) {
-                stringResource(
+            // obstacle density and where its speed ramp starts. Zen: say why
+            // the selector sleeps (no walls, no obstacles at all).
+            caption = when (selectedMode) {
+                GameMode.Endless -> stringResource(
                     R.string.menu_endless_level_hint,
                     selectedLevel.obstacleCount,
                     1 + selectedLevel.endlessTierHeadStart,
                 )
-            } else {
-                null
+                GameMode.Zen -> stringResource(R.string.menu_zen_level_hint)
+                else -> null
             },
         ) {
             Level.entries.forEach { level ->
@@ -165,12 +167,18 @@ fun ReadyOverlay(
         // Snake speed is independent of the level's obstacle layout. Endless ramps
         // its own pace and Levels paces by its speed cycle, so the selector is
         // disabled (and ignored) in those modes - the layout never reflows. In
-        // Time Attack the pace also declares its score multiplier on each chip.
-        val speedSelectable = selectedMode == GameMode.TimeAttack
+        // Time Attack the pace also declares its score multiplier on each chip;
+        // in Zen it simply sets the run's fixed rhythm.
+        val speedSelectable = selectedMode == GameMode.TimeAttack || selectedMode == GameMode.Zen
+        val showMultiplier = selectedMode == GameMode.TimeAttack
         ChipSection(
             title = stringResource(R.string.menu_snake_speed),
             enabled = speedSelectable,
-            caption = if (speedSelectable) stringResource(R.string.menu_speed_multiplier_hint) else null,
+            caption = when (selectedMode) {
+                GameMode.TimeAttack -> stringResource(R.string.menu_speed_multiplier_hint)
+                GameMode.Zen -> stringResource(R.string.menu_zen_speed_hint)
+                else -> null
+            },
         ) {
             SnakeSpeed.entries.forEach { speed ->
                 FilterChip(
@@ -178,7 +186,7 @@ fun ReadyOverlay(
                     onClick = { onSnakeSpeedSelected(speed) },
                     label = {
                         Text(
-                            if (speedSelectable) "${speed.label} · ${speed.timeAttackFactorLabel}" else speed.label,
+                            if (showMultiplier) "${speed.label} · ${speed.timeAttackFactorLabel}" else speed.label,
                         )
                     },
                     enabled = speedSelectable,

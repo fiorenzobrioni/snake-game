@@ -552,6 +552,32 @@ snake-game/
 - [x] **Step 6.10.6 - Quieter default audio.** Defaults tuned to music 0.3 / SFX 0.6 (master 1.0)
       so the music sits as a light backdrop out of the box; saved sliders are untouched.
 
+### Phase 6.11 - Zen mode ✅ (implemented, post-1.0.0)
+
+> The fourth mode completes the lineup on the missing axis: a **calm** run for short, relaxed
+> sessions. Built entirely from existing systems (the Ghost wrap, the food table, the menu music
+> track) - premium feel, zero new assets.
+
+- [x] **Step 6.11.1 - Rules (`GameMode.Zen`, `game/ZenMode.kt`).** The arena is a **torus**: all
+      four edges wrap (the Ghost power-up's wrap, made permanent), so only the snake's own body can
+      end the run. No obstacles (whatever difficulty; the selector is disabled, scores pinned to
+      `ZenMode.SCORE_LEVEL`), no specials ever - just the grow/shrink/mystery food progression. The
+      pace is the selected `SnakeSpeed`, fixed for the whole run ("pick your rhythm"), and the
+      grow-combo window is **doubled** (`ZenMode.COMBO_WINDOW_FACTOR`) so streaks reward flow, not
+      frenzy. Edge-hugging never fires the near-miss cue (the edge is a doorway, not a hazard).
+      Zen is excluded from the Daily/Random challenge rotation.
+- [x] **Step 6.11.2 - Toroidal rendering.** `interpolatedSnakeCenters` now glides a wrapping
+      segment along the toroidal shortest path - out through one edge for the first half of the
+      tick, in from the opposite edge for the second - clipped at the frame and with the body tube
+      broken across the gap, so a crossing reads as one smooth pass (this also upgrades the old
+      Ghost-wrap snap). The board frame **breathes** a soft teal (`zenGlow`, ~5 s cycle; steady
+      under reduce-motion), signalling that the edges are open.
+- [x] **Step 6.11.3 - Presentation.** Zen plays the calmer **menu track** during the run (crossfade
+      on entry; no new audio asset). Setup captions explain the sleeping difficulty selector ("No
+      obstacles here - the edges wrap around") and the speed choice ("Pick your rhythm - the pace
+      never ramps"); the HUD status line shows mode - pace - board. Records get a single pinned-level
+      row per scale (like Campaign); three new achievements (Inner Peace / Ouroboros / Eternal Flow).
+
 ### Phase 7 - Play Store distribution & cleanup
 
 - [x] **Step 7.0** - Pre-publication polish: default **Back during play** is now **Keep playing** (fresh

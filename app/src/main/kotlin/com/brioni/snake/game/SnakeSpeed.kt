@@ -8,8 +8,9 @@ package com.brioni.snake.game
  * the desktop build for touch play); [tickMillis] is the delay between game
  * steps, so a lower value is faster.
  *
- * Only consulted in the [GameMode.TimeAttack] mode: Endless ramps its own pace
- * over time and Levels paces by its speed cycle.
+ * Only consulted in [GameMode.TimeAttack] and [GameMode.Zen] (where it stays
+ * fixed for the whole run): Endless ramps its own pace over time and Levels
+ * paces by its speed cycle.
  */
 enum class SnakeSpeed(
     val displayName: String,

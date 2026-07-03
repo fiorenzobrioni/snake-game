@@ -13,6 +13,45 @@ Suggested format for each entry:
 
 ---
 
+## 2026-07-03 - Zen mode: the calm fourth mode on a torus
+
+**Done (Phase 6.11):**
+- **`GameMode.Zen` + `game/ZenMode.kt`.** A borderless arena: all four edges **wrap** (the Ghost
+  power-up's wrap made permanent via a shared `wrapAround` flag in `GameEngine.tick`), so the only
+  death is the snake's own body. No obstacles regardless of difficulty (`setup` forces an empty
+  set; the selector is disabled and scores are pinned to `ZenMode.SCORE_LEVEL`), and **no specials
+  ever** (suppressed in `refill`, like the Old School twist) - only the regular grow/shrink/mystery
+  progression. The pace is the player's `SnakeSpeed`, fixed for the whole run; the grow-combo
+  window is doubled (`ZenMode.COMBO_WINDOW_FACTOR = 2`) so streaks reward unhurried flow.
+  Edge-hugging no longer fires the near-miss cue there (`isNearMiss` gained an `edgeLethal` flag) -
+  on a torus the edge is a doorway. Zen is excluded from the challenge rotation.
+- **Toroidal rendering.** `interpolatedSnakeCenters` now takes the board and glides a wrapping
+  segment along the **toroidal shortest path**: first half of the tick it slides out through its
+  edge, second half it slides in from the opposite one - continuous speed, clipped by the board's
+  existing `clipRect`, tube broken across the gap by `isBrokenSpan`. This replaces the old
+  "snap at the exit cell" fallback, so Ghost wraps got smoother too.
+- **Zen presentation.** The board frame **breathes** a soft teal (`zenGlow` in `GameBoard`, a slow
+  ~5 s pulse; steady glow under reduce-motion) - the visual signature that the edges are open. Zen
+  runs play the calmer **menu music track** (crossfaded by `App`; no new asset). Setup captions
+  explain the sleeping difficulty selector and the rhythm choice; the HUD shows
+  "Zen - pace - board". Records show a single pinned-level row per scale (like Campaign). Three new
+  achievements: **Inner Peace** (5 min flow), **Ouroboros** (60 segments in Zen), **Eternal Flow**
+  (score 3000 in Zen).
+
+**Verified:** 193 unit tests green (8 new in `ZenModeTest`: all four edges wrap, body-only death,
+open board at any difficulty, zero specials under Frenzy, fixed pace with no tier events, stretched
+combo window, silent near-miss at the edge, no timeout), plus a full `assembleDebug`.
+
+**Decisions:**
+- Zen completes the lineup on the *calm* axis instead of adding a fourth adrenaline mode; it is
+  deliberately built from existing systems (wrap, food table, menu track) - zero new assets.
+- The wrap is shared with Ghost through one flag rather than special-cased twice, so both paths
+  stay in lockstep (movement, telegraph look-ahead, near-miss suppression).
+
+**Next:** Play Store phase (Steps 7.2-7.6); deferred ghost replay (6.9.12) and share card (6.9.11).
+
+---
+
 ## 2026-07-03 - Mode depth pass: Campaign checkpoints, Fever Time, live Endless ramp, wider Daily pool
 
 **Done:**

@@ -32,6 +32,9 @@ object SpecialVisuals {
     /** Mid-run record broken: a bright celebratory green. */
     val RecordColor = Color(0xFF69F0AE)
 
+    /** Zen mode: the soft teal of the breathing frame (open, wrapping edges). */
+    val ZenColor = Color(0xFF80CBC4)
+
     /** Accent for a special food, chosen from its effect. */
     fun accent(effect: FoodEffect): Color = when (effect) {
         is FoodEffect.Haste -> LightningColor
