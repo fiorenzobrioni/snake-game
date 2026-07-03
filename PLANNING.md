@@ -647,6 +647,16 @@ snake-game/
       (Refresh read as "reload", List was anonymous) without pulling in the heavy extended set; the
       missions strip's text pips ("✓"/"○") became drawn glyphs and the missions dialog wears the glassy
       rim.
+- [x] **Step 7.15 - Premium launcher icon: the "Serpentine" on the Meadow board.** Complete redesign of
+      the adaptive icon, unchanged since the Phase 0 placeholder - drawing only, no lettering. The
+      **background layer** is now the Meadow board: the terrain shader's two-tone mowed-lawn checker on
+      the 18dp play-grid rhythm (greens lifted in brightness for launcher legibility), under a top-light
+      sheen and a soft radial vignette. The **foreground layer** is the Classic-skin snake as a single
+      smooth **S-shaped tube** (round-capped stroke with a lighter core sheen, lime head with eye and
+      catchlight, gold food ahead of the head, soft offset drop shadow), fitted to the adaptive safe
+      zone. The **monochrome themed-icon layer** and the **splash-screen vector** (`splash_snake.xml`,
+      shadow-less since the splash background is flat) mirror the new geometry; the orphaned
+      `ic_launcher_background` colour resource was removed.
 
 ---
 

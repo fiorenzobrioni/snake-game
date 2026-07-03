@@ -13,6 +13,45 @@ Suggested format for each entry:
 
 ---
 
+## 2026-07-03 - Premium launcher icon: the "Serpentine" on the Meadow board
+
+**Done (Step 7.15):**
+- **Redesigned the adaptive launcher icon**, untouched since the Phase 0 placeholder. The
+  **background layer** (`ic_launcher_background.xml`) is now the Meadow board: the terrain shader's
+  two-tone mowed-lawn checker drawn on the 18dp play-grid rhythm, with the shader's grass greens
+  lifted in brightness for launcher legibility (#173412/#1E4118 -> #224E1B/#2D6224), under a
+  top-light sheen and a soft radial vignette (both `<gradient>` fills via `aapt:attr`).
+- **Foreground layer** (`ic_launcher_foreground.xml`): the Classic-skin snake as one smooth
+  **S-shaped tube** - a single round-capped 13dp stroke with a lighter core sheen (mirroring the
+  in-game tube body), a lime #7CFC00 head with eye + catchlight, the gold food just ahead of the
+  head, and a soft offset drop-shadow copy underneath. No lettering. Scaled 0.92 about the centre
+  so round masks never crop it.
+- **Monochrome themed-icon layer** and the **splash-screen vector** (`splash_snake.xml`) mirror the
+  new geometry (the splash drops the shadow - invisible on its flat brand background); the splash
+  pop-in AVD needed no change since the animated group name stayed `icon`.
+- Removed the orphaned `ic_launcher_background` colour resource from `colors.xml` (the adaptive
+  icon references the drawable, not the colour).
+
+**Decisions:**
+- *Design chosen interactively*: five concepts were mocked as masked HTML previews (serpentine
+  tube, coil-around-food, grid runner, pixel-block S, retro-phosphor S) and reviewed in chat; the
+  user picked the smooth **Serpentine tube** for its clean S silhouette.
+- *Meadow as the stage*: Meadow is the default terrain and the brand's world; its checker also
+  survives adaptive-icon cropping at any mask, unlike a composition that depends on edges.
+- *Brightened, not recoloured*: the icon keeps the shader's hue relationships and the exact
+  in-game snake palette (#3FA34D body, #7CFC00 head, #FFC107 food) so the launcher tile, splash
+  and gameplay read as one product.
+
+**Verification:** system `gradle assembleDebug` green (the sandbox's egress policy still blocks the
+wrapper's distribution download; on a dev machine `./gradlew` remains the way). Geometry validated
+against masked mockups (circle + squircle, 44-140 px) rendered with headless Chromium before
+porting the exact coordinates to the vector drawables. On-device check still owed: themed
+(monochrome) icon tinting and the splash pop-in with the new shapes.
+
+**Next:** release hardening (Step 7.2 - R8 + resource shrinking).
+
+---
+
 ## 2026-07-02 - Premium UI pass: terrain-seeded accents, terrain menus, back headers, Settings cards, bespoke icons
 
 **Done (Step 7.14):**

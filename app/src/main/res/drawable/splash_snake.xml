@@ -2,7 +2,9 @@
 <!-- Base vector for the system splash-screen icon (transparent background — the
      splash theme supplies the brand background colour). The whole snake lives in
      a single named group ("icon") so the splash AVD can scale it as one unit for
-     a short pop-in reveal. Geometry mirrors ic_launcher_foreground.xml. -->
+     a short pop-in reveal. Geometry mirrors ic_launcher_foreground.xml (the
+     "Serpentine": S-shaped tube, lime head, gold food) minus the drop shadow,
+     which would be invisible on the flat splash background. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
@@ -13,22 +15,41 @@
         android:pivotX="54"
         android:pivotY="54">
 
-        <!-- Body segments (tail → neck) -->
-        <path android:fillColor="#3FA34D" android:pathData="M29,76 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z" />
-        <path android:fillColor="#3FA34D" android:pathData="M43,74 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z" />
-        <path android:fillColor="#3FA34D" android:pathData="M55,66 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z" />
-        <path android:fillColor="#3FA34D" android:pathData="M57,52 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z" />
-        <path android:fillColor="#3FA34D" android:pathData="M49,42 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z" />
+        <!-- Body: a continuous S-shaped tube with a lighter core sheen -->
+        <path
+            android:pathData="M36,78 C58,78 72,70 72,58 C72,46 36,50 36,38 C36,30 43,26 52,26"
+            android:strokeColor="#3FA34D"
+            android:strokeWidth="13"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M36,78 C58,78 72,70 72,58 C72,46 36,50 36,38 C36,30 43,26 52,26"
+            android:strokeColor="#5FBE6C"
+            android:strokeWidth="4.6"
+            android:strokeAlpha="0.45"
+            android:strokeLineCap="round" />
 
-        <!-- Head + glossy specular highlight -->
-        <path android:fillColor="#7CFC00" android:pathData="M34,32 a12,12 0 1,0 24,0 a12,12 0 1,0 -24,0 Z" />
-        <path android:fillColor="#B6FF5A" android:pathData="M38,39 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0 Z" />
+        <!-- Head + glossy highlight -->
+        <path
+            android:fillColor="#7CFC00"
+            android:pathData="M45.4,26 a9.6,9.6 0 1,0 19.2,0 a9.6,9.6 0 1,0 -19.2,0 Z" />
+        <path
+            android:fillColor="#CDFF85"
+            android:fillAlpha="0.9"
+            android:pathData="M48.9,22.8 a2.6,2.6 0 1,0 5.2,0 a2.6,2.6 0 1,0 -5.2,0 Z" />
         <!-- Eye + catchlight -->
-        <path android:fillColor="#101418" android:pathData="M47,29 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0 Z" />
-        <path android:fillColor="#FFFFFF" android:pathData="M50.5,27.5 a1,1 0 1,0 2,0 a1,1 0 1,0 -2,0 Z" />
+        <path
+            android:fillColor="#0E1F14"
+            android:pathData="M56.1,23.6 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0 Z" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M58.7,22.6 a0.9,0.9 0 1,0 1.8,0 a0.9,0.9 0 1,0 -1.8,0 Z" />
 
         <!-- Food + highlight -->
-        <path android:fillColor="#FFC107" android:pathData="M67,40 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0 Z" />
-        <path android:fillColor="#FFE082" android:pathData="M69,36 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0 Z" />
+        <path
+            android:fillColor="#FFC107"
+            android:pathData="M66,35 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0 Z" />
+        <path
+            android:fillColor="#FFE082"
+            android:pathData="M67.6,33.2 a1.7,1.7 0 1,0 3.4,0 a1.7,1.7 0 1,0 -3.4,0 Z" />
     </group>
 </vector>
