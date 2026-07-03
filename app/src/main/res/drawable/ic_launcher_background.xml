@@ -1,10 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive-icon background: the Meadow board. The two-tone mowed-lawn checker
+     mirrors the Meadow terrain shader's grass greens (lifted in brightness so
+     they read on a launcher), topped by a soft top-light sheen and a gentle
+     radial vignette for depth. The 18dp checker step matches the play grid's
+     cell rhythm. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+
+    <!-- Base lawn -->
     <path
-        android:fillColor="#101418"
-        android:pathData="M0,0 h108 v108 h-108 z" />
+        android:fillColor="#224E1B"
+        android:pathData="M0,0 h108 v108 h-108 Z" />
+
+    <!-- Lighter mowed stripes: every other cell of a 6x6 checker -->
+    <path
+        android:fillColor="#2D6224"
+        android:pathData="M18,0h18v18h-18z M54,0h18v18h-18z M90,0h18v18h-18z M0,18h18v18h-18z M36,18h18v18h-18z M72,18h18v18h-18z M18,36h18v18h-18z M54,36h18v18h-18z M90,36h18v18h-18z M0,54h18v18h-18z M36,54h18v18h-18z M72,54h18v18h-18z M18,72h18v18h-18z M54,72h18v18h-18z M90,72h18v18h-18z M0,90h18v18h-18z M36,90h18v18h-18z M72,90h18v18h-18z" />
+
+    <!-- Soft top light -->
+    <path android:pathData="M0,0 h108 v108 h-108 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="54"
+                android:startY="0"
+                android:endX="54"
+                android:endY="108">
+                <item android:offset="0.0" android:color="#1AFFFFFF" />
+                <item android:offset="0.45" android:color="#00FFFFFF" />
+                <item android:offset="1.0" android:color="#00FFFFFF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Gentle vignette toward the edges -->
+    <path android:pathData="M0,0 h108 v108 h-108 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="54"
+                android:centerY="50"
+                android:gradientRadius="78">
+                <item android:offset="0.55" android:color="#00000000" />
+                <item android:offset="1.0" android:color="#57000000" />
+            </gradient>
+        </aapt:attr>
+    </path>
 </vector>
