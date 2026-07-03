@@ -7,25 +7,25 @@ Folder for development logs and design notes of the project. For the roadmap, TO
 ```text
 devlog/
 ├── README.md              <- this file, do not edit
-├── devlog.md              <- current active log
+├── devlog-0.md            <- current active log
 └── devlog-YYYY-MM-DD.md   <- archived logs (the date indicates when it was archived)
 ```
 
-There is always exactly one active file: `devlog.md`. When this file reaches or exceeds 1000 lines, it is archived by renaming it, and a new empty one is created (using the template provided below).
+There is always exactly one active file: `devlog-0.md`. When this file reaches or exceeds 1000 lines, it is archived by renaming it, and a new empty one is created (using the template provided below).
 
 ## Writing and Archiving Rules
 
-- **Always write in the current file:** `devlog.md`. If it doesn't exist, create it using the template below.
+- **Always write in the current file:** `devlog-0.md`. If it doesn't exist, create it using the template below.
 - **Reverse Chronological Order:** The latest entry must **always be added at the top** of the file, right below the main title.
 - **Archiving Procedure (Over 1000 lines):**
-  1. Rename the current `devlog.md` to `devlog-YYYY-MM-DD.md` using the current day's date.
+  1. Rename the current `devlog-0.md` to `devlog-YYYY-MM-DD.md` using the current day's date.
   2. Do not edit the newly archived file anymore.
-  3. Immediately create a new `devlog.md` file inserting the base template provided below.
+  3. Immediately create a new `devlog-0.md` file inserting the base template provided below.
   4. Write your new log entry in the new file.
 
-## Template for a new devlog.md
+## Template for a new devlog-0.md
 
-Copy the text below when creating a new `devlog.md` file:
+Copy the text below when creating a new `devlog-0.md` file:
 
 ```markdown
 # DEVLOG Snake Game

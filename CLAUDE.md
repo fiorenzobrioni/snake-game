@@ -77,7 +77,7 @@ Keeping these current is part of the task, not an afterthought.
     - Adding or updating active TODOs, feature ideas, or known bugs.
     - Adding architectural notes or constraints that future contributors must follow.
   - **CRITICAL RULE:** Never let it drift from the actual state of the code. If you implement something the plan still lists as open, fix the plan in the same change.
-- **`devlog/`** - the historical record of *what happened*: completed work and the decisions behind it. Active file `devlog/devlog.md`, newest entry on top; full rules and template in `devlog/README.md` (don't edit that file). Add a dated entry when completing a step or phase: what was implemented, how it was verified (device, reference scenes), notable decisions or problems.
+- **`devlog/`** - the historical record of *what happened*: completed work and the decisions behind it. Active file `devlog/devlog-0.md`, newest entry on top; full rules and template in `devlog/README.md` (don't edit that file). Add a dated entry when completing a step or phase: what was implemented, how it was verified, notable decisions or problems.
 - **Keep `README.md` current**: at the end of **every implementation**, review `README.md` and update it if the change affects anything user-facing (features, gameplay rules, controls, screenshots, build/run instructions). If no update is needed, no action is required.
 
 ---
@@ -94,6 +94,6 @@ Keeping these current is part of the task, not an afterthought.
 | `docs/CREDITS.md` | Asset sources & licenses |
 | `README.md` | User documentation (English) |
 | `PLANNING.md` | Plan, roadmap, active TODOs, bugs, and design notes |
-| `devlog/devlog.md` | Implementation history (the "what happened"); rules in `devlog/README.md` |
+| `devlog/devlog-0.md` | Implementation history (the "what happened"); rules in `devlog/README.md` |
 | `legacy/SnakeGame/SnakeForm.cs` | Frozen v1.0.0 reference (game model) |
 | `.github/copilot-instructions.md` | Copilot instructions (aligned with this file) |
