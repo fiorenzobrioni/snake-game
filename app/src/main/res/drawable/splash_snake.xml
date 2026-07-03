@@ -17,12 +17,12 @@
 
         <!-- Body: a continuous S-shaped tube with a lighter core sheen -->
         <path
-            android:pathData="M36,78 C58,78 72,70 72,58 C72,46 36,50 36,38 C36,30 43,26 52,26"
+            android:pathData="M36,75.1 C58,75.1 72,68.1 72,57.5 C72,47 36,50.5 36,39.9 C36,32.9 43,29.4 52,29.4"
             android:strokeColor="#3FA34D"
             android:strokeWidth="13"
             android:strokeLineCap="round" />
         <path
-            android:pathData="M36,78 C58,78 72,70 72,58 C72,46 36,50 36,38 C36,30 43,26 52,26"
+            android:pathData="M36,75.1 C58,75.1 72,68.1 72,57.5 C72,47 36,50.5 36,39.9 C36,32.9 43,29.4 52,29.4"
             android:strokeColor="#5FBE6C"
             android:strokeWidth="4.6"
             android:strokeAlpha="0.45"
@@ -31,25 +31,25 @@
         <!-- Head + glossy highlight -->
         <path
             android:fillColor="#7CFC00"
-            android:pathData="M45.4,26 a9.6,9.6 0 1,0 19.2,0 a9.6,9.6 0 1,0 -19.2,0 Z" />
+            android:pathData="M45.4,29.4 a9.6,9.6 0 1,0 19.2,0 a9.6,9.6 0 1,0 -19.2,0 Z" />
         <path
             android:fillColor="#CDFF85"
             android:fillAlpha="0.9"
-            android:pathData="M48.9,22.8 a2.6,2.6 0 1,0 5.2,0 a2.6,2.6 0 1,0 -5.2,0 Z" />
+            android:pathData="M48.9,26.2 a2.6,2.6 0 1,0 5.2,0 a2.6,2.6 0 1,0 -5.2,0 Z" />
         <!-- Eye + catchlight -->
         <path
             android:fillColor="#0E1F14"
-            android:pathData="M56.1,23.6 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0 Z" />
+            android:pathData="M56.1,27 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0 Z" />
         <path
             android:fillColor="#FFFFFF"
-            android:pathData="M58.7,22.6 a0.9,0.9 0 1,0 1.8,0 a0.9,0.9 0 1,0 -1.8,0 Z" />
+            android:pathData="M58.7,26 a0.9,0.9 0 1,0 1.8,0 a0.9,0.9 0 1,0 -1.8,0 Z" />
 
         <!-- Food + highlight -->
         <path
             android:fillColor="#FFC107"
-            android:pathData="M66,35 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0 Z" />
+            android:pathData="M66,37.3 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0 Z" />
         <path
             android:fillColor="#FFE082"
-            android:pathData="M67.6,33.2 a1.7,1.7 0 1,0 3.4,0 a1.7,1.7 0 1,0 -3.4,0 Z" />
+            android:pathData="M67.6,35.5 a1.7,1.7 0 1,0 3.4,0 a1.7,1.7 0 1,0 -3.4,0 Z" />
     </group>
 </vector>

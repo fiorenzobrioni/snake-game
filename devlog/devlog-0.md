@@ -24,8 +24,10 @@ Suggested format for each entry:
 - **Foreground layer** (`ic_launcher_foreground.xml`): the Classic-skin snake as one smooth
   **S-shaped tube** - a single round-capped 13dp stroke with a lighter core sheen (mirroring the
   in-game tube body), a lime #7CFC00 head with eye + catchlight, the gold food just ahead of the
-  head, and a soft offset drop-shadow copy underneath. No lettering. Scaled 0.92 about the centre
-  so round masks never crop it.
+  head, and a soft offset drop-shadow copy underneath. No lettering. After a first pass sat the
+  head too close to the mask edge (user feedback), the S was compressed vertically (0.88 about the
+  centre) and the group scaled 0.90 with a small downward nudge, balancing the head/tail clearance
+  from round masks at roughly 5-7dp each.
 - **Monochrome themed-icon layer** and the **splash-screen vector** (`splash_snake.xml`) mirror the
   new geometry (the splash drops the shadow - invisible on its flat brand background); the splash
   pop-in AVD needed no change since the animated group name stayed `icon`.
