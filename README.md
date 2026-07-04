@@ -55,7 +55,7 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - 🎚️ **Levels & snake speed** - 5 obstacle layouts (*Beginner* → *Legend*) and 5 **independent**
   speeds (*Relaxed* → *Turbo*), mixable freely: play the dense Legend field at a gentle pace, or an
   open board flat out.
-- 📐 **Responsive board** - pick a granularity (*Cozy* / *Standard* / *Epic* / *Colossal*); the grid
+- 📐 **Responsive board** - pick a granularity (*Cozy* / *Explorer* / *Epic* / *Colossal*); the grid
   is computed from your device's screen so it fills the display with square cells in portrait. Bigger
   boards also give food, power-ups and hazards proportionally more time before they vanish, so the
   snake can reach them across the longer distances.
@@ -179,8 +179,9 @@ The classic Snake mechanics, extended with configurable features so every run fe
   crossing, never a teleport-style jump). **No obstacles, no hazards, no power-ups**: just the food
   progression, a **fixed pace you choose** (it never ramps) and the one rule that matters - don't
   bite your own body. The combo window is stretched so an unhurried eating rhythm keeps the streak
-  alive (flow over frenzy), the board frame **breathes** a soft teal to signal the open edges, and
-  the run plays the calmer menu soundtrack. Perfect for a five-minute wind-down; records are kept
+  alive (flow over frenzy). Instead of a solid frame, the board edges are a **breathing veil** - a
+  soft teal mist fading inward with a slowly drifting dashed stitch - so you can *see* the boundary
+  is permeable, and the run plays the calmer menu soundtrack. Perfect for a five-minute wind-down; records are kept
   per board scale, and three dedicated achievements (*Inner Peace*, *Ouroboros*, *Eternal Flow*)
   reward long flows.
 - ⏸️ **Pause & menus** - pause overlay with a blur effect; restart or return to the main menu at any time. Resuming never catches you off guard: a **3-2-1 countdown** plays over the fully visible board while a **locator beacon** pulses around the snake's head with a chevron pointing where it will move, so you re-find the snake and plan the first turn before motion restarts. Highscores are kept per (mode, level, board scale). A **Back during play** setting chooses what the system Back gesture does mid-game: **Keep playing** (default - Back is ignored, and a swipe-back is fed to the snake as a turn when using swipe controls) or **Pause**.
@@ -252,7 +253,7 @@ sizes (a tablet gets the same density as a phone, not a squashed few-row board).
 | Scale    | Cell size  | Cells on short side |
 |----------|------------|---------------------|
 | Cozy     | larger     | 13                  |
-| Standard | medium     | 19                  |
+| Explorer | medium     | 19                  |
 | Epic     | smaller    | 27                  |
 | Colossal | smallest   | 35                  |
 

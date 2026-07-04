@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -42,6 +43,7 @@ import com.brioni.snake.game.Food
 import com.brioni.snake.game.FoodCategory
 import com.brioni.snake.game.FoodEffect
 import com.brioni.snake.game.FoodTier
+import com.brioni.snake.game.GameMode
 import com.brioni.snake.game.GameState
 import com.brioni.snake.game.Position
 import com.brioni.snake.game.TeleportPair
@@ -181,8 +183,9 @@ fun GameBoard(
     // Endless speed-tier step: a one-shot golden frame flare (1→0 envelope) so
     // every pace change is visible on the board itself, not just the HUD.
     surgeFlash: Float = 0f,
-    // Zen: a slow "breathing" glow of the frame (0..1, pulsed by the caller) in
-    // a soft teal - the visual signature that the edges are open, not walls.
+    // Zen: the slow "breathing" envelope (0..1, pulsed by the caller) of the
+    // porous boundary veil that replaces the solid frame - edge mist + a
+    // drifting dashed stitch - so the open, wrapping edges read at a glance.
     zenGlow: Float = 0f,
     // Keeps the particle/redraw loop alive across the brief death-burst and
     // level-vanish transitions, after `running` has already gone false.
@@ -541,7 +544,66 @@ fun GameBoard(
                 }
             }
         }
-        frame(borderColor, borderWidth)
+        if (state.mode == GameMode.Zen) {
+            // Zen: no solid wall. The boundary is a *veil* — a soft teal mist
+            // bleeding inward from each edge plus a slowly drifting dashed
+            // stitch along the frame, both breathing with [zenGlow] — so the
+            // border reads as permeable at a glance, unmistakably unlike the
+            // solid frames of the other modes.
+            val calm = SpecialVisuals.ZenColor
+            val breath = 0.45f + 0.55f * zenGlow
+            val mist = cell * 1.1f
+            val mistColor = calm.copy(alpha = 0.15f * breath)
+            val clear = calm.copy(alpha = 0f)
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    0f to mistColor, 1f to clear,
+                    startX = originX, endX = originX + mist,
+                ),
+                topLeft = Offset(originX, originY),
+                size = Size(mist, boardHeight),
+            )
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    0f to clear, 1f to mistColor,
+                    startX = originX + boardWidth - mist, endX = originX + boardWidth,
+                ),
+                topLeft = Offset(originX + boardWidth - mist, originY),
+                size = Size(mist, boardHeight),
+            )
+            drawRect(
+                brush = Brush.verticalGradient(
+                    0f to mistColor, 1f to clear,
+                    startY = originY, endY = originY + mist,
+                ),
+                topLeft = Offset(originX, originY),
+                size = Size(boardWidth, mist),
+            )
+            drawRect(
+                brush = Brush.verticalGradient(
+                    0f to clear, 1f to mistColor,
+                    startY = originY + boardHeight - mist, endY = originY + boardHeight,
+                ),
+                topLeft = Offset(originX, originY + boardHeight - mist),
+                size = Size(boardWidth, mist),
+            )
+            // The stitch: dashes drift slowly along the frame (still under
+            // reduce-motion), like a current flowing through the open edge.
+            val dashLen = cell * 0.55f
+            val gapLen = cell * 0.5f
+            val phase = if (reduceMotion) 0f else (seconds.toFloat() * cell * 0.35f) % (dashLen + gapLen)
+            drawRect(
+                color = calm.copy(alpha = 0.30f + 0.35f * zenGlow),
+                topLeft = Offset(originX, originY),
+                size = Size(boardWidth, boardHeight),
+                style = Stroke(
+                    width = borderWidth,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(dashLen, gapLen), phase),
+                ),
+            )
+        } else {
+            frame(borderColor, borderWidth)
+        }
 
         // Near-miss danger flash: the frame itself flares in a hot version of the
         // terrain's accent. Re-tracing the exact frame geometry gives sharp
@@ -566,14 +628,6 @@ fun GameBoard(
             val gold = SpecialVisuals.SurgeColor
             frame(gold.copy(alpha = 0.30f * surgeFlash), borderWidth * 3f)
             frame(gold.copy(alpha = 0.9f * surgeFlash), borderWidth * 1.5f)
-        }
-
-        // Zen: the frame breathes a soft teal, slowly - a calm signal that the
-        // edges are open doorways (the snake wraps through), never walls.
-        if (zenGlow > 0.001f) {
-            val calm = SpecialVisuals.ZenColor
-            frame(calm.copy(alpha = 0.22f * zenGlow), borderWidth * 3.4f) // soft aura
-            frame(calm.copy(alpha = 0.55f * zenGlow), borderWidth * 1.3f) // gentle line
         }
     }
 }

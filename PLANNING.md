@@ -570,13 +570,30 @@ snake-game/
       segment along the toroidal shortest path - out through one edge for the first half of the
       tick, in from the opposite edge for the second - clipped at the frame and with the body tube
       broken across the gap, so a crossing reads as one smooth pass (this also upgrades the old
-      Ghost-wrap snap). The board frame **breathes** a soft teal (`zenGlow`, ~5 s cycle; steady
-      under reduce-motion), signalling that the edges are open.
+      Ghost-wrap snap). The solid frame is replaced by a **porous boundary veil**: a soft teal mist
+      bleeding inward from each edge plus a slowly drifting dashed stitch along the frame, both
+      breathing with `zenGlow` (~5 s cycle; steady and non-drifting under reduce-motion) - so the
+      open, wrapping edges read at a glance and Zen looks unmistakably different from the walled
+      modes.
 - [x] **Step 6.11.3 - Presentation.** Zen plays the calmer **menu track** during the run (crossfade
       on entry; no new audio asset). Setup captions explain the sleeping difficulty selector ("No
       obstacles here - the edges wrap around") and the speed choice ("Pick your rhythm - the pace
       never ramps"); the HUD status line shows mode - pace - board. Records get a single pinned-level
       row per scale (like Campaign); three new achievements (Inner Peace / Ouroboros / Eternal Flow).
+
+### Phase 6.12 - Setup clarity ✅ (implemented, post-1.0.0)
+
+- [x] **Step 6.12.1 - A caption for every Custom selector.** Each section of the pre-game setup now
+      carries a one-line explanation that adapts to the selected mode: **Mode** gets an elevator
+      pitch per mode; **Level** states what difficulty changes (obstacles + Endless ramp start) or
+      why it sleeps (Campaign designs its own boards, Zen has none); **Snake speed** explains the
+      Time Attack multiplier, the Zen rhythm, or why Endless/Campaign pace themselves; **Board
+      scale** shows the selected grid's cells-per-short-side; **Start level** (Campaign) invites
+      jumping to reached levels when no checkpoint is picked.
+- [x] **Step 6.12.2 - Board scale renamed.** The middle preset's user-facing name changed from
+      "Standard" to **"Explorer"** (Cozy - Explorer - Epic - Colossal). The enum constant stays
+      `Classic` - it is a persisted DataStore / `ScoreKey` token - so no stored record or
+      preference is orphaned.
 
 ### Phase 7 - Play Store distribution & cleanup
 

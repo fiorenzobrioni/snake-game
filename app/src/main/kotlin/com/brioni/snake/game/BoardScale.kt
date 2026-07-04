@@ -16,7 +16,9 @@ enum class BoardScale(
     val cellsOnShortSide: Int,
 ) {
     Cozy("Cozy", 13),
-    Classic("Standard", 19),
+    // The constant name stays `Classic` (it is a persisted DataStore /
+    // ScoreKey token); only the user-facing name changed from "Standard".
+    Classic("Explorer", 19),
     Epic("Epic", 27),
     Colossal("Colossal", 35);
 

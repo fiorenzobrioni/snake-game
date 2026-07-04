@@ -101,7 +101,19 @@ fun ReadyOverlay(
             color = MaterialTheme.colorScheme.primary,
         )
 
-        ChipSection(title = stringResource(R.string.menu_mode)) {
+        // Every selector carries a one-line caption, so each choice explains
+        // itself; the mode's caption is its elevator pitch.
+        ChipSection(
+            title = stringResource(R.string.menu_mode),
+            caption = stringResource(
+                when (selectedMode) {
+                    GameMode.Endless -> R.string.menu_mode_hint_endless
+                    GameMode.TimeAttack -> R.string.menu_mode_hint_time_attack
+                    GameMode.Levels -> R.string.menu_mode_hint_campaign
+                    GameMode.Zen -> R.string.menu_mode_hint_zen
+                },
+            ),
+        ) {
             GameMode.entries.forEach { gameMode ->
                 FilterChip(
                     selected = gameMode == selectedMode,
@@ -120,7 +132,7 @@ fun ReadyOverlay(
                 caption = if (campaignStartLevel > 1) {
                     stringResource(R.string.menu_campaign_practice_note)
                 } else {
-                    null
+                    stringResource(R.string.menu_campaign_start_hint)
                 },
             ) {
                 (1..campaignCheckpoint).forEach { levelIndex ->
@@ -141,17 +153,18 @@ fun ReadyOverlay(
         ChipSection(
             title = stringResource(R.string.menu_level),
             enabled = levelSelectable,
-            // Endless: spell out what the difficulty actually changes — the
-            // obstacle density and where its speed ramp starts. Zen: say why
-            // the selector sleeps (no walls, no obstacles at all).
+            // Spell out what the difficulty actually changes in each mode — or
+            // why the selector sleeps (Campaign designs its own boards, Zen has
+            // no obstacles at all).
             caption = when (selectedMode) {
                 GameMode.Endless -> stringResource(
                     R.string.menu_endless_level_hint,
                     selectedLevel.obstacleCount,
                     1 + selectedLevel.endlessTierHeadStart,
                 )
+                GameMode.TimeAttack -> stringResource(R.string.menu_ta_level_hint, selectedLevel.obstacleCount)
+                GameMode.Levels -> stringResource(R.string.menu_campaign_level_hint)
                 GameMode.Zen -> stringResource(R.string.menu_zen_level_hint)
-                else -> null
             },
         ) {
             Level.entries.forEach { level ->
@@ -177,7 +190,8 @@ fun ReadyOverlay(
             caption = when (selectedMode) {
                 GameMode.TimeAttack -> stringResource(R.string.menu_speed_multiplier_hint)
                 GameMode.Zen -> stringResource(R.string.menu_zen_speed_hint)
-                else -> null
+                GameMode.Endless -> stringResource(R.string.menu_endless_speed_hint)
+                GameMode.Levels -> stringResource(R.string.menu_campaign_speed_hint)
             },
         ) {
             SnakeSpeed.entries.forEach { speed ->
@@ -194,7 +208,10 @@ fun ReadyOverlay(
             }
         }
 
-        ChipSection(title = stringResource(R.string.menu_board_scale)) {
+        ChipSection(
+            title = stringResource(R.string.menu_board_scale),
+            caption = stringResource(R.string.menu_scale_hint, selectedScale.cellsOnShortSide),
+        ) {
             BoardScale.entries.forEach { scale ->
                 FilterChip(
                     selected = scale == selectedScale,

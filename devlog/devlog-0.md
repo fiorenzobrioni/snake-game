@@ -13,6 +13,34 @@ Suggested format for each entry:
 
 ---
 
+## 2026-07-04 - Zen veil border, captions for every Custom selector, "Explorer" scale
+
+**Done:**
+- **Zen's border is now a porous veil, not a wall.** The solid frame is skipped entirely in Zen
+  and replaced by: (1) a soft teal **mist** bleeding inward from each of the four edges (linear
+  gradients, one cell deep) and (2) a **slowly drifting dashed stitch** along the frame
+  (`PathEffect.dashPathEffect` with a time-driven phase), both breathing with the existing
+  `zenGlow` envelope. Reduce-motion keeps the veil but freezes the drift and the breath. The
+  boundary now *looks* permeable at a glance and Zen is visually unmistakable from the walled
+  modes' solid frames.
+- **Every Custom selector now explains itself.** The `ChipSection` captions were completed across
+  the board, adapting to the selected mode: **Mode** carries a one-line pitch (e.g. Zen: "No
+  walls, no hazards - pure flow at your own pace"); **Level** states the obstacle count in Time
+  Attack, the obstacle count + ramp start in Endless, or why the selector sleeps in Campaign/Zen;
+  **Snake speed** explains the Time Attack multiplier, the Zen fixed rhythm, and why
+  Endless/Campaign pace themselves; **Board scale** shows the selected preset's cells on the
+  short side; **Start level** (Campaign) invites jumping to reached levels when no checkpoint is
+  selected.
+- **Board scale "Standard" renamed to "Explorer"** (Cozy - Explorer - Epic - Colossal). Display
+  name only: the enum constant remains `Classic` because it is a persisted DataStore / `ScoreKey`
+  token, so existing records and preferences are untouched.
+
+**Verified:** full unit suite green and `assembleDebug` builds.
+
+**Next:** Play Store phase (Steps 7.2-7.6).
+
+---
+
 ## 2026-07-03 - Zen mode: the calm fourth mode on a torus
 
 **Done (Phase 6.11):**
