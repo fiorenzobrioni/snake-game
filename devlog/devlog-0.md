@@ -13,6 +13,67 @@ Suggested format for each entry:
 
 ---
 
+## 2026-07-04 - Length-scaled death animation hold + Pixel skin sprite baking
+
+**Done:**
+- **Game-over overlay no longer cuts the death animation short.** The ViewModel held the
+  overlay for a fixed 1000 ms (`DEATH_ANIM_MS`) while the renderer staggered one burst per
+  body cell (5-36 ms apart), so on a long snake the head-to-tail ripple alone could outlast
+  the hold and the overlay appeared mid-explosion. Both sides now derive their timing from
+  the snake's length via a shared `BodyBurstTiming` object (`GameViewModel.kt`): the per-cell
+  stagger (`stepDelayMs`), the body fade (`dissolveMs` = emission + 350 ms) and the overlay /
+  countdown hold (`totalMs` = emission + 800 ms, covering the tail burst's spark life). The
+  same length-scaled hold now also drives the Campaign level-up dissolve and the respawn
+  burst (previously a fixed `LEVEL_VANISH_MS` / `DEATH_ANIM_MS`), so renderer and hold can
+  never drift apart again. A short starting snake keeps roughly the old ~1 s feel; a
+  100+ segment snake now gets the time it actually needs.
+- **Pixel skin rendering optimised (it really was heavier).** `drawSprite5` painted every
+  segment as up to 25 individual `drawRect` calls per frame - a 60-segment snake cost
+  ~1500 rects per frame - each rect overdrawn by half a px and antialiased at sub-pixel
+  positions, which showed as a faint shimmering "micro-block" grid while the snake moved.
+  Each 5x5 sprite is now rasterised once into a cached `ImageBitmap` (`bakePixelTile`, edges
+  snapped to integer texels so pixels tile exactly with no seams) and every segment is a
+  single `drawImage` at a whole-pixel destination with `FilterQuality.None`. One draw call
+  per segment, crisp nearest-neighbour pixel art, no per-frame allocation of 25 rect params.
+  The cache (`pixelTileCache`) is keyed by (sprite, pixel side); the board cell is fixed per
+  run and emblem sizes are stable per layout, so it holds only a handful of bitmaps.
+
+**Decisions:**
+- The hold waits for the last cell's burst plus ~0.8 s of spark life, not for every smoke
+  puff (embers/smoke live up to ~1.2 s): waiting for the full particle decay made short runs
+  feel sluggish, and the overlay's own entrance masks the final fade exactly as before.
+- Pixel sprites are drawn at whole-pixel destinations on purpose: 8-bit sprites moved in
+  whole pixels anyway, it reinforces the skin's identity, and it guarantees no edge
+  antialiasing shimmer regardless of the interpolated sub-pixel snake position.
+
+**Issues:** the on-device playtest (213-segment snake, Zen) caught two follow-up defects in
+the burst path that the longer window made visible:
+- *The ripple overshot its own schedule.* The emission loop paced itself with one
+  `delay(stepDelay)` per cell, but on a busy main thread every resume waits for the next
+  frame (~11-16 ms instead of 5 ms), so 213 cells took ~2-3 s against a ~1.9 s hold. When
+  the hold expired, the effects loop stopped and cleared the particles - while the emission
+  loop was *still firing*: the late bursts appeared as frozen dots behind the game-over
+  overlay and "stopped" partway down the body. Fixed by pacing the ripple on the wall clock
+  with catch-up (late iterations emit every cell that has come due, so the emission always
+  ends on schedule), plus a guard that stops emitting entirely if a stall ever drags past
+  the overlay hold. Very long bodies now also burst only every stride-th cell
+  (`MAX_BODY_BURSTS` = 120) so a 200+ cell death does not spawn ~12k particles.
+- *The exploded snake repainted solid behind the overlay.* The effects-loop cleanup resets
+  `dissolve` to 1 for the next run, but at game over `state.snake` still holds the dead
+  body, which promptly redrew fully opaque. The draw pass now clamps the body fade to 0
+  while status is GameOver with effects stopped (reduce-motion excluded - it skips the
+  burst and keeps the snake visible, as before); the dissolve reset still pre-arms the
+  next run, and the snake reappears normally on Play again / back at setup.
+
+**Verified:** `gradle assembleDebug testDebugUnitTest` - build green, all unit tests pass.
+(The sandbox could not download the pinned wrapper distribution, so the matching
+pre-installed Gradle was used; no wrapper files were touched.) On-device: Pixel skin in
+motion confirmed fixed by the player; long-snake game over re-tested after the follow-up.
+
+**Next:** re-run the on-device long-snake game over to confirm the follow-up fixes.
+
+---
+
 ## 2026-07-04 - Pixel skin redesigned as 5x5 sprite art (Step 6.14.1)
 
 **Done:**

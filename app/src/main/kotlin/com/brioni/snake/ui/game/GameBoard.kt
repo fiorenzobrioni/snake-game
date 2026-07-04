@@ -20,10 +20,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Canvas as GraphicsCanvas
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
@@ -32,6 +36,10 @@ import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import com.brioni.snake.game.BoardDimensions
@@ -45,11 +53,13 @@ import com.brioni.snake.game.FoodEffect
 import com.brioni.snake.game.FoodTier
 import com.brioni.snake.game.GameMode
 import com.brioni.snake.game.GameState
+import com.brioni.snake.game.GameStatus
 import com.brioni.snake.game.Position
 import com.brioni.snake.game.TeleportPair
 import com.brioni.snake.game.isHazard
 import kotlin.math.abs
 import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -68,6 +78,13 @@ import kotlinx.coroutines.launch
 
 /** Final window of a Ghost (Star) effect over which the warning blink ramps up. */
 private const val GHOST_WARN_MS = 2_000f
+
+/**
+ * Cap on the per-cell bursts of a whole-snake transition (death / level-up):
+ * a very long body strides over its cells so at most this many bursts fire,
+ * keeping the particle count bounded (~56 particles per blast burst).
+ */
+private const val MAX_BODY_BURSTS = 120
 
 /** Universal danger red for the hazard telegraph (skin-independent so it always reads as "danger"). */
 private val HazardWarnColor = Color(0xFFFF1E1E)
@@ -256,26 +273,48 @@ fun GameBoard(
         val event = bodyBurst
         if (bodyBurstId != handledBurst.intValue && event != null && !reduceMotion && event.cells.isNotEmpty()) {
             handledBurst.intValue = bodyBurstId
-            // Kept just under the ViewModel's hold (DEATH_ANIM_MS / LEVEL_VANISH_MS, both
-            // ~1000 ms) so the body has fully faded by the time the overlay / countdown
-            // takes over. [blast] still selects the burst flavour below.
+            // Timing comes from [BodyBurstTiming], shared with the ViewModel's
+            // overlay/countdown hold: the per-cell stagger and the body fade both
+            // scale with the snake's length, so the animation always completes
+            // before the overlay takes over. [blast] selects the burst flavour.
             val blast = event.style == BurstStyle.Blast
-            val durationMs = 900
+            val cells = event.cells.size
             dissolve.snapTo(1f)
             // Fade the body out alongside the staggered bursts.
-            launch { dissolve.animateTo(0f, tween(durationMillis = durationMs, easing = FastOutLinearInEasing)) }
-            // Spread the emissions over the first ~60% of the window, head first.
-            val stepDelay = ((durationMs * 0.6f) / event.cells.size).toLong().coerceIn(5L, 36L)
-            for (cell in event.cells) {
-                val cx = cell.x + 0.5f
-                val cy = cell.y + 0.5f
-                if (blast) {
-                    emitExplosionBurst(particles, cx, cy, palette.headGlow, 1)
-                } else {
-                    emitVanishBurst(particles, cx, cy, palette.snakeBody, 1)
-                    emitEatBurst(particles, cx, cy, palette.headGlow, 1)
+            launch { dissolve.animateTo(0f, tween(durationMillis = BodyBurstTiming.dissolveMs(cells).toInt(), easing = FastOutLinearInEasing)) }
+            // Ripple the emissions head-to-tail on the shared schedule. Pacing is
+            // wall-clock based with catch-up: each delay() resume has to wait for
+            // the busy main thread, so on a long snake naive per-cell delays would
+            // stretch the ripple far past the ViewModel's hold and leave bursts
+            // still firing (frozen, the frame loop already stopped) behind the
+            // game-over overlay. Very long bodies also burst only every
+            // [stride]-th cell so the particle load stays bounded - at that cell
+            // size the ripple reads the same.
+            val stepDelay = BodyBurstTiming.stepDelayMs(cells)
+            val stride = (cells + MAX_BODY_BURSTS - 1) / MAX_BODY_BURSTS
+            val startNanos = System.nanoTime()
+            var next = 0
+            while (next < cells) {
+                val elapsedMs = (System.nanoTime() - startNanos) / 1_000_000L
+                // If a stall still dragged the ripple past the overlay hold, stop:
+                // emitting further would only strand frozen sparks behind it.
+                if (elapsedMs >= BodyBurstTiming.totalMs(cells)) break
+                val due = (elapsedMs / stepDelay + 1).coerceAtMost(cells.toLong()).toInt()
+                while (next < due) {
+                    if (next % stride == 0 || next == cells - 1) {
+                        val cell = event.cells[next]
+                        val cx = cell.x + 0.5f
+                        val cy = cell.y + 0.5f
+                        if (blast) {
+                            emitExplosionBurst(particles, cx, cy, palette.headGlow, 1)
+                        } else {
+                            emitVanishBurst(particles, cx, cy, palette.snakeBody, 1)
+                            emitEatBurst(particles, cx, cy, palette.headGlow, 1)
+                        }
+                    }
+                    next++
                 }
-                delay(stepDelay)
+                if (next < cells) delay(stepDelay)
             }
         }
     }
@@ -414,7 +453,13 @@ fun GameBoard(
             )
             // Fold in the dissolve envelope so the body fades as it bursts apart on
             // death / vanishes on a level-up (1f during normal play = no change).
-            val fade = dissolve.value
+            // Once the death burst has consumed the body (effects stopped, status
+            // GameOver) keep it hidden behind the overlay: the effects-loop cleanup
+            // resets [dissolve] to 1 for the next run, which would otherwise
+            // repaint the exploded snake solid. Reduce-motion skips the burst and
+            // keeps the snake visible instead, as before.
+            val deathConsumed = state.status == GameStatus.GameOver && !effectsActive && !reduceMotion
+            val fade = if (deathConsumed) 0f else dissolve.value
             drawSnake(
                 centers = centers,
                 cell = cell,
@@ -1455,26 +1500,65 @@ private val PixelHeadSprites: Map<Direction, Array<String>> = mapOf(
 )
 
 /**
- * Paints one 5x5 sprite [map] centred on [center] with a total side of [side].
- * Each pixel is overdrawn by half a px so antialiasing cannot open hairline
- * seams between adjacent pixels.
+ * Baked Pixel-skin sprite tiles, keyed by (sprite, pixel side). The board cell
+ * is fixed during a run and the emblem sizes are stable per layout, so only a
+ * handful of sizes ever coexist; the map is cleared defensively if layout churn
+ * grows it. Rendering happens only on the main thread, so no locking is needed.
  */
-private fun DrawScope.drawSprite5(map: Array<String>, center: Offset, side: Float, alpha: Float) {
-    val unit = side / 5f
-    val x0 = center.x - side / 2f
-    val y0 = center.y - side / 2f
-    for (r in 0 until 5) {
-        val row = map[r]
-        for (c in 0 until 5) {
-            val ink = PixelSpriteInk[row[c]] ?: continue
-            drawRect(
-                color = ink,
-                topLeft = Offset(x0 + c * unit, y0 + r * unit),
-                size = Size(unit + 0.5f, unit + 0.5f),
-                alpha = alpha,
-            )
+private val pixelTileCache = HashMap<Pair<Array<String>, Int>, ImageBitmap>()
+
+private fun pixelTile(map: Array<String>, sidePx: Int): ImageBitmap {
+    val key = map to sidePx
+    pixelTileCache[key]?.let { return it }
+    if (pixelTileCache.size >= 32) pixelTileCache.clear()
+    return bakePixelTile(map, sidePx).also { pixelTileCache[key] = it }
+}
+
+/**
+ * Rasterises a 5x5 sprite [map] into a [sidePx]-square bitmap, once. Pixel edges
+ * are snapped to integer texels, so adjacent pixels tile exactly - no overdraw
+ * and no antialiasing seams inside the sprite.
+ */
+private fun bakePixelTile(map: Array<String>, sidePx: Int): ImageBitmap {
+    val bitmap = ImageBitmap(sidePx, sidePx)
+    CanvasDrawScope().draw(
+        density = Density(1f),
+        layoutDirection = LayoutDirection.Ltr,
+        canvas = GraphicsCanvas(bitmap),
+        size = Size(sidePx.toFloat(), sidePx.toFloat()),
+    ) {
+        fun edge(i: Int): Float = (i * sidePx / 5f).roundToInt().toFloat()
+        for (r in 0 until 5) {
+            val row = map[r]
+            for (c in 0 until 5) {
+                val ink = PixelSpriteInk[row[c]] ?: continue
+                drawRect(
+                    color = ink,
+                    topLeft = Offset(edge(c), edge(r)),
+                    size = Size(edge(c + 1) - edge(c), edge(r + 1) - edge(r)),
+                )
+            }
         }
     }
+    return bitmap
+}
+
+/**
+ * Paints one 5x5 sprite [map] centred on [center] with a total side of [side].
+ * The sprite is baked once into a cached bitmap ([pixelTile]) and drawn as a
+ * single image - one draw call per segment instead of 25 per-pixel rects - at a
+ * whole-pixel destination with nearest-neighbour sampling, so the pixel art
+ * stays crisp and cannot shimmer at sub-pixel positions while the snake moves.
+ */
+private fun DrawScope.drawSprite5(map: Array<String>, center: Offset, side: Float, alpha: Float) {
+    val sidePx = side.roundToInt().coerceAtLeast(5)
+    drawImage(
+        image = pixelTile(map, sidePx),
+        dstOffset = IntOffset((center.x - sidePx / 2f).roundToInt(), (center.y - sidePx / 2f).roundToInt()),
+        dstSize = IntSize(sidePx, sidePx),
+        alpha = alpha,
+        filterQuality = FilterQuality.None,
+    )
 }
 
 /**
