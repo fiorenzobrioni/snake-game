@@ -30,6 +30,15 @@ Roadmap, work in progress, TODOs, known bugs, and ideas. For the history of deve
 
 ## 🚀 Releases
 
+- **Android `2.0.0`** (`versionCode 29`, tag `v2.0.0`) - the "premium" release. Consolidates every
+  post-1.0.0 phase into one GitHub release: the fourth **Zen** mode (torus, no walls), mode-depth
+  pacing (Campaign checkpoints, Time Attack pace multiplier + Fever Time, stepped Endless ramp, a
+  9-modifier Daily/Random pool), six selectable **board terrains** with terrain-seeded UI accents,
+  live skin/terrain previews, a 3-2-1 resume countdown with head beacon, the redesigned 5-card
+  onboarding tour, the quit-run guard, the pinned game-over footer, and the redrawn "Serpentine"
+  launcher icon. The major-version bump reflects the scale of the visual and gameplay overhaul over
+  1.0.0. Distributed as a **debug-signed APK** on the GitHub Releases page; the Google Play track
+  (signed AAB) remains a later phase.
 - **Android `1.0.0`** (first Android release, GitHub) - the app exits "beta". Ships the full feature
   set (Endless / Time Attack / Campaign, power-ups & hazards, six skins, achievements, daily missions
   & challenge, onboarding, audio, AGSL shaders, accessibility). Distributed as a **debug-signed APK**
@@ -635,6 +644,8 @@ snake-game/
       **15 levels** (`LevelsMode.LEVEL_COUNT`, 5 new mirror-symmetric shapes/hazards); achievements grow
       from 27 to **30** (3 new top-tier entries, depth-gated thresholds rebalanced for 15 levels).
 - [x] **Step 7.1** - Final app icon / adaptive icon + branded **SplashScreen API**; set `versionCode`/`versionName`.
+- [x] **Release 2.0.0** - version bumped to `versionName 2.0.0` (`versionCode 29`) and published as the
+      `v2.0.0` GitHub release, consolidating all post-1.0.0 work (Phases 6.10-6.13, Steps 7.8-7.15).
 - [ ] **Step 7.2** - Release hardening: **R8** + resource shrinking, verify the minified build runs.
 - [ ] **Step 7.3** - **Signing**: upload keystore wired via env/CI secrets (never committed) + **Play App Signing**.
 - [ ] **Step 7.4** - Build a signed **AAB**; **GitHub Actions** on `v*` tags → signed AAB artifact (optionally
