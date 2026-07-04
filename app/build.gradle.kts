@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.brioni.snake"
+    namespace = "com.callbackdev.snake"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.brioni.snake"
+        applicationId = "com.callbackdev.snake"
         minSdk = 33
         targetSdk = 36
         versionCode = 29

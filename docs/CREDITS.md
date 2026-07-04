@@ -57,7 +57,7 @@ released under **CC0 1.0** (public domain). Re-run the script to reproduce them.
 ## Shaders
 
 All AGSL `RuntimeShader`s are original code written in-repo
-([`ui/game/Shaders.kt`](../app/src/main/kotlin/com/brioni/snake/ui/game/Shaders.kt)), covered by the
+([`ui/game/Shaders.kt`](../app/src/main/kotlin/com/callbackdev/snake/ui/game/Shaders.kt)), covered by the
 repository's GPL-3.0 license.
 
 | Asset | Source | Author | License |

@@ -1,0 +1,131 @@
+package com.callbackdev.snake.audio
+
+import android.content.Context
+import com.callbackdev.snake.data.SettingsRepository
+import com.callbackdev.snake.game.Food
+import com.callbackdev.snake.game.FoodEffect
+import com.callbackdev.snake.game.FoodTier
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+
+/**
+ * Single audio facade owned by the UI for the app's lifetime. Bundles a
+ * [SoundManager] (SFX) and a [MusicManager] (background music), seeds their
+ * volumes from persisted settings, and implements [GameSfx] so the gameplay
+ * loop can emit effects through a clean abstraction.
+ *
+ * Create once with the application [Context]; call [release] when the host is
+ * destroyed.
+ */
+class GameAudio(context: Context, repo: SettingsRepository) : GameSfx {
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val sound = SoundManager(context)
+    private val music = MusicManager(context, scope)
+
+    init {
+        // Seed the initial volumes from persisted settings.
+        scope.launch {
+            val settings = repo.settings.first()
+            applyVolumes(settings.masterVolume, settings.musicVolume, settings.sfxVolume)
+        }
+    }
+
+    // --- GameSfx: emitted from the gameplay loop -------------------------
+
+    override fun ate(food: Food, combo: Int) {
+        val sfx = if (food.isMystery) Sfx.Mystery else Sfx.Eat
+        sound.play(sfx, rate = eatRate(food.tier, combo))
+    }
+
+    override fun shrunk(food: Food) = sound.play(Sfx.Shrink)
+
+    override fun died() = sound.play(Sfx.GameOver)
+
+    override fun special(food: Food) = sound.play(
+        when (food.effect) {
+            is FoodEffect.Haste -> Sfx.Lightning
+            is FoodEffect.Slow -> Sfx.Snail
+            is FoodEffect.Ghost -> Sfx.Star
+            is FoodEffect.Freeze -> Sfx.Freeze
+            is FoodEffect.Jackpot -> Sfx.Jackpot
+            is FoodEffect.Quake -> Sfx.Quake
+            is FoodEffect.Burst -> Sfx.Explosion
+            is FoodEffect.TimeBonus -> Sfx.Jackpot // a rewarding chime
+            is FoodEffect.TimePenalty -> Sfx.Shrink // a deflating tone
+            is FoodEffect.ExtraLife -> Sfx.Star // a sparkling reward
+            // Grow/Shrink never reach here (those route through ate/shrunk).
+            else -> Sfx.Eat
+        },
+    )
+
+    override fun lifeGained() = sound.play(Sfx.Star)
+
+    override fun lifeLost() = sound.play(Sfx.Quake)
+
+    override fun levelUp() = sound.play(Sfx.Jackpot)
+
+    // A bright, pitched-up sparkle reads as a portal "whoosh" without a new asset.
+    override fun teleport() = sound.play(Sfx.Star, rate = 1.5f)
+
+    // Fever Time opens on a low, urgent jackpot sting; no new asset needed.
+    override fun feverStarted() = sound.play(Sfx.Jackpot, rate = 0.8f)
+
+    // Each Endless speed step is a quick, rising lightning zap.
+    override fun speedTierUp() = sound.play(Sfx.Lightning, rate = 1.25f)
+
+    // Passing the stored best mid-run: a bright celebratory chime.
+    override fun recordBroken() = sound.play(Sfx.Jackpot, rate = 1.2f)
+
+    // --- UI sound effects ------------------------------------------------
+
+    fun playPause() = sound.play(Sfx.Pause)
+
+    // --- Music -----------------------------------------------------------
+
+    fun setMusic(track: MusicTrack) = music.play(track)
+
+    fun pauseMusic() = music.pause()
+
+    fun resumeMusic() = music.resume()
+
+    /** Fever Time: speeds the music up (1f restores the normal tempo). */
+    fun setMusicTempo(rate: Float) = music.setTempo(rate)
+
+    // --- Volumes ---------------------------------------------------------
+
+    /** Applies the three volumes to both engines. */
+    fun applyVolumes(master: Float, musicVolume: Float, sfxVolume: Float) {
+        sound.setMasterVolume(master)
+        sound.setSfxVolume(sfxVolume)
+        music.setMasterVolume(master)
+        music.setMusicVolume(musicVolume)
+    }
+
+    /** Live, un-persisted preview while a Settings slider is being dragged. */
+    fun previewVolumes(master: Float, musicVolume: Float, sfxVolume: Float) =
+        applyVolumes(master, musicVolume, sfxVolume)
+
+    fun release() {
+        music.release()
+        sound.release()
+        scope.cancel()
+    }
+
+    /** Bigger tiers and longer combos nudge the eat pitch up for reward feel. */
+    private fun eatRate(tier: FoodTier, combo: Int): Float {
+        val tierAdjust = when (tier) {
+            FoodTier.Small -> 1.0f
+            FoodTier.Medium -> 1.06f
+            FoodTier.Large -> 1.12f
+            FoodTier.Huge -> 1.18f
+            FoodTier.Mystery -> 1.0f
+        }
+        val comboAdjust = 1f + (combo.coerceIn(1, 6) - 1) * 0.04f
+        return (tierAdjust * comboAdjust).coerceIn(0.5f, 2f)
+    }
+}

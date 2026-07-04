@@ -13,7 +13,7 @@ Roadmap, work in progress, TODOs, known bugs, and ideas. For the history of deve
 
 > Short-term tasks not yet tracked as a formal roadmap step.
 
-- [ ] Finalise `applicationId` from `com.brioni.snake` placeholder before first Play upload (Step 7.1)
+- [x] Finalise `applicationId` to the official `com.callbackdev.snake` (namespace and Kotlin package root aligned; was the `com.brioni.snake` placeholder) (Step 7.1)
 - [ ] Write unit tests for `GameEngine` edge-cases: wall collision on all four sides, body self-collision, 180° reversal block
 - [ ] Verify smooth-motion interpolation on low-end devices
 - [ ] Verify the mystery "?" glyph renders crisply on small cells (dense boards)
@@ -118,7 +118,7 @@ snake-game/
 │   ├── proguard-rules.pro
 │   └── src/main/
 │       ├── AndroidManifest.xml
-│       ├── kotlin/com/brioni/snake/
+│       ├── kotlin/com/callbackdev/snake/
 │       │   ├── MainActivity.kt
 │       │   ├── game/             # pure-Kotlin game model (no Android imports)
 │       │   ├── ui/               # Compose UI + theme

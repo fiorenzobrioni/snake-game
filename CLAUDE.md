@@ -30,7 +30,7 @@ A classic Snake Game being built **from scratch as a native Android app** in **K
 ## Architecture & Tech Stack
 
 - Kotlin + Jetpack Compose (Material 3), built with Gradle (Kotlin DSL) + version catalog + wrapper.
-- `minSdk 33` (Android 13), `compileSdk`/`targetSdk 36`; `applicationId` `com.brioni.snake` (placeholder, finalize before first Play upload). The `minSdk 33` floor means **AGSL shaders are always available**.
+- `minSdk 33` (Android 13), `compileSdk`/`targetSdk 36`; `applicationId` (and Kotlin package root) is the **official** `com.callbackdev.snake` (publisher CallbackDev). This is the identity the app ships under on Google Play: **do not change it**. The debug build appends the `.debug` suffix. The `minSdk 33` floor means **AGSL shaders are always available**.
 - *For the current state, completed features, and active tasks, always refer to `PLANNING.md`.*
 
 ## Commands
@@ -86,8 +86,8 @@ Keeping these current is part of the task, not an afterthought.
 
 | Path | Role |
 |---|---|
-| `app/src/main/kotlin/com/brioni/snake/MainActivity.kt` | Compose entry point |
-| `app/src/main/kotlin/com/brioni/snake/ui/theme/` | Material 3 theme (Color/Theme/Type) |
+| `app/src/main/kotlin/com/callbackdev/snake/MainActivity.kt` | Compose entry point |
+| `app/src/main/kotlin/com/callbackdev/snake/ui/theme/` | Material 3 theme (Color/Theme/Type) |
 | `app/build.gradle.kts` | Android application module config |
 | `gradle/libs.versions.toml` | Dependency/version catalog |
 | `app/src/main/AndroidManifest.xml` | Single portrait `MainActivity`, launcher |
