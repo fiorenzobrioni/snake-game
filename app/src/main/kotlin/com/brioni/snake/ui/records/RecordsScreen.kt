@@ -30,6 +30,7 @@ import com.brioni.snake.game.GameMode
 import com.brioni.snake.game.Level
 import com.brioni.snake.game.LevelsMode
 import com.brioni.snake.game.ScoreKey
+import com.brioni.snake.game.ZenMode
 
 /**
  * Records screen: best scores laid out as a (level × board-scale) table for each
@@ -93,7 +94,14 @@ private fun ModeRecords(
                 BoardScale.entries.forEach { scale -> HeaderCell(scale.displayName, weight = 1f) }
             }
 
-            if (mode == GameMode.Levels) {
+            if (mode == GameMode.Zen) {
+                // Zen ignores the difficulty (no obstacles by design): a single
+                // score row per scale, keyed on the pinned level.
+                RecordRow(label = stringResource(R.string.records_best)) { scale ->
+                    val value = scores[ScoreKey(mode, ZenMode.SCORE_LEVEL, scale)] ?: 0
+                    ScoreCell(value = value, isTop = value > 0 && value == bestOverall)
+                }
+            } else if (mode == GameMode.Levels) {
                 // Levels ignores the difficulty: a single score row per scale
                 // (keyed on the pinned level) plus the deepest level reached.
                 RecordRow(label = stringResource(R.string.records_best)) { scale ->

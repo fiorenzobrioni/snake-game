@@ -19,11 +19,11 @@ class GameModeTest {
             foods = emptyList(), obstacles = emptySet(), score = 0, pendingGrowth = 0,
             status = GameStatus.Running, mode = GameMode.Endless,
         )
-        val early = base.copy(elapsedTicks = 0).tickIntervalMillis
-        val later = base.copy(elapsedTicks = 400).tickIntervalMillis
+        val early = base.copy(playedMs = 0).tickIntervalMillis
+        val later = base.copy(playedMs = GameState.ENDLESS_TIER_MS * 4).tickIntervalMillis
         assertTrue("endless speeds up over time", later < early)
         // Never drops below the floor.
-        val veryLate = base.copy(elapsedTicks = 100_000).tickIntervalMillis
+        val veryLate = base.copy(playedMs = 100 * GameState.ENDLESS_TIER_MS).tickIntervalMillis
         assertEquals(GameState.MIN_TICK_MS.coerceAtLeast(GameState.ENDLESS_FLOOR_MS.toLong()), veryLate)
     }
 

@@ -8,6 +8,27 @@
     <string name="menu_level">Level</string>
     <string name="menu_snake_speed">Snake speed</string>
     <string name="menu_board_scale">Board scale</string>
+    <!-- Custom setup: one-line elevator pitch for the selected mode. -->
+    <string name="menu_mode_hint_endless">Survive as long as you can · the pace keeps climbing</string>
+    <string name="menu_mode_hint_time_attack">Two minutes on the clock · finish in a blaze of Fever</string>
+    <string name="menu_mode_hint_campaign">Fifteen designed boards, three lives, endless laps</string>
+    <string name="menu_mode_hint_zen">No walls, no hazards · pure flow at your own pace</string>
+    <!-- Campaign checkpoints: pick the starting level among the reached ones. -->
+    <string name="menu_campaign_start">Start level</string>
+    <string name="menu_campaign_start_hint">Jump to any level you have reached</string>
+    <string name="menu_campaign_practice_note">Practice start · records count from Level 1</string>
+    <!-- Custom setup: what the difficulty level changes in each mode. -->
+    <string name="menu_endless_level_hint">%1$d obstacles · pace starts at Speed %2$d</string>
+    <string name="menu_ta_level_hint">%1$d obstacles on the board</string>
+    <string name="menu_campaign_level_hint">Campaign brings its own designed boards</string>
+    <string name="menu_zen_level_hint">No obstacles here · the edges wrap around</string>
+    <!-- Custom setup: what the snake speed means in each mode. -->
+    <string name="menu_speed_multiplier_hint">Faster pace, bigger score multiplier</string>
+    <string name="menu_endless_speed_hint">Endless sets its own pace · it ramps as you survive</string>
+    <string name="menu_campaign_speed_hint">Campaign paces itself · one speed step per lap</string>
+    <string name="menu_zen_speed_hint">Pick your rhythm · the pace never ramps</string>
+    <!-- Custom setup: what the board scale changes (cells on the short side). -->
+    <string name="menu_scale_hint">%1$d cells across the short side · finer grid, longer runs</string>
     <string name="menu_play">Play</string>
     <string name="menu_custom">Custom</string>
     <string name="menu_daily">Daily Challenge</string>
@@ -163,6 +184,12 @@
     <string name="hud_level_speed">Level %1$d · Speed %2$d</string>
     <string name="hud_next_level">Next: %1$d</string>
     <string name="hud_lives">Lives: %1$d</string>
+    <!-- Endless mode HUD: the current speed tier, e.g. "Speed 4". -->
+    <string name="hud_endless_speed">Speed %1$d</string>
+    <!-- In-run announcement banners -->
+    <string name="banner_fever">Fever ×2!</string>
+    <string name="banner_speed_up">Speed %1$d!</string>
+    <string name="banner_new_record">New record!</string>
     <!-- Active power-up timer chips -->
     <string name="effect_lightning">Lightning</string>
     <string name="effect_snail">Snail</string>
@@ -197,6 +224,8 @@
     <string name="action_game_setup">Game setup</string>
     <string name="highscore_label">Best: %1$d</string>
     <string name="new_highscore">New best!</string>
+    <!-- Shown instead of the best-score row after a Campaign practice start. -->
+    <string name="game_over_practice">Practice run · not recorded</string>
 
     <!-- Game over run recap (Step 6.9.2) -->
     <string name="recap_title">Run recap</string>

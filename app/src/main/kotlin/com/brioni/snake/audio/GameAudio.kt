@@ -72,6 +72,15 @@ class GameAudio(context: Context, repo: SettingsRepository) : GameSfx {
     // A bright, pitched-up sparkle reads as a portal "whoosh" without a new asset.
     override fun teleport() = sound.play(Sfx.Star, rate = 1.5f)
 
+    // Fever Time opens on a low, urgent jackpot sting; no new asset needed.
+    override fun feverStarted() = sound.play(Sfx.Jackpot, rate = 0.8f)
+
+    // Each Endless speed step is a quick, rising lightning zap.
+    override fun speedTierUp() = sound.play(Sfx.Lightning, rate = 1.25f)
+
+    // Passing the stored best mid-run: a bright celebratory chime.
+    override fun recordBroken() = sound.play(Sfx.Jackpot, rate = 1.2f)
+
     // --- UI sound effects ------------------------------------------------
 
     fun playPause() = sound.play(Sfx.Pause)
@@ -83,6 +92,9 @@ class GameAudio(context: Context, repo: SettingsRepository) : GameSfx {
     fun pauseMusic() = music.pause()
 
     fun resumeMusic() = music.resume()
+
+    /** Fever Time: speeds the music up (1f restores the normal tempo). */
+    fun setMusicTempo(rate: Float) = music.setTempo(rate)
 
     // --- Volumes ---------------------------------------------------------
 

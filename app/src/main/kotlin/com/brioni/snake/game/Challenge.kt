@@ -6,7 +6,8 @@ import kotlin.random.Random
  * A self-contained run configuration shared by the **Daily** and **Random**
  * challenges: a fixed [seed] (driving the obstacle layout and food sequence) plus
  * a mode/level/board and a [modifier] twist. Pure and clock-free, so it is
- * reproducible and unit-testable. Campaign is excluded (it has its own structure).
+ * reproducible and unit-testable. Campaign is excluded (it has its own
+ * structure), and so is Zen (a calm mode has no business being a challenge).
  *
  * The two factories differ only in where the numbers come from: [forDay] is the
  * deterministic daily (same for everyone on a date); [random] is a one-off for
@@ -21,7 +22,7 @@ data class Challenge(
     val modifier: ChallengeModifier,
 ) {
     companion object {
-        /** Modes the challenges rotate through (Campaign excluded). */
+        /** Modes the challenges rotate through (Campaign and Zen excluded). */
         private val MODES = listOf(GameMode.Endless, GameMode.TimeAttack)
 
         /** The default board granularity, unless the modifier overrides it. */

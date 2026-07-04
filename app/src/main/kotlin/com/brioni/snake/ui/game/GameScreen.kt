@@ -10,6 +10,8 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
@@ -33,6 +35,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -191,6 +194,64 @@ fun GameScreen(
         }
     }
 
+    // Time Attack Fever Time: the double-points finale must be *felt* — the board
+    // frame smoulders (pulsing amber), the HUD clock turns hot and the music
+    // steps its tempo up until the run ends (reset on dispose so no other screen
+    // ever inherits the faster track).
+    val feverActive = state.status == GameStatus.Running && state.inFeverTime
+    DisposableEffect(feverActive) {
+        audio.setMusicTempo(if (feverActive) FEVER_MUSIC_TEMPO else 1f)
+        onDispose { audio.setMusicTempo(1f) }
+    }
+    val feverTransition = rememberInfiniteTransition(label = "feverGlow")
+    val feverPulse by feverTransition.animateFloat(
+        initialValue = 0.5f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            tween(durationMillis = 640, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "feverPulse",
+    )
+    val feverGlow = when {
+        !feverActive -> 0f
+        viewModel.reduceMotion -> 0.7f // steady glow, no pulsing
+        else -> feverPulse
+    }
+
+    // Zen: the board frame "breathes" - a slow, calm teal pulse (~5 s cycle)
+    // that tells the eye the edges are open doorways, not walls. Under
+    // reduce-motion it holds a steady soft glow instead.
+    val zenActive = state.mode == GameMode.Zen &&
+        (playing || state.status == GameStatus.GameOver)
+    val zenTransition = rememberInfiniteTransition(label = "zenBreath")
+    val zenBreath by zenTransition.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            tween(durationMillis = 2600, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "zenBreathPulse",
+    )
+    val zenGlow = when {
+        !zenActive -> 0f
+        viewModel.reduceMotion -> 0.6f
+        else -> zenBreath
+    }
+
+    // Endless speed-tier surge: a one-shot golden flare of the board frame each
+    // time the ramp steps up, so the pace change is visible where the eyes are.
+    val surgeFlash = remember { Animatable(0f) }
+    LaunchedEffect(viewModel.bannerEventId) {
+        if (viewModel.bannerEventId > 0 && !viewModel.reduceMotion &&
+            viewModel.bannerEvent?.kind == BannerKind.SpeedUp
+        ) {
+            surgeFlash.snapTo(1f)
+            surgeFlash.animateTo(0f, tween(durationMillis = 700, easing = LinearEasing))
+        }
+    }
+
     // Pause blur (step 3.4): blurs the frozen board behind the overlay scrim.
     // It lifts during the resume countdown - the whole point of the 3-2-1 is
     // re-finding the snake, so the board must be as sharp as during play (the
@@ -204,8 +265,8 @@ fun GameScreen(
         Column(modifier = Modifier.fillMaxSize().blur(blurRadius)) {
             val inLevels = state.mode == GameMode.Levels
             val onBoard = playing || state.status == GameStatus.LevelIntro
-            // The auxiliary HUD slot: the Time Attack clock, or the Levels-mode
-            // count of foods still to eat before the next level.
+            // The auxiliary HUD slot: the Time Attack clock, the Levels-mode
+            // count of foods still to eat, or the live Endless speed tier.
             val timeLabel = when {
                 state.mode == GameMode.TimeAttack && playing -> {
                     val secs = (state.timeRemainingMs / 1000).toInt()
@@ -213,6 +274,8 @@ fun GameScreen(
                 }
                 inLevels && onBoard ->
                     stringResource(R.string.hud_next_level, (LevelsMode.LEVEL_FOOD_GOAL - state.levelFoodsEaten).coerceAtLeast(0))
+                state.mode == GameMode.Endless && playing ->
+                    stringResource(R.string.hud_endless_speed, state.endlessSpeedTier)
                 else -> null
             }
             Hud(
@@ -231,11 +294,20 @@ fun GameScreen(
                         when {
                             inLevels -> stringResource(R.string.hud_level_speed, state.levelIndex, state.speedCycle) +
                                 " · " + viewModel.scale.displayName
+                            // Zen pins its difficulty (no obstacles by design),
+                            // so the level would be noise: mode, pace and board.
+                            state.mode == GameMode.Zen ->
+                                "${state.mode.displayName} · ${viewModel.snakeSpeed.displayName} · ${viewModel.scale.displayName}"
                             else -> "${state.mode.displayName} · ${state.level.displayName} · ${viewModel.scale.displayName}"
                         },
                     )
+                    // Time Attack: surface the declared pace score multiplier.
+                    if (state.mode == GameMode.TimeAttack && viewModel.snakeSpeed.timeAttackScoreFactor > 1f) {
+                        append(" · ").append(viewModel.snakeSpeed.timeAttackFactorLabel)
+                    }
                 },
                 timeLabel = timeLabel,
+                feverActive = feverActive,
                 lives = if (inLevels && onBoard) state.lives else 0,
                 showPause = state.status == GameStatus.Running,
                 reduceMotion = viewModel.reduceMotion,
@@ -327,6 +399,9 @@ fun GameScreen(
                     // board's exact frame (sharp corners, shaped Levels outlines,
                     // terrain-accented) and inheriting the board's shake.
                     dangerFlash = nearMissFlash.value,
+                    feverGlow = feverGlow,
+                    surgeFlash = surgeFlash.value,
+                    zenGlow = zenGlow,
                     // Keep particles/redraw alive through the death-burst and
                     // level-vanish transitions (after `running` has gone false)
                     // and while the resume countdown pulses the head beacon.
@@ -334,6 +409,17 @@ fun GameScreen(
                         viewModel.deathAnimating || viewModel.levelVanishing ||
                         viewModel.resumeCountdown > 0,
                     modifier = boardModifier,
+                )
+
+                // Centred in-run announcements (Fever Time / speed step / record):
+                // a short punch-in banner over the top of the board.
+                AnnouncementBanner(
+                    event = viewModel.bannerEvent,
+                    eventId = viewModel.bannerEventId,
+                    reduceMotion = viewModel.reduceMotion,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 20.dp),
                 )
             }
 
@@ -354,10 +440,13 @@ fun GameScreen(
                 selectedLevel = viewModel.level,
                 selectedSnakeSpeed = viewModel.snakeSpeed,
                 selectedScale = viewModel.scale,
+                campaignCheckpoint = viewModel.campaignCheckpoint,
+                campaignStartLevel = viewModel.campaignStartLevel,
                 onModeSelected = { viewModel.selectMode(it) },
                 onLevelSelected = { viewModel.selectLevel(it) },
                 onSnakeSpeedSelected = { viewModel.selectSnakeSpeed(it) },
                 onScaleSelected = { viewModel.selectScale(it) },
+                onCampaignStartSelected = { viewModel.selectCampaignStartLevel(it) },
                 onPlay = { viewModel.start() },
             )
 
@@ -391,8 +480,10 @@ fun GameScreen(
                     score = state.score,
                     bestScore = viewModel.bestScore,
                     isNewBest = viewModel.isNewBest,
-                    // A Random challenge is a one-off: no best to show.
-                    showBest = !viewModel.isRandomChallenge,
+                    // A Random challenge is a one-off and a Campaign practice
+                    // start is unrecorded: neither has a best to show.
+                    showBest = !viewModel.isRandomChallenge && !viewModel.lastRunFromCheckpoint,
+                    practiceRun = viewModel.lastRunFromCheckpoint,
                     summary = viewModel.lastSummary,
                     unlocked = viewModel.newlyUnlocked.map { it.title },
                     unlockedSkins = viewModel.newlyUnlockedSkins.map { it.displayName },
@@ -515,6 +606,7 @@ private fun Hud(
     combo: Int,
     statusLabel: String,
     timeLabel: String?,
+    feverActive: Boolean,
     lives: Int,
     showPause: Boolean,
     reduceMotion: Boolean,
@@ -609,18 +701,92 @@ private fun Hud(
                 )
             }
             if (timeLabel != null) {
+                // Fever Time turns the clock hot and pops it once on entry, so
+                // the finale reads on the HUD as well as on the board frame.
+                val feverPop = remember { Animatable(1f) }
+                LaunchedEffect(feverActive) {
+                    if (feverActive && !reduceMotion) {
+                        feverPop.snapTo(1.5f)
+                        feverPop.animateTo(1f, spring(dampingRatio = 0.45f))
+                    }
+                }
                 Text(
                     text = timeLabel,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.secondary,
+                    color = if (feverActive) SpecialVisuals.FeverColor else MaterialTheme.colorScheme.secondary,
                     maxLines = 1,
-                    modifier = Modifier.padding(start = 12.dp),
+                    modifier = Modifier
+                        .padding(start = 12.dp)
+                        .graphicsLayer { scaleX = feverPop.value; scaleY = feverPop.value },
                 )
             }
         }
     }
 }
+
+/** How much the gameplay track speeds up while Fever Time runs. */
+private const val FEVER_MUSIC_TEMPO = 1.12f
+
+/**
+ * A short, centred in-run announcement ("Fever ×2!", "Speed 5!", "New record!"):
+ * punches in over the top of the board, holds a beat and fades. Under
+ * reduce-motion it appears and disappears without the punch. One banner at a
+ * time — a newer event simply restarts the animation with the new text.
+ */
+@Composable
+private fun AnnouncementBanner(
+    event: BannerEvent?,
+    eventId: Int,
+    reduceMotion: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val progress = remember { Animatable(0f) }
+    LaunchedEffect(eventId) {
+        if (eventId > 0 && event != null) {
+            if (reduceMotion) {
+                progress.snapTo(1f)
+                kotlinx.coroutines.delay(BANNER_HOLD_MS)
+                progress.snapTo(0f)
+            } else {
+                progress.snapTo(0f)
+                progress.animateTo(1f, spring(dampingRatio = 0.5f, stiffness = 900f))
+                kotlinx.coroutines.delay(BANNER_HOLD_MS)
+                progress.animateTo(0f, tween(durationMillis = 340, easing = FastOutSlowInEasing))
+            }
+        }
+    }
+    val visible = progress.value > 0.01f && event != null
+    if (!visible) return
+    val (text, color) = when (event!!.kind) {
+        BannerKind.Fever -> stringResource(R.string.banner_fever) to SpecialVisuals.FeverColor
+        BannerKind.SpeedUp -> stringResource(R.string.banner_speed_up, event.value) to SpecialVisuals.SurgeColor
+        BannerKind.NewRecord -> stringResource(R.string.banner_new_record) to SpecialVisuals.RecordColor
+    }
+    Box(
+        modifier = modifier.graphicsLayer {
+            val t = progress.value
+            scaleX = 0.7f + 0.3f * t
+            scaleY = 0.7f + 0.3f * t
+            alpha = t.coerceIn(0f, 1f)
+        },
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = color,
+            maxLines = 1,
+            modifier = Modifier
+                .clip(RoundedCornerShape(14.dp))
+                .background(Color.Black.copy(alpha = 0.45f))
+                .padding(horizontal = 18.dp, vertical = 6.dp),
+        )
+    }
+}
+
+/** How long an announcement banner holds before fading. */
+private const val BANNER_HOLD_MS = 1100L
 
 /**
  * A single-line text that steps its font size down (never below half) instead

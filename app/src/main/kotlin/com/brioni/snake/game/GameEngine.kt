@@ -18,33 +18,43 @@ class GameEngine(private val random: Random = Random.Default) {
     /**
      * Builds a [GameStatus.Ready] state: snake centred, obstacles generated for
      * [level], no food yet. The menu is shown over this until [start]. In
-     * [GameMode.Levels] the random obstacles are replaced by the first level's
-     * designed wall shape and the lives stock is filled.
+     * [GameMode.Levels] the random obstacles are replaced by the designed wall
+     * shape of [startLevelIndex] (1 for a fresh run; a reached checkpoint for a
+     * practice start) and the lives stock is filled. A challenge run passes its
+     * [modifier] so the engine's per-tick rules can honour the twist.
      */
     fun setup(
         level: Level,
         board: BoardDimensions,
         mode: GameMode = GameMode.Endless,
         snakeSpeed: SnakeSpeed = SnakeSpeed.DEFAULT,
+        modifier: ChallengeModifier = ChallengeModifier.None,
+        startLevelIndex: Int = 1,
     ): GameState {
         val snake = startingSnake(board)
         val isLevels = mode == GameMode.Levels
-        val hazards = if (isLevels) LevelsMode.hazardsFor(1, board) else LevelHazards.EMPTY
+        val startLevel = if (isLevels) startLevelIndex.coerceIn(1, LevelsMode.LEVEL_COUNT) else 1
+        val hazards = if (isLevels) LevelsMode.hazardsFor(startLevel, board) else LevelHazards.EMPTY
+        // Levels replaces random obstacles with its designed walls; Zen is an
+        // open torus — never any obstacles, whatever difficulty is passed in.
+        val noObstacles = isLevels || mode == GameMode.Zen
         return GameState(
             board = board,
             level = level,
             snakeSpeed = snakeSpeed,
+            modifier = modifier,
             snake = snake,
             direction = Direction.Up,
             pendingDirection = Direction.Up,
             foods = emptyList(),
-            obstacles = if (isLevels) emptySet() else generateObstacles(level, board, snake),
+            obstacles = if (noObstacles) emptySet() else generateObstacles(level, board, snake),
             score = 0,
             pendingGrowth = 0,
             status = GameStatus.Ready,
             mode = mode,
+            levelIndex = startLevel,
             lives = if (isLevels) LevelsMode.START_LIVES else 0,
-            walls = if (isLevels) LevelsMode.shapeFor(1, board) else emptySet(),
+            walls = if (isLevels) LevelsMode.shapeFor(startLevel, board) else emptySet(),
             gates = hazards.gates,
             teleports = hazards.teleports,
             graceAvailable = true,
@@ -63,7 +73,7 @@ class GameEngine(private val random: Random = Random.Default) {
             foods = refill(
                 state.board, state.snake, state.obstacles, state.walls, emptyList(),
                 elapsedTicks = 0, level = state.level, baseTickMillis = state.snakeSpeed.tickMillis,
-                mode = state.mode, reserved = state.hazardSpawnCells,
+                mode = state.mode, reserved = state.hazardSpawnCells, modifier = state.modifier,
             ),
             status = GameStatus.Running,
         )
@@ -80,7 +90,7 @@ class GameEngine(private val random: Random = Random.Default) {
                 state.board, state.snake, state.obstacles, state.walls, emptyList(),
                 elapsedTicks = state.elapsedTicks, level = state.level,
                 baseTickMillis = state.snakeSpeed.tickMillis, mode = state.mode,
-                reserved = state.hazardSpawnCells,
+                reserved = state.hazardSpawnCells, modifier = state.modifier,
             ),
             status = GameStatus.Running,
         )
@@ -99,8 +109,10 @@ class GameEngine(private val random: Random = Random.Default) {
         board: BoardDimensions,
         mode: GameMode = GameMode.Endless,
         snakeSpeed: SnakeSpeed = SnakeSpeed.DEFAULT,
+        modifier: ChallengeModifier = ChallengeModifier.None,
+        startLevelIndex: Int = 1,
     ): GameState =
-        start(setup(level, board, mode, snakeSpeed))
+        start(setup(level, board, mode, snakeSpeed, modifier, startLevelIndex))
 
     /**
      * Buffers a direction change for the next tick. A 180° reversal of the
@@ -162,6 +174,39 @@ class GameEngine(private val random: Random = Random.Default) {
         val direction = state.pendingDirection
         val events = ArrayList<GameEvent>(3)
 
+        // Time Attack Fever Time: the last FEVER_MS of the clock double every
+        // point. Judged against this tick's clock *before* any clock block eaten
+        // this tick, so the transition is well-defined; entering fires an event
+        // (a time bonus can lift the clock back out, and the event re-fires when
+        // it drains back in).
+        val feverBefore = state.mode == GameMode.TimeAttack &&
+            (GameState.TIME_ATTACK_MS + state.timeAdjustMs - state.playedMs) in 1..GameState.FEVER_MS
+        val feverNow = state.mode == GameMode.TimeAttack &&
+            (GameState.TIME_ATTACK_MS + state.timeAdjustMs - playedMs) in 1..GameState.FEVER_MS
+        if (feverNow && !feverBefore) events.add(GameEvent.FeverStarted)
+
+        // Every point earned this tick is scaled by the declared Time Attack
+        // pace multiplier (a faster snake risks more, so it earns more) and by
+        // the Fever Time doubling while the finale runs.
+        val scoreBoost: Float = if (state.mode == GameMode.TimeAttack) {
+            state.snakeSpeed.timeAttackScoreFactor *
+                (if (feverNow) GameState.FEVER_SCORE_FACTOR else 1)
+        } else {
+            1f
+        }
+
+        // Endless: announce every audible/visible step of the speed ramp — but
+        // only while the step actually changes the pace (silent once floored).
+        if (state.mode == GameMode.Endless) {
+            val tierBefore = GameState.endlessTierFor(state.playedMs, state.level, state.modifier)
+            val tierNow = GameState.endlessTierFor(playedMs, state.level, state.modifier)
+            if (tierNow > tierBefore &&
+                GameState.endlessTickMs(tierNow) < GameState.endlessTickMs(tierBefore)
+            ) {
+                events.add(GameEvent.SpeedTierUp(tierNow))
+            }
+        }
+
         // Age timed effects; expired ones fire an event and drop out.
         var effectTimers = state.effectTimers.map { it.copy(remainingMs = it.remainingMs - elapsedMs) }
         effectTimers.filter { it.remainingMs <= 0 }.forEach { events.add(GameEvent.EffectExpired(it.kind)) }
@@ -174,9 +219,12 @@ class GameEngine(private val random: Random = Random.Default) {
         }
 
         val ghost = effectTimers.any { it.kind == EffectKind.Ghost }
+        // The board wraps under a Ghost effect — and always in Zen, whose arena
+        // is a torus with no lethal edges.
+        val wrapAround = ghost || state.mode == GameMode.Zen
         val board = state.board
         val stepped = state.head.step(direction)
-        val movedHead = if (ghost) {
+        val movedHead = if (wrapAround) {
             Position((stepped.x + board.width) % board.width, (stepped.y + board.height) % board.height)
         } else {
             stepped
@@ -210,11 +258,17 @@ class GameEngine(private val random: Random = Random.Default) {
             when (val effect = eaten.effect) {
                 is FoodEffect.Grow -> {
                     // A fresh streak, or extend the running one if still in time.
+                    // The window can be tightened by a challenge twist (Combo
+                    // Rush) and is stretched in Zen, where streaks reward an
+                    // unhurried flow rather than a race against the timer.
                     combo = if (elapsedTicks <= comboDeadlineTick) combo + 1 else 1
-                    comboDeadlineTick = elapsedTicks + COMBO_WINDOW_TICKS
+                    val zenStretch = if (state.mode == GameMode.Zen) ZenMode.COMBO_WINDOW_FACTOR else 1f
+                    comboDeadlineTick = elapsedTicks +
+                        (COMBO_WINDOW_TICKS * state.modifier.comboWindowFactor * zenStretch).toInt()
                     // Longer snakes earn proportionally more per bite (up to a cap),
                     // so the same food is worth far more late in a run than early on.
-                    val points = (effect.segments * 10 * combo.coerceAtMost(MAX_COMBO) * lengthScoreFactor(body.size)).toInt()
+                    val points = (effect.segments * 10 * combo.coerceAtMost(MAX_COMBO) *
+                        lengthScoreFactor(body.size) * scoreBoost).toInt()
                     score += points
                     pendingGrowth += effect.segments - 1 // head already added this tick
                     events.add(GameEvent.Ate(eaten, points, combo.coerceAtMost(MAX_COMBO)))
@@ -224,7 +278,8 @@ class GameEngine(private val random: Random = Random.Default) {
                     // trims the tail down to the floor and pays a token score.
                     pendingGrowth = 0
                     val removed = trimTail(body, effect.segments)
-                    val points = if (eaten.size == FoodSize.Maxi) SHRINK_POINTS_MAXI else SHRINK_POINTS
+                    val base = if (eaten.size == FoodSize.Maxi) SHRINK_POINTS_MAXI else SHRINK_POINTS
+                    val points = (base * scoreBoost).toInt()
                     score += points
                     events.add(GameEvent.Shrunk(eaten, removed, points))
                 }
@@ -269,9 +324,10 @@ class GameEngine(private val random: Random = Random.Default) {
                     events.add(GameEvent.EffectStarted(EffectKind.Freeze, eaten))
                 }
                 is FoodEffect.Jackpot -> {
-                    score += effect.bonus
+                    val bonus = (effect.bonus * scoreBoost).toInt()
+                    score += bonus
                     pendingGrowth += effect.growth
-                    events.add(GameEvent.JackpotHit(eaten, effect.bonus, effect.growth))
+                    events.add(GameEvent.JackpotHit(eaten, bonus, effect.growth))
                 }
                 is FoodEffect.TimeBonus -> {
                     // Time Attack: extend the clock. Pure effect — keep length.
@@ -335,6 +391,7 @@ class GameEngine(private val random: Random = Random.Default) {
                 specialFrequency = specialFrequency,
                 mode = state.mode,
                 reserved = state.hazardSpawnCells,
+                modifier = state.modifier,
             )
         }
 
@@ -357,6 +414,8 @@ class GameEngine(private val random: Random = Random.Default) {
         val timeUp = state.mode == GameMode.TimeAttack &&
             (playedMs - timeAdjustMs) >= GameState.TIME_ATTACK_MS
         // Gates that are closed *now* (this tick's clock) are lethal like walls.
+        // In Zen the wrap already keeps the head in bounds and there are no
+        // obstacles/walls/gates/debris — only the snake's own body can kill.
         val closedGates = state.closedGateCells(elapsedTicks)
         val crashed = !ghost && (
             isOutOfBounds(newHead, board) ||
@@ -407,8 +466,11 @@ class GameEngine(private val random: Random = Random.Default) {
         if (dead) events.add(GameEvent.Died)
 
         // Near-miss: the head survived but is grazing a static hazard. Skipped
-        // while invincible (Ghost passes through everything anyway).
-        if (!dead && !ghost && isNearMiss(newHead, board, state.obstacles, state.walls, closedGates, debris)) {
+        // while invincible (Ghost passes through everything anyway); on a
+        // wrapping board the edge is a doorway, not a hazard, so it never counts.
+        if (!dead && !ghost &&
+            isNearMiss(newHead, board, state.obstacles, state.walls, closedGates, debris, edgeLethal = !wrapAround)
+        ) {
             events.add(GameEvent.NearMiss)
         }
 
@@ -417,7 +479,7 @@ class GameEngine(private val random: Random = Random.Default) {
         // still turn away - so it is advisory only and never affects the rules.
         if (!dead) {
             val aheadStep = newHead.step(direction)
-            val ahead = if (ghost) {
+            val ahead = if (wrapAround) {
                 Position((aheadStep.x + board.width) % board.width, (aheadStep.y + board.height) % board.height)
             } else {
                 aheadStep
@@ -519,8 +581,9 @@ class GameEngine(private val random: Random = Random.Default) {
 
     /**
      * True when any orthogonal neighbour of [head] is a static lethal cell - the
-     * board edge, an obstacle, a level wall or lingering debris. The snake's own
-     * body is intentionally not considered (coiling beside yourself is normal).
+     * board edge (only while [edgeLethal]; a wrapping board has no lethal edge),
+     * an obstacle, a level wall or lingering debris. The snake's own body is
+     * intentionally not considered (coiling beside yourself is normal).
      */
     private fun isNearMiss(
         head: Position,
@@ -529,9 +592,10 @@ class GameEngine(private val random: Random = Random.Default) {
         walls: Set<Position>,
         closedGates: Set<Position>,
         debris: List<Debris>,
+        edgeLethal: Boolean = true,
     ): Boolean = Direction.entries.any { dir ->
         val n = head.step(dir)
-        isOutOfBounds(n, board) || n in obstacles || n in walls ||
+        (edgeLethal && isOutOfBounds(n, board)) || n in obstacles || n in walls ||
             n in closedGates || debris.any { it.cell == n }
     }
 
@@ -632,14 +696,18 @@ class GameEngine(private val random: Random = Random.Default) {
         specialFrequency: SpecialFrequency = SpecialFrequency.Standard,
         mode: GameMode = GameMode.Endless,
         reserved: Set<Position> = emptySet(),
+        modifier: ChallengeModifier = ChallengeModifier.None,
     ): List<Food> {
         var foods = existing
         val target = foodCountFor(board)
         while (foods.size < target) {
-            // A special is allowed only while fewer than the cap are on the board.
-            val allowSpecial = specialAllowed &&
+            // A special is allowed only while fewer than the cap are on the board
+            // (never under the Old School twist, and never in Zen - the calm
+            // mode spawns only the regular food progression).
+            val allowSpecial = specialAllowed && !modifier.suppressSpecials &&
+                mode != GameMode.Zen &&
                 foods.count { it.category == FoodCategory.Special } < MAX_SPECIALS_ON_BOARD
-            val food = spawnFood(board, snake, obstacles, walls, foods, elapsedTicks, level, baseTickMillis, hazardsEnabled, allowSpecial, specialFrequency, mode, reserved) ?: break
+            val food = spawnFood(board, snake, obstacles, walls, foods, elapsedTicks, level, baseTickMillis, hazardsEnabled, allowSpecial, specialFrequency, mode, reserved, modifier) ?: break
             foods = foods + food
         }
         return foods
@@ -664,8 +732,12 @@ class GameEngine(private val random: Random = Random.Default) {
         specialFrequency: SpecialFrequency,
         mode: GameMode,
         reserved: Set<Position>,
+        modifier: ChallengeModifier = ChallengeModifier.None,
     ): Food? {
-        val spec = FoodTable.roll(random, elapsedTicks, level, baseTickMillis, hazardsEnabled, specialAllowed, specialFrequency, mode)
+        val spec = FoodTable.roll(
+            random, elapsedTicks, level, baseTickMillis, hazardsEnabled, specialAllowed,
+            specialFrequency, mode, forceMaxi = modifier.forceMaxiFood,
+        )
         val span = spec.size.cellSpan
         // Top-left cell range that keeps the whole square off the border.
         val maxX = board.width - span

@@ -77,6 +77,9 @@ enum class Achievement(
     Mythmaker("Mythmaker", "Score 10,000 in a single run", { it.score >= 10_000 }),
     Leviathan("Leviathan", "Grow the snake to 250 segments", { it.maxSnakeLength >= 250 }),
     TowerAscendant("Tower Ascendant", "Reach Level 15 at Speed 3 in Campaign", { it.mode == GameMode.Levels && it.maxLevelDepth >= 45 }),
+    InnerPeace("Inner Peace", "Flow for five minutes in one Zen run", { it.mode == GameMode.Zen && it.durationMs >= 300_000 }),
+    Ouroboros("Ouroboros", "Grow the snake to 60 segments in Zen", { it.mode == GameMode.Zen && it.maxSnakeLength >= 60 }),
+    EternalFlow("Eternal Flow", "Score 3000 in a Zen run", { it.mode == GameMode.Zen && it.score >= 3000 }),
     ;
 
     companion object {

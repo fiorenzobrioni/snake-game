@@ -67,6 +67,22 @@ sealed interface GameEvent {
     data class TimeLost(val food: Food, val seconds: Int) : GameEvent
 
     /**
+     * Time Attack: the clock just entered the Fever Time finale (the last
+     * [GameState.FEVER_MS]); every point is doubled until the run ends. Drives
+     * the fever presentation (border glow, HUD banner, music tempo, SFX). A
+     * time bonus can lift the clock back out of the window, in which case the
+     * event fires again when it drains back in.
+     */
+    data object FeverStarted : GameEvent
+
+    /**
+     * Endless: the speed ramp stepped up to [tier] ("Speed x"). Emitted once per
+     * tier so the pace change is always seen and heard (HUD banner, board frame
+     * flash, SFX), never silent.
+     */
+    data class SpeedTierUp(val tier: Int) : GameEvent
+
+    /**
      * An uneaten regular food timed out and was removed (a fresh one is spawned
      * elsewhere in the same tick). Specials never vanish. Drives the "vanish"
      * particle burst.

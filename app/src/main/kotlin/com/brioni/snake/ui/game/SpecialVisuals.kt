@@ -23,6 +23,18 @@ object SpecialVisuals {
     val TimePenaltyColor = Color(0xFFEF5350)
     val ExtraLifeColor = Color(0xFFFF4081)
 
+    /** Time Attack Fever Time: the sustained amber heat of the finale. */
+    val FeverColor = Color(0xFFFF9100)
+
+    /** Endless speed-tier surge: the golden flare of a pace step. */
+    val SurgeColor = Color(0xFFFFD740)
+
+    /** Mid-run record broken: a bright celebratory green. */
+    val RecordColor = Color(0xFF69F0AE)
+
+    /** Zen mode: the soft teal of the breathing frame (open, wrapping edges). */
+    val ZenColor = Color(0xFF80CBC4)
+
     /** Accent for a special food, chosen from its effect. */
     fun accent(effect: FoodEffect): Color = when (effect) {
         is FoodEffect.Haste -> LightningColor

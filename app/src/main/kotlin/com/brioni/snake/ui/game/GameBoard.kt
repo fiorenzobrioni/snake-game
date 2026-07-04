@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -42,6 +43,7 @@ import com.brioni.snake.game.Food
 import com.brioni.snake.game.FoodCategory
 import com.brioni.snake.game.FoodEffect
 import com.brioni.snake.game.FoodTier
+import com.brioni.snake.game.GameMode
 import com.brioni.snake.game.GameState
 import com.brioni.snake.game.Position
 import com.brioni.snake.game.TeleportPair
@@ -175,6 +177,16 @@ fun GameBoard(
     // Near-miss danger flash envelope (0..1): re-traces the board's exact frame
     // (the rectangle, or the shaped Levels outline) in a hot terrain accent.
     dangerFlash: Float = 0f,
+    // Time Attack Fever Time: a sustained amber frame glow (0..1, pulsed by the
+    // caller) that keeps burning while the double-points finale runs.
+    feverGlow: Float = 0f,
+    // Endless speed-tier step: a one-shot golden frame flare (1→0 envelope) so
+    // every pace change is visible on the board itself, not just the HUD.
+    surgeFlash: Float = 0f,
+    // Zen: the slow "breathing" envelope (0..1, pulsed by the caller) of the
+    // porous boundary veil that replaces the solid frame - edge mist + a
+    // drifting dashed stitch - so the open, wrapping edges read at a glance.
+    zenGlow: Float = 0f,
     // Keeps the particle/redraw loop alive across the brief death-burst and
     // level-vanish transitions, after `running` has already gone false.
     effectsActive: Boolean = running,
@@ -398,7 +410,7 @@ fun GameBoard(
             // smooth-tube renderer (rounded skins) and the blocky one (flat skins).
             val snake = state.snake
             val centers = interpolatedSnakeCenters(
-                snake, previousSnake, state.teleports, f, cell, originX, originY,
+                snake, previousSnake, state.teleports, state.board, f, cell, originX, originY,
             )
             // Fold in the dissolve envelope so the body fades as it bursts apart on
             // death / vanishes on a level-up (1f during normal play = no change).
@@ -532,7 +544,66 @@ fun GameBoard(
                 }
             }
         }
-        frame(borderColor, borderWidth)
+        if (state.mode == GameMode.Zen) {
+            // Zen: no solid wall. The boundary is a *veil* — a soft teal mist
+            // bleeding inward from each edge plus a slowly drifting dashed
+            // stitch along the frame, both breathing with [zenGlow] — so the
+            // border reads as permeable at a glance, unmistakably unlike the
+            // solid frames of the other modes.
+            val calm = SpecialVisuals.ZenColor
+            val breath = 0.45f + 0.55f * zenGlow
+            val mist = cell * 1.1f
+            val mistColor = calm.copy(alpha = 0.15f * breath)
+            val clear = calm.copy(alpha = 0f)
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    0f to mistColor, 1f to clear,
+                    startX = originX, endX = originX + mist,
+                ),
+                topLeft = Offset(originX, originY),
+                size = Size(mist, boardHeight),
+            )
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    0f to clear, 1f to mistColor,
+                    startX = originX + boardWidth - mist, endX = originX + boardWidth,
+                ),
+                topLeft = Offset(originX + boardWidth - mist, originY),
+                size = Size(mist, boardHeight),
+            )
+            drawRect(
+                brush = Brush.verticalGradient(
+                    0f to mistColor, 1f to clear,
+                    startY = originY, endY = originY + mist,
+                ),
+                topLeft = Offset(originX, originY),
+                size = Size(boardWidth, mist),
+            )
+            drawRect(
+                brush = Brush.verticalGradient(
+                    0f to clear, 1f to mistColor,
+                    startY = originY + boardHeight - mist, endY = originY + boardHeight,
+                ),
+                topLeft = Offset(originX, originY + boardHeight - mist),
+                size = Size(boardWidth, mist),
+            )
+            // The stitch: dashes drift slowly along the frame (still under
+            // reduce-motion), like a current flowing through the open edge.
+            val dashLen = cell * 0.55f
+            val gapLen = cell * 0.5f
+            val phase = if (reduceMotion) 0f else (seconds.toFloat() * cell * 0.35f) % (dashLen + gapLen)
+            drawRect(
+                color = calm.copy(alpha = 0.30f + 0.35f * zenGlow),
+                topLeft = Offset(originX, originY),
+                size = Size(boardWidth, boardHeight),
+                style = Stroke(
+                    width = borderWidth,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(dashLen, gapLen), phase),
+                ),
+            )
+        } else {
+            frame(borderColor, borderWidth)
+        }
 
         // Near-miss danger flash: the frame itself flares in a hot version of the
         // terrain's accent. Re-tracing the exact frame geometry gives sharp
@@ -542,6 +613,21 @@ fun GameBoard(
             val hot = lighten(terrainBoardBorder(terrain, palette), 0.35f)
             frame(hot.copy(alpha = 0.35f * dangerFlash), borderWidth * 3f) // soft halo
             frame(hot.copy(alpha = dangerFlash), borderWidth * 1.5f) // crisp flare
+        }
+
+        // Fever Time: the frame smoulders amber for the whole double-points
+        // finale — a sustained glow (pulsed by the caller), not a one-shot flash.
+        if (feverGlow > 0.001f) {
+            val amber = SpecialVisuals.FeverColor
+            frame(amber.copy(alpha = 0.30f * feverGlow), borderWidth * 3.2f) // outer heat
+            frame(amber.copy(alpha = 0.85f * feverGlow), borderWidth * 1.4f) // burning line
+        }
+
+        // Endless speed-up surge: a quick golden flare along the frame.
+        if (surgeFlash > 0.001f) {
+            val gold = SpecialVisuals.SurgeColor
+            frame(gold.copy(alpha = 0.30f * surgeFlash), borderWidth * 3f)
+            frame(gold.copy(alpha = 0.9f * surgeFlash), borderWidth * 1.5f)
         }
     }
 }
@@ -984,12 +1070,20 @@ private fun blockSide(i: Int, n: Int, cell: Float): Float {
  * exit pad - so the head visibly dives into the portal and re-emerges at its
  * partner rather than streaking across the board. The two sides of a portal stay
  * far apart on purpose; the body renderers break the tube there (see
- * [isBrokenSpan]). A Ghost board-wrap has no pad, so it just snaps at the midpoint.
+ * [isBrokenSpan]).
+ *
+ * A **board wrap** (Zen's torus, or a Ghost pass through the edge) has no pad:
+ * the segment slides continuously along the toroidal shortest path — out
+ * through one edge for the first half of the tick, in from the opposite edge
+ * for the second — so the crossing reads as one smooth glide (the board's
+ * clipRect trims the overhang and [isBrokenSpan] keeps the tube from being
+ * drawn across the gap).
  */
 private fun interpolatedSnakeCenters(
     snake: List<Position>,
     previousSnake: List<Position>,
     teleports: List<TeleportPair>,
+    board: BoardDimensions,
     f: Float,
     cell: Float,
     originX: Float,
@@ -997,6 +1091,13 @@ private fun interpolatedSnakeCenters(
 ): List<Offset> {
     fun toOffset(px: Float, py: Float) =
         Offset(originX + (px + 0.5f) * cell, originY + (py + 0.5f) * cell)
+    // The signed 1-cell step a wrap actually took: a jump of (size-1) cells in
+    // grid space is a 1-cell move the other way around the torus.
+    fun toroidalDelta(d: Int, size: Int): Float = when {
+        d > size / 2 -> (d - size).toFloat()
+        d < -size / 2 -> (d + size).toFloat()
+        else -> d.toFloat()
+    }
     val centers = ArrayList<Offset>(snake.size)
     for (k in snake.indices) {
         val to = snake[k]
@@ -1005,14 +1106,31 @@ private fun interpolatedSnakeCenters(
             centers.add(toOffset(lerp(from.x.toFloat(), to.x.toFloat(), f), lerp(from.y.toFloat(), to.y.toFloat(), f)))
             continue
         }
-        // Non-adjacent: a portal jump (or a Ghost wrap). `to` is the exit pad, so
+        // Non-adjacent: a portal jump or a board wrap. `to` is the exit pad, so
         // its partner is the entry pad the segment slid onto to trigger the jump.
         val entry = teleports.firstNotNullOfOrNull { it.exitFor(to) }
-        if (entry != null && f < 0.5f) {
-            val t = f * 2f
-            centers.add(toOffset(lerp(from.x.toFloat(), entry.x.toFloat(), t), lerp(from.y.toFloat(), entry.y.toFloat(), t)))
+        if (entry != null) {
+            if (f < 0.5f) {
+                val t = f * 2f
+                centers.add(toOffset(lerp(from.x.toFloat(), entry.x.toFloat(), t), lerp(from.y.toFloat(), entry.y.toFloat(), t)))
+            } else {
+                centers.add(toOffset(to.x.toFloat(), to.y.toFloat()))
+            }
+            continue
+        }
+        // Board wrap: glide along the toroidal shortest path. First half of the
+        // tick the segment leaves through its edge; second half it enters from
+        // the opposite one. Continuous speed, clipped cleanly at the frame.
+        val dx = toroidalDelta(to.x - from.x, board.width)
+        val dy = toroidalDelta(to.y - from.y, board.height)
+        if (abs(dx) <= 1f && abs(dy) <= 1f && (dx != 0f || dy != 0f)) {
+            if (f < 0.5f) {
+                centers.add(toOffset(from.x + dx * f, from.y + dy * f))
+            } else {
+                centers.add(toOffset(to.x - dx * (1f - f), to.y - dy * (1f - f)))
+            }
         } else {
-            // Second half of the jump, or a padless wrap: sit at the exit cell.
+            // Anything stranger (e.g. a mid-run reset): just sit at the target.
             centers.add(toOffset(to.x.toFloat(), to.y.toFloat()))
         }
     }

@@ -297,7 +297,7 @@ snake-game/
 - [x] **Step 6.3** - Highscore tables per (level × size), per mode, in a "Records" screen.
 - [x] **Step 6.4** - Local achievements.
 - [x] **Step 6.5** - Extra modes: Endless, Time Attack.
-- [x] **Step 6.6** - **Levels mode** (`GameMode.Levels`, `game/LevelsMode.kt`): ten **designed board
+- [x] **Step 6.6** - **Levels mode** (`GameMode.Levels`, `game/LevelsMode.kt`): fifteen **designed board
       shapes** (procedural over the responsive grid - no random obstacles; walls reshape the playable
       area and the frame follows the outline) repeating forever, one **speed cycle** faster each lap
       (170 ms → 80 ms floor); advance by **eating 12 foods** per level (HUD counts down); **3 lives**
@@ -518,6 +518,82 @@ snake-game/
       "skin unlocked" toasts are suppressed - a temporary pre-release convenience to trial all skins. The
       underlying `SkinUnlock` rules / `Skin.newlyUnlocked` logic are untouched (still covered by `SkinTest`);
       flip the flag to `false` to restore gating before an official release.
+
+### Phase 6.10 - Mode depth & pacing ✅ (implemented, post-1.0.0)
+
+> A focused pass on the three modes' long-term appeal, from a design review of the mode lineup.
+> Guiding rule: expose the value already built before adding content; every rhythm change must be
+> seen and heard (premium feel); nothing may weigh the app down (no new assets).
+
+- [x] **Step 6.10.1 - Campaign checkpoints.** The furthest level reached is persisted; once past
+      level 1 the pre-game setup offers a "Start level" chip row (1..checkpoint). Starting past
+      level 1 is a **practice run**: no highscore, no progress record, no Campaign achievements -
+      stated in the setup caption and on the game-over overlay ("Practice run - not recorded").
+      Records count from a Level 1 start only, keeping one honest leaderboard.
+- [x] **Step 6.10.2 - Time Attack pace multiplier.** `SnakeSpeed.timeAttackScoreFactor`
+      (x1.0 - x1.5) scales all Time Attack scoring, turning the pace choice into a declared
+      risk/reward dial instead of a record-fairness hole (speed is not part of `ScoreKey`).
+      Declared on the setup speed chips and in the HUD status line.
+- [x] **Step 6.10.3 - Time Attack Fever Time.** The last 20 s double every point
+      (`GameState.FEVER_MS` / `FEVER_SCORE_FACTOR`; `GameEvent.FeverStarted` on entry). Loud on
+      purpose: pulsing amber board-frame glow, hot HUD clock, "Fever x2!" banner, sting SFX +
+      haptic, and the music tempo steps up 12% (`MusicManager.setTempo`, reset on leaving).
+- [x] **Step 6.10.4 - Endless stepped speed tiers.** Replaced the linear ramp (which flatlined at
+      ~90 s) with 20 s tiers (x0.94 each, 190 ms base, 60 ms floor - alive for ~6-7 minutes).
+      Difficulty adds a ramp head start (`Level.endlessTierHeadStart`, Beginner +0 .. Legend +4) so
+      harder is faster from the first tick, spelled out in the setup caption. Every step is
+      announced (`GameEvent.SpeedTierUp`: "Speed N!" banner, golden frame flare, zap SFX, haptic)
+      and the live tier shows in the HUD. Plus a one-time mid-run **"New record!"** celebration
+      when the live score passes the stored best (all modes).
+- [x] **Step 6.10.5 - Challenge modifier pool widened (4 -> 9).** Added Grand Arena (Colossal
+      board), Maxi Feast (all food 2x2), Combo Rush (halved combo window), Overdrive (hotter pace
+      everywhere) and Old School (no specials). Each twist carries a one-line description shown on
+      the Daily/Random cards and rides inside `GameState.modifier` so the pure engine applies it.
+- [x] **Step 6.10.6 - Quieter default audio.** Defaults tuned to music 0.3 / SFX 0.6 (master 1.0)
+      so the music sits as a light backdrop out of the box; saved sliders are untouched.
+
+### Phase 6.11 - Zen mode ✅ (implemented, post-1.0.0)
+
+> The fourth mode completes the lineup on the missing axis: a **calm** run for short, relaxed
+> sessions. Built entirely from existing systems (the Ghost wrap, the food table, the menu music
+> track) - premium feel, zero new assets.
+
+- [x] **Step 6.11.1 - Rules (`GameMode.Zen`, `game/ZenMode.kt`).** The arena is a **torus**: all
+      four edges wrap (the Ghost power-up's wrap, made permanent), so only the snake's own body can
+      end the run. No obstacles (whatever difficulty; the selector is disabled, scores pinned to
+      `ZenMode.SCORE_LEVEL`), no specials ever - just the grow/shrink/mystery food progression. The
+      pace is the selected `SnakeSpeed`, fixed for the whole run ("pick your rhythm"), and the
+      grow-combo window is **doubled** (`ZenMode.COMBO_WINDOW_FACTOR`) so streaks reward flow, not
+      frenzy. Edge-hugging never fires the near-miss cue (the edge is a doorway, not a hazard).
+      Zen is excluded from the Daily/Random challenge rotation.
+- [x] **Step 6.11.2 - Toroidal rendering.** `interpolatedSnakeCenters` now glides a wrapping
+      segment along the toroidal shortest path - out through one edge for the first half of the
+      tick, in from the opposite edge for the second - clipped at the frame and with the body tube
+      broken across the gap, so a crossing reads as one smooth pass (this also upgrades the old
+      Ghost-wrap snap). The solid frame is replaced by a **porous boundary veil**: a soft teal mist
+      bleeding inward from each edge plus a slowly drifting dashed stitch along the frame, both
+      breathing with `zenGlow` (~5 s cycle; steady and non-drifting under reduce-motion) - so the
+      open, wrapping edges read at a glance and Zen looks unmistakably different from the walled
+      modes.
+- [x] **Step 6.11.3 - Presentation.** Zen plays the calmer **menu track** during the run (crossfade
+      on entry; no new audio asset). Setup captions explain the sleeping difficulty selector ("No
+      obstacles here - the edges wrap around") and the speed choice ("Pick your rhythm - the pace
+      never ramps"); the HUD status line shows mode - pace - board. Records get a single pinned-level
+      row per scale (like Campaign); three new achievements (Inner Peace / Ouroboros / Eternal Flow).
+
+### Phase 6.12 - Setup clarity ✅ (implemented, post-1.0.0)
+
+- [x] **Step 6.12.1 - A caption for every Custom selector.** Each section of the pre-game setup now
+      carries a one-line explanation that adapts to the selected mode: **Mode** gets an elevator
+      pitch per mode; **Level** states what difficulty changes (obstacles + Endless ramp start) or
+      why it sleeps (Campaign designs its own boards, Zen has none); **Snake speed** explains the
+      Time Attack multiplier, the Zen rhythm, or why Endless/Campaign pace themselves; **Board
+      scale** shows the selected grid's cells-per-short-side; **Start level** (Campaign) invites
+      jumping to reached levels when no checkpoint is picked.
+- [x] **Step 6.12.2 - Board scale renamed.** The middle preset's user-facing name changed from
+      "Standard" to **"Explorer"** (Cozy - Explorer - Epic - Colossal). The enum constant stays
+      `Classic` - it is a persisted DataStore / `ScoreKey` token - so no stored record or
+      preference is orphaned.
 
 ### Phase 7 - Play Store distribution & cleanup
 

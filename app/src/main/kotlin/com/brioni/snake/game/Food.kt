@@ -190,6 +190,8 @@ object FoodTable {
      * @param mode the active [GameMode]; the time-bonus / time-penalty specials
      *        are produced only in [GameMode.TimeAttack] and the extra-life
      *        special only in [GameMode.Levels].
+     * @param forceMaxi when true (the Maxi Feast challenge twist), every
+     *        grow/shrink food spawns maxi (2x2) with no unlock gate.
      */
     fun roll(
         random: Random,
@@ -200,20 +202,21 @@ object FoodTable {
         specialAllowed: Boolean = true,
         specialFrequency: SpecialFrequency = SpecialFrequency.Standard,
         mode: GameMode = GameMode.Endless,
+        forceMaxi: Boolean = false,
     ): FoodSpec {
         val elapsedMs = elapsedTicks.toLong() * baseTickMillis
         val factor = levelGateFactor(level)
         val shrinkUnlocked = elapsedMs >= (GATE_SHRINK_MS * factor)
-        val maxiUnlocked = elapsedMs >= (GATE_MAXI_MS * factor)
+        val maxiUnlocked = forceMaxi || elapsedMs >= (GATE_MAXI_MS * factor)
         val mysteryUnlocked = elapsedMs >= (GATE_MYSTERY_MS * factor)
         val specialUnlocked = elapsedMs >= (GATE_SPECIAL_MS * factor * specialFrequency.gateFactor)
 
         val entries = buildList {
-            add(Weighted(40) { growSpec(random, maxiUnlocked) })
-            if (shrinkUnlocked) add(Weighted(24) { shrinkSpec(random, maxiUnlocked) })
+            add(Weighted(40) { growSpec(random, maxiUnlocked, forceMaxi) })
+            if (shrinkUnlocked) add(Weighted(24) { shrinkSpec(random, maxiUnlocked, forceMaxi) })
             if (mysteryUnlocked) {
-                add(Weighted(9) { mysterySpec(random, FoodCategory.Grow, maxiUnlocked) })
-                add(Weighted(6) { mysterySpec(random, FoodCategory.Shrink, maxiUnlocked) })
+                add(Weighted(9) { mysterySpec(random, FoodCategory.Grow, maxiUnlocked, forceMaxi) })
+                add(Weighted(6) { mysterySpec(random, FoodCategory.Shrink, maxiUnlocked, forceMaxi) })
             }
             if (specialUnlocked && specialAllowed) {
                 add(Weighted(specialFrequency.spawnWeight) { specialSpec(random, hazardsEnabled, mode) })
@@ -250,16 +253,16 @@ object FoodTable {
         return FoodSpec(FoodCategory.Special, FoodTier.Huge, FoodSize.Maxi, effect)
     }
 
-    private fun growSpec(random: Random, maxiUnlocked: Boolean): FoodSpec {
+    private fun growSpec(random: Random, maxiUnlocked: Boolean, forceMaxi: Boolean = false): FoodSpec {
         val tier = weightedTier(random, GROW_TIER_WEIGHTS)
-        val size = rollSize(random, maxiUnlocked)
+        val size = rollSize(random, maxiUnlocked, forceMaxi)
         val amount = growBase(tier) * size.cellSpan
         return FoodSpec(FoodCategory.Grow, tier, size, FoodEffect.Grow(amount))
     }
 
-    private fun shrinkSpec(random: Random, maxiUnlocked: Boolean): FoodSpec {
+    private fun shrinkSpec(random: Random, maxiUnlocked: Boolean, forceMaxi: Boolean = false): FoodSpec {
         val tier = weightedTier(random, SHRINK_TIER_WEIGHTS)
-        val size = rollSize(random, maxiUnlocked)
+        val size = rollSize(random, maxiUnlocked, forceMaxi)
         val amount = shrinkBase(tier) * size.cellSpan
         return FoodSpec(FoodCategory.Shrink, tier, size, FoodEffect.Shrink(amount))
     }
@@ -268,8 +271,9 @@ object FoodTable {
         random: Random,
         category: FoodCategory,
         maxiUnlocked: Boolean,
+        forceMaxi: Boolean = false,
     ): FoodSpec {
-        val size = rollSize(random, maxiUnlocked)
+        val size = rollSize(random, maxiUnlocked, forceMaxi)
         val effect = if (category == FoodCategory.Grow) {
             // Standard 2..12, maxi 4..24.
             FoodEffect.Grow(random.nextInt(2, 13) * size.cellSpan)
@@ -281,9 +285,9 @@ object FoodTable {
         return FoodSpec(category, FoodTier.Mystery, size, effect)
     }
 
-    /** 25% maxi once unlocked, otherwise always standard. */
-    private fun rollSize(random: Random, maxiUnlocked: Boolean): FoodSize =
-        if (maxiUnlocked && random.nextInt(100) < 25) FoodSize.Maxi else FoodSize.Standard
+    /** 25% maxi once unlocked (always under [forceMaxi]), otherwise standard. */
+    private fun rollSize(random: Random, maxiUnlocked: Boolean, forceMaxi: Boolean = false): FoodSize =
+        if (forceMaxi || (maxiUnlocked && random.nextInt(100) < 25)) FoodSize.Maxi else FoodSize.Standard
 
     private fun growBase(tier: FoodTier): Int = when (tier) {
         FoodTier.Small -> 2
