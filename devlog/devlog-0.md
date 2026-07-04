@@ -13,6 +13,35 @@ Suggested format for each entry:
 
 ---
 
+## 2026-07-04 - Release 2.0.0 (version bump + GitHub release)
+
+**Done:**
+- **Bumped the app to `versionName 2.0.0` (`versionCode 29`)** in `app/build.gradle.kts`, cutting the
+  second public GitHub release. 2.0.0 consolidates every phase shipped since `v1.0.0` (2026-06-27):
+  the fourth **Zen** mode (Phase 6.11), the mode-depth & pacing pass (Phase 6.10: Campaign
+  checkpoints, Time Attack pace multiplier + Fever Time, stepped Endless ramp, 9-modifier
+  Daily/Random pool), the setup-clarity captions (Phase 6.12), the onboarding-tour redesign +
+  quit-run guard + pinned game-over footer (Phase 6.13), and the whole premium-visual batch (Steps
+  7.8-7.15: replay-a-Daily, death/level-up transitions, selectable **board terrains** with
+  terrain-seeded UI accents + terrain menus, live skin/terrain previews, the 3-2-1 resume countdown
+  with head beacon, and the redrawn "Serpentine" launcher icon).
+- **Documentation squared up:** `PLANNING.md` gains a `2.0.0` entry in the Releases section and a
+  "Release 2.0.0" step under Phase 7; the major-version rationale (scale of the overhaul over 1.0.0)
+  is recorded there.
+
+**Decisions:** went to a **major** bump (2.0.0) rather than 1.3.0 because the cumulative post-1.0.0
+work is a visual and gameplay overhaul (a new mode, terrains, a reworked pacing model, a redesigned
+first-run tour, a new icon), not an incremental point release. The tag follows the repo convention
+(`v` prefix, e.g. `v2.0.0`).
+
+**Verified:** version strings updated; the changelog for the release was assembled from `git log
+v1.0.0..HEAD` (27 commits) cross-checked against the devlog entries below.
+
+**Next:** Play Store phase (Steps 7.2-7.6): R8/shrink verification, upload-keystore signing, signed
+AAB + tag-driven CI.
+
+---
+
 ## 2026-07-04 - Onboarding tour redesign, quit-run guard, game-over footer (1.2.0)
 
 **Done (Phase 6.13):**
