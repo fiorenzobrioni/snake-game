@@ -13,6 +13,47 @@ Suggested format for each entry:
 
 ---
 
+## 2026-07-04 - Length-scaled death animation hold + Pixel skin sprite baking
+
+**Done:**
+- **Game-over overlay no longer cuts the death animation short.** The ViewModel held the
+  overlay for a fixed 1000 ms (`DEATH_ANIM_MS`) while the renderer staggered one burst per
+  body cell (5-36 ms apart), so on a long snake the head-to-tail ripple alone could outlast
+  the hold and the overlay appeared mid-explosion. Both sides now derive their timing from
+  the snake's length via a shared `BodyBurstTiming` object (`GameViewModel.kt`): the per-cell
+  stagger (`stepDelayMs`), the body fade (`dissolveMs` = emission + 350 ms) and the overlay /
+  countdown hold (`totalMs` = emission + 800 ms, covering the tail burst's spark life). The
+  same length-scaled hold now also drives the Campaign level-up dissolve and the respawn
+  burst (previously a fixed `LEVEL_VANISH_MS` / `DEATH_ANIM_MS`), so renderer and hold can
+  never drift apart again. A short starting snake keeps roughly the old ~1 s feel; a
+  100+ segment snake now gets the time it actually needs.
+- **Pixel skin rendering optimised (it really was heavier).** `drawSprite5` painted every
+  segment as up to 25 individual `drawRect` calls per frame - a 60-segment snake cost
+  ~1500 rects per frame - each rect overdrawn by half a px and antialiased at sub-pixel
+  positions, which showed as a faint shimmering "micro-block" grid while the snake moved.
+  Each 5x5 sprite is now rasterised once into a cached `ImageBitmap` (`bakePixelTile`, edges
+  snapped to integer texels so pixels tile exactly with no seams) and every segment is a
+  single `drawImage` at a whole-pixel destination with `FilterQuality.None`. One draw call
+  per segment, crisp nearest-neighbour pixel art, no per-frame allocation of 25 rect params.
+  The cache (`pixelTileCache`) is keyed by (sprite, pixel side); the board cell is fixed per
+  run and emblem sizes are stable per layout, so it holds only a handful of bitmaps.
+
+**Decisions:**
+- The hold waits for the last cell's burst plus ~0.8 s of spark life, not for every smoke
+  puff (embers/smoke live up to ~1.2 s): waiting for the full particle decay made short runs
+  feel sluggish, and the overlay's own entrance masks the final fade exactly as before.
+- Pixel sprites are drawn at whole-pixel destinations on purpose: 8-bit sprites moved in
+  whole pixels anyway, it reinforces the skin's identity, and it guarantees no edge
+  antialiasing shimmer regardless of the interpolated sub-pixel snake position.
+
+**Verified:** `gradle assembleDebug testDebugUnitTest` - build green, all unit tests pass.
+(The sandbox could not download the pinned wrapper distribution, so the matching
+pre-installed Gradle was used; no wrapper files were touched.)
+
+**Next:** on-device playtest of a long-snake game over and the Pixel skin in motion.
+
+---
+
 ## 2026-07-04 - Pixel skin redesigned as 5x5 sprite art (Step 6.14.1)
 
 **Done:**

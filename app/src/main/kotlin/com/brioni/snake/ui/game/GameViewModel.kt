@@ -124,6 +124,42 @@ data class BannerEvent(val kind: BannerKind, val value: Int = 0)
 data class BodyBurstEvent(val cells: List<Position>, val style: BurstStyle)
 
 /**
+ * Shared timing of the whole-snake transition burst ([BodyBurstEvent]). The
+ * renderer staggers one per-cell burst head-to-tail, so the animation's length
+ * grows with the snake: the ViewModel holds the game-over overlay / next-level
+ * countdown for [totalMs] while the renderer paces its emissions with
+ * [stepDelayMs] and fades the body over [dissolveMs]. Both sides derive from
+ * the same cell count, so the overlay can never cut the animation short.
+ */
+object BodyBurstTiming {
+    /** Gap between two adjacent per-cell bursts, walking head to tail. */
+    fun stepDelayMs(cells: Int): Long =
+        (EMISSION_TARGET_MS / cells.coerceAtLeast(1)).coerceIn(MIN_STEP_MS, MAX_STEP_MS)
+
+    /** When the tail cell's burst fires, relative to the start of the effect. */
+    fun emissionMs(cells: Int): Long = cells.coerceAtLeast(1) * stepDelayMs(cells)
+
+    /** The body fade-out window: outlives the last emission by a settling beat. */
+    fun dissolveMs(cells: Int): Long = emissionMs(cells) + DISSOLVE_TAIL_MS
+
+    /** Full hold before the overlay/countdown: lets the tail burst play out. */
+    fun totalMs(cells: Int): Long = emissionMs(cells) + BURST_TAIL_MS
+
+    /** The head-to-tail emission window the stagger aims for on mid-size snakes. */
+    private const val EMISSION_TARGET_MS = 540L
+
+    /** Stagger bounds: a long snake still ripples (>= 5 ms), a short one isn't instant. */
+    private const val MIN_STEP_MS = 5L
+    private const val MAX_STEP_MS = 36L
+
+    /** How long the body keeps fading after the tail cell has burst. */
+    private const val DISSOLVE_TAIL_MS = 350L
+
+    /** Covers the visible life of the tail burst's sparks (~0.4-0.8 s). */
+    private const val BURST_TAIL_MS = 800L
+}
+
+/**
  * A compact recap of a finished run, surfaced to the game-over overlay
  * (Step 6.9.2). [deepestLevel]/[deepestSpeed] are only meaningful for Campaign
  * ([isCampaign]); the overlay hides that row in the other modes.
@@ -867,13 +903,16 @@ class GameViewModel(
                     onGameOver(after.score)
                     // Burst the whole snake apart, then reveal the game-over overlay.
                     // onGameOver already computed records/summary; only the overlay
-                    // reveal is delayed (gated on deathAnimating in GameScreen).
+                    // reveal is delayed (gated on deathAnimating in GameScreen). The
+                    // hold scales with the snake's length, matching the renderer's
+                    // head-to-tail stagger, so a long body finishes bursting before
+                    // the overlay appears.
                     if (!reduceMotion) {
                         bodyBurst = BodyBurstEvent(after.snake, BurstStyle.Blast)
                         bodyBurstId++
                         deathAnimating = true
                         viewModelScope.launch {
-                            delay(DEATH_ANIM_MS)
+                            delay(BodyBurstTiming.totalMs(after.snake.size))
                             deathAnimating = false
                         }
                     }
@@ -1026,7 +1065,7 @@ class GameViewModel(
                 // out) until the hold elapses.
                 stopLoop()
                 val style = if (respawn) BurstStyle.Blast else BurstStyle.Vanish
-                val holdMs = if (respawn) DEATH_ANIM_MS else LEVEL_VANISH_MS
+                val holdMs = BodyBurstTiming.totalMs(before.snake.size)
                 bodyBurst = BodyBurstEvent(before.snake, style)
                 bodyBurstId++
                 levelVanishing = true
@@ -1235,12 +1274,6 @@ class GameViewModel(
          * cadence; must stay >= 2 s to actually give the eye time).
          */
         private const val RESUME_COUNTDOWN_SECONDS = 3
-
-        /** How long the snake bursts apart on death before the game-over overlay shows. */
-        private const val DEATH_ANIM_MS = 1000L
-
-        /** How long the completing snake dissolves on a Campaign level-up before the countdown. */
-        private const val LEVEL_VANISH_MS = 1000L
 
         fun factory(
             repo: SettingsRepository,
