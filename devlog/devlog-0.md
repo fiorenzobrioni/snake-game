@@ -13,6 +13,21 @@ Suggested format for each entry:
 
 ---
 
+## 2026-07-04 - Remove stale README screenshots
+
+**Done:**
+- Removed the **Screenshots** section from `README.md` and deleted the eight referenced images
+  under `docs/screenshots/`, since they no longer matched the current build.
+- Updated `PLANNING.md` Step 7.6 to reflect that the stale screenshots were removed and that
+  fresh screenshots/GIFs are still pending, alongside the Play link.
+
+**Decisions:** dropping outdated screenshots was preferred over trying to patch them, since a
+misleading screenshot is worse than a missing one.
+**Issues:** none.
+**Next:** capture and add fresh screenshots of the current build when convenient.
+
+---
+
 ## 2026-07-04 - Length-scaled death animation hold + Pixel skin sprite baking
 
 **Done:**
