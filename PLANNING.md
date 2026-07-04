@@ -669,9 +669,10 @@ snake-game/
 - [ ] **Step 7.5** - Play readiness: privacy policy, **Data Safety** form, **IARC** rating, store listing
       (icon, feature graphic, phone screenshots), **internal testing** track.
 - [-] **Step 7.6** - Finalize docs: README screenshots/GIFs + Play link; confirm the legacy note.
-      *(README screenshots refreshed to the current build (8 shots, status bar/gesture pill cropped)
-      and the legacy note reframed against the Android `1.0.0` release; the **Play link** stays
-      pending until the Play listing exists.)*
+      *(The legacy note is reframed against the Android `1.0.0` release. The README Screenshots
+      section and the stale images under `docs/screenshots/` were removed since they no longer
+      matched the current build; still pending: fresh screenshots/GIFs and the **Play link**, once
+      the Play listing exists.)*
 - [x] **Step 7.7** - In-app **Credits / About** screen (author, GPL-3.0 license, asset attribution),
       reachable from the main menu; bundle the Google Gemini background music in place of the
       synthesized loops.
