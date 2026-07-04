@@ -521,7 +521,8 @@ snake-game/
       hues flow along the body and drift over time; **Ember** = a dark rock crust with a pulsing molten-lava
       vein that runs hottest at the head. Classic keeps the smooth **tube** and Retro / Pixel keep **blocks**,
       both made more premium (a crisp top specular on the tube; a volumetric diagonal gradient + specular
-      corner on the blocks). Debris (severed tails) render in the same per-skin body. Animation reuses the
+      corner on the blocks). *(Updated 2026-07-04: Pixel later moved off Blocks to its own 5x5 sprite body -
+      see Step 6.14.1.)* Debris (severed tails) render in the same per-skin body. Animation reuses the
       `time` already passed to `drawSnake`, so the game loop is untouched. Also added
       `Skin.ALL_UNLOCKED_PREVIEW` (currently `true`): while set, every skin is selectable and the game-over
       "skin unlocked" toasts are suppressed - a temporary pre-release convenience to trial all skins. The
@@ -635,6 +636,21 @@ snake-game/
       **Play again** plus **Game setup** / **Menu** sharing one row - actions always one tap away,
       content readability unchanged.
 - [x] **Step 6.13.4 - Version 1.2.0** (`versionName 1.2.0`, `versionCode 28`).
+
+### Phase 6.14 - Pixel skin sprite redesign ✅ (implemented, post-1.0.0)
+
+- [x] **Step 6.14.1 - Pixel skin redesigned as 5x5 sprite art.** Retro and Pixel had drifted too close
+      (both were green `SnakeStyle.Blocks` snakes). Retro is untouched; Pixel got a bespoke
+      `SnakeStyle.PixelSprite`: every piece (head included) is an independent **5x5-pixel sprite tile**
+      in the spirit of early-80s coin-op hero sprites - an overalls-blue bevelled body tile with a brass
+      button per piece, and a capped, moustached hero head (cap / face / eye / moustache) that mirrors or
+      rotates to face the travel direction. Constant tile size (no tail taper) keeps the pieces authentic
+      8-bit; the cell margin keeps the body visibly broken into single tiles. Classic arcade colours, no
+      neon: two blues + a brass accent on the body, cap red and face tan on the head only. Sprite maps and
+      inks live in `GameBoard` (`PixelSpriteInk`, `PixelBodyTile`, `PixelHeadSprites`);
+      `PixelPalette.snakeBody/snakeHead/snakeOutline/snakeEye` mirror the sprite inks so palette-tinted
+      debris and effects stay coherent. Naming kept deliberately generic (no third-party character names
+      anywhere in code or UI) to stay clear of trademark concerns.
 
 ### Phase 7 - Play Store distribution & cleanup
 

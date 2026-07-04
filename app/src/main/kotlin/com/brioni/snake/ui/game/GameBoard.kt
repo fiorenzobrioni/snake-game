@@ -1177,7 +1177,11 @@ private fun DrawScope.drawSnake(
         shaders.glow.setColorUniform("glowColor", headGlow.toArgb())
         drawCircle(brush = shaders.glowBrush, radius = glowRadius, center = head)
     }
-    drawSnakeBody(centers, cell, palette, bodyAlpha, time)
+    // The sprite head has transparent corner notches, so it must not be stacked
+    // on a body tile: the sprite body starts at the neck instead.
+    val bodyCenters =
+        if (palette.snakeStyle == SnakeStyle.PixelSprite) centers.subList(1, centers.size) else centers
+    drawSnakeBody(bodyCenters, cell, palette, bodyAlpha, time)
     drawSnakeHeadStyled(head, cell, direction, palette, headAlpha, time)
 }
 
@@ -1192,6 +1196,7 @@ private fun DrawScope.drawSnakeBody(
     when (palette.snakeStyle) {
         SnakeStyle.Tube -> drawSnakeTube(centers, cell, palette, alpha)
         SnakeStyle.Blocks -> drawSnakeBlocks(centers, cell, palette, alpha)
+        SnakeStyle.PixelSprite -> drawSnakeSpriteTiles(centers, cell, alpha)
         SnakeStyle.NeonTube -> drawSnakeNeon(centers, cell, palette, alpha, time)
         SnakeStyle.AuroraRibbon -> drawSnakeAurora(centers, cell, palette, alpha, time)
         SnakeStyle.Molten -> drawSnakeMolten(centers, cell, palette, alpha, time)
@@ -1209,6 +1214,7 @@ private fun DrawScope.drawSnakeHeadStyled(
 ) {
     when (palette.snakeStyle) {
         SnakeStyle.Blocks -> drawBlockHead(head, cell, direction, palette, alpha)
+        SnakeStyle.PixelSprite -> drawSpriteHead(head, cell, direction, alpha)
         SnakeStyle.NeonTube -> drawNeonHead(head, cell, direction, palette, alpha)
         SnakeStyle.AuroraRibbon -> drawAuroraHead(head, cell, direction, palette, alpha, time)
         SnakeStyle.Molten -> drawMoltenHead(head, cell, direction, palette, alpha, time)
@@ -1388,6 +1394,107 @@ private fun DrawScope.drawBlockHead(
     val tl = Offset(center.x - side / 2f, center.y - side / 2f)
     drawChiselledBlock(tl, side, rad, palette.snakeHead, palette.snakeOutline, cell, alpha)
     drawEyes(center.x, center.y, cell, direction, palette, alpha)
+}
+
+// --- Pixel skin: 5x5 sprite tiles -----------------------------------------------
+
+/**
+ * The Pixel skin's bespoke sprite inks, keyed by the characters of the 5x5 maps
+ * below ('.' = transparent). An homage to early-80s coin-op hero sprites: an
+ * overalls-blue body with a brass button and a capped, moustached face. The blue
+ * base/shade and the cap red mirror `PixelPalette.snakeBody`/`snakeOutline`/
+ * `snakeHead` so palette-tinted debris, effects and UI accents stay coherent.
+ */
+private val PixelSpriteInk: Map<Char, Color> = mapOf(
+    'L' to Color(0xFF6C92E6), // body bevel, lit top/left
+    'B' to Color(0xFF2E5FC9), // body base blue
+    'D' to Color(0xFF16295E), // body bevel, shaded bottom/right
+    'G' to Color(0xFFE8B84A), // brass button
+    'R' to Color(0xFFC23A22), // cap
+    'P' to Color(0xFFF0A868), // face
+    'K' to Color(0xFF26120A), // eye
+    'M' to Color(0xFF7A3B20), // moustache
+)
+
+/** Body piece: a bevelled 5x5 tile with a brass button at the centre. */
+private val PixelBodyTile = arrayOf(
+    "LLLLD",
+    "LBBBD",
+    "LBGBD",
+    "LBBBD",
+    "DDDDD",
+)
+
+/** Head sprite facing [Direction.Right]: cap on top, then face, eye, moustache. */
+private val PixelHeadRight = arrayOf(
+    ".RRR.",
+    "RRRRR",
+    "PPPKP",
+    "PPPMM",
+    ".PPP.",
+)
+
+/** Horizontal mirror of a 5x5 sprite (right-facing becomes left-facing). */
+private fun mirrorSprite(map: Array<String>): Array<String> =
+    Array(map.size) { r -> map[r].reversed() }
+
+/** 90° counter-clockwise rotation of a 5x5 sprite (right-facing becomes up-facing). */
+private fun rotateSpriteCcw(map: Array<String>): Array<String> =
+    Array(5) { r -> String(CharArray(5) { c -> map[c][4 - r] }) }
+
+/** 90° clockwise rotation of a 5x5 sprite (right-facing becomes down-facing). */
+private fun rotateSpriteCw(map: Array<String>): Array<String> =
+    Array(5) { r -> String(CharArray(5) { c -> map[4 - c][r] }) }
+
+/** The head sprite pre-transformed once for each travel direction. */
+private val PixelHeadSprites: Map<Direction, Array<String>> = mapOf(
+    Direction.Right to PixelHeadRight,
+    Direction.Left to mirrorSprite(PixelHeadRight),
+    Direction.Up to rotateSpriteCcw(PixelHeadRight),
+    Direction.Down to rotateSpriteCw(PixelHeadRight),
+)
+
+/**
+ * Paints one 5x5 sprite [map] centred on [center] with a total side of [side].
+ * Each pixel is overdrawn by half a px so antialiasing cannot open hairline
+ * seams between adjacent pixels.
+ */
+private fun DrawScope.drawSprite5(map: Array<String>, center: Offset, side: Float, alpha: Float) {
+    val unit = side / 5f
+    val x0 = center.x - side / 2f
+    val y0 = center.y - side / 2f
+    for (r in 0 until 5) {
+        val row = map[r]
+        for (c in 0 until 5) {
+            val ink = PixelSpriteInk[row[c]] ?: continue
+            drawRect(
+                color = ink,
+                topLeft = Offset(x0 + c * unit, y0 + r * unit),
+                size = Size(unit + 0.5f, unit + 0.5f),
+                alpha = alpha,
+            )
+        }
+    }
+}
+
+/**
+ * Pixel body: every segment is an independent [PixelBodyTile] sprite of constant
+ * size - no taper, like authentic 8-bit pieces - and the leftover cell margin
+ * keeps the body visibly broken into single tiles.
+ */
+private fun DrawScope.drawSnakeSpriteTiles(centers: List<Offset>, cell: Float, alpha: Float) {
+    val side = cell * 0.86f
+    for (c in centers) drawSprite5(PixelBodyTile, c, side, alpha)
+}
+
+/** Pixel head: the capped-hero sprite, pre-rotated to face [direction]. */
+private fun DrawScope.drawSpriteHead(
+    center: Offset,
+    cell: Float,
+    direction: Direction,
+    alpha: Float,
+) {
+    drawSprite5(PixelHeadSprites.getValue(direction), center, cell * 0.94f, alpha)
 }
 
 // --- Neon skin: a hollow, glowing neon tube ------------------------------------

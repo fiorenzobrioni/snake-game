@@ -69,8 +69,10 @@ The classic Snake mechanics, extended with configurable features so every run fe
   (score 5000), **Aurora** (a 7-day Daily streak) and **Ember** (a 30-day Daily streak). Locked skins show
   their unlock condition in Settings. The glow skins (Classic / Neon / Aurora / Ember) draw food as
   haloed round pieces; the flat skins (Retro / Pixel) render food as squares (crisp on Pixel, lightly
-  rounded on Retro). Each skin also has its **own snake body**: Classic a glossy tapered tube, Retro /
-  Pixel chiselled blocks, **Neon** a hollow glowing neon tube with a pulsing filament, **Aurora** a ribbon
+  rounded on Retro). Each skin also has its **own snake body**: Classic a glossy tapered tube, Retro
+  chiselled blocks, **Pixel** a chain of 5x5-pixel sprite tiles in classic 80s arcade colours (blue
+  bevelled pieces with a brass button, led by a capped 8-bit hero head that turns with the snake),
+  **Neon** a hollow glowing neon tube with a pulsing filament, **Aurora** a ribbon
   whose teal-to-violet hues flow along its length, and **Ember** dark rock veined with pulsing molten lava
   that runs hottest at the head. Power-up / hazard pieces are drawn as **premium bevelled tokens** whose
   material changes per skin (glossy enamel, hollow neon tube, warm phosphor, hard pixel tile, frosted
