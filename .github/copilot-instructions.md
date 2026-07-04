@@ -25,7 +25,7 @@ The original **C# / .NET 10 / Windows Forms (GDI+)** version shipped as **v1.0.0
 
 ## Architecture
 
-Package root `com.brioni.snake` under `app/src/main/kotlin/`:
+Package root `com.callbackdev.snake` under `app/src/main/kotlin/`:
 
 - `MainActivity.kt` — single `ComponentActivity`; `installSplashScreen()` + `enableEdgeToEdge()`, then `setContent { SnakeGameTheme { ... } }`. Portrait is locked in the manifest; content uses `safeDrawingPadding()`.
 - `game/` — **pure-Kotlin** game model (Phase 1+). Keep it free of Android/Compose imports so it stays unit-testable. Coordinates are grid-based (column/row); pixel mapping happens only in the renderer.
