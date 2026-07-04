@@ -13,6 +13,49 @@ Suggested format for each entry:
 
 ---
 
+## 2026-07-04 - Onboarding tour redesign, quit-run guard, game-over footer (1.2.0)
+
+**Done (Phase 6.13):**
+- **First-run tour redesigned as a five-card premium pager** (`OnboardingScreen`). The weak
+  dedicated "how to steer" page is gone - steering became a glanceable three-chip row (Swipe /
+  Tap to turn / D-pad glyphs) on the welcome card, with Settings named for the full choice. The
+  five cards now cover what a new player actually needs sold and taught: **Welcome** (the real
+  in-game `SnakeEmblem` slithering in the player's skin on a glass panel; goal + combo pitch),
+  **Food** (a gently pulsing grow/shrink/mystery row plus the legend), **Power-ups & hazards**
+  (unchanged legend over the real `drawSpecialToken` renderers), **Modes** (four accent-rimmed
+  cards with hand-drawn glyphs - infinity, stopwatch, checkpoint flag, enso - one line of honest
+  pitch each), and the **daily loop** (Daily Challenge, missions, achievements & records, skins &
+  arenas, plus a "reopen from Settings" hint). Hero panels are glass cards with the menus'
+  gradient rim; a shared `withFrameNanos` clock drives all live artwork and simply never advances
+  under reduce-motion. System-back now pages backwards (finishing only from the first card)
+  instead of skipping the whole tour.
+- **Quit-run confirmation.** Back while paused used to end a live run silently. It now opens
+  `QuitRunDialog` - an error-rimmed glass dialog ("Quit this run?") with the safe **Keep playing**
+  as the prominent filled button and **Quit run** as the quiet outlined one; outside-tap and Back
+  dismiss safely. A pending resume countdown is cancelled back to the pause overlay first, and the
+  dialog auto-drops if the game state moves on. Back during *running* play keeps the existing
+  `BackBehavior` setting, and the pause overlay's own Menu / Game setup buttons stay one-tap
+  (deliberate intent needs no interrogation).
+- **Game-over overlay: pinned action footer.** With a long recap + missions + achievements + skin
+  unlocks, the buttons could end up below the fold. The results column now scrolls in a
+  `weight(1f)` area (still centring when short) above a pinned footer: full-width **Play again**
+  over a **Game setup** / **Menu** row - so the primary action is always on screen.
+- **Version bumped to 1.2.0** (`versionCode 28`).
+
+**Decisions:** the tour follows the standard mobile-onboarding playbook - one idea per card,
+skippable at every step, progress indicator, benefit-led copy - and teaches with the *real*
+renderers (emblem, food, tokens) so every colour/symbol means the same thing in play. The quit
+guard applies only to the ambiguous/accidental path (system Back); explicit buttons keep their
+single-tap behaviour, matching platform guidance on confirming destructive actions.
+
+**Verified:** `assembleDebug` builds and the full unit suite is green (the wrapper distribution
+download is blocked in this sandbox, so builds ran on the preinstalled Gradle 8.14.3; no wrapper
+or catalog change was made).
+
+**Next:** Play Store phase (Steps 7.2-7.6).
+
+---
+
 ## 2026-07-04 - Zen veil border, captions for every Custom selector, "Explorer" scale
 
 **Done:**

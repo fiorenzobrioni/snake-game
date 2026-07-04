@@ -141,20 +141,16 @@
     <string name="settings_special_frequency">Special blocks</string>
     <string name="settings_how_to_play">How to play</string>
 
-    <!-- First-run onboarding / tutorial (Step 6.9.16) -->
+    <!-- First-run onboarding / tutorial (redesigned in 1.2.0) -->
     <string name="onboarding_skip">Skip</string>
     <string name="onboarding_next">Next</string>
-    <string name="onboarding_done">Get started</string>
-    <string name="onboarding_objective_title">Welcome to Snake</string>
-    <string name="onboarding_objective_body">Guide the snake to the glowing food and eat it to grow longer. It moves on its own and never stops, so keep it clear of the outer walls, the obstacles and its own tail - a single hit ends the run. Eat without hesitating to build a combo multiplier and climb the high-score tables.</string>
-    <string name="onboarding_controls_title">Steer the snake</string>
-    <string name="onboarding_controls_body">You only ever change direction - the snake keeps moving forward by itself. Choose the control style that suits you in Settings; here is how each one works.</string>
+    <string name="onboarding_done">Start playing</string>
+    <string name="onboarding_welcome_title">Welcome to Snake</string>
+    <string name="onboarding_welcome_body">Guide the snake to the glowing food and grow with every bite. It never stops moving - steer it clear of walls, obstacles and its own tail, and chain quick bites into a combo multiplier for serious scores.</string>
+    <string name="onboarding_welcome_controls_hint">Steer your way - swipe anywhere, tap to turn, or use a classic D-pad. Change it any time in Settings.</string>
     <string name="onboarding_controls_swipe">Swipe</string>
-    <string name="onboarding_controls_swipe_desc">Flick anywhere on the board toward the way you want to go.</string>
     <string name="onboarding_controls_tap">Tap to turn</string>
-    <string name="onboarding_controls_tap_desc">Two buttons steer left or right, relative to your heading.</string>
     <string name="onboarding_controls_dpad">D-pad</string>
-    <string name="onboarding_controls_dpad_desc">A classic on-screen four-way pad for absolute directions.</string>
     <string name="onboarding_food_title">Eat to grow</string>
     <string name="onboarding_food_body">Food appears one piece at a time. Most of it feeds the snake, but read the colour - some pieces are working against you. Ignore a piece too long and it vanishes, so be decisive.</string>
     <string name="onboarding_food_grow">Grow</string>
@@ -176,6 +172,23 @@
     <string name="onboarding_quake_desc">Shakes the whole board, making it hard to read for a while.</string>
     <string name="onboarding_explosion_desc">Splits the snake in two; the severed tail stays lethal until it fades.</string>
     <string name="onboarding_snail_desc">Slows you to a crawl - manageable, but you lose your rhythm.</string>
+    <string name="onboarding_modes_title">Four ways to play</string>
+    <string name="onboarding_modes_body">From white-knuckle sprints to pure flow. Every mode keeps its own records for each difficulty and board size.</string>
+    <string name="onboarding_mode_endless_desc">The pace ratchets up the longer you survive. One life, no ceiling - how far can you go?</string>
+    <string name="onboarding_mode_time_attack_desc">Two minutes on the clock, score multipliers for the brave and a double-points Fever finale.</string>
+    <string name="onboarding_mode_campaign_desc">Fifteen hand-shaped boards with three lives and checkpoints - and every lap spins faster.</string>
+    <string name="onboarding_mode_zen_desc">No walls, no hazards, no hurry: the edges wrap around. Only your own tail can end the flow.</string>
+    <string name="onboarding_meta_title">New reasons to play, every day</string>
+    <string name="onboarding_meta_body">Short runs are never wasted - everything you do feeds your progress.</string>
+    <string name="onboarding_meta_daily">Daily Challenge</string>
+    <string name="onboarding_meta_daily_desc">One seeded run per day, the same for every player. Beat it daily to build your streak.</string>
+    <string name="onboarding_meta_missions">Today\'s Missions</string>
+    <string name="onboarding_meta_missions_desc">Three rotating goals refresh each day - clear them in any mode you like.</string>
+    <string name="onboarding_meta_achievements">Achievements &amp; records</string>
+    <string name="onboarding_meta_achievements_desc">Over 30 feats to unlock, plus a best score for every mode, difficulty and board.</string>
+    <string name="onboarding_meta_skins">Skins &amp; arenas</string>
+    <string name="onboarding_meta_skins_desc">Earn snake skins and animated board worlds, then dress the whole game in them.</string>
+    <string name="onboarding_replay_hint">You can reopen this guide any time from Settings.</string>
 
     <!-- HUD -->
     <string name="hud_score">Score: %1$d</string>
@@ -203,6 +216,12 @@
 
     <!-- Pause overlay -->
     <string name="paused_title">Paused</string>
+
+    <!-- Quit-run confirmation (system Back while a run is alive) -->
+    <string name="quit_run_title">Quit this run?</string>
+    <string name="quit_run_message">The run is still in progress - if you leave now, its score and progress will be lost.</string>
+    <string name="quit_run_confirm">Quit run</string>
+    <string name="quit_run_keep">Keep playing</string>
 
     <!-- Campaign mode intro overlay (two stacked lines so the title never wraps).
          The level line shows progress as current/total, e.g. "Level 3/15". -->

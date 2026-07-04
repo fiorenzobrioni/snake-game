@@ -1,13 +1,17 @@
 package com.brioni.snake.ui.onboarding
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -22,14 +26,19 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,6 +52,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.font.FontWeight
@@ -55,38 +65,48 @@ import com.brioni.snake.data.SettingsRepository
 import com.brioni.snake.game.BoardScale
 import com.brioni.snake.game.ControlScheme
 import com.brioni.snake.game.FoodEffect
+import com.brioni.snake.game.GameMode
 import com.brioni.snake.game.Level
 import com.brioni.snake.ui.AnimatedShaderBackground
+import com.brioni.snake.ui.components.MenuIcons
 import com.brioni.snake.ui.components.SnakeButton
 import com.brioni.snake.ui.game.SkinPalette
+import com.brioni.snake.ui.game.SnakeEmblem
 import com.brioni.snake.ui.game.SpecialVisuals
 import com.brioni.snake.ui.game.drawGlyph
 import com.brioni.snake.ui.game.drawSpecialToken
 import com.brioni.snake.ui.game.paletteFor
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlin.math.sin
 
 /**
- * First-run tutorial (Step 6.9.16, redesigned): a polished, skippable 4-card pager
- * that introduces the objective, the controls, the food types and the power-ups /
- * hazards, so a new player is not dropped cold. Shown once on first launch (gated by
- * [SettingsRepository.onboardingCompleted]) and re-openable from Settings.
+ * First-run tour (redesigned for 1.2.0): a skippable 5-card pager that sells the
+ * game the way a Play-Store title should - welcome & goal, the food language, the
+ * specials, the four modes and the daily meta loop - so a new player lands in the
+ * menu already knowing why to come back tomorrow. Shown once on first launch
+ * (gated by [SettingsRepository.onboardingCompleted]) and re-openable from
+ * Settings.
  *
- * The redesign aims for a premium, *dark and minimal* feel that matches the cold-launch
- * brand intro and the live menus: the whole screen sits on the animated AGSL backdrop
- * ([AnimatedShaderBackground]) - drifting glows over a near-black gradient - and each
- * card's artwork lives in a framed "glass" mini-board so the look reads as one family
- * with the game. Every card scrolls vertically, so the richer copy and the legends
- * never clip on short screens.
+ * Design notes, following the usual mobile-onboarding practices:
+ * - **Five focused cards, one idea each.** The old dedicated "how to steer" page
+ *   is gone - steering is one glanceable chip row on the welcome card (the swipe
+ *   default just works), which freed room for what a player actually cannot
+ *   guess: the mode roster and the daily/meta loop.
+ * - **Skippable at every step** (low-emphasis Skip up top; the last page swaps it
+ *   for the primary "Start playing"), an animated page indicator for orientation,
+ *   and system-back pages *backwards* (finishing only from the first card).
+ * - **Live, branded artwork.** The hero card runs the real in-game snake renderer
+ *   ([SnakeEmblem]) slithering in the player's skin; food and special tokens are
+ *   drawn by the exact in-game renderers, so every colour and symbol taught here
+ *   means the same thing on the board. All motion freezes under reduce-motion.
+ * - **One visual family.** Cards are glass panels with gradient rims over the
+ *   brand's animated AGSL backdrop ([AnimatedShaderBackground]), the same look
+ *   the menus and buttons wear. Every page scrolls vertically so the copy never
+ *   clips on short screens.
  *
- * Each card pairs a hand-drawn Canvas illustration (skin-coloured pieces on a neutral
- * dark board) with an Orbitron title and a fuller body, plus detailed legend rows on
- * the controls / food / specials cards. The specials card draws the real in-game
- * power-up / hazard discs (shared [drawSpecialSymbol]), so a colour and a symbol always
- * mean the same thing in the tutorial as in play. Animation stays restrained: a subtle
- * parallax on the artwork as pages slide and an animated page indicator; the
- * screen-level blur-dissolve from the App shell covers entry and exit. [onFinished] is
- * invoked once, on the final "Get started", on Skip, or on system-back.
+ * [onFinished] is invoked once - on the final "Start playing", on Skip, or on
+ * system-back from the first page.
  */
 @Composable
 fun OnboardingScreen(
@@ -98,17 +118,35 @@ fun OnboardingScreen(
         initial = Settings(Level.Beginner, BoardScale.Classic, ControlScheme.Swipe),
     )
     val palette = remember(settings.skin) { paletteFor(settings.skin) }
-    val pageCount = 4
+    val pageCount = 5
     val pagerState = rememberPagerState(pageCount = { pageCount })
     val scope = rememberCoroutineScope()
     val lastPage = pagerState.currentPage == pageCount - 1
     val textMeasurer = rememberTextMeasurer()
 
-    // System-back acts as "skip" - the player has seen enough.
-    BackHandler { onFinished() }
+    // A shared clock drives the live artwork (the hero slither, the pulsing
+    // food). Under reduce-motion it never advances, so everything holds still.
+    var timeSeconds by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(settings.reduceMotion) {
+        if (!settings.reduceMotion) {
+            val start = withFrameNanos { it }
+            while (true) {
+                withFrameNanos { now -> timeSeconds = (now - start) / 1_000_000_000f }
+            }
+        }
+    }
+
+    // System-back steps one page back; only the first page hands off (as skip).
+    BackHandler {
+        if (pagerState.currentPage > 0) {
+            scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
+        } else {
+            onFinished()
+        }
+    }
 
     Box(modifier = modifier.fillMaxSize()) {
-        // A self-contained dark, minimal backdrop so the tutorial always reads on the
+        // A self-contained dark, minimal backdrop so the tour always reads on the
         // brand surface - the same drifting-glows shader the intro and menus use -
         // regardless of the active theme.
         AnimatedShaderBackground(modifier = Modifier.fillMaxSize())
@@ -119,8 +157,8 @@ fun OnboardingScreen(
                 .padding(horizontal = 24.dp, vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // Top bar: a low-emphasis Skip, hidden on the last page (where the primary
-            // button already finishes).
+            // Top bar: a low-emphasis Skip, hidden on the last page (where the
+            // primary button already finishes).
             Box(modifier = Modifier.fillMaxWidth().height(44.dp)) {
                 if (!lastPage) {
                     TextButton(
@@ -140,10 +178,16 @@ fun OnboardingScreen(
                 state = pagerState,
                 modifier = Modifier.fillMaxWidth().weight(1f),
             ) { page ->
-                // Parallax: how far this page is from the settled position (-1..1 while
-                // dragging), used to drift and fade the artwork for a touch of depth.
+                // Parallax: how far this page is from the settled position (-1..1
+                // while dragging), used to drift and fade the hero artwork.
                 val offset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
-                OnboardingCard(page = page, palette = palette, parallax = offset, textMeasurer = textMeasurer)
+                when (page) {
+                    0 -> WelcomePage(palette, offset, timeSeconds)
+                    1 -> FoodPage(palette, offset, textMeasurer, timeSeconds)
+                    2 -> SpecialsPage(palette, offset, textMeasurer)
+                    3 -> ModesPage(palette)
+                    else -> MetaPage(palette)
+                }
             }
 
             PageIndicator(
@@ -169,21 +213,182 @@ fun OnboardingScreen(
     }
 }
 
+// --- Pages -----------------------------------------------------------------------
+
+/** Page 0: the hook - the live slithering snake, the goal and the steering chips. */
+@Composable
+private fun WelcomePage(palette: SkinPalette, parallax: Float, time: Float) {
+    PageColumn {
+        GlassCard(
+            palette = palette,
+            modifier = Modifier
+                .fillMaxWidth(0.88f)
+                .aspectRatio(1.5f)
+                .heroParallax(parallax),
+        ) {
+            // The real in-game snake, in the player's skin, slithering in place.
+            SnakeEmblem(
+                palette = palette,
+                time = time,
+                waveAmplitude = 0.11f,
+                cellFraction = 0.17f,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+            )
+        }
+        PageTitle(stringResource(R.string.onboarding_welcome_title), palette.snakeHead)
+        PageBody(stringResource(R.string.onboarding_welcome_body))
+
+        // The three steering styles as one glanceable chip row - enough to start
+        // (swipe just works), with Settings named for the full choice.
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            ControlChip(ControlGlyph.Swipe, stringResource(R.string.onboarding_controls_swipe), palette.snakeHead, Modifier.weight(1f))
+            ControlChip(ControlGlyph.Tap, stringResource(R.string.onboarding_controls_tap), palette.snakeHead, Modifier.weight(1f))
+            ControlChip(ControlGlyph.Dpad, stringResource(R.string.onboarding_controls_dpad), palette.snakeHead, Modifier.weight(1f))
+        }
+        Text(
+            text = stringResource(R.string.onboarding_welcome_controls_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = BodyDim,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 10.dp, start = 8.dp, end = 8.dp),
+        )
+    }
+}
+
+/** Page 1: the food language - grow, shrink, mystery - over a live pulsing row. */
+@Composable
+private fun FoodPage(palette: SkinPalette, parallax: Float, textMeasurer: TextMeasurer, time: Float) {
+    PageColumn {
+        GlassCard(
+            palette = palette,
+            modifier = Modifier
+                .fillMaxWidth(0.82f)
+                .aspectRatio(2.1f)
+                .heroParallax(parallax),
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                drawFoodArt(palette, textMeasurer, time)
+            }
+        }
+        PageTitle(stringResource(R.string.onboarding_food_title), palette.snakeHead)
+        PageBody(stringResource(R.string.onboarding_food_body))
+        FoodLegend(palette, textMeasurer, modifier = Modifier.padding(top = 20.dp))
+    }
+}
+
+/** Page 2: power-ups and hazards, drawn by the exact in-game token renderer. */
+@Composable
+private fun SpecialsPage(palette: SkinPalette, parallax: Float, textMeasurer: TextMeasurer) {
+    PageColumn {
+        GlassCard(
+            palette = palette,
+            modifier = Modifier
+                .fillMaxWidth(0.82f)
+                .aspectRatio(2.1f)
+                .heroParallax(parallax),
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                drawSpecialsArt(palette, textMeasurer)
+            }
+        }
+        PageTitle(stringResource(R.string.onboarding_specials_title), palette.snakeHead)
+        PageBody(stringResource(R.string.onboarding_specials_body))
+        SpecialsLegend(palette, textMeasurer, modifier = Modifier.padding(top = 20.dp))
+    }
+}
+
+/** Page 3: the mode roster - each mode a card with its own drawn glyph and accent. */
+@Composable
+private fun ModesPage(palette: SkinPalette) {
+    PageColumn {
+        PageTitle(stringResource(R.string.onboarding_modes_title), palette.snakeHead)
+        PageBody(stringResource(R.string.onboarding_modes_body))
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            ModeCard(
+                glyph = ModeGlyph.Endless,
+                name = GameMode.Endless.displayName,
+                description = stringResource(R.string.onboarding_mode_endless_desc),
+                accent = palette.snakeHead,
+            )
+            ModeCard(
+                glyph = ModeGlyph.TimeAttack,
+                name = GameMode.TimeAttack.displayName,
+                description = stringResource(R.string.onboarding_mode_time_attack_desc),
+                accent = SpecialVisuals.FeverColor,
+            )
+            ModeCard(
+                glyph = ModeGlyph.Campaign,
+                name = GameMode.Levels.displayName,
+                description = stringResource(R.string.onboarding_mode_campaign_desc),
+                accent = CampaignViolet,
+            )
+            ModeCard(
+                glyph = ModeGlyph.Zen,
+                name = GameMode.Zen.displayName,
+                description = stringResource(R.string.onboarding_mode_zen_desc),
+                accent = SpecialVisuals.ZenColor,
+            )
+        }
+    }
+}
+
+/** Page 4: the daily meta loop - why a player comes back tomorrow. */
+@Composable
+private fun MetaPage(palette: SkinPalette) {
+    PageColumn {
+        PageTitle(stringResource(R.string.onboarding_meta_title), palette.snakeHead)
+        PageBody(stringResource(R.string.onboarding_meta_body))
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            InfoRow(
+                title = stringResource(R.string.onboarding_meta_daily),
+                description = stringResource(R.string.onboarding_meta_daily_desc),
+                titleColor = DailyBlue,
+            ) { IconBadge(MenuIcons.Calendar, DailyBlue) }
+            InfoRow(
+                title = stringResource(R.string.onboarding_meta_missions),
+                description = stringResource(R.string.onboarding_meta_missions_desc),
+                titleColor = MissionGreen,
+            ) { TargetBadge(MissionGreen) }
+            InfoRow(
+                title = stringResource(R.string.onboarding_meta_achievements),
+                description = stringResource(R.string.onboarding_meta_achievements_desc),
+                titleColor = TrophyGold,
+            ) { IconBadge(MenuIcons.Medal, TrophyGold) }
+            InfoRow(
+                title = stringResource(R.string.onboarding_meta_skins),
+                description = stringResource(R.string.onboarding_meta_skins_desc),
+                titleColor = SkinViolet,
+            ) { SwatchBadge() }
+        }
+        Text(
+            text = stringResource(R.string.onboarding_replay_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = BodyDim,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 18.dp),
+        )
+    }
+}
+
+// --- Page scaffolding --------------------------------------------------------------
+
 /**
- * One tutorial card: a framed illustration over a vertically scrollable column of
- * title, body and (per page) a detailed legend. Scrolling guarantees the richer copy
- * never clips on short screens.
+ * The shared page skeleton: a vertically scrollable, centred column, so richer
+ * copy and the legends never clip on short screens (and still centre when short).
  */
 @Composable
-private fun OnboardingCard(page: Int, palette: SkinPalette, parallax: Float, textMeasurer: TextMeasurer) {
-    val (titleRes, bodyRes) = when (page) {
-        0 -> R.string.onboarding_objective_title to R.string.onboarding_objective_body
-        1 -> R.string.onboarding_controls_title to R.string.onboarding_controls_body
-        2 -> R.string.onboarding_food_title to R.string.onboarding_food_body
-        else -> R.string.onboarding_specials_title to R.string.onboarding_specials_body
-    }
-    val titleColor = palette.snakeHead
-
+private fun PageColumn(content: @Composable ColumnScope.() -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -191,85 +396,93 @@ private fun OnboardingCard(page: Int, palette: SkinPalette, parallax: Float, tex
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        // A little breathing room so the artwork is never flush against the top bar.
         Spacer(Modifier.height(8.dp))
+        content()
+        Spacer(Modifier.height(8.dp))
+    }
+}
 
-        // The framed mini-board illustration. The parallax fades/drifts it subtly so
-        // the page change reads with a little depth without being busy.
-        Canvas(
-            modifier = Modifier
-                .fillMaxWidth(0.82f)
-                .aspectRatio(1.4f)
-                .graphicsLayer {
-                    val k = (1f - abs(parallax)).coerceIn(0f, 1f)
-                    translationX = parallax * 70f
-                    alpha = 0.35f + 0.65f * k
-                    scaleX = 0.92f + 0.08f * k
-                    scaleY = 0.92f + 0.08f * k
-                }
-                .clip(RoundedCornerShape(24.dp)),
-        ) {
-            drawMinimalBoard(palette)
-            when (page) {
-                0 -> drawObjectiveArt(palette, textMeasurer)
-                1 -> drawControlsArt(palette)
-                2 -> drawFoodArt(palette, textMeasurer)
-                else -> drawSpecialsArt(palette, textMeasurer)
+@Composable
+private fun PageTitle(text: String, color: Color) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.headlineSmall,
+        fontWeight = FontWeight.Bold,
+        color = color,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.padding(top = 26.dp, start = 8.dp, end = 8.dp),
+    )
+}
+
+@Composable
+private fun PageBody(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyMedium,
+        color = BodyText,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.padding(top = 12.dp, start = 4.dp, end = 4.dp),
+    )
+}
+
+/** The pager-drag parallax applied to a page's hero card: drift, fade, settle. */
+private fun Modifier.heroParallax(parallax: Float): Modifier = graphicsLayer {
+    val k = (1f - abs(parallax)).coerceIn(0f, 1f)
+    translationX = parallax * 70f
+    alpha = 0.35f + 0.65f * k
+    scaleX = 0.92f + 0.08f * k
+    scaleY = 0.92f + 0.08f * k
+}
+
+/**
+ * The hero "glass" panel the artwork lives on: a dark board-toned gradient with
+ * a faint grid, a corner-darkening vignette and the same gradient rim the menu
+ * buttons and tiles wear (tinted by the skin), so the tour reads as one family
+ * with the live menus.
+ */
+@Composable
+private fun GlassCard(
+    palette: SkinPalette,
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    val shape = RoundedCornerShape(24.dp)
+    val rim = Brush.verticalGradient(
+        listOf(palette.snakeHead.copy(alpha = 0.50f), palette.snakeHead.copy(alpha = 0.12f)),
+    )
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .background(Brush.verticalGradient(listOf(BoardTopDark, BoardBottomDark)))
+            .border(BorderStroke(1.5.dp, rim), shape),
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            // A faint board grid + vignette give the glass panel depth without
+            // stealing attention from the bright pieces on top.
+            val step = size.width / 12f
+            var x = step
+            while (x < size.width - 1f) {
+                drawLine(BoardGrid, Offset(x, 0f), Offset(x, size.height), 1.2f)
+                x += step
             }
+            var y = step
+            while (y < size.height - 1f) {
+                drawLine(BoardGrid, Offset(0f, y), Offset(size.width, y), 1.2f)
+                y += step
+            }
+            drawRect(
+                brush = Brush.radialGradient(
+                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.35f)),
+                    center = Offset(size.width / 2f, size.height / 2f),
+                    radius = size.maxDimension * 0.62f,
+                ),
+            )
         }
-
-        Text(
-            text = stringResource(titleRes),
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = titleColor,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 26.dp, start = 8.dp, end = 8.dp),
-        )
-        Text(
-            text = stringResource(bodyRes),
-            style = MaterialTheme.typography.bodyMedium,
-            color = BodyText,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 12.dp, start = 4.dp, end = 4.dp),
-        )
-
-        when (page) {
-            1 -> ControlsLegend(palette, modifier = Modifier.padding(top = 20.dp))
-            2 -> FoodLegend(palette, textMeasurer, modifier = Modifier.padding(top = 20.dp))
-            3 -> SpecialsLegend(palette, textMeasurer, modifier = Modifier.padding(top = 20.dp))
-        }
-
-        Spacer(Modifier.height(8.dp))
+        content()
     }
 }
 
 // --- Legends -------------------------------------------------------------------
-
-/** The three control schemes, each a glyph badge over a name and a one-line how-to. */
-@Composable
-private fun ControlsLegend(palette: SkinPalette, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        InfoRow(
-            title = stringResource(R.string.onboarding_controls_swipe),
-            description = stringResource(R.string.onboarding_controls_swipe_desc),
-            titleColor = palette.snakeHead,
-        ) { ControlBadge(ControlGlyph.Swipe, palette.snakeHead) }
-        InfoRow(
-            title = stringResource(R.string.onboarding_controls_tap),
-            description = stringResource(R.string.onboarding_controls_tap_desc),
-            titleColor = palette.snakeHead,
-        ) { ControlBadge(ControlGlyph.Tap, palette.snakeHead) }
-        InfoRow(
-            title = stringResource(R.string.onboarding_controls_dpad),
-            description = stringResource(R.string.onboarding_controls_dpad_desc),
-            titleColor = palette.snakeHead,
-        ) { ControlBadge(ControlGlyph.Dpad, palette.snakeHead) }
-    }
-}
 
 /** Grow / shrink / mystery food, each a real food piece over a name and a description. */
 @Composable
@@ -347,8 +560,8 @@ private fun SpecialRow(
 
 /**
  * A legend row: a fixed-size badge (drawn by [badge]) on the left, a bold accented
- * [title] over a dimmer [description] on the right. The shared shape keeps the
- * controls / food / specials lists visually consistent.
+ * [title] over a dimmer [description] on the right. A soft glass fill and hairline
+ * rim keep every list on the tour visually consistent with the menus.
  */
 @Composable
 private fun InfoRow(
@@ -358,11 +571,13 @@ private fun InfoRow(
     modifier: Modifier = Modifier,
     badge: @Composable () -> Unit,
 ) {
+    val shape = RoundedCornerShape(14.dp)
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(Color.White.copy(alpha = 0.04f))
+            .clip(shape)
+            .background(Color.White.copy(alpha = 0.05f))
+            .border(1.dp, Color.White.copy(alpha = 0.08f), shape)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -373,6 +588,51 @@ private fun InfoRow(
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
                 color = titleColor,
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = BodyDim,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
+    }
+}
+
+/** One game-mode card: an accent-rimmed glass row with a drawn glyph badge. */
+@Composable
+private fun ModeCard(glyph: ModeGlyph, name: String, description: String, accent: Color) {
+    val shape = RoundedCornerShape(14.dp)
+    val rim = Brush.verticalGradient(
+        listOf(accent.copy(alpha = 0.45f), accent.copy(alpha = 0.10f)),
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(Color.White.copy(alpha = 0.05f))
+            .border(BorderStroke(1.dp, rim), shape)
+            .padding(horizontal = 12.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Canvas(modifier = Modifier.size(44.dp)) {
+            val cx = size.width / 2f
+            val cy = size.height / 2f
+            val r = size.minDimension * 0.46f
+            drawCircle(accent.copy(alpha = 0.12f), radius = r, center = Offset(cx, cy))
+            when (glyph) {
+                ModeGlyph.Endless -> drawEndlessGlyph(cx, cy, r, accent)
+                ModeGlyph.TimeAttack -> drawStopwatchGlyph(cx, cy, r, accent)
+                ModeGlyph.Campaign -> drawFlagGlyph(cx, cy, r, accent)
+                ModeGlyph.Zen -> drawEnsoGlyph(cx, cy, r, accent)
+            }
+        }
+        Column(modifier = Modifier.padding(start = 14.dp)) {
+            Text(
+                text = name,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = accent,
             )
             Text(
                 text = description,
@@ -418,23 +678,103 @@ private fun SpecialBadge(effect: FoodEffect, palette: SkinPalette, textMeasurer:
     }
 }
 
-/** Which scheme a [ControlBadge] illustrates. */
+/** A meta-page badge for one of the hand-drawn menu vector glyphs. */
+@Composable
+private fun IconBadge(icon: ImageVector, accent: Color) {
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(accent.copy(alpha = 0.14f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = accent,
+            modifier = Modifier.size(24.dp),
+        )
+    }
+}
+
+/** The missions badge: a drawn target - two rings and a bull's-eye dot. */
+@Composable
+private fun TargetBadge(accent: Color) {
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(accent.copy(alpha = 0.14f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(modifier = Modifier.size(24.dp)) {
+            val c = Offset(size.width / 2f, size.height / 2f)
+            val r = size.minDimension / 2f
+            drawCircle(accent, radius = r * 0.95f, center = c, style = Stroke(width = r * 0.18f))
+            drawCircle(accent, radius = r * 0.55f, center = c, style = Stroke(width = r * 0.18f))
+            drawCircle(accent, radius = r * 0.18f, center = c)
+        }
+    }
+}
+
+/** The skins badge: three overlapping skin-head swatch discs (Classic/Neon/Ember). */
+@Composable
+private fun SwatchBadge() {
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(SkinViolet.copy(alpha = 0.14f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(modifier = Modifier.size(28.dp)) {
+            val cy = size.height / 2f
+            val r = size.minDimension * 0.26f
+            val colors = listOf(Color(0xFF7CFC00), Color(0xFF00E5FF), Color(0xFFFF7A1A))
+            colors.forEachIndexed { i, c ->
+                val cx = size.width * (0.26f + 0.24f * i)
+                drawCircle(SpecialInk, radius = r * 1.14f, center = Offset(cx, cy))
+                drawCircle(c, radius = r, center = Offset(cx, cy))
+            }
+        }
+    }
+}
+
+/** Which scheme a [ControlChip] illustrates. */
 private enum class ControlGlyph { Swipe, Tap, Dpad }
 
-/** A control-scheme badge: a faint disc with a scheme glyph in [accent]. */
+/** Which mode a [ModeCard] glyph illustrates. */
+private enum class ModeGlyph { Endless, TimeAttack, Campaign, Zen }
+
+/** A compact steering chip: a glyph over its scheme name, in a glass pill. */
 @Composable
-private fun ControlBadge(glyph: ControlGlyph, accent: Color) {
-    Canvas(modifier = Modifier.size(40.dp)) {
-        val cx = size.width / 2f
-        val cy = size.height / 2f
-        val r = size.minDimension * 0.42f
-        drawCircle(accent.copy(alpha = 0.12f), radius = r, center = Offset(cx, cy))
-        drawCircle(accent.copy(alpha = 0.35f), radius = r, center = Offset(cx, cy), style = Stroke(width = r * 0.10f))
-        when (glyph) {
-            ControlGlyph.Swipe -> drawSwipeGlyph(cx, cy, r * 0.62f, accent)
-            ControlGlyph.Tap -> drawTapGlyph(cx, cy, r * 0.66f, accent)
-            ControlGlyph.Dpad -> drawDpadGlyph(cx, cy, r * 0.64f, accent)
+private fun ControlChip(glyph: ControlGlyph, label: String, accent: Color, modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(14.dp)
+    Column(
+        modifier = modifier
+            .clip(shape)
+            .background(Color.White.copy(alpha = 0.05f))
+            .border(1.dp, Color.White.copy(alpha = 0.08f), shape)
+            .padding(vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Canvas(modifier = Modifier.size(30.dp)) {
+            val cx = size.width / 2f
+            val cy = size.height / 2f
+            val r = size.minDimension * 0.42f
+            when (glyph) {
+                ControlGlyph.Swipe -> drawSwipeGlyph(cx, cy, r, accent)
+                ControlGlyph.Tap -> drawTapGlyph(cx, cy, r, accent)
+                ControlGlyph.Dpad -> drawDpadGlyph(cx, cy, r, accent)
+            }
         }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = BodyText,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 6.dp, start = 4.dp, end = 4.dp),
+        )
     }
 }
 
@@ -450,51 +790,19 @@ private val SpecialInk = Color(0xFF10151C)
 /** A warm red used for the hazard "caution" rings, mirroring the in-game telegraph. */
 private val HazardRing = Color(0xFFE5564B)
 
-/** Neutral dark board colours - intentionally minimal, independent of the skin's board. */
+/** Neutral dark glass-card colours - intentionally minimal, independent of the skin. */
 private val BoardTopDark = Color(0xFF121A22)
 private val BoardBottomDark = Color(0xFF0A0E13)
 private val BoardGrid = Color(0x0DFFFFFF)
 
-/**
- * The framed, dark, minimal mini-board every illustration sits on. Keeps the tutorial
- * artwork dark and uncluttered (a faint grid, a soft accent rim and a corner-darkening
- * vignette) so the bright skin-coloured pieces pop, matching the intro / menu mood
- * rather than each skin's own (sometimes warm) board.
- */
-private fun DrawScope.drawMinimalBoard(palette: SkinPalette) {
-    val r = size.minDimension * 0.10f
-    val radius = CornerRadius(r, r)
-    drawRoundRect(
-        brush = Brush.verticalGradient(listOf(BoardTopDark, BoardBottomDark)),
-        cornerRadius = radius,
-    )
-    val step = size.width / 12f
-    var x = step
-    while (x < size.width - 1f) {
-        drawLine(BoardGrid, Offset(x, 0f), Offset(x, size.height), 1.2f)
-        x += step
-    }
-    var y = step
-    while (y < size.height - 1f) {
-        drawLine(BoardGrid, Offset(0f, y), Offset(size.width, y), 1.2f)
-        y += step
-    }
-    // Corner-darkening vignette for depth.
-    drawRoundRect(
-        brush = Brush.radialGradient(
-            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.35f)),
-            center = Offset(size.width / 2f, size.height / 2f),
-            radius = size.maxDimension * 0.62f,
-        ),
-        cornerRadius = radius,
-    )
-    // A soft accent rim picks up the skin without lighting the whole board.
-    drawRoundRect(
-        color = palette.snakeHead.copy(alpha = 0.22f),
-        cornerRadius = radius,
-        style = Stroke(width = size.minDimension * 0.012f),
-    )
-}
+/** Mode accents without an in-game identity colour of their own. */
+private val CampaignViolet = Color(0xFFB388FF)
+
+/** Meta-page accents: one hue per pillar of the daily loop. */
+private val DailyBlue = Color(0xFF4FC3F7)
+private val MissionGreen = Color(0xFF69F0AE)
+private val TrophyGold = Color(0xFFFFC400)
+private val SkinViolet = Color(0xFFB388FF)
 
 /** A rounded body/obstacle-style piece, shaped by the skin's corner factor. */
 private fun DrawScope.drawPiece(cx: Float, cy: Float, half: Float, fill: Color, palette: SkinPalette) {
@@ -523,88 +831,12 @@ private fun DrawScope.drawFood(cx: Float, cy: Float, radius: Float, color: Color
     }
 }
 
-/** Page 0: a short snake heading toward a piece of food. */
-private fun DrawScope.drawObjectiveArt(palette: SkinPalette, textMeasurer: TextMeasurer) {
-    val cell = size.height / 5f
-    val midY = size.height * 0.5f
-    val half = cell * 0.42f
-    val startX = size.width * 0.26f
-    // Body segments, then the head, then food ahead.
-    for (i in 0..2) {
-        drawPiece(startX + i * cell, midY, half, palette.snakeBody, palette)
-    }
-    val headX = startX + 3 * cell
-    if (palette.useGlow) {
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(palette.headGlow.copy(alpha = 0.4f), Color.Transparent),
-                center = Offset(headX, midY),
-                radius = half * 2.4f,
-            ),
-            radius = half * 2.4f,
-            center = Offset(headX, midY),
-        )
-    }
-    drawPiece(headX, midY, half, palette.snakeHead, palette)
-    // Eyes looking right (travel direction).
-    val eyeR = half * 0.26f
-    for (sign in intArrayOf(-1, 1)) {
-        val ex = headX + half * 0.35f
-        val ey = midY + half * 0.42f * sign
-        drawCircle(Color.White, eyeR, Offset(ex, ey))
-        drawCircle(palette.snakeEye, eyeR * 0.5f, Offset(ex + half * 0.08f, ey))
-    }
-    drawFood(headX + cell * 1.7f, midY, half * 0.92f, palette.growMedium, palette)
-}
-
-/** Page 1: a central piece with four directional arrows - "you steer". */
-private fun DrawScope.drawControlsArt(palette: SkinPalette) {
-    val accent = palette.snakeHead
-    val cx = size.width / 2f
-    val cy = size.height / 2f
-    val unit = size.height / 6f
-    drawPiece(cx, cy, unit * 0.5f, palette.snakeHead, palette)
-    val reach = unit * 1.9f
-    val a = unit * 0.5f // arrowhead half-width
-    val tip = unit * 0.45f // arrowhead length
-    // Up, right, down, left arrowheads pointing outward from the centre.
-    drawArrow(Offset(cx, cy - reach), 0, a, tip, accent)
-    drawArrow(Offset(cx + reach, cy), 1, a, tip, accent)
-    drawArrow(Offset(cx, cy + reach), 2, a, tip, accent)
-    drawArrow(Offset(cx - reach, cy), 3, a, tip, accent)
-}
-
-/** A filled triangular arrowhead at [tipPoint] pointing in [dir] (0=up,1=right,2=down,3=left). */
-private fun DrawScope.drawArrow(tipPoint: Offset, dir: Int, halfW: Float, len: Float, color: Color) {
-    val path = Path()
-    when (dir) {
-        0 -> { // up
-            path.moveTo(tipPoint.x, tipPoint.y)
-            path.lineTo(tipPoint.x - halfW, tipPoint.y + len)
-            path.lineTo(tipPoint.x + halfW, tipPoint.y + len)
-        }
-        1 -> { // right
-            path.moveTo(tipPoint.x, tipPoint.y)
-            path.lineTo(tipPoint.x - len, tipPoint.y - halfW)
-            path.lineTo(tipPoint.x - len, tipPoint.y + halfW)
-        }
-        2 -> { // down
-            path.moveTo(tipPoint.x, tipPoint.y)
-            path.lineTo(tipPoint.x - halfW, tipPoint.y - len)
-            path.lineTo(tipPoint.x + halfW, tipPoint.y - len)
-        }
-        else -> { // left
-            path.moveTo(tipPoint.x, tipPoint.y)
-            path.lineTo(tipPoint.x + len, tipPoint.y - halfW)
-            path.lineTo(tipPoint.x + len, tipPoint.y + halfW)
-        }
-    }
-    path.close()
-    drawPath(path, color)
-}
-
-/** Page 2: a row of food growing in size, a warm shrink piece and a mystery "?". */
-private fun DrawScope.drawFoodArt(palette: SkinPalette, textMeasurer: TextMeasurer) {
+/**
+ * The food-page hero: the grow sizes swelling left to right, a warm shrink piece
+ * and a mystery "?", each breathing gently on its own phase (still when [time]
+ * is frozen by reduce-motion).
+ */
+private fun DrawScope.drawFoodArt(palette: SkinPalette, textMeasurer: TextMeasurer, time: Float) {
     val midY = size.height * 0.5f
     val unit = size.width / 6f
     val items = listOf(
@@ -616,12 +848,13 @@ private fun DrawScope.drawFoodArt(palette: SkinPalette, textMeasurer: TextMeasur
     )
     items.forEachIndexed { i, (r, color, mystery) ->
         val cx = unit * (1.0f + i * 1.0f)
-        drawFood(cx, midY, r, color, palette)
-        if (mystery) drawGlyph(textMeasurer, "?", cx, midY, r * 1.25f, Color.White)
+        val pulse = 1f + 0.05f * sin(time * 2.1f + i * 1.6f)
+        drawFood(cx, midY, r * pulse, color, palette)
+        if (mystery) drawGlyph(textMeasurer, "?", cx, midY, r * pulse * 1.25f, Color.White)
     }
 }
 
-/** Page 3: a power-up (Lightning), a power-up (Star) and a hazard (Explosion) token. */
+/** The specials-page hero: a power-up (Lightning), a power-up (Star) and a hazard (Explosion). */
 private fun DrawScope.drawSpecialsArt(palette: SkinPalette, textMeasurer: TextMeasurer) {
     val midY = size.height * 0.5f
     val effects = listOf(
@@ -629,7 +862,7 @@ private fun DrawScope.drawSpecialsArt(palette: SkinPalette, textMeasurer: TextMe
         0.50f to FoodEffect.Ghost(0L),
         0.76f to FoodEffect.Burst(0L),
     )
-    val radius = size.minDimension * 0.17f
+    val radius = size.minDimension * 0.27f
     effects.forEach { (fx, effect) ->
         drawSpecialToken(size.width * fx, midY, radius, effect, palette, textMeasurer)
     }
@@ -696,6 +929,72 @@ private fun DrawScope.drawDpadGlyph(cx: Float, cy: Float, r: Float, color: Color
         topLeft = Offset(cx - arm / 2f, cy - thick / 2f),
         size = Size(arm, thick),
         cornerRadius = rad,
+    )
+}
+
+// --- Mode glyphs -----------------------------------------------------------------
+
+/** Endless: an infinity loop - two linked stroked rings. */
+private fun DrawScope.drawEndlessGlyph(cx: Float, cy: Float, r: Float, color: Color) {
+    val loop = r * 0.44f
+    val stroke = Stroke(width = r * 0.20f, cap = StrokeCap.Round)
+    drawCircle(color, radius = loop, center = Offset(cx - loop * 0.92f, cy), style = stroke)
+    drawCircle(color, radius = loop, center = Offset(cx + loop * 0.92f, cy), style = stroke)
+}
+
+/** Time Attack: a stopwatch - dial, crown button and a hand racing up-right. */
+private fun DrawScope.drawStopwatchGlyph(cx: Float, cy: Float, r: Float, color: Color) {
+    val dialC = Offset(cx, cy + r * 0.10f)
+    val dialR = r * 0.62f
+    val stroke = Stroke(width = r * 0.18f, cap = StrokeCap.Round)
+    drawCircle(color, radius = dialR, center = dialC, style = stroke)
+    // Crown button on top.
+    drawRoundRect(
+        color = color,
+        topLeft = Offset(cx - r * 0.14f, cy - r * 0.86f),
+        size = Size(r * 0.28f, r * 0.24f),
+        cornerRadius = CornerRadius(r * 0.08f, r * 0.08f),
+    )
+    // The hand, frozen mid-sprint.
+    drawLine(
+        color = color,
+        start = dialC,
+        end = Offset(dialC.x + dialR * 0.52f, dialC.y - dialR * 0.52f),
+        strokeWidth = r * 0.16f,
+        cap = StrokeCap.Round,
+    )
+}
+
+/** Campaign: a checkpoint flag on its pole. */
+private fun DrawScope.drawFlagGlyph(cx: Float, cy: Float, r: Float, color: Color) {
+    val poleX = cx - r * 0.42f
+    drawLine(
+        color = color,
+        start = Offset(poleX, cy - r * 0.78f),
+        end = Offset(poleX, cy + r * 0.80f),
+        strokeWidth = r * 0.16f,
+        cap = StrokeCap.Round,
+    )
+    val flag = Path().apply {
+        moveTo(poleX, cy - r * 0.74f)
+        lineTo(poleX + r * 1.06f, cy - r * 0.42f)
+        lineTo(poleX, cy - r * 0.10f)
+        close()
+    }
+    drawPath(flag, color)
+}
+
+/** Zen: an enso - the open, hand-drawn circle of calm. */
+private fun DrawScope.drawEnsoGlyph(cx: Float, cy: Float, r: Float, color: Color) {
+    val d = r * 1.32f
+    drawArc(
+        color = color,
+        startAngle = -60f,
+        sweepAngle = 300f,
+        useCenter = false,
+        topLeft = Offset(cx - d / 2f, cy - d / 2f),
+        size = Size(d, d),
+        style = Stroke(width = r * 0.20f, cap = StrokeCap.Round),
     )
 }
 

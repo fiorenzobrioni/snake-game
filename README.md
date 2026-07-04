@@ -25,7 +25,7 @@ on the way to a polished, **Google-Play-publishable** title with animation, part
     <td align="center"><img src="docs/screenshots/screenshot_campaign_intro.jpg" width="120"/><br/><sub>Campaign - the animated "Level x - Speed x" intro</sub></td>
     <td align="center"><img src="docs/screenshots/screenshot_custom.jpg" width="120"/><br/><sub>Custom setup - mode, level, speed &amp; board scale</sub></td>
     <td align="center"><img src="docs/screenshots/screenshot_settings.jpg" width="120"/><br/><sub>Settings - skins, theme, hazards &amp; audio</sub></td>
-    <td align="center"><img src="docs/screenshots/screenshot_onboarding.jpg" width="120"/><br/><sub>First-run tutorial - power-ups &amp; hazards</sub></td>
+    <td align="center"><img src="docs/screenshots/screenshot_onboarding.jpg" width="120"/><br/><sub>First-run tour - power-ups &amp; hazards</sub></td>
   </tr>
 </table>
 
@@ -184,11 +184,11 @@ The classic Snake mechanics, extended with configurable features so every run fe
   is permeable, and the run plays the calmer menu soundtrack. Perfect for a five-minute wind-down; records are kept
   per board scale, and three dedicated achievements (*Inner Peace*, *Ouroboros*, *Eternal Flow*)
   reward long flows.
-- ⏸️ **Pause & menus** - pause overlay with a blur effect; restart or return to the main menu at any time. Resuming never catches you off guard: a **3-2-1 countdown** plays over the fully visible board while a **locator beacon** pulses around the snake's head with a chevron pointing where it will move, so you re-find the snake and plan the first turn before motion restarts. Highscores are kept per (mode, level, board scale). A **Back during play** setting chooses what the system Back gesture does mid-game: **Keep playing** (default - Back is ignored, and a swipe-back is fed to the snake as a turn when using swipe controls) or **Pause**.
+- ⏸️ **Pause & menus** - pause overlay with a blur effect; restart or return to the main menu at any time. Resuming never catches you off guard: a **3-2-1 countdown** plays over the fully visible board while a **locator beacon** pulses around the snake's head with a chevron pointing where it will move, so you re-find the snake and plan the first turn before motion restarts. Highscores are kept per (mode, level, board scale). A **Back during play** setting chooses what the system Back gesture does mid-game: **Keep playing** (default - Back is ignored, and a swipe-back is fed to the snake as a turn when using swipe controls) or **Pause**. And a run can never be lost by accident: pressing Back while paused asks **"Quit this run?"** before abandoning it.
 - 💎 **Polished navigation** - an **animated GPU background** behind the menus, a **branded main menu** laid out as a "game launcher" (a glowing wordmark with a small in-game-style snake emblem that follows your selected skin as the hero, over a bottom-anchored cluster of actions grouped by type so everything fits one screen), **premium action buttons** (gradient-lit, with a tactile press), and **blur-dissolve** screen transitions.
 - ⏸️ **Auto-pause** - backgrounding the app mid-run pauses the game automatically, so the snake never keeps moving while you're away.
 - 📜 **Credits screen** - an in-app **Credits / About** page (author, license and asset attribution), reachable from the main menu.
-- 🧭 **First-run tutorial** - a premium, skippable walkthrough on first launch, re-openable any time via **How to play** in Settings. Four dark, minimal cards (over the animated brand backdrop) explain the objective, the three control styles, the food types and the power-ups / hazards - each with detailed legend rows that show the real in-game pieces, icons and colours.
+- 🧭 **First-run tour** - a premium, skippable five-card tour on first launch, re-openable any time via **How to play** in Settings. Glass cards over the animated brand backdrop cover the goal (with the real in-game snake slithering in your skin), the food language, the power-ups / hazards, the four game modes and the daily loop (Daily Challenge, missions, achievements, skins) - legends show the actual in-game pieces, icons and colours, steering is a glanceable three-chip row, and Back pages backwards instead of bailing out.
 
 ### 🍽️ Food system at a glance
 
