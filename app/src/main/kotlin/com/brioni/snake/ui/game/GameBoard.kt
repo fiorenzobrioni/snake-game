@@ -53,6 +53,7 @@ import com.brioni.snake.game.FoodEffect
 import com.brioni.snake.game.FoodTier
 import com.brioni.snake.game.GameMode
 import com.brioni.snake.game.GameState
+import com.brioni.snake.game.GameStatus
 import com.brioni.snake.game.Position
 import com.brioni.snake.game.TeleportPair
 import com.brioni.snake.game.isHazard
@@ -77,6 +78,13 @@ import kotlinx.coroutines.launch
 
 /** Final window of a Ghost (Star) effect over which the warning blink ramps up. */
 private const val GHOST_WARN_MS = 2_000f
+
+/**
+ * Cap on the per-cell bursts of a whole-snake transition (death / level-up):
+ * a very long body strides over its cells so at most this many bursts fire,
+ * keeping the particle count bounded (~56 particles per blast burst).
+ */
+private const val MAX_BODY_BURSTS = 120
 
 /** Universal danger red for the hazard telegraph (skin-independent so it always reads as "danger"). */
 private val HazardWarnColor = Color(0xFFFF1E1E)
@@ -274,18 +282,39 @@ fun GameBoard(
             dissolve.snapTo(1f)
             // Fade the body out alongside the staggered bursts.
             launch { dissolve.animateTo(0f, tween(durationMillis = BodyBurstTiming.dissolveMs(cells).toInt(), easing = FastOutLinearInEasing)) }
-            // Ripple the emissions head-to-tail, one cell at a time.
+            // Ripple the emissions head-to-tail on the shared schedule. Pacing is
+            // wall-clock based with catch-up: each delay() resume has to wait for
+            // the busy main thread, so on a long snake naive per-cell delays would
+            // stretch the ripple far past the ViewModel's hold and leave bursts
+            // still firing (frozen, the frame loop already stopped) behind the
+            // game-over overlay. Very long bodies also burst only every
+            // [stride]-th cell so the particle load stays bounded - at that cell
+            // size the ripple reads the same.
             val stepDelay = BodyBurstTiming.stepDelayMs(cells)
-            for (cell in event.cells) {
-                val cx = cell.x + 0.5f
-                val cy = cell.y + 0.5f
-                if (blast) {
-                    emitExplosionBurst(particles, cx, cy, palette.headGlow, 1)
-                } else {
-                    emitVanishBurst(particles, cx, cy, palette.snakeBody, 1)
-                    emitEatBurst(particles, cx, cy, palette.headGlow, 1)
+            val stride = (cells + MAX_BODY_BURSTS - 1) / MAX_BODY_BURSTS
+            val startNanos = System.nanoTime()
+            var next = 0
+            while (next < cells) {
+                val elapsedMs = (System.nanoTime() - startNanos) / 1_000_000L
+                // If a stall still dragged the ripple past the overlay hold, stop:
+                // emitting further would only strand frozen sparks behind it.
+                if (elapsedMs >= BodyBurstTiming.totalMs(cells)) break
+                val due = (elapsedMs / stepDelay + 1).coerceAtMost(cells.toLong()).toInt()
+                while (next < due) {
+                    if (next % stride == 0 || next == cells - 1) {
+                        val cell = event.cells[next]
+                        val cx = cell.x + 0.5f
+                        val cy = cell.y + 0.5f
+                        if (blast) {
+                            emitExplosionBurst(particles, cx, cy, palette.headGlow, 1)
+                        } else {
+                            emitVanishBurst(particles, cx, cy, palette.snakeBody, 1)
+                            emitEatBurst(particles, cx, cy, palette.headGlow, 1)
+                        }
+                    }
+                    next++
                 }
-                delay(stepDelay)
+                if (next < cells) delay(stepDelay)
             }
         }
     }
@@ -424,7 +453,13 @@ fun GameBoard(
             )
             // Fold in the dissolve envelope so the body fades as it bursts apart on
             // death / vanishes on a level-up (1f during normal play = no change).
-            val fade = dissolve.value
+            // Once the death burst has consumed the body (effects stopped, status
+            // GameOver) keep it hidden behind the overlay: the effects-loop cleanup
+            // resets [dissolve] to 1 for the next run, which would otherwise
+            // repaint the exploded snake solid. Reduce-motion skips the burst and
+            // keeps the snake visible instead, as before.
+            val deathConsumed = state.status == GameStatus.GameOver && !effectsActive && !reduceMotion
+            val fade = if (deathConsumed) 0f else dissolve.value
             drawSnake(
                 centers = centers,
                 cell = cell,

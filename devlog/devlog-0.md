@@ -46,11 +46,31 @@ Suggested format for each entry:
   whole pixels anyway, it reinforces the skin's identity, and it guarantees no edge
   antialiasing shimmer regardless of the interpolated sub-pixel snake position.
 
+**Issues:** the on-device playtest (213-segment snake, Zen) caught two follow-up defects in
+the burst path that the longer window made visible:
+- *The ripple overshot its own schedule.* The emission loop paced itself with one
+  `delay(stepDelay)` per cell, but on a busy main thread every resume waits for the next
+  frame (~11-16 ms instead of 5 ms), so 213 cells took ~2-3 s against a ~1.9 s hold. When
+  the hold expired, the effects loop stopped and cleared the particles - while the emission
+  loop was *still firing*: the late bursts appeared as frozen dots behind the game-over
+  overlay and "stopped" partway down the body. Fixed by pacing the ripple on the wall clock
+  with catch-up (late iterations emit every cell that has come due, so the emission always
+  ends on schedule), plus a guard that stops emitting entirely if a stall ever drags past
+  the overlay hold. Very long bodies now also burst only every stride-th cell
+  (`MAX_BODY_BURSTS` = 120) so a 200+ cell death does not spawn ~12k particles.
+- *The exploded snake repainted solid behind the overlay.* The effects-loop cleanup resets
+  `dissolve` to 1 for the next run, but at game over `state.snake` still holds the dead
+  body, which promptly redrew fully opaque. The draw pass now clamps the body fade to 0
+  while status is GameOver with effects stopped (reduce-motion excluded - it skips the
+  burst and keeps the snake visible, as before); the dissolve reset still pre-arms the
+  next run, and the snake reappears normally on Play again / back at setup.
+
 **Verified:** `gradle assembleDebug testDebugUnitTest` - build green, all unit tests pass.
 (The sandbox could not download the pinned wrapper distribution, so the matching
-pre-installed Gradle was used; no wrapper files were touched.)
+pre-installed Gradle was used; no wrapper files were touched.) On-device: Pixel skin in
+motion confirmed fixed by the player; long-snake game over re-tested after the follow-up.
 
-**Next:** on-device playtest of a long-snake game over and the Pixel skin in motion.
+**Next:** re-run the on-device long-snake game over to confirm the follow-up fixes.
 
 ---
 
