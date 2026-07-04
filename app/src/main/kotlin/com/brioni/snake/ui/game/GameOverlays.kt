@@ -5,8 +5,10 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -30,6 +32,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -40,11 +44,27 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import com.brioni.snake.R
 import com.brioni.snake.game.BoardScale
 import com.brioni.snake.game.GameMode
 import com.brioni.snake.game.Level
 import com.brioni.snake.game.SnakeSpeed
+
+/**
+ * The overlay backdrop colour. The board behind is dark, so under the light
+ * theme a near-opaque light panel replaces the dark translucent scrim to keep
+ * the overlay text readable.
+ */
+@Composable
+private fun overlayScrimColor(alpha: Float): Color {
+    val isLightTheme = MaterialTheme.colorScheme.background.luminance() > 0.5f
+    return if (isLightTheme) {
+        MaterialTheme.colorScheme.background.copy(alpha = 0.92f)
+    } else {
+        Color.Black.copy(alpha = alpha)
+    }
+}
 
 /** Translucent full-screen scrim shared by every overlay. */
 @Composable
@@ -52,22 +72,13 @@ private fun OverlayScrim(
     alpha: Float = 0.72f,
     content: @Composable () -> Unit,
 ) {
-    // The board behind is dark, so under the light theme we use a near-opaque
-    // light panel (instead of the dark translucent scrim) to keep the overlay
-    // text readable.
-    val isLightTheme = MaterialTheme.colorScheme.background.luminance() > 0.5f
-    val scrimColor = if (isLightTheme) {
-        MaterialTheme.colorScheme.background.copy(alpha = 0.92f)
-    } else {
-        Color.Black.copy(alpha = alpha)
-    }
     // Vertically scrollable so a tall overlay (many selectors / a long recap +
     // achievement + mission banner) never clips its buttons off the bottom edge on
     // short screens. With Arrangement.Center it still centres when the content fits.
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(scrimColor)
+            .background(overlayScrimColor(alpha))
             .verticalScroll(rememberScrollState())
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -487,7 +498,14 @@ fun PausedOverlay(onResume: () -> Unit, onSetup: () -> Unit, onMenu: () -> Unit)
     }
 }
 
-/** Final screen: score, best, replay, back to game setup, or return to the menu. */
+/**
+ * Final screen: score, best, replay, back to game setup, or return to the menu.
+ *
+ * Unlike the other overlays, the action buttons live in a **pinned footer**: a
+ * long results column (recap + missions + achievements + skins) scrolls in the
+ * area above them, so "Play again" is always one tap away on any screen height.
+ * When the results fit, they centre in the space exactly as before.
+ */
 @Composable
 fun GameOverOverlay(
     score: Int,
@@ -504,7 +522,21 @@ fun GameOverOverlay(
     summary: RunSummary? = null,
     missions: List<MissionProgress> = emptyList(),
 ) {
-    OverlayScrim {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(overlayScrimColor(alpha = 0.72f))
+            .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
         Text(
             text = stringResource(R.string.game_over_title),
             style = MaterialTheme.typography.displaySmall,
@@ -650,23 +682,84 @@ fun GameOverOverlay(
                 }
             }
         }
+        }
+
+        // Pinned footer: the primary replay full-width, the two secondary exits
+        // sharing one row - compact, and never pushed off-screen by the results.
         SnakeButton(
             onClick = onPlayAgain,
-            modifier = Modifier.padding(top = 24.dp).widthIn(min = 200.dp),
+            modifier = Modifier.padding(top = 14.dp).fillMaxWidth(),
         ) {
             Text(stringResource(R.string.action_play_again))
         }
-        SnakeOutlinedButton(
-            onClick = onSetup,
-            modifier = Modifier.padding(top = 12.dp).widthIn(min = 200.dp),
+        Row(
+            modifier = Modifier.padding(top = 12.dp).fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(stringResource(R.string.action_game_setup))
+            SnakeOutlinedButton(
+                onClick = onSetup,
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(stringResource(R.string.action_game_setup))
+            }
+            SnakeOutlinedButton(
+                onClick = onMenu,
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(stringResource(R.string.action_menu))
+            }
         }
-        SnakeOutlinedButton(
-            onClick = onMenu,
-            modifier = Modifier.padding(top = 12.dp).widthIn(min = 200.dp),
+    }
+}
+
+/**
+ * Confirmation shown when the system Back gesture would abandon a run that is
+ * still alive (paused mid-game). Ending a run silently loses real progress, so
+ * - per the platform guidance on destructive actions - it asks first, with the
+ * safe choice ("Keep playing") as the prominent action and the destructive one
+ * as the quiet secondary. Tapping outside or pressing Back again also keeps
+ * playing. Deliberate exits (the pause menu's own buttons) stay one-tap.
+ */
+@Composable
+fun QuitRunDialog(onQuit: () -> Unit, onKeepPlaying: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    // The same glassy rim the menus wear, heated to the error hue: this choice
+    // is about ending something.
+    val rim = Brush.verticalGradient(
+        listOf(scheme.error.copy(alpha = 0.55f), scheme.error.copy(alpha = 0.15f)),
+    )
+    Dialog(onDismissRequest = onKeepPlaying) {
+        Column(
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .background(scheme.surface)
+                .border(BorderStroke(1.dp, rim), RoundedCornerShape(20.dp))
+                .padding(horizontal = 20.dp, vertical = 18.dp),
         ) {
-            Text(stringResource(R.string.action_menu))
+            Text(
+                text = stringResource(R.string.quit_run_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = scheme.error,
+            )
+            Text(
+                text = stringResource(R.string.quit_run_message),
+                style = MaterialTheme.typography.bodyMedium,
+                color = scheme.onSurface.copy(alpha = 0.85f),
+                modifier = Modifier.padding(top = 10.dp),
+            )
+            SnakeButton(
+                onClick = onKeepPlaying,
+                modifier = Modifier.padding(top = 18.dp).fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.quit_run_keep))
+            }
+            SnakeOutlinedButton(
+                onClick = onQuit,
+                modifier = Modifier.padding(top = 10.dp).fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.quit_run_confirm))
+            }
         }
     }
 }

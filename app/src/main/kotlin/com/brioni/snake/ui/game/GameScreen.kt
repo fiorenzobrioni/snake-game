@@ -39,6 +39,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -93,9 +94,19 @@ fun GameScreen(
     val playing = state.status == GameStatus.Running || state.status == GameStatus.Paused
     val textMeasurer = rememberTextMeasurer()
 
+    // Back from the *paused* state would silently end a live run, so it asks
+    // first (see QuitRunDialog). Dropped automatically if the state moves on
+    // (e.g. the player resumes from the pause overlay behind the dialog).
+    var showQuitConfirm by remember { mutableStateOf(false) }
+    LaunchedEffect(state.status) {
+        if (state.status != GameStatus.Paused) showQuitConfirm = false
+    }
+
     // Back handling during a *running* game depends on the Back-during-play
-    // setting; from any other state Back always returns to the menu, stopping the
-    // loop cleanly. We use a predictive handler so that, when "Keep playing" is on
+    // setting; while *paused* a live run is at stake, so Back asks for
+    // confirmation instead of quitting silently; from any other state (setup,
+    // game over) Back returns to the menu directly - there is no progress to
+    // lose. We use a predictive handler so that, when "Keep playing" is on
     // and the player steers by swipe, the back gesture's edge (left/right) can be
     // fed to the snake as a turn instead of being lost. The last gesture event is
     // captured to read that edge; a Back *button* press carries no edge and is
@@ -123,6 +134,11 @@ fun GameScreen(
                 } else {
                     audio.playPause(); viewModel.togglePause()
                 }
+            } else if (state.status == GameStatus.Paused) {
+                // A pending resume countdown aborts back to the pause overlay,
+                // then the dialog asks whether to really abandon the run.
+                viewModel.cancelResume()
+                showQuitConfirm = true
             } else {
                 viewModel.toSetup(); onExitToMenu()
             }
@@ -495,6 +511,17 @@ fun GameScreen(
             }
 
             GameStatus.Running -> Unit
+        }
+
+        if (showQuitConfirm && state.status == GameStatus.Paused) {
+            QuitRunDialog(
+                onQuit = {
+                    showQuitConfirm = false
+                    viewModel.toSetup()
+                    onExitToMenu()
+                },
+                onKeepPlaying = { showQuitConfirm = false },
+            )
         }
     }
 }

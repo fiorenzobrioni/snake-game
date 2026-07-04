@@ -595,6 +595,38 @@ snake-game/
       `Classic` - it is a persisted DataStore / `ScoreKey` token - so no stored record or
       preference is orphaned.
 
+### Phase 6.13 - Onboarding redesign & run-exit safety (1.2.0) ✅ (implemented, post-1.0.0)
+
+- [x] **Step 6.13.1 - First-run tour redesigned (5 cards).** `OnboardingScreen` rebuilt as a premium,
+      Play-Store-grade tour. The dedicated "how to steer" page (static arrows artwork) is gone -
+      steering is a glanceable three-chip row (Swipe / Tap to turn / D-pad glyphs) on the welcome
+      card, since the swipe default just works. The freed room teaches what a player cannot guess:
+      card 1 **Welcome** (the live in-game `SnakeEmblem` slithering in the player's skin on a glass
+      panel, goal + combo pitch, steering chips), card 2 **Food** (pulsing grow/shrink/mystery row +
+      legend), card 3 **Power-ups & hazards** (real `drawSpecialToken` renderers, unchanged legend),
+      card 4 **Modes** (four accent-rimmed cards with hand-drawn glyphs: infinity, stopwatch,
+      checkpoint flag, enso), card 5 **Daily loop** (Daily Challenge / missions / achievements &
+      records / skins & arenas rows + "reopen from Settings" hint). Onboarding best practices kept:
+      skippable at every step, animated page indicator, one idea per card, system-back pages
+      backwards (finishing only from the first card), every card scrolls so nothing clips, all
+      artwork motion freezes under reduce-motion (a shared `withFrameNanos` clock that simply never
+      advances).
+- [x] **Step 6.13.2 - Quit-run confirmation on Back.** Back from the *paused* state used to end a
+      live run silently. It now opens `QuitRunDialog` (error-tinted glass rim, "Quit this run?"):
+      the safe **Keep playing** is the prominent filled action, **Quit run** the quiet outlined one,
+      and outside-tap / Back dismisses safely - per the platform guidance on confirming destructive,
+      easily-accidental actions. A pending resume countdown is cancelled back to the pause overlay
+      first, and the dialog auto-drops if the run state moves on. Deliberate exits (the pause
+      overlay's own Menu / Game setup buttons) stay one-tap; Back during *running* play keeps its
+      `BackBehavior` setting, and Back from setup / game over still leaves directly (no progress at
+      stake).
+- [x] **Step 6.13.3 - Game-over overlay: pinned action footer.** With a long recap + missions +
+      achievements + skin unlocks the buttons could scroll off short screens. The results column now
+      scrolls in a `weight(1f)` area (still centring when it fits) above a pinned footer: full-width
+      **Play again** plus **Game setup** / **Menu** sharing one row - actions always one tap away,
+      content readability unchanged.
+- [x] **Step 6.13.4 - Version 1.2.0** (`versionName 1.2.0`, `versionCode 28`).
+
 ### Phase 7 - Play Store distribution & cleanup
 
 - [x] **Step 7.0** - Pre-publication polish: default **Back during play** is now **Keep playing** (fresh
