@@ -44,8 +44,15 @@ enum class SnakeStyle {
     /** Classic: a smooth, shaded, tapered tube with a glossy head. */
     Tube,
 
-    /** Retro / Pixel: crisp, chiselled blocky segments (volumetric diagonal shading). */
+    /** Retro: crisp, chiselled blocky segments (volumetric diagonal shading). */
     Blocks,
+
+    /**
+     * Pixel: every piece (head included) is an independent 5x5-pixel sprite tile,
+     * like an early-80s coin-op character - bevelled body tiles with a brass
+     * button and a capped, moustached hero face that turns with the direction.
+     */
+    PixelSprite,
 
     /** Neon: a hollow neon tube - dark core, glowing wall and a bright pulsing filament. */
     NeonTube,
@@ -227,7 +234,13 @@ private val RetroPalette = SkinPalette(
     specialStyle = SpecialStyle.Phosphor,
 )
 
-/** Flat, square, glow-free pixel-art styling. */
+/**
+ * An 8-bit coin-op sprite look, flat and glow-free: an overalls-blue snake built
+ * from 5x5 sprite tiles with a capped hero head (see [SnakeStyle.PixelSprite]).
+ * [snakeBody]/[snakeOutline] are the sprite's blue base and shade, [snakeHead]
+ * the cap red and [snakeEye] the eye ink, so debris, effects and UI accents that
+ * tint from the palette stay coherent with the sprite art in `GameBoard`.
+ */
 private val PixelPalette = SkinPalette(
     boardTop = Color(0xFF14161F),
     boardBottom = Color(0xFF0B0C12),
@@ -236,11 +249,11 @@ private val PixelPalette = SkinPalette(
     obstacle = Color(0xFF6B6B6B),
     obstacleHighlight = Color(0xFF8C8C8C),
     obstacleShadow = Color(0xFF3A3A3A),
-    snakeBody = Color(0xFF4CAF50),
-    snakeHead = Color(0xFF8BC34A),
-    snakeOutline = Color(0xFF255D2A),
-    snakeEye = Color(0xFF0B0C12),
-    headGlow = Color(0xFF8BC34A),
+    snakeBody = Color(0xFF2E5FC9),
+    snakeHead = Color(0xFFC23A22),
+    snakeOutline = Color(0xFF16295E),
+    snakeEye = Color(0xFF26120A),
+    headGlow = Color(0xFF6C92E6),
     growSmall = Color(0xFFAED581),
     growMedium = Color(0xFF66BB6A),
     growLarge = Color(0xFF43A047),
@@ -253,7 +266,7 @@ private val PixelPalette = SkinPalette(
     special = Color(0xFFB388FF),
     cornerFactor = 0.0f,
     useGlow = false,
-    snakeStyle = SnakeStyle.Blocks,
+    snakeStyle = SnakeStyle.PixelSprite,
     specialStyle = SpecialStyle.Pixel,
 )
 

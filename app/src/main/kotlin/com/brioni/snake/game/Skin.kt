@@ -45,7 +45,7 @@ enum class Skin(val displayName: String, val unlock: SkinUnlock) {
     /** High-contrast saturated neon on near-black, with boosted glow. */
     Neon("Neon", SkinUnlock.Score(1500)),
 
-    /** Flat, square, glow-free pixel-art styling. */
+    /** 8-bit sprite styling: every piece a 5x5-pixel coin-op sprite tile. */
     Pixel("Pixel", SkinUnlock.Score(5000)),
 
     /** Cool aurora gradient with glow and a segmented body. */

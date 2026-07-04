@@ -13,6 +13,42 @@ Suggested format for each entry:
 
 ---
 
+## 2026-07-04 - Pixel skin redesigned as 5x5 sprite art (Step 6.14.1)
+
+**Done:**
+- **Redesigned the Pixel skin** so it no longer reads as a twin of Retro (both were green
+  `SnakeStyle.Blocks` snakes). Retro is untouched. Pixel now has a bespoke
+  `SnakeStyle.PixelSprite`: every piece of the snake (head included) is an independent
+  **5x5-pixel sprite tile**, in the spirit of early-80s coin-op hero sprites.
+- **Body**: an overalls-blue bevelled tile (lit top/left, shaded bottom/right) with a brass
+  button at the centre of each piece; constant tile size (no tail taper) and the cell margin
+  keep the body visibly broken into single pieces.
+- **Head**: a capped, moustached 8-bit hero face (cap on top, tan face, one eye, moustache),
+  defined once facing right and pre-mirrored/rotated per `Direction`, so cap, eye and moustache
+  always face the direction of travel (`PixelHeadSprites`).
+- Sprite maps and inks live in `GameBoard` (`PixelSpriteInk`, `PixelBodyTile`, `PixelHeadRight`
+  plus `mirrorSprite` / `rotateSpriteCcw` / `rotateSpriteCw` and the `drawSprite5` painter);
+  `PixelPalette.snakeBody/snakeHead/snakeOutline/snakeEye` mirror the sprite inks so
+  palette-tinted debris, particles and UI accents stay coherent with the sprite art.
+- In `drawSnake` the sprite body starts at the neck (the head sprite has transparent corner
+  notches, so it must not sit on a body tile); debris chains still draw every piece.
+
+**Decisions:**
+- Palette brief: classic 80s arcade colours, **no neon, no rainbow** - the body holds one tint
+  (two blues + a brass accent), the extra colours (cap red / face tan) are reserved for the head.
+- Three sprite mock-ups (blue "capped hero", brown "gorilla", cream "fire suit") were previewed
+  at pixel level in an HTML mock-up before implementation; the blue capped-hero option was chosen.
+- Naming kept deliberately generic everywhere (code, docs, UI): the sprite only *evokes* the
+  era; no third-party character names are used, to stay clear of trademark concerns.
+- Each sprite pixel is overdrawn by half a px in `drawSprite5` so antialiasing cannot open
+  hairline seams between adjacent pixels.
+
+**Issues:** none; `testDebugUnitTest` green (model untouched, `SkinTest` unchanged).
+
+**Next:** nothing pending for skins; the roster now has six visually distinct bodies.
+
+---
+
 ## 2026-07-04 - Release 2.0.0 (version bump + GitHub release)
 
 **Done:**
