@@ -192,6 +192,13 @@ fun SettingsScreen(
                     label = { it.displayName },
                     onSelected = { value -> scope.launch { repo.setSpecialFrequency(value) } },
                 )
+
+                // Race a translucent replay of your best run in the same slot (Step 6.9.12).
+                ToggleSection(
+                    title = stringResource(R.string.settings_ghost_replay),
+                    checked = settings.ghostReplayEnabled,
+                    onCheckedChange = { enabled -> scope.launch { repo.setGhostReplayEnabled(enabled) } },
+                )
             }
 
             SettingsCard(title = stringResource(R.string.settings_section_audio)) {

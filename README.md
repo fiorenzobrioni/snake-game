@@ -86,6 +86,10 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - 🔥 **Combo "juice"** - chain bites for a multiplier and the HUD counter punches in and warms through a
   colour ramp while the snake's head **catches fire** (its glow heats from your skin's colour toward a
   fiery orange-red) as the streak climbs.
+- 👻 **Ghost replay** - race a translucent "ghost" of your own best run, retracing its path tick-for-tick
+  alongside the live snake (in **Endless**, **Time Attack** and **Zen**). It fades in at the start and
+  out the moment you outlast it. On by default; turn **Ghost of your best run** off in Settings for a
+  clean board.
 - 👁️ **Reduce motion & flashing** - an accessibility toggle in Settings that damps the screen shake, the
   particle bursts and the near-miss flash for a calmer, flash-free board.
 - ✨ **Rich 2D visuals** - the snake renders in each skin's own body style (see **Skins** - glossy tube,

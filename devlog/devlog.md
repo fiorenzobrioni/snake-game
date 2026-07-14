@@ -13,6 +13,50 @@ Suggested format for each entry:
 
 ---
 
+## 2026-07-14 - Step 6.9.12: ghost replay of your best run
+
+**Done:**
+- **Ghost replay.** A translucent "ghost" snake now retraces your best run in the same
+  (mode × level × scale) slot, racing alongside the live one.
+- **Model (`game/GhostRun.kt`, pure Kotlin).** Stores a compact per-tick log: the head cell
+  and snake length only. The body at any tick is reconstructed as the trail of the last
+  `length` head positions (`bodyAt`), exactly as a live snake's body is the trail its head
+  left behind, so a multi-minute run stays a few KB. `toInts`/`fromInts` pack it to a flat
+  int array (versioned header + one packed int per tick); a unit test (`GhostRunTest`)
+  covers body reconstruction, index clamping and encode round-trips.
+- **Persistence (`data/`).** `GhostCodec` Base64-encodes the int array for DataStore;
+  `SettingsRepository` stores one ghost per slot (`ghost_<mode>_<level>_<scale>`), overwritten
+  on a new best, and a `ghostReplayEnabled` setting (default on).
+- **Recording + replay (`GameViewModel`).** `recordGhostTick` appends the head + length each
+  tick (index 0 = start pose, so the log lines up 1:1 with `elapsedTicks`); a new best saves
+  it (`saveGhostRun`); `beginGhostRun` reloads the slot's ghost at run start. Recording is
+  independent of the display toggle so a best is always captured.
+- **Rendering (`ui/game/GameBoard.kt`).** A new `drawGhostSnake` layer draws a stylised
+  spectral tube (skin-tinted glass body, bright core, head bead + faint eyes) under the live
+  snake, interpolated through the **same** `interpolatedSnakeCenters` path and synced by
+  `elapsedTicks` + the shared fraction, fading in at the start and out as it reaches the tick
+  its run ended on.
+
+**Decisions:**
+- **Head-only log + body reconstruction** rather than storing the whole body each tick: the
+  body is always the head's trail, so this is exact for the fixed-board modes yet compact
+  enough to persist in Preferences DataStore.
+- **Scoped to Endless / Time Attack / Zen.** Campaign is excluded - its lives, respawns and
+  per-level board shapes make a single overlaid ghost meaningless - and challenges (seeded
+  Daily / Random) never record or show one.
+- **Made optional** (the task asked to evaluate this): a Gameplay toggle, default on. A
+  premium racing aid most players enjoy, but distracting for some, so it is dismissible;
+  turning it off hides it instantly while still recording in the background.
+- **A deliberately stylised ghost**, not a faded copy of the per-skin snake, so it never gets
+  mistaken for a second live snake.
+
+**Issues:** the Gradle wrapper distribution host is blocked by the environment proxy; built and
+tested with the system Gradle 8.14.3 (compatible with AGP 8.9.1). `testDebugUnitTest` and
+`assembleDebug` both pass.
+**Next:** Step 6.9.11 (share-your-score card) remains the other deferred replayability/social item.
+
+---
+
 ## 2026-07-04 - Remove stale README screenshots
 
 **Done:**

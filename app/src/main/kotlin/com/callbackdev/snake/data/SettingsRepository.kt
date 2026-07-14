@@ -16,6 +16,7 @@ import com.callbackdev.snake.game.BoardTerrain
 import com.callbackdev.snake.game.BackBehavior
 import com.callbackdev.snake.game.ControlScheme
 import com.callbackdev.snake.game.GameMode
+import com.callbackdev.snake.game.GhostRun
 import com.callbackdev.snake.game.Level
 import com.callbackdev.snake.game.ScoreKey
 import com.callbackdev.snake.game.Skin
@@ -23,6 +24,7 @@ import com.callbackdev.snake.game.SnakeSpeed
 import com.callbackdev.snake.game.SpecialFrequency
 import com.callbackdev.snake.game.ThemeMode
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlin.math.max
 
@@ -52,6 +54,8 @@ data class Settings(
     val themeMode: ThemeMode = ThemeMode.Dark,
     /** First-run flag: true once the player has seen (or skipped) the tutorial. */
     val onboardingCompleted: Boolean = false,
+    /** Replay a translucent ghost of your best run alongside the live one (default on). */
+    val ghostReplayEnabled: Boolean = true,
 )
 
 /**
@@ -101,6 +105,7 @@ class SettingsRepository(private val context: Context) {
             mode = prefs[MODE].toEnum(GameMode::valueOf) ?: GameMode.Endless,
             themeMode = prefs[THEME_MODE].toEnum(ThemeMode::valueOf) ?: ThemeMode.Dark,
             onboardingCompleted = prefs[ONBOARDING_COMPLETED] ?: false,
+            ghostReplayEnabled = prefs[GHOST_REPLAY_ENABLED] ?: true,
         )
     }
 
@@ -157,6 +162,23 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setThemeMode(themeMode: ThemeMode) =
         edit { it[THEME_MODE] = themeMode.name }
+
+    suspend fun setGhostReplayEnabled(enabled: Boolean) =
+        edit { it[GHOST_REPLAY_ENABLED] = enabled }
+
+    /**
+     * The stored ghost trajectory for a (mode × level × scale) slot, or null if
+     * none has been recorded yet (or the stored payload is stale/corrupt). One
+     * ghost per slot: a new best overwrites it via [saveGhostRun].
+     */
+    suspend fun ghostRun(mode: GameMode, level: Level, scale: BoardScale): GhostRun? {
+        val stored = context.dataStore.data.map { it[ghostKey(mode, level, scale)] }.first()
+        return stored?.let { GhostCodec.decode(it) }
+    }
+
+    /** Persists [run] as the ghost for its slot (called when a run sets a new best). */
+    suspend fun saveGhostRun(mode: GameMode, level: Level, scale: BoardScale, run: GhostRun) =
+        edit { it[ghostKey(mode, level, scale)] = GhostCodec.encode(run) }
 
     /** Whether the first-run tutorial has been seen or skipped. */
     fun onboardingCompleted(): Flow<Boolean> =
@@ -343,6 +365,9 @@ class SettingsRepository(private val context: Context) {
     private fun dailyBestKey(epochDay: Long) =
         intPreferencesKey("daily_best_$epochDay")
 
+    private fun ghostKey(mode: GameMode, level: Level, scale: BoardScale) =
+        stringPreferencesKey("ghost_${mode.name}_${level.name}_${scale.name}")
+
     private companion object {
         val LEVEL = stringPreferencesKey("level")
         val SNAKE_SPEED = stringPreferencesKey("snake_speed")
@@ -363,6 +388,7 @@ class SettingsRepository(private val context: Context) {
         val MODE = stringPreferencesKey("game_mode")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
+        val GHOST_REPLAY_ENABLED = booleanPreferencesKey("ghost_replay_enabled")
         val UNLOCKED_ACHIEVEMENTS = stringSetPreferencesKey("unlocked_achievements")
         val UNLOCKED_SKINS = stringSetPreferencesKey("unlocked_skins")
         val COMPLETED_MISSIONS = stringSetPreferencesKey("completed_missions")

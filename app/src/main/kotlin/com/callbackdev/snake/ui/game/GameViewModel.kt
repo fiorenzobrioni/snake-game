@@ -31,6 +31,7 @@ import com.callbackdev.snake.game.GameEvent
 import com.callbackdev.snake.game.GameMode
 import com.callbackdev.snake.game.GameState
 import com.callbackdev.snake.game.GameStatus
+import com.callbackdev.snake.game.GhostRun
 import com.callbackdev.snake.game.Level
 import com.callbackdev.snake.game.LevelsMode
 import com.callbackdev.snake.game.Mission
@@ -239,6 +240,19 @@ class GameViewModel(
     var hazardsEnabled by mutableStateOf(true)
         private set
 
+    /** Whether to replay a translucent ghost of the best run alongside play (setting). */
+    var ghostReplayEnabled by mutableStateOf(true)
+        private set
+
+    /**
+     * The ghost trajectory to replay for the current run (Step 6.9.12): the best
+     * run recorded in this (mode × level × scale) slot, loaded at run start when
+     * [ghostReplayEnabled]. Null when disabled, in an unsupported mode, in a
+     * challenge, or when no ghost has been recorded yet.
+     */
+    var ghostRun by mutableStateOf<GhostRun?>(null)
+        private set
+
     /** How often specials (power-ups / hazards) spawn (setting). */
     var specialFrequency by mutableStateOf(SpecialFrequency.Standard)
         private set
@@ -404,6 +418,14 @@ class GameViewModel(
     private var runExtraLives = 0
     private var runMaxLength = 0
 
+    // Ghost replay recording (Step 6.9.12): the head cell + snake length captured
+    // each tick of an eligible run, built into a GhostRun and persisted on a new
+    // best. Index 0 is the start pose, so it lines up 1:1 with elapsedTicks.
+    private val ghostHeadsX = ArrayList<Int>()
+    private val ghostHeadsY = ArrayList<Int>()
+    private val ghostLens = ArrayList<Int>()
+    private var ghostRecording = false
+
     private var loop: Job? = null
     private var bestJob: Job? = null
     private var introJob: Job? = null
@@ -479,6 +501,10 @@ class GameViewModel(
                 reduceMotion = settings.reduceMotion
                 skin = settings.skin
                 terrain = settings.terrain
+                ghostReplayEnabled = settings.ghostReplayEnabled
+                // Turning the ghost off mid-run hides it immediately; turning it on
+                // takes effect from the next run (it is loaded at run start).
+                if (!ghostReplayEnabled) ghostRun = null
                 // The Daily Challenge pins the spawn-affecting toggles so the run is
                 // identical for everyone; only sync them from settings outside it.
                 if (activeChallenge == null) {
@@ -807,6 +833,66 @@ class GameViewModel(
         newlyUnlocked = emptyList()
         newlyUnlockedSkins = emptyList()
         missionsProgress = emptyList()
+        beginGhostRun()
+    }
+
+    /**
+     * True when the current run may record and replay a ghost: a normal (not
+     * challenge) run in a mode whose board stays fixed for the whole run, so a
+     * single trajectory lines up cleanly. Campaign is excluded - its lives,
+     * respawns and per-level board shapes make a single overlaid ghost meaningless.
+     */
+    private fun ghostEligible(): Boolean =
+        activeChallenge == null && mode in GHOST_MODES
+
+    /**
+     * Resets the ghost recorder for a fresh run and loads the slot's stored ghost
+     * to replay. Recording is independent of the display toggle (so a new best is
+     * always captured), but a ghost is only *shown* when [ghostReplayEnabled].
+     */
+    private fun beginGhostRun() {
+        ghostHeadsX.clear()
+        ghostHeadsY.clear()
+        ghostLens.clear()
+        ghostRecording = ghostEligible()
+        // Seed index 0 with the start pose so the log aligns 1:1 with elapsedTicks.
+        if (ghostRecording) recordGhostTick(state)
+        ghostRun = null
+        if (!ghostReplayEnabled || !ghostEligible()) return
+        val m = mode
+        val lvl = state.level
+        val sc = scale
+        val boardW = state.board.width
+        val boardH = state.board.height
+        viewModelScope.launch {
+            val loaded = repo.ghostRun(m, lvl, sc)
+            // Only replay a ghost recorded on the same board size, and only if the
+            // run config still matches (the player didn't change slot while it loaded).
+            ghostRun = loaded?.takeIf {
+                !it.isEmpty() && it.boardWidth == boardW && it.boardHeight == boardH &&
+                    mode == m && state.level == lvl && scale == sc && state.status == GameStatus.Running
+            }
+        }
+    }
+
+    /** Appends the head cell + length of [s] to the ghost recording (bounded). */
+    private fun recordGhostTick(s: GameState) {
+        if (!ghostRecording || ghostHeadsX.size > GhostRun.MAX_TICKS) return
+        val head = s.head
+        ghostHeadsX.add(head.x)
+        ghostHeadsY.add(head.y)
+        ghostLens.add(s.snake.size)
+    }
+
+    /** Persists the just-recorded trajectory as the slot's ghost (called on a new best). */
+    private fun saveGhostRun() {
+        if (!ghostRecording) return
+        val run = GhostRun.of(state.board.width, state.board.height, ghostHeadsX, ghostHeadsY, ghostLens)
+            ?: return
+        val m = mode
+        val lvl = state.level
+        val sc = scale
+        viewModelScope.launch { repo.saveGhostRun(m, lvl, sc, run) }
     }
 
     /**
@@ -870,6 +956,7 @@ class GameViewModel(
         val before = state
         val after = engine.tick(before, hazardsEnabled, specialFrequency)
         runMaxLength = max(runMaxLength, after.snake.size)
+        recordGhostTick(after)
 
         after.lastEvents.forEach { event ->
             when (event) {
@@ -1124,6 +1211,8 @@ class GameViewModel(
         val fromCheckpoint = lastRunFromCheckpointCandidate()
         lastRunFromCheckpoint = fromCheckpoint
         isNewBest = !fromCheckpoint && score > bestScore
+        // A new best in a ghost-eligible slot becomes the ghost future runs race.
+        if (isNewBest) saveGhostRun()
         val durationMs = System.currentTimeMillis() - runStartMs
         // Run recap for the game-over overlay (Step 6.9.2).
         lastSummary = RunSummary(
@@ -1264,6 +1353,14 @@ class GameViewModel(
         private val DEFAULT_LEVEL = Level.Beginner
         private val DEFAULT_SCALE = BoardScale.Classic
         private val DEFAULT_CONTROL = ControlScheme.Swipe
+
+        /**
+         * Modes whose board is fixed for the whole run, so a single recorded
+         * trajectory replays cleanly as a ghost (Step 6.9.12). Campaign is left
+         * out: its lives, respawns and shifting per-level board shapes make a
+         * single overlaid ghost meaningless.
+         */
+        private val GHOST_MODES = setOf(GameMode.Endless, GameMode.TimeAttack, GameMode.Zen)
 
         /** Levels mode: seconds counted down by the intro overlay. */
         private const val INTRO_SECONDS = 3

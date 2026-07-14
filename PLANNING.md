@@ -51,7 +51,6 @@ Roadmap, work in progress, TODOs, known bugs, and ideas. For the history of deve
 
 - **Gameplay depth** - Step 6.9.6 player-activated power-up (one chargeable slot: Dash / Bomb).
 - **Sharing & social** - Step 6.9.11 share-your-score card via the Android share sheet.
-- **Replayability** - Step 6.9.12 translucent ghost replay of your best run.
 - **Google Play distribution** - Steps 7.2-7.6: R8/shrink verification, upload-keystore signing,
   signed AAB + tag-driven CI, Play readiness (privacy policy, Data Safety, IARC, store listing,
   internal testing track), and the README Play link.
@@ -441,10 +440,20 @@ snake-game/
       and open the Android share sheet (`ACTION_SEND` with a generated image). Impl: draw the card to a
       `Bitmap`, save to cache via a `FileProvider`, and launch a share `Intent`.
 
-- [ ] **Step 6.9.12 - Ghost replay of your best run.** Re-play a translucent "ghost" snake of your best run
-      alongside the live one. The interpolation + per-tick state machinery already exists; record the best
-      run's input/positions and render the ghost from the same `previousSnake`/`tickTimeNanos` path. Impl:
-      capture a compact per-tick position log on a best run, persist it, and add a ghost layer to `GameBoard`.
+- [x] **Step 6.9.12 - Ghost replay of your best run.** Re-plays a translucent "ghost" snake of your best
+      run alongside the live one. A compact per-tick log (head cell + snake length) is captured during an
+      eligible run (`GameViewModel.recordGhostTick`); the whole body at any tick is reconstructed as the
+      trail of the last `length` head positions (`GhostRun.bodyAt`), so the log stays a few KB. On a new
+      best it is packed (`GhostRun.toInts` + `GhostCodec` Base64) and persisted per (mode × level × scale)
+      slot; at run start the slot's ghost is loaded and replayed. `GameBoard` interpolates it through the
+      **same** `interpolatedSnakeCenters` path as the live snake, synced by `elapsedTicks` and the shared
+      fraction, and draws a stylised `drawGhostSnake` layer (a spectral, skin-tinted glass tube with a
+      head bead + faint eyes) under the live snake, fading in at the start and out as it reaches the tick
+      its run ended on. **Scope:** only the fixed-board modes (Endless / Time Attack / Zen) - Campaign is
+      excluded (lives, respawns and per-level shapes make one overlaid ghost meaningless) - and never in a
+      seeded Daily / Random challenge. **Optional:** made a Gameplay setting (`Ghost of your best run`,
+      default on); turning it off hides the ghost immediately (recording still happens, so a best set with
+      it off is still available when re-enabled).
 
 - [x] **Step 6.9.13 - Per-skin item shapes.** Board items now match their skin's visual language: the flat
       skins (Retro / Pixel) render regular food **and** special power-ups / hazards as rounded squares
