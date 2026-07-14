@@ -54,6 +54,7 @@ import com.callbackdev.snake.game.FoodTier
 import com.callbackdev.snake.game.GameMode
 import com.callbackdev.snake.game.GameState
 import com.callbackdev.snake.game.GameStatus
+import com.callbackdev.snake.game.GhostRun
 import com.callbackdev.snake.game.Position
 import com.callbackdev.snake.game.TeleportPair
 import com.callbackdev.snake.game.isHazard
@@ -78,6 +79,13 @@ import kotlinx.coroutines.launch
 
 /** Final window of a Ghost (Star) effect over which the warning blink ramps up. */
 private const val GHOST_WARN_MS = 2_000f
+
+/**
+ * Ticks over which the ghost-replay snake (Step 6.9.12) fades in at the start of a
+ * run and out as it reaches the tick its recorded run ended on, so it never pops
+ * in or vanishes abruptly.
+ */
+private const val GHOST_FADE_TICKS = 8f
 
 /**
  * Cap on the per-cell bursts of a whole-snake transition (death / level-up):
@@ -182,6 +190,9 @@ fun GameBoard(
     teleportEventId: Int,
     bodyBurst: BodyBurstEvent?,
     bodyBurstId: Int,
+    // Ghost replay (Step 6.9.12): a translucent snake retracing the best run in
+    // this slot, drawn under the live snake and synced to it by tick index.
+    ghostRun: GhostRun? = null,
     textMeasurer: TextMeasurer,
     palette: SkinPalette,
     terrain: BoardTerrain = BoardTerrain.Arcade,
@@ -444,6 +455,27 @@ fun GameBoard(
             state.foods.forEach { food ->
                 drawFood(food, cell, originX, originY, pulse, textMeasurer, palette, shaders, time)
             }
+            // Ghost replay (Step 6.9.12): a translucent snake retracing the best
+            // run in this slot, drawn under the live snake. It is synced by tick
+            // index (elapsedTicks) and interpolated with the same fraction [f], so
+            // it moves in lockstep. It fades in at the start and out as it reaches
+            // the tick its recorded run ended on ("you've outlasted your best").
+            if (running && ghostRun != null && !ghostRun.isEmpty()) {
+                val ghostIndex = state.elapsedTicks
+                if (ghostIndex <= ghostRun.lastTick) {
+                    val ghostCurrent = ghostRun.bodyAt(ghostIndex)
+                    val ghostPrevious = ghostRun.bodyAt(ghostIndex - 1)
+                    // No teleport routing for the ghost: recorded head history
+                    // already encodes the real path, so any gap is snapped/wrapped.
+                    val ghostCenters = interpolatedSnakeCenters(
+                        ghostCurrent, ghostPrevious, emptyList(), state.board, f, cell, originX, originY,
+                    )
+                    val fadeIn = (ghostIndex / GHOST_FADE_TICKS).coerceIn(0f, 1f)
+                    val fadeOut = ((ghostRun.lastTick - ghostIndex) / GHOST_FADE_TICKS).coerceIn(0f, 1f)
+                    drawGhostSnake(ghostCenters, cell, palette, minOf(fadeIn, fadeOut))
+                }
+            }
+
             // Ghost (Star): the snake shimmers while invincible (snakeAlpha is
             // computed once above). The interpolated cell centres feed both the
             // smooth-tube renderer (rounded skins) and the blocky one (flat skins).
@@ -1192,6 +1224,49 @@ private fun isBrokenSpan(a: Offset, b: Offset, cell: Float): Boolean {
     val dy = a.y - b.y
     val limit = 1.6f * cell
     return dx * dx + dy * dy > limit * limit
+}
+
+/**
+ * The ghost-replay snake (Step 6.9.12): a deliberately stylised, translucent
+ * "spirit" retracing the player's best run, drawn under the live snake. It is
+ * intentionally *not* the full per-skin snake - a faded photocopy would be
+ * confused for a second live snake - but a soft, skin-tinted glass tube with a
+ * bright core, a leading head bead and two faint eyes, so it still reads as a
+ * snake and as clearly not the one you are steering. [alpha] (0..1) is the
+ * fade-in / fade-out envelope from the caller.
+ */
+private fun DrawScope.drawGhostSnake(
+    centers: List<Offset>,
+    cell: Float,
+    palette: SkinPalette,
+    alpha: Float,
+) {
+    if (centers.isEmpty() || alpha <= 0.001f) return
+    val n = centers.size
+    // A cool, luminous tint derived from the skin so the ghost belongs to the
+    // scene, lifted well toward white so it reads as spectral on any board.
+    val ghost = lighten(palette.snakeBody, 0.55f)
+
+    // Soft outer aura, the translucent glass body, then a bright inner core line.
+    strokeChain(centers, cell, joints = true, color = ghost.copy(alpha = 0.10f * alpha)) {
+        snakeWidth(it, n, cell) * 1.3f + cell * 0.10f
+    }
+    strokeChain(centers, cell, joints = true, color = ghost.copy(alpha = 0.26f * alpha)) {
+        snakeWidth(it, n, cell)
+    }
+    strokeChain(centers, cell, joints = false, color = Color.White.copy(alpha = 0.16f * alpha)) {
+        (snakeWidth(it, n, cell) * 0.4f).coerceAtLeast(1f)
+    }
+
+    // Head bead: a brighter disc with a top sheen and two faint eyes, so the
+    // leading end reads as a head without the live snake's glow or hard outline.
+    val head = centers.first()
+    val r = cell * 0.42f
+    drawCircle(ghost.copy(alpha = 0.34f * alpha), r, head)
+    drawCircle(Color.White.copy(alpha = 0.22f * alpha), r * 0.5f, head + Offset(0f, -r * 0.28f))
+    val eye = r * 0.32f
+    drawCircle(Color.White.copy(alpha = 0.5f * alpha), eye, head + Offset(-r * 0.34f, -r * 0.18f))
+    drawCircle(Color.White.copy(alpha = 0.5f * alpha), eye, head + Offset(r * 0.34f, -r * 0.18f))
 }
 
 /**

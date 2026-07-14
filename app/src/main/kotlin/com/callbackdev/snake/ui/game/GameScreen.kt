@@ -404,6 +404,8 @@ fun GameScreen(
                     teleportEventId = viewModel.teleportEventId,
                     bodyBurst = viewModel.bodyBurst,
                     bodyBurstId = viewModel.bodyBurstId,
+                    // Ghost replay of the best run in this slot (Step 6.9.12).
+                    ghostRun = viewModel.ghostRun,
                     textMeasurer = textMeasurer,
                     palette = viewModel.palette,
                     terrain = viewModel.terrain,
