@@ -832,6 +832,10 @@ private fun RunRecap(summary: RunSummary) {
         // ended long but under-fed can see why the badge did not land.
         RecapRow(stringResource(R.string.recap_grown), summary.segmentsFromFood.toString())
         RecapRow(stringResource(R.string.recap_trimmed), summary.segmentsTrimmed.toString())
+        // Only worth a row when the ability was actually spent.
+        if (summary.segmentsShed > 0) {
+            RecapRow(stringResource(R.string.recap_shed), summary.segmentsShed.toString())
+        }
         if (summary.isCampaign) {
             RecapRow(
                 stringResource(R.string.recap_level),

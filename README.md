@@ -36,8 +36,15 @@ The classic Snake mechanics, extended with configurable features so every run fe
   and reappears elsewhere, so looping around without eating won't stall the run. Special pieces stick
   around much longer (they're rare events worth reaching) but eventually time out too.
 - ✖️ **Combo multiplier** - eating in quick succession multiplies your score (up to ×5).
-- 📏 **Length-scaled scoring** - the longer your snake gets, the more each grow is worth (and trimming a
-  long tail pays proportionally more too).
+- 🎲 **Risk bonus** - every point is multiplied by how much of the board your body is covering (up to
+  ×5). Staying long stops being pure downside and becomes a **bet**: the fuller the arena, the richer
+  every bite, right up until you run out of room. The HUD calls the live multiplier out and the board
+  frame smoulders crimson once you are deep in it.
+- ✂️ **Shed ability** - the one thing you can *do* besides steer. Eating charges a ring in the board's
+  corner; when it fills, tap it to cut a third of your tail loose and **cash in** the risk you were
+  carrying (the payout scales with the multiplier at the moment of the cut). It is the answer to being
+  boxed in with no shrinking food in sight - and spending it means giving up the fat multiplier that
+  made you rich.
 - 🚧 **Obstacles** - symmetric blocks that tend to clump into larger shapes and raise the difficulty.
 - 🎚️ **Levels & snake speed** - 5 obstacle layouts (*Beginner* → *Legend*) and 5 **independent**
   speeds (*Relaxed* → *Turbo*), mixable freely: play the dense Legend field at a gentle pace, or an
@@ -194,12 +201,12 @@ The classic Snake mechanics, extended with configurable features so every run fe
 
 | Category | Tiers (standard growth/shrink) | Maxi (2×2) | Mystery "?" | Score |
 |----------|-------------------------------|------------|-------------|-------|
-| 🟢 **Grow**   | +1 / +2 / +3 / +4 | doubles the amount | random +1…+12 | `+20 × growth × combo × length bonus` |
-| 🟠 **Shrink** | −2 / −3 / −5      | doubles the amount | random −2…−14 | `(5 / 10 maxi) × length bonus` |
+| 🟢 **Grow**   | +1 / +2 / +3 / +4 | doubles the amount | random +1…+12 | `+20 × growth × combo × risk bonus` |
+| 🟠 **Shrink** | −2 / −3 / −5      | doubles the amount | random −2…−14 | `(5 / 10 maxi) × risk bonus` |
 
 The snake never shrinks below **3 segments**. Grow food drives the score, scaled by the combo
-multiplier **and by your current length** - the longer the snake, the more each bite is worth (up to
-about ×5 for a very long snake), so growing pays off more and more as a run goes on.
+multiplier **and by the risk bonus** - the more of the board your body covers, the more each bite is
+worth (up to ×5), so a loaded board pays off more and more right up to the moment it kills you.
 
 Since the body now grows on its own (see *Auto-growth*), a grow piece adds **half** the length it
 used to while paying exactly the same score, and a shrink piece out-trims what a comparable grow
@@ -280,6 +287,26 @@ must never feel like a race - and a **Campaign** respawn or level change restart
 snake. The seeded **Daily / Random** challenges pin *Steady* for everyone, like they already pin the
 pace and the hazard toggles.
 
+### 🎲 Risk and the Shed ability
+
+The score does not care how long your snake is - it cares **how much of the arena it covers**. The
+multiplier climbs from ×1 on an empty board to ×5 once the body fills a fifth of the playable cells
+(obstacles and Campaign walls count against that area, so a cluttered board heats up sooner). The
+same forty segments are a fortune on a Cozy board and pocket change on a Colossal one, which is
+exactly right.
+
+That turns auto-growth from a punishment into a wager, and the **Shed** ability is how you settle it.
+Ten bites charge it - five if you keep a combo alive - and spending it cuts 35% of the tail loose for
+a payout scaled by the risk you were carrying. Hold on longer and the cut pays more; hold on too long
+and you never get to make it.
+
+| | |
+|---|---|
+| Risk multiplier | ×1 → ×5, tracking body ÷ playable cells (capped at 20% fill) |
+| Shed charge | 10 bites, or 5 on a live combo |
+| Shed cut | 35% of the body, tail first |
+| Shed payout | 8 points per segment × the risk multiplier |
+
 ### 📐 Board scale
 
 The board is **responsive**: pick a granularity and the grid is computed from your device's play-area
@@ -343,6 +370,10 @@ pieces only start appearing as the session runs on - so each run gets more event
 together to build a **combo** and multiply your score. Remember the snake also grows **on its own**
 (see *Auto-growth*), so shrink food is how you keep room to manoeuvre - you never drop below 3
 segments.
+
+**The Shed button:** the ring in the board's bottom corner fills as you eat and lights up when it is
+charged. Tap it to cut your tail loose for a payout - it is deliberately unclickable while charging,
+so a stray tap during play costs nothing and still reaches the board if you steer by tapping.
 
 **Controls (touch):** by default you **swipe** anywhere on the board to change direction, with an
 adjustable **swipe sensitivity** in Settings (the default keeps the tuned feel). Prefer buttons? Switch

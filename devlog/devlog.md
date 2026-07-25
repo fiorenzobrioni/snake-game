@@ -13,7 +13,59 @@ Suggested format for each entry:
 
 ---
 
-## 2026-07-25 - Step 6.15.3: growth doubled, shrink capped, 35 achievements, header polish
+## 2026-07-25 - Step 6.15.4: the risk bonus and the Shed ability
+
+**Done:**
+- **Risk bonus.** `GameEngine.lengthScoreFactor` (raw length) is gone, replaced by
+  `GameState.riskFactor`: x1 to x5 tracking `snake.size / playableCells`, capped at `RISK_FULL_FILL`
+  (a fifth of the board) and counting obstacles and Campaign walls out of the playable area. It
+  scales grow bites, shrink tokens and the Shed payout alike.
+- **Presentation.** A `Risk x3.4` chip beside the combo, appearing only past `RISK_ALERT_FACTOR` and
+  warming from Fever amber to crimson as the board closes in, throbbing faster the hotter it gets;
+  and a sustained crimson smoulder on the board frame (`GameBoard`'s new `riskGlow`) on a slow 1.4 s
+  breath - deliberately slower than the Fever flicker, because this is dread, not heat. Both hold
+  steady under reduce-motion.
+- **The Shed ability** (closes the long-open Step 6.9.6). `GameState.abilityCharge` fills +1 per grow
+  bite, +2 when the bite lands on a combo of 3 or more; at 10 it is ready. `GameEngine.useAbility`
+  cuts 35% of the tail loose, pays 8 points per segment times the live risk multiplier, drops owed
+  growth (so the escape is not undone a beat later) and spends the charge - and is a no-op that
+  *keeps* the charge when the snake is already too short to cut.
+- **The button.** `ui/game/AbilityButton`: a hand-drawn charge ring, glass token body with a top-lit
+  bevel, and a glyph of a three-piece tail crossed by a dashed cut with sparks flying off the severed
+  end. Pinned in the board's bottom corner so it costs the board no height in any control scheme, and
+  **unclickable while charging** so a stray tap still reaches the board under tap-to-turn steering.
+  A one-per-run "Shed ready!" banner the first time it fills; after that the button's own pulse says it.
+- **Tests.** New `RiskAndAbilityTest` (13 cases) covering the multiplier curve and its cap, the
+  arena-size sensitivity, obstacles eating into the playable area, charge accumulation and its
+  announcement, the cut share, the payout scaling, the three no-op paths and the Campaign carry-over.
+
+**Decisions:**
+- **Replace the length factor, don't stack on it.** Two length-based multipliers would have
+  double-counted, and the old one was blind to the arena: forty segments choke a Cozy board and are
+  nothing on a Colossal one, yet both paid the same. Board fill is the honest measure and it is the
+  one that makes the bet legible.
+- **Shed pays out rather than costing something.** An artificial penalty was unnecessary: the real
+  cost is that the multiplier you were farming collapses with the length you just cut. The payout
+  scaling with the risk at the moment of the cut is what makes "how long do I dare hold?" a question
+  worth asking.
+- **Shed sheds the owed growth too.** Cutting loose and then re-growing from a queued bite two ticks
+  later would make the escape a lie.
+- **A new `BurstStyle.Shed`** rather than reusing `Vanish`: the whole-snake burst path also runs a
+  `dissolve` envelope that fades the *living* body - correct for a death or a level-up, catastrophic
+  for a severed tail. The Shed style takes the same staggered sparkle and skips the dissolve.
+
+**Issues:** the new tests caught a second instance of the bug class Step 6.15.1 hit - `stageLevel`
+rebuilds its state from the *pre-tick* snapshot, so the ability charge earned on the very bite that
+completed a Campaign level was being thrown away. It now takes the charge as a parameter, like the
+score and the lives. (Two of the new tests also had to stop laying the test body across the cell the
+head was about to enter - the snake was eating itself instead of the food.)
+
+**Next:** feature 3 (Endless wave events) and 4 (a tiered achievement ladder) from the same design
+pass, once these two have been played on a device.
+
+---
+
+## 2026-07-25 - Step 6.15.3: growth doubled, shrink capped, four new achievements, header polish
 
 **Done:**
 - **Auto-growth roughly doubled**, from the first device playtest: base intervals 45/30/20/13 ->

@@ -15,6 +15,15 @@ class GameEngineTest {
 
     private val engine = GameEngine(Random(42))
 
+    /**
+     * The risk multiplier every point is scaled by, for a [length]-cell snake on
+     * the tests' empty 18x26 board. Expectations are written through the model's
+     * own helper rather than baked in, so the balance can be re-tuned without
+     * rewriting arithmetic by hand.
+     */
+    private fun risk(length: Int, cells: Int = 18 * 26): Float =
+        GameState.riskFactorFor(length, cells)
+
     /** A minimal running state: head at (5,5), 3 cells, no food/obstacles. */
     private fun runningState(
         direction: Direction = Direction.Right,
@@ -91,7 +100,8 @@ class GameEngineTest {
     @Test
     fun eatingGrowsSnakeAndScores() {
         val next = engine.tick(runningState(Direction.Right, foods = listOf(growFood(4))))
-        assertEquals(4 * GameEngine.GROW_POINTS_PER_SEGMENT, next.score) // first eat → combo x1
+        // 4 segments at combo x1, scaled by the risk the 4-cell body carries.
+        assertEquals((4 * GameEngine.GROW_POINTS_PER_SEGMENT * risk(4)).toInt(), next.score)
         assertEquals(4, next.snake.size) // +1 this tick, 3 more queued
         assertEquals(3, next.pendingGrowth)
         assertFalse(next.foods.any { it.position == Position(6, 5) })
@@ -106,7 +116,7 @@ class GameEngineTest {
             .copy(combo = 1, comboDeadlineTick = 100, elapsedTicks = 10)
         val next = engine.tick(state)
         assertEquals(2, next.combo)
-        assertEquals(3 * GameEngine.GROW_POINTS_PER_SEGMENT * 2, next.score)
+        assertEquals((3 * GameEngine.GROW_POINTS_PER_SEGMENT * 2 * risk(4)).toInt(), next.score)
     }
 
     @Test
@@ -115,11 +125,11 @@ class GameEngineTest {
             .copy(combo = 4, comboDeadlineTick = 5, elapsedTicks = 10)
         val next = engine.tick(state)
         assertEquals(1, next.combo) // deadline passed → fresh streak
-        assertEquals(3 * GameEngine.GROW_POINTS_PER_SEGMENT * 1, next.score)
+        assertEquals((3 * GameEngine.GROW_POINTS_PER_SEGMENT * 1 * risk(4)).toInt(), next.score)
     }
 
     @Test
-    fun growScoreScalesWithSnakeLength() {
+    fun growScoreScalesWithBoardFill() {
         // A long (24-cell) column heading down eats a grow food just past its head.
         val column = (24 downTo 1).map { Position(5, it) } // head at (5,24)
         val state = runningState(Direction.Down).copy(
@@ -130,10 +140,10 @@ class GameEngineTest {
             ),
         )
         val next = engine.tick(state)
-        // Body length at the bite = 25 → factor 1 + (25-5)/19 ≈ 2.05; 4*20*1*2.05 = 164.
-        assertEquals(164, next.score)
-        // Strictly more than the short-snake baseline.
-        assertTrue(next.score > 4 * GameEngine.GROW_POINTS_PER_SEGMENT)
+        // A 25-cell body fills ~5.3% of the 468 playable cells → risk ≈ x2.07.
+        assertEquals((4 * GameEngine.GROW_POINTS_PER_SEGMENT * risk(25)).toInt(), next.score)
+        // Strictly more than the same bite taken by a short snake on the same board.
+        assertTrue(next.score > (4 * GameEngine.GROW_POINTS_PER_SEGMENT * risk(4)).toInt())
     }
 
     @Test
@@ -210,11 +220,11 @@ class GameEngineTest {
     @Test
     fun shrinkAwardsReducedSymbolicPoints() {
         val std = engine.tick(runningState(Direction.Right, foods = listOf(shrinkFood(2))))
-        assertEquals(GameEngine.SHRINK_POINTS, std.score)
+        assertEquals((GameEngine.SHRINK_POINTS * risk(4)).toInt(), std.score)
         val maxi = engine.tick(
             runningState(Direction.Right, foods = listOf(shrinkFood(2, FoodSize.Maxi))),
         )
-        assertEquals(GameEngine.SHRINK_POINTS_MAXI, maxi.score)
+        assertEquals((GameEngine.SHRINK_POINTS_MAXI * risk(4)).toInt(), maxi.score)
     }
 
     @Test

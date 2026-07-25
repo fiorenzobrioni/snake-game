@@ -179,7 +179,11 @@ class AutoGrowthTest {
             return engine.tick(state).score
         }
         val base = scoreOf(GrowthRate.Off)
-        assertEquals(2 * GameEngine.GROW_POINTS_PER_SEGMENT, base)
+        // 2 segments, no combo bonus, scaled only by the risk the 4-cell body carries.
+        assertEquals(
+            (2 * GameEngine.GROW_POINTS_PER_SEGMENT * GameState.riskFactorFor(4, board.width * board.height)).toInt(),
+            base,
+        )
         assertEquals(base, scoreOf(GrowthRate.Off)) // x1: the classic baseline
         assertTrue(scoreOf(GrowthRate.Steady) > base)
         assertTrue(scoreOf(GrowthRate.Relentless) > scoreOf(GrowthRate.Steady))

@@ -99,6 +99,11 @@ data class GameState(
      */
     val growthRate: GrowthRate = GrowthRate.Off,
     val growthProgress: Int = 0,
+    /**
+     * Charge toward the player-activated **Shed** ability, filled by eating
+     * ([GameEngine.ABILITY_CHARGE_FULL] = ready). Spent by [GameEngine.useAbility].
+     */
+    val abilityCharge: Int = 0,
     val mode: GameMode = GameMode.Endless,
     val elapsedTicks: Int = 0,
     val playedMs: Long = 0,
@@ -193,6 +198,37 @@ data class GameState(
             return if (interval <= 0) 0f else (growthProgress.toFloat() / interval).coerceIn(0f, 1f)
         }
 
+    /** Cells the snake can actually use: the whole board minus obstacles and walls. */
+    val playableCells: Int
+        get() = (board.width * board.height - obstacles.size - walls.size).coerceAtLeast(1)
+
+    /** The share of the playable board the snake's own body covers (0..1). */
+    val boardFill: Float get() = snake.size.toFloat() / playableCells
+
+    /**
+     * The **risk multiplier**: every point earned is scaled by how much of the
+     * board the snake is filling. It replaced a multiplier based on raw length,
+     * which was blind to the arena - 50 segments choke a Cozy board and are
+     * nothing on a Colossal one, yet both paid the same.
+     *
+     * It is the counterweight to auto-growth: without it the optimal line is
+     * "trim at every opportunity", and length is pure downside. With it, staying
+     * long is a *bet* - the fuller the board, the more each bite is worth - so
+     * the question becomes how long the player dares to run loaded before
+     * cashing out (by eating shrink food, or by spending the Shed ability).
+     */
+    val riskFactor: Float get() = riskFactorFor(snake.size, playableCells)
+
+    /** True once [riskFactor] is high enough to be worth shouting about in the HUD. */
+    val inRiskZone: Boolean get() = riskFactor >= RISK_ALERT_FACTOR
+
+    /** Charge toward the Shed ability (0..1). */
+    val abilityFraction: Float
+        get() = (abilityCharge.toFloat() / GameEngine.ABILITY_CHARGE_FULL).coerceIn(0f, 1f)
+
+    /** True while the Shed ability is charged and can be spent. */
+    val abilityReady: Boolean get() = abilityCharge >= GameEngine.ABILITY_CHARGE_FULL
+
     /**
      * Endless mode: the current 1-based speed tier ("Speed x" in the HUD). It
      * steps up every [ENDLESS_TIER_MS] of play, starts higher on harder
@@ -246,6 +282,27 @@ data class GameState(
 
         /** Time Attack: score multiplier while Fever Time runs. */
         const val FEVER_SCORE_FACTOR = 2
+
+        /**
+         * Board fill at which the [riskFactor] tops out at [MAX_RISK_FACTOR]. A
+         * body covering a fifth of the playable cells leaves the snake weaving
+         * through itself constantly - that is the ceiling of what the score
+         * should reward.
+         */
+        const val RISK_FULL_FILL = 0.20f
+
+        /** The most the risk multiplier can reach. */
+        const val MAX_RISK_FACTOR = 5f
+
+        /** From here up the HUD calls the risk out and the board frame smoulders. */
+        const val RISK_ALERT_FACTOR = 2.5f
+
+        /** The risk multiplier for a [length]-cell snake on a board of [playableCells]. */
+        fun riskFactorFor(length: Int, playableCells: Int): Float {
+            val fill = length.toFloat() / playableCells.coerceAtLeast(1)
+            return (1f + (fill / RISK_FULL_FILL) * (MAX_RISK_FACTOR - 1f))
+                .coerceIn(1f, MAX_RISK_FACTOR)
+        }
 
         /** The Endless speed tier for a given play time, difficulty and twist. */
         fun endlessTierFor(playedMs: Long, level: Level, modifier: ChallengeModifier): Int =

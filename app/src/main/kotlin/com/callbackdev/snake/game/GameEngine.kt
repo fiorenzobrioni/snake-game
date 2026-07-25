@@ -145,6 +145,44 @@ class GameEngine(private val random: Random = Random.Default) {
     fun turnRight(state: GameState): GameState =
         changeDirection(state, state.direction.turnedRight)
 
+    /**
+     * Spends the charged **Shed** ability: cuts [SHED_FRACTION] of the body loose
+     * in one go and pays out for the risk it was carrying.
+     *
+     * It is the one thing the player can *do* beyond steering, and it exists
+     * because auto-growth created a moment with no answer: too long, closing in on
+     * yourself, and no shrinking food within reach. Shed is that answer - but it
+     * is not free, because the length it cuts is also the [GameState.riskFactor]
+     * that was multiplying every bite. Spending it trades a fat multiplier for
+     * room to breathe, which is exactly the decision the risk bonus is there to
+     * pose. The payout scales with the risk carried at the moment of the cut, so
+     * holding on longer before cashing out really does pay more.
+     *
+     * A no-op unless the run is [GameStatus.Running] and [GameState.abilityReady];
+     * the charge is also kept (not burnt) when the snake is already too short to
+     * cut, so the ability can never be wasted by a mistimed tap.
+     */
+    fun useAbility(state: GameState): GameState {
+        if (state.status != GameStatus.Running || !state.abilityReady) return state
+        val body = state.snake
+        val share = ceil(body.size * SHED_FRACTION).toInt()
+        val removable = (body.size - MIN_SNAKE_LENGTH).coerceAtLeast(0)
+        val removed = minOf(share, removable)
+        if (removed <= 0) return state // nothing to cut: keep the charge for later
+        val kept = body.subList(0, body.size - removed).toList()
+        val shed = body.subList(body.size - removed, body.size).toList()
+        val points = (removed * SHED_POINTS_PER_SEGMENT * state.riskFactor * state.growthRate.scoreFactor).toInt()
+        return state.copy(
+            snake = kept,
+            // Owed growth is cut loose with the tail - shedding then re-growing
+            // from a queued bite would undo the escape a beat later.
+            pendingGrowth = 0,
+            score = state.score + points,
+            abilityCharge = 0,
+            lastEvents = listOf(GameEvent.AbilityUsed(shed, removed, points)),
+        )
+    }
+
     /** Toggles between [GameStatus.Running] and [GameStatus.Paused]. */
     fun togglePause(state: GameState): GameState = when (state.status) {
         GameStatus.Running -> state.copy(status = GameStatus.Paused)
@@ -254,6 +292,9 @@ class GameEngine(private val random: Random = Random.Default) {
         var timeAdjustMs = state.timeAdjustMs
         var lives = state.lives
         var levelFoodsEaten = state.levelFoodsEaten
+        var abilityCharge = state.abilityCharge
+        // Fixed for the whole tick (obstacles and walls only change on a staging).
+        val playableCells = state.playableCells
 
         // Auto-growth: the run's clock made physical. Every
         // [GameState.autoGrowthIntervalTicks] steps the snake is owed one segment
@@ -291,10 +332,14 @@ class GameEngine(private val random: Random = Random.Default) {
                     val zenStretch = if (state.mode == GameMode.Zen) ZenMode.COMBO_WINDOW_FACTOR else 1f
                     comboDeadlineTick = elapsedTicks +
                         (COMBO_WINDOW_TICKS * state.modifier.comboWindowFactor * zenStretch).toInt()
-                    // Longer snakes earn proportionally more per bite (up to a cap),
-                    // so the same food is worth far more late in a run than early on.
+                    // The fuller the board, the more a bite is worth: carrying a
+                    // long body is a bet the score pays out on (see riskFactor).
                     val points = (effect.segments * GROW_POINTS_PER_SEGMENT * combo.coerceAtMost(MAX_COMBO) *
-                        lengthScoreFactor(body.size) * scoreBoost).toInt()
+                        GameState.riskFactorFor(body.size, playableCells) * scoreBoost).toInt()
+                    // Eating charges the Shed ability; a bite landed on a live
+                    // streak charges it twice as fast.
+                    abilityCharge = (abilityCharge + if (combo >= ABILITY_COMBO_BONUS_AT) 2 else 1)
+                        .coerceAtMost(ABILITY_CHARGE_FULL)
                     score += points
                     pendingGrowth += effect.segments - 1 // head already added this tick
                     events.add(GameEvent.Ate(eaten, points, combo.coerceAtMost(MAX_COMBO)))
@@ -306,7 +351,7 @@ class GameEngine(private val random: Random = Random.Default) {
                     // trim): with auto-growth on, trimming a long body is the
                     // skilful, survival-critical play, not a pure score sacrifice.
                     pendingGrowth = 0
-                    val lengthFactor = lengthScoreFactor(body.size)
+                    val lengthFactor = GameState.riskFactorFor(body.size, playableCells)
                     val removed = trimTail(body, effect.segments)
                     val base = if (eaten.size == FoodSize.Maxi) SHRINK_POINTS_MAXI else SHRINK_POINTS
                     val points = (base * lengthFactor * scoreBoost).toInt()
@@ -437,6 +482,7 @@ class GameEngine(private val random: Random = Random.Default) {
                 state, events,
                 levelIndex = nextIndex, speedCycle = nextCycle, lives = lives,
                 score = score, elapsedTicks = elapsedTicks, playedMs = playedMs,
+                abilityCharge = abilityCharge,
             )
         }
 
@@ -478,6 +524,7 @@ class GameEngine(private val random: Random = Random.Default) {
                 // owed segment nor silently pay one.
                 pendingGrowth = state.pendingGrowth + if (autoGrew) 1 else 0,
                 growthProgress = growthProgress,
+                abilityCharge = abilityCharge,
                 combo = combo,
                 comboDeadlineTick = comboDeadlineTick,
                 debris = debris,
@@ -497,7 +544,7 @@ class GameEngine(private val random: Random = Random.Default) {
                 state, events,
                 levelIndex = state.levelIndex, speedCycle = state.speedCycle, lives = lives - 1,
                 score = score, elapsedTicks = elapsedTicks, playedMs = playedMs,
-                levelFoodsEaten = levelFoodsEaten,
+                abilityCharge = abilityCharge, levelFoodsEaten = levelFoodsEaten,
             )
         }
 
@@ -507,6 +554,12 @@ class GameEngine(private val random: Random = Random.Default) {
         // Announce a free segment only on a tick the snake survived: on a fatal
         // tick the growth is invisible anyway and the death cue owns the moment.
         if (autoGrew && !dead) events.add(GameEvent.AutoGrew(body.size))
+
+        // The Shed ability just finished charging: announce it once, on the tick
+        // it crosses, so the player knows the escape valve is available.
+        if (!dead && abilityCharge >= ABILITY_CHARGE_FULL && state.abilityCharge < ABILITY_CHARGE_FULL) {
+            events.add(GameEvent.AbilityCharged)
+        }
 
         // Near-miss: the head survived but is grazing a static hazard. Skipped
         // while invincible (Ghost passes through everything anyway); on a
@@ -538,6 +591,7 @@ class GameEngine(private val random: Random = Random.Default) {
             score = score,
             pendingGrowth = pendingGrowth,
             growthProgress = growthProgress,
+            abilityCharge = abilityCharge,
             elapsedTicks = elapsedTicks,
             playedMs = playedMs,
             combo = combo,
@@ -571,6 +625,7 @@ class GameEngine(private val random: Random = Random.Default) {
         score: Int,
         elapsedTicks: Int,
         playedMs: Long,
+        abilityCharge: Int,
         levelFoodsEaten: Int = 0,
     ): GameState {
         val hazards = LevelsMode.hazardsFor(levelIndex, state.board)
@@ -582,8 +637,11 @@ class GameEngine(private val random: Random = Random.Default) {
             score = score,
             pendingGrowth = 0,
             // The snake is back at its spawn length, so the growth clock restarts
-            // with it (unlike elapsedTicks, which spans the whole run).
+            // with it (unlike elapsedTicks, which spans the whole run). The ability
+            // charge is *earned*, so it carries over like the score and the lives -
+            // including the charge from the very bite that completed the level.
             growthProgress = 0,
+            abilityCharge = abilityCharge,
             elapsedTicks = elapsedTicks,
             playedMs = playedMs,
             combo = 0,
@@ -625,14 +683,6 @@ class GameEngine(private val random: Random = Random.Default) {
         repeat(removed) { body.removeAt(body.lastIndex) }
         return removed
     }
-
-    /**
-     * Grow-score multiplier from the current snake [length]. Ramps from 1x for a
-     * short snake up to [MAX_LENGTH_FACTOR] for a very long one, so a bite is
-     * worth a lot more late in a run than at the start.
-     */
-    private fun lengthScoreFactor(length: Int): Float =
-        (1f + (length - LENGTH_FACTOR_START) / LENGTH_FACTOR_STEP).coerceIn(1f, MAX_LENGTH_FACTOR)
 
     /** Restarts a [kind] timer at its full [durationMs] (one instance per kind). */
     private fun addOrRefresh(timers: List<ActiveEffect>, kind: EffectKind, durationMs: Long): List<ActiveEffect> =
@@ -852,6 +902,21 @@ class GameEngine(private val random: Random = Random.Default) {
         /** At most this many specials (power-ups / hazards) may share the board. */
         const val MAX_SPECIALS_ON_BOARD = 2
 
+        /**
+         * Bites needed to charge the Shed ability, and the streak from which a
+         * bite charges double. Tuned so a focused player earns a Shed roughly
+         * once a minute - often enough to be part of the plan, rare enough that
+         * spending it is a decision.
+         */
+        const val ABILITY_CHARGE_FULL = 10
+        const val ABILITY_COMBO_BONUS_AT = 3
+
+        /** The share of the body a Shed cuts loose (see [useAbility]). */
+        const val SHED_FRACTION = 0.35f
+
+        /** Points per shed segment, before the risk and growth multipliers. */
+        const val SHED_POINTS_PER_SEGMENT = 8
+
         /** The snake never shrinks below this many segments. */
         const val MIN_SNAKE_LENGTH = 3
 
@@ -886,15 +951,6 @@ class GameEngine(private val random: Random = Random.Default) {
          */
         const val SHRINK_POINTS = 5
         const val SHRINK_POINTS_MAXI = 10
-
-        /**
-         * Grow-score length scaling: the multiplier is 1x at [LENGTH_FACTOR_START]
-         * segments and climbs by 1 per [LENGTH_FACTOR_STEP] extra segments, capped
-         * at [MAX_LENGTH_FACTOR] (reached around length 81 with these values).
-         */
-        const val LENGTH_FACTOR_START = 5f
-        const val LENGTH_FACTOR_STEP = 19f
-        const val MAX_LENGTH_FACTOR = 5f
 
         /**
          * How long an uneaten *regular* food survives before it vanishes and is

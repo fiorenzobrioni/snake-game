@@ -152,7 +152,7 @@
     <string name="onboarding_next">Next</string>
     <string name="onboarding_done">Start playing</string>
     <string name="onboarding_welcome_title">Welcome to Snake</string>
-    <string name="onboarding_welcome_body">Guide the snake to the glowing food. It never stops moving - and it never stops growing - so steer it clear of walls, obstacles and its own tail, and chain quick bites into a combo multiplier for serious scores.</string>
+    <string name="onboarding_welcome_body">Guide the snake to the glowing food. It never stops moving - and it never stops growing - so steer it clear of walls, obstacles and its own tail, and chain quick bites into a combo multiplier. The fuller the board gets, the more every bite is worth: hold your nerve, and when there is nowhere left to go, spend the charged button in the corner to cut your tail loose.</string>
     <string name="onboarding_welcome_controls_hint">Steer your way - swipe anywhere, tap to turn, or use a classic D-pad. Change it any time in Settings.</string>
     <string name="onboarding_controls_swipe">Swipe</string>
     <string name="onboarding_controls_tap">Tap to turn</string>
@@ -205,11 +205,19 @@
     <string name="hud_lives">Lives: %1$d</string>
     <!-- Auto-growth meter: read out for screen readers. -->
     <string name="hud_length">Length: %1$d</string>
+    <!-- Risk bonus: the live score multiplier earned by filling the board. -->
+    <string name="hud_risk">Risk %1$s</string>
+    <string name="hud_risk_description">Risk bonus %1$s</string>
+    <!-- The player-activated Shed ability. -->
+    <string name="ability_shed">Shed</string>
+    <string name="ability_shed_ready">Shed ready - cut your tail loose</string>
+    <string name="ability_shed_charging">Shed charging: %1$d%%</string>
     <!-- Endless mode HUD: the current speed tier, e.g. "Speed 4". -->
     <string name="hud_endless_speed">Speed %1$d</string>
     <!-- In-run announcement banners -->
     <string name="banner_fever">Fever ×2!</string>
     <string name="banner_speed_up">Speed %1$d!</string>
+    <string name="banner_shed_ready">Shed ready!</string>
     <string name="banner_new_record">New record!</string>
     <!-- Active power-up timer chips -->
     <string name="effect_lightning">Lightning</string>
@@ -263,6 +271,7 @@
     <!-- The two length metrics the goals are judged on (auto-growth never inflates them). -->
     <string name="recap_grown">Grown from food</string>
     <string name="recap_trimmed">Trimmed</string>
+    <string name="recap_shed">Shed</string>
     <string name="recap_level">Deepest level</string>
     <string name="recap_combo_value">x%1$d</string>
     <!-- Elapsed run time, minutes:seconds (seconds zero-padded). -->

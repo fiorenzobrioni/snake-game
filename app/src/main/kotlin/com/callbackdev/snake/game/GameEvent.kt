@@ -25,6 +25,16 @@ sealed interface GameEvent {
      */
     data class AutoGrew(val length: Int) : GameEvent
 
+    /**
+     * The player spent the charged **Shed** ability: [cells] (tail-first) were cut
+     * loose and [points] paid out for the risk they were carrying. Drives the tail
+     * dissolve, the payout callout and the charge meter reset.
+     */
+    data class AbilityUsed(val cells: List<Position>, val segments: Int, val points: Int) : GameEvent
+
+    /** The Shed ability finished charging and can be spent. */
+    data object AbilityCharged : GameEvent
+
     /** The snake died on this tick. */
     data object Died : GameEvent
 

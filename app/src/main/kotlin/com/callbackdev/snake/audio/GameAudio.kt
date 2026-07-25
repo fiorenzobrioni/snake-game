@@ -81,6 +81,14 @@ class GameAudio(context: Context, repo: SettingsRepository) : GameSfx {
     // Passing the stored best mid-run: a bright celebratory chime.
     override fun recordBroken() = sound.play(Sfx.Jackpot, rate = 1.2f)
 
+    // The Shed ability charging up: a short, bright freeze shimmer reads as
+    // "something is now available" without needing a new asset.
+    override fun shedReady() = sound.play(Sfx.Freeze, rate = 1.45f)
+
+    // Spending it: the shrink "cut", pitched down for weight - it is a bigger,
+    // deliberate version of what a shrinking food does.
+    override fun shed() = sound.play(Sfx.Shrink, rate = 0.8f)
+
     // --- UI sound effects ------------------------------------------------
 
     fun playPause() = sound.play(Sfx.Pause)

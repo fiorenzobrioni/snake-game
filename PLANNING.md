@@ -305,7 +305,9 @@ snake-game/
   - **Earthquake / Explosion rebalance** - see Step 6.2 bullets above (sustained-shake malus; 1/3 split
     with longer-lived debris).
   - **Length-scaled scoring** - grow-food points scale with the current snake length (×1 short → ×5 cap,
-    `GameEngine.lengthScoreFactor`), so the same bite is worth far more late in a run.
+    `GameEngine.lengthScoreFactor`), so the same bite is worth far more late in a run. *(Replaced in
+    Step 6.15.4 by `GameState.riskFactor`, which scales with the share of the **board** covered - the
+    old factor was blind to the arena size.)*
   - **HUD length** - the current snake length is shown in the fixed-height HUD second row.
   - **Length achievements** - three new max-length achievements (`LongHaul` / `Anaconda` /
     `Titanoboa`), tracked via `RunStats.maxSnakeLength`. *(Retargeted in Step 6.15.2 onto
@@ -399,11 +401,14 @@ snake-game/
       still-open Step 6.9.9), so inventing a currency here would be premature. Completion (and a lifetime
       `completedMissionsTotal`) is persisted, leaving the door open for a reward once Step 6.9.9 lands.
 
-- [ ] **Step 6.9.6 - Player-activated power-up (one slot).** A single chargeable ability the player
-      triggers on demand (e.g. a one-shot **Dash** that skips a few cells, or a **Bomb** that clears nearby
-      debris/obstacles), instead of only random pickups - adds a tactical decision. Impl: a `GameState`
-      "charge" field filled by play (e.g. by combos), a HUD button, and an engine action; respect
-      determinism so it stays test-friendly.
+- [x] **Step 6.9.6 - Player-activated power-up (one slot).** A single chargeable ability the player
+      triggers on demand, instead of only random pickups - adds a tactical decision. **Done** in
+      Step 6.15.4 as **Shed** rather than the Dash / Bomb this step originally sketched: once
+      auto-growth landed, the moment with no answer was not "I want to move faster" but "I am too
+      long, boxed in, and there is no shrinking food in reach". `GameState.abilityCharge` fills on
+      eating (double on a live combo), `GameEngine.useAbility` cuts `SHED_FRACTION` of the tail loose
+      for a risk-scaled payout, and a drawn charge-ring button sits in the board's corner. Pure and
+      deterministic - the action consumes no randomness.
 
 - [x] **Step 6.9.7 - Environmental hazards in Campaign.** The level shapes are already procedural, so they
       lend themselves to **moving walls** (gates that open/close on a cycle) and **teleport pads** (enter
@@ -736,6 +741,27 @@ snake-game/
       Custom setup wears the standard `ScreenHeader` (top-left back button + centred title), so it is
       no longer the one screen without a visible way back.
 
+- [x] **Step 6.15.4 - Risk bonus + the Shed ability.** The pair that turns length from a punishment
+      into a decision. (1) **Risk bonus**: `GameEngine.lengthScoreFactor` (raw length, blind to the
+      arena) was replaced by `GameState.riskFactor` - x1 to x5 tracking `snake.size / playableCells`,
+      capped at `RISK_FULL_FILL` (20%) and counting obstacles / Campaign walls out of the playable
+      area. It applies to grow bites, shrink tokens and the Shed payout. Without it the optimal line
+      under auto-growth is "trim at every opportunity" and length is pure downside; with it, running
+      loaded is a bet the score pays out on. Surfaced as a throbbing `Risk x3.4` chip beside the combo
+      (from `RISK_ALERT_FACTOR` up, warming amber -> crimson) and a sustained crimson smoulder on the
+      board frame (`GameBoard`'s new `riskGlow`, a slow 1.4 s breath, steady under reduce-motion).
+      (2) **Shed** (closes Step 6.9.6): `GameState.abilityCharge` fills +1 per grow bite (+2 on a
+      combo of `ABILITY_COMBO_BONUS_AT`), `GameEngine.useAbility` cuts `SHED_FRACTION` (35%) of the
+      tail loose, pays `SHED_POINTS_PER_SEGMENT` x the live risk, drops owed growth and spends the
+      charge - and is a no-op (charge kept) when the snake is too short to cut. A hand-drawn
+      `ui/game/AbilityButton` (charge ring, glass token, tail-with-a-cut glyph, halo + breath when
+      ready) sits in the board's bottom corner, deliberately **unclickable while charging** so a
+      stray tap still reaches the board under tap-to-turn steering. The severed tail sparkles away
+      through a new `BurstStyle.Shed`, which reuses the whole-snake burst path **without** its
+      dissolve envelope (that one fades the living body - right for a death or a level-up, wrong
+      here). Covered by `RiskAndAbilityTest`; the reworked score tests now express their expectations
+      through `GameState.riskFactorFor` instead of baking numbers in.
+
 ### Phase 7 - Play Store distribution & cleanup
 
 - [x] **Step 7.0** - Pre-publication polish: default **Back during play** is now **Keep playing** (fresh
@@ -1001,9 +1027,9 @@ snake-game/
   from the state (`state.pendingGrowth + granted`) because it discards the tick's `body`.
 - **Growth level is priced, not keyed**: like `SnakeSpeed.timeAttackScoreFactor`, `GrowthRate`
   carries a declared score multiplier and stays **out of `ScoreKey`**, so the leaderboards are not
-  fragmented by five and no stored record is orphaned. Note that `lengthScoreFactor` now rewards
-  length that is partly free - accepted, since the length is still a risk the player carries, and a
-  faster growth shortens the run.
+  fragmented by five and no stored record is orphaned. The score multiplier that rewards length is
+  now `GameState.riskFactor` (Step 6.15.4), which is what makes carrying auto-growth's free length a
+  deliberate bet rather than pure downside.
 - **Highscores stored before Step 6.15.1 were set under the food-only rules** (no auto-growth, grow
   food at 2/4/6/8). `GrowthRate.Off` reproduces those rules exactly if a record ever needs to be
   compared like for like.

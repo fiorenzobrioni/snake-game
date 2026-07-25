@@ -64,6 +64,13 @@ enum class BurstStyle {
 
     /** A big, fiery two-tone detonation with embers — the Explosion hazard. */
     Blast,
+
+    /**
+     * The Shed ability's release: the same sparkle as [Vanish], but applied to a
+     * severed *piece* of the snake rather than the whole body - so, unlike the
+     * death and level-up bursts, it must not fade the surviving snake out.
+     */
+    Shed,
 }
 
 /**
@@ -107,6 +114,9 @@ enum class BannerKind {
 
     /** The live score just passed the stored best for this slot. */
     NewRecord,
+
+    /** The Shed ability finished charging for the first time this run. */
+    ShedReady,
 }
 
 /**
@@ -174,6 +184,8 @@ data class RunSummary(
     /** Segments earned by eating, and segments cut away by shrinking (Step 6.15.2). */
     val segmentsFromFood: Int,
     val segmentsTrimmed: Int,
+    /** Segments cut loose with the Shed ability; the recap hides the row at zero. */
+    val segmentsShed: Int,
     val isCampaign: Boolean,
     val deepestLevel: Int,
     val deepestSpeed: Int,
@@ -440,6 +452,9 @@ class GameViewModel(
     // same thing at every GrowthRate setting.
     private var runSegmentsFromFood = 0
     private var runSegmentsTrimmed = 0
+    private var runSegmentsShed = 0
+    /** One "Shed ready!" banner per run; the button's pulse says the rest. */
+    private var shedAnnounced = false
 
     // Ghost replay recording (Step 6.9.12): the head cell + snake length captured
     // each tick of an eligible run, built into a GhostRun and persisted on a new
@@ -796,6 +811,32 @@ class GameViewModel(
         state = engine.turnRight(state)
     }
 
+    /**
+     * Spends the charged **Shed** ability: cuts a share of the tail loose for a
+     * risk-scaled payout (see [GameEngine.useAbility]). Driven by the board's
+     * ability button; a no-op when the charge is not full, so a stray tap costs
+     * nothing. The cut tail bursts away and the surviving body keeps its current
+     * interpolation - only the removed cells disappear, so the snake never jumps.
+     */
+    fun useAbility() {
+        val before = state
+        val after = engine.useAbility(before)
+        if (after === before) return
+        val used = after.lastEvents.filterIsInstance<GameEvent.AbilityUsed>().firstOrNull() ?: return
+        state = after
+        // The severed tail dissolves like a Campaign level-up vanish (a clean
+        // release), not like the Explosion's blast: nothing went wrong here.
+        bodyBurst = BodyBurstEvent(used.cells, BurstStyle.Shed)
+        bodyBurstId++
+        if (used.points > 0) {
+            floatingText = FloatingTextEvent(used.cells.first(), 1, "+${used.points}", SpecialVisuals.ShedColor)
+            floatingTextId++
+        }
+        sfx.shed()
+        haptics.special()
+        runSegmentsShed += used.segments
+    }
+
     fun togglePause() {
         cancelResume()
         state = engine.togglePause(state)
@@ -906,6 +947,8 @@ class GameViewModel(
         runMaxLength = state.snake.size
         runSegmentsFromFood = 0
         runSegmentsTrimmed = 0
+        runSegmentsShed = 0
+        shedAnnounced = false
         newlyUnlocked = emptyList()
         newlyUnlockedSkins = emptyList()
         missionsProgress = emptyList()
@@ -1071,6 +1114,18 @@ class GameViewModel(
                     haptics.eat()
                     runSegmentsTrimmed += event.removed
                 }
+                GameEvent.AbilityCharged -> {
+                    // Announce the escape valve the first time it fills in a run;
+                    // after that the button's own ready-pulse carries the message.
+                    if (!shedAnnounced) {
+                        shedAnnounced = true
+                        banner(BannerKind.ShedReady)
+                        sfx.shedReady()
+                        haptics.special()
+                    }
+                }
+                // Raised by useAbility (outside the tick), never by the tick itself.
+                is GameEvent.AbilityUsed -> Unit
                 is GameEvent.AutoGrew -> {
                     // A segment the snake did not earn: the HUD growth meter wraps
                     // and pops. Deliberately silent - a cue every few seconds would
@@ -1317,6 +1372,7 @@ class GameViewModel(
             maxLength = runMaxLength,
             segmentsFromFood = runSegmentsFromFood,
             segmentsTrimmed = runSegmentsTrimmed,
+            segmentsShed = runSegmentsShed,
             isCampaign = mode == GameMode.Levels,
             deepestLevel = runMaxLevel,
             deepestSpeed = runMaxCycle,

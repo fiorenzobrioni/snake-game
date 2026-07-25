@@ -208,6 +208,12 @@ fun GameBoard(
     // Time Attack Fever Time: a sustained amber frame glow (0..1, pulsed by the
     // caller) that keeps burning while the double-points finale runs.
     feverGlow: Float = 0f,
+    /**
+     * Risk-bonus intensity (0..1): the board frame smoulders crimson while the
+     * snake is filling the arena, so the multiplier the HUD reads out is also
+     * felt at the edges of the eye.
+     */
+    riskGlow: Float = 0f,
     // Endless speed-tier step: a one-shot golden frame flare (1→0 envelope) so
     // every pace change is visible on the board itself, not just the HUD.
     surgeFlash: Float = 0f,
@@ -291,8 +297,12 @@ fun GameBoard(
             val blast = event.style == BurstStyle.Blast
             val cells = event.cells.size
             dissolve.snapTo(1f)
-            // Fade the body out alongside the staggered bursts.
-            launch { dissolve.animateTo(0f, tween(durationMillis = BodyBurstTiming.dissolveMs(cells).toInt(), easing = FastOutLinearInEasing)) }
+            // Fade the body out alongside the staggered bursts - but only when the
+            // burst *is* the whole snake (death, level-up). A Shed burst covers the
+            // severed tail alone: the snake it left behind is still being played.
+            if (event.style != BurstStyle.Shed) {
+                launch { dissolve.animateTo(0f, tween(durationMillis = BodyBurstTiming.dissolveMs(cells).toInt(), easing = FastOutLinearInEasing)) }
+            }
             // Ripple the emissions head-to-tail on the shared schedule. Pacing is
             // wall-clock based with catch-up: each delay() resume has to wait for
             // the busy main thread, so on a long snake naive per-cell delays would
@@ -342,7 +352,10 @@ fun GameBoard(
             when (event.style) {
                 BurstStyle.Eat -> emitEatBurst(particles, cx, cy, event.color, event.span, event.combo)
                 BurstStyle.Implode -> emitImplodeBurst(particles, cx, cy, event.color, event.span)
-                BurstStyle.Vanish -> emitVanishBurst(particles, cx, cy, event.color, event.span)
+                // Shed only ever arrives as a whole-body burst (the severed tail),
+                // never as a single-cell eat event, but the sparkle is the same.
+                BurstStyle.Vanish, BurstStyle.Shed ->
+                    emitVanishBurst(particles, cx, cy, event.color, event.span)
                 BurstStyle.Blast -> emitExplosionBurst(particles, cx, cy, event.color, event.span)
             }
             // Always reset first: a previous ring animation may have just been
@@ -351,7 +364,7 @@ fun GameBoard(
             // would stay frozen at a mid value and linger on the board as a stray
             // circle. Only the non-vanish styles then play the expanding ring.
             eatRing.snapTo(0f)
-            if (event.style != BurstStyle.Vanish) {
+            if (event.style != BurstStyle.Vanish && event.style != BurstStyle.Shed) {
                 eatRing.animateTo(1f, tween(durationMillis = if (event.style == BurstStyle.Blast) 520 else 360, easing = FastOutLinearInEasing))
             }
         }
@@ -698,6 +711,15 @@ fun GameBoard(
             val amber = SpecialVisuals.FeverColor
             frame(amber.copy(alpha = 0.30f * feverGlow), borderWidth * 3.2f) // outer heat
             frame(amber.copy(alpha = 0.85f * feverGlow), borderWidth * 1.4f) // burning line
+        }
+
+        // Risk bonus: a sustained crimson smoulder while the body fills the board.
+        // Drawn under the one-shot flares so a near-miss or a speed step still
+        // reads on top of it.
+        if (riskGlow > 0.001f) {
+            val crimson = SpecialVisuals.RiskColor
+            frame(crimson.copy(alpha = 0.26f * riskGlow), borderWidth * 3.6f) // outer bloom
+            frame(crimson.copy(alpha = 0.80f * riskGlow), borderWidth * 1.5f) // hot line
         }
 
         // Endless speed-up surge: a quick golden flare along the frame.

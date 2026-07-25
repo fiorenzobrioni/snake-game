@@ -76,6 +76,7 @@ import com.callbackdev.snake.game.DEFAULT_ASPECT
 import com.callbackdev.snake.game.Direction
 import com.callbackdev.snake.game.EffectKind
 import com.callbackdev.snake.game.GameMode
+import com.callbackdev.snake.game.GameState
 import com.callbackdev.snake.game.GameStatus
 import com.callbackdev.snake.game.LevelsMode
 import kotlin.math.roundToInt
@@ -263,6 +264,34 @@ fun GameScreen(
         else -> zenBreath
     }
 
+    // Risk bonus: the frame smoulders while the snake is filling the board, its
+    // intensity tracking the live multiplier. It breathes with the same slow
+    // pulse as the Fever heat (steady under reduce-motion), so the two read as
+    // the same family of "the stakes just went up" cues.
+    val riskLevel = if (state.status == GameStatus.Running && state.inRiskZone) {
+        ((state.riskFactor - GameState.RISK_ALERT_FACTOR) /
+            (GameState.MAX_RISK_FACTOR - GameState.RISK_ALERT_FACTOR)).coerceIn(0f, 1f)
+    } else {
+        0f
+    }
+    val riskTarget by animateFloatAsState(
+        targetValue = riskLevel,
+        animationSpec = tween(durationMillis = 400),
+        label = "riskLevel",
+    )
+    // A slower, heavier breath than the Fever flicker: this is dread, not heat.
+    val riskTransition = rememberInfiniteTransition(label = "riskBreath")
+    val riskPulse by riskTransition.animateFloat(
+        initialValue = 0.45f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            tween(durationMillis = 1400, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "riskPulse",
+    )
+    val riskGlow = riskTarget * (if (viewModel.reduceMotion) 0.8f else riskPulse)
+
     // Endless speed-tier surge: a one-shot golden flare of the board frame each
     // time the ramp steps up, so the pace change is visible where the eyes are.
     val surgeFlash = remember { Animatable(0f) }
@@ -306,6 +335,9 @@ fun GameScreen(
                 combo = state.combo,
                 // Auto-growth: the body is a clock, so the HUD carries its face -
                 // the live length plus a ring filling toward the next free segment.
+                // Risk bonus: shown from the alert threshold up, so the HUD stays
+                // calm while the multiplier is still near x1.
+                riskFactor = if (playing && state.inRiskZone) state.riskFactor else 0f,
                 showGrowth = state.autoGrowthIntervalTicks > 0 && onBoard,
                 growthFraction = state.autoGrowthFraction,
                 snakeLength = state.snake.size,
@@ -431,6 +463,9 @@ fun GameScreen(
                     // terrain-accented) and inheriting the board's shake.
                     dangerFlash = nearMissFlash.value,
                     feverGlow = feverGlow,
+                    // Risk bonus: the frame smoulders once the body is filling
+                    // the arena, so the multiplier is felt and not just read.
+                    riskGlow = riskGlow,
                     surgeFlash = surgeFlash.value,
                     zenGlow = zenGlow,
                     // Keep particles/redraw alive through the death-burst and
@@ -441,6 +476,21 @@ fun GameScreen(
                         viewModel.resumeCountdown > 0,
                     modifier = boardModifier,
                 )
+
+                // The Shed ability lives in the board's bottom corner, where a
+                // thumb already rests: pinned over the board rather than in the
+                // control row, so it costs the board no height in any scheme.
+                if (state.status == GameStatus.Running) {
+                    AbilityButton(
+                        charge = state.abilityFraction,
+                        ready = state.abilityReady,
+                        reduceMotion = viewModel.reduceMotion,
+                        onUse = { viewModel.useAbility() },
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(end = 10.dp, bottom = 10.dp),
+                    )
+                }
 
                 // Centred in-run announcements (Fever Time / speed step / record):
                 // a short punch-in banner over the top of the board.
@@ -547,6 +597,53 @@ fun GameScreen(
         }
     }
 }
+
+/**
+ * The live **risk multiplier**: how much every point is being scaled by the share
+ * of the board the snake is filling. It only appears past the alert threshold -
+ * below that the number is near x1 and would be noise - and it warms from amber
+ * to crimson as the board closes in, so the reward and the danger are the same
+ * reading. Sits beside the combo because both are score multipliers.
+ */
+@Composable
+private fun RiskChip(factor: Float, reduceMotion: Boolean) {
+    val hot = ((factor - GameState.RISK_ALERT_FACTOR) /
+        (GameState.MAX_RISK_FACTOR - GameState.RISK_ALERT_FACTOR)).coerceIn(0f, 1f)
+    val color = lerpColor(SpecialVisuals.FeverColor, SpecialVisuals.RiskColor, hot)
+    // A slow throb that quickens with the danger; frozen under reduce-motion.
+    val transition = rememberInfiniteTransition(label = "riskChip")
+    val throb by transition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.12f,
+        animationSpec = infiniteRepeatable(
+            tween(durationMillis = (1100 - 500 * hot).toInt(), easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "riskThrob",
+    )
+    val scale = if (reduceMotion) 1f else throb
+    val label = "x" + ((factor * 10).roundToInt() / 10f).toString().trimEnd('0').trimEnd('.')
+    val description = stringResource(R.string.hud_risk_description, label)
+    Text(
+        text = stringResource(R.string.hud_risk, label),
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.Bold,
+        color = color,
+        maxLines = 1,
+        modifier = Modifier
+            .padding(end = 8.dp)
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .semantics { contentDescription = description },
+    )
+}
+
+/** Linear blend between two colours (only used for the risk chip's warm ramp). */
+private fun lerpColor(from: Color, to: Color, t: Float): Color = Color(
+    red = from.red + (to.red - from.red) * t,
+    green = from.green + (to.green - from.green) * t,
+    blue = from.blue + (to.blue - from.blue) * t,
+    alpha = 1f,
+)
 
 /**
  * The auto-growth readout: the live snake length beside a ring that fills toward
@@ -723,6 +820,7 @@ private fun ControlRegion(
 private fun Hud(
     score: Int,
     combo: Int,
+    riskFactor: Float,
     statusLabel: String,
     timeLabel: String?,
     feverActive: Boolean,
@@ -752,6 +850,9 @@ private fun Hud(
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f),
             )
+            if (riskFactor > 1f) {
+                RiskChip(factor = riskFactor, reduceMotion = reduceMotion)
+            }
             if (combo > 1) {
                 // Combo "juice": the multiplier punches in on each bump and warms
                 // through a colour ramp (white → gold → orange → red) as it climbs.
@@ -893,6 +994,7 @@ private fun AnnouncementBanner(
         BannerKind.Fever -> stringResource(R.string.banner_fever) to SpecialVisuals.FeverColor
         BannerKind.SpeedUp -> stringResource(R.string.banner_speed_up, event.value) to SpecialVisuals.SurgeColor
         BannerKind.NewRecord -> stringResource(R.string.banner_new_record) to SpecialVisuals.RecordColor
+        BannerKind.ShedReady -> stringResource(R.string.banner_shed_ready) to SpecialVisuals.ShedColor
     }
     Box(
         modifier = modifier.graphicsLayer {

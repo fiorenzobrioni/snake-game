@@ -66,7 +66,9 @@ class FeverTimeTest {
             taState(playedMs = GameState.TIME_ATTACK_MS - GameState.FEVER_MS, foods = listOf(growFood())),
         )
         assertTrue(calm.score > 0)
-        assertEquals(calm.score * GameState.FEVER_SCORE_FACTOR, fever.score)
+        // The whole product is truncated once, at the end, so the doubled score
+        // can land a point either side of twice the truncated calm one.
+        assertEquals(calm.score * GameState.FEVER_SCORE_FACTOR.toFloat(), fever.score.toFloat(), 1f)
     }
 
     @Test
@@ -74,8 +76,9 @@ class FeverTimeTest {
         val relaxed = engine.tick(taState(speed = SnakeSpeed.Relaxed, foods = listOf(growFood())))
         val turbo = engine.tick(taState(speed = SnakeSpeed.Turbo, foods = listOf(growFood())))
         assertEquals(
-            (relaxed.score * SnakeSpeed.Turbo.timeAttackScoreFactor).toInt(),
-            turbo.score,
+            relaxed.score * SnakeSpeed.Turbo.timeAttackScoreFactor,
+            turbo.score.toFloat(),
+            1f, // single end-of-formula truncation, as above
         )
     }
 
