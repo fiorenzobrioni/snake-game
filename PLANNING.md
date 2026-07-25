@@ -830,6 +830,21 @@ snake-game/
       the usual fate of a hand-written manual. It complements the tour rather than repeating it: the cards
       sell why to play, the guide explains how it works.
 
+- [x] **Step 6.15.10 - Shed clearance in dp, banners over the HUD, no leftover frame.** Three device
+      notes. (1) The Shed button's fade-out trigger was a **fixed cell count**, which meant a different
+      physical distance on every board scale - on Colossal the snake was already under the button before
+      it faded. It is now derived from the button's own footprint: `AbilityButtonReach` (60dp) divided by
+      the **measured cell size**, times `ABILITY_CLEARANCE_FACTOR` (2.8) for reaction time - so the
+      clearance is the same distance on Cozy and on Colossal, and roughly twice what it used to be on the
+      reference board. (2) The **in-run announcement banner moved off the board**: it now pins to the top
+      of the screen over the **HUD** instead of over the playfield's top rows. The score line it briefly
+      covers can wait a second; the board cannot. (3) **The leftover frame is gone.** `GameBoard` cleared
+      its particle and floating-text lists when the effects loop stopped, but those are deliberately plain
+      collections (they churn every frame and must not allocate snapshots), so emptying them changed
+      nothing Compose observes and **the last painted frame stayed on screen** - the finished run's sparks
+      and "+N" labels lingering behind the setup and game-over overlays. One `frameNanos` bump after the
+      clear forces the redraw.
+
 ### Phase 7 - Play Store distribution & cleanup
 
 - [x] **Step 7.0** - Pre-publication polish: default **Back during play** is now **Keep playing** (fresh

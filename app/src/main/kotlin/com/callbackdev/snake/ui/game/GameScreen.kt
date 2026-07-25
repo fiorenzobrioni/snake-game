@@ -80,6 +80,7 @@ import com.callbackdev.snake.game.GameMode
 import com.callbackdev.snake.game.GameState
 import com.callbackdev.snake.game.GameStatus
 import com.callbackdev.snake.game.LevelsMode
+import kotlin.math.ceil
 import kotlin.math.roundToInt
 import kotlin.math.cos
 import kotlin.math.sin
@@ -495,12 +496,26 @@ fun GameScreen(
                 // control row, so it costs the board no height in any scheme.
                 if (state.status == GameStatus.Running) {
                     // The button lives over the board, so it gets out of the way
-                    // when the snake actually comes to this corner: while the head
-                    // is inside ABILITY_CORNER_CELLS of the bottom-end corner it
-                    // fades to a whisper, and the cells underneath stay readable.
+                    // before the snake arrives - with enough warning to react to
+                    // whatever is underneath it.
+                    //
+                    // The trigger distance is derived from the button's real
+                    // footprint *in cells*, not from a fixed cell count: the button
+                    // is a fixed 52dp while a cell shrinks with the board scale, so
+                    // a constant "5 cells" covered the button on Explorer and barely
+                    // its centre on Colossal (where the snake was already under it
+                    // before it faded). Dividing by the measured cell size makes the
+                    // clearance the same *physical* distance on every scale, and
+                    // ABILITY_CLEARANCE_FACTOR then buys the reaction time.
+                    val cellSize = minOf(maxWidth / state.board.width, maxHeight / state.board.height)
+                    val clearance = if (cellSize > 0.dp) {
+                        ceil((AbilityButtonReach / cellSize) * ABILITY_CLEARANCE_FACTOR).toInt()
+                    } else {
+                        ABILITY_CLEARANCE_FALLBACK_CELLS
+                    }
                     val head = state.head
-                    val inCorner = head.x >= state.board.width - ABILITY_CORNER_CELLS &&
-                        head.y >= state.board.height - ABILITY_CORNER_CELLS
+                    val inCorner = head.x >= state.board.width - clearance &&
+                        head.y >= state.board.height - clearance
                     AbilityButton(
                         charge = state.abilityFraction,
                         ready = state.abilityReady,
@@ -513,16 +528,6 @@ fun GameScreen(
                     )
                 }
 
-                // Centred in-run announcements (Fever Time / speed step / record):
-                // a short punch-in banner over the top of the board.
-                AnnouncementBanner(
-                    event = viewModel.bannerEvent,
-                    eventId = viewModel.bannerEventId,
-                    reduceMotion = viewModel.reduceMotion,
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 20.dp),
-                )
             }
 
             if (playing) {
@@ -535,6 +540,19 @@ fun GameScreen(
                 )
             }
         }
+
+        // Centred in-run announcements (Fever Time / speed step / wave / record):
+        // pinned over the **HUD**, not over the board. They are transient, and the
+        // score line they briefly cover can wait a second - the playfield cannot,
+        // so the board stays visible in full while they punch in.
+        AnnouncementBanner(
+            event = viewModel.bannerEvent,
+            eventId = viewModel.bannerEventId,
+            reduceMotion = viewModel.reduceMotion,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 4.dp),
+        )
 
         when (state.status) {
             GameStatus.Ready -> ReadyOverlay(
@@ -1079,11 +1097,22 @@ private fun AnnouncementBanner(
 }
 
 /**
- * How far into the board's bottom-end corner the snake has to come before the Shed
- * button fades out of its way. Roughly the button's own footprint plus a cell of
- * warning, so it clears before the head is under it.
+ * The Shed button's reach from the board's bottom-end corner: its own size plus the
+ * padding that insets it. Converted to cells at the measured cell size, this is how
+ * many cells the button actually sits on.
  */
-private const val ABILITY_CORNER_CELLS = 5
+private val AbilityButtonReach = 60.dp
+
+/**
+ * How much further out than its own footprint the Shed button starts fading. The
+ * button has to be gone *before* the head arrives, with room to read - and react to
+ * - whatever it was covering, so the clearance is a comfortable multiple rather
+ * than a hair's breadth.
+ */
+private const val ABILITY_CLEARANCE_FACTOR = 2.8f
+
+/** Used only if the play area has not been measured yet (a degenerate first frame). */
+private const val ABILITY_CLEARANCE_FALLBACK_CELLS = 9
 
 /** How long an announcement banner holds before fading. */
 private const val BANNER_HOLD_MS = 1100L

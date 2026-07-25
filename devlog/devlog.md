@@ -13,6 +13,39 @@ Suggested format for each entry:
 
 ---
 
+## 2026-07-25 - Step 6.15.10: Shed clearance in dp, banners over the HUD, no leftover frame
+
+**Done:**
+- **The Shed fade is now scale-correct and earlier.** The trigger was a fixed count of cells, so it was
+  a different *physical* distance on every board scale - on Colossal the head was already under the
+  button before it faded. It is now `AbilityButtonReach` (60dp, the button plus its inset) divided by the
+  measured cell size, times `ABILITY_CLEARANCE_FACTOR` (2.8): the same distance on every scale, and about
+  twice the old clearance on the reference board.
+- **In-run banners moved off the board** (Fever, speed steps, waves, Shed ready, new record): they pin to
+  the top of the screen over the HUD now, leaving the playfield visible in full.
+- **The leftover frame after a run is fixed.** `GameBoard` did clear its particle and floating-text lists
+  when the effects loop stopped - but those are plain collections on purpose (they churn every frame and
+  must not allocate snapshots), so emptying them changed nothing Compose observes. Nothing requested a
+  redraw, so **the last painted frame stayed on screen**: the finished run's sparks and its last "+N"
+  label sitting behind the setup and game-over overlays. A single `frameNanos` bump after the clear
+  forces one final draw.
+
+**Decisions:**
+- **Derive the clearance, don't pick a number.** A hand-tuned cell count would have needed a different
+  value per board scale, and would drift the moment the button's size changed. Dividing the button's own
+  dp footprint by the measured cell size makes the rule self-maintaining: it is "get out of the way this
+  far before the snake arrives", expressed once.
+- **The banner covers the score, not the board.** Both were occupied; only one of them is being steered
+  through. The score is still readable a second later, and the banner is transient by design.
+
+**Issues:** the leftover-frame bug is a good reminder of the cost of the (correct) decision to keep the
+particle pools out of the snapshot system: mutating them is invisible to Compose, so *every* place that
+changes them has to own the redraw. The frame loop did; the teardown path did not.
+
+**Next:** the pending device pass on the wave cadence and the ladder thresholds.
+
+---
+
 ## 2026-07-25 - Step 6.15.9: hail stones, a see-through Shed button, and the in-app Guide
 
 **Done:**

@@ -264,6 +264,13 @@ fun GameBoard(
             particles.clear()
             floatingTexts.clear()
             dissolve.snapTo(1f)
+            // Redraw once after clearing. The particle and text lists are plain
+            // collections (deliberately - they churn every frame and must not
+            // allocate snapshots), so emptying them changes nothing Compose
+            // observes: without this the *last painted frame* stays on screen and
+            // the finished run's sparks and "+N" labels linger behind the setup
+            // and game-over overlays.
+            frameNanos = System.nanoTime()
             return@LaunchedEffect
         }
         var lastNanos = System.nanoTime()

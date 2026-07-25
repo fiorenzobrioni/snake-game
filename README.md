@@ -36,6 +36,9 @@ The classic Snake mechanics, extended with configurable features so every run fe
   and reappears elsewhere, so looping around without eating won't stall the run. Special pieces stick
   around much longer (they're rare events worth reaching) but eventually time out too.
 - ✖️ **Combo multiplier** - eating in quick succession multiplies your score (up to ×5).
+- 📣 **In-run announcements** - Fever Time, each Endless speed step, a wave starting, a Shed charging and
+  beating your stored best all punch in as a short centred banner - drawn **over the HUD**, never over
+  the board, so the playfield stays visible in full.
 - 🌊 **Endless waves** - every 45 seconds of an Endless run the board is swept by an event, in a fixed
   learnable rotation: a **Feast** (the board floods with food), a **Drought** (it all but dries up, with
   the growth clock still ticking) and a **Hailstorm** (2×2 ice stones rain down, well clear of your head,
@@ -49,8 +52,9 @@ The classic Snake mechanics, extended with configurable features so every run fe
   corner; when it fills, tap it to cut a third of your tail loose and **cash in** the risk you were
   carrying (the payout scales with the multiplier at the moment of the cut). It is the answer to being
   boxed in with no shrinking food in sight - and spending it means giving up the fat multiplier that
-  made you rich. The button is deliberately see-through and **fades to a whisper when the snake comes
-  into its corner**, so it never hides the cells you are steering through.
+  made you rich. The button is deliberately see-through and **fades out well before the snake reaches
+  its corner** - the clearance is measured from the button's real size, so it is the same distance on
+  every board scale - and it stays tappable while faded.
 - 🚧 **Obstacles** - symmetric blocks that tend to clump into larger shapes and raise the difficulty.
 - 🎚️ **Levels & snake speed** - 5 obstacle layouts (*Beginner* → *Legend*) and 5 **independent**
   speeds (*Relaxed* → *Turbo*), mixable freely: play the dense Legend field at a gentle pace, or an
@@ -400,7 +404,7 @@ segments.
 **The Shed button:** the ring in the board's bottom corner fills as you eat and lights up when it is
 charged. Tap it to cut your tail loose for a payout - it is deliberately unclickable while charging,
 so a stray tap during play costs nothing and still reaches the board if you steer by tapping, and it
-thins out of the way whenever your snake comes into that corner.
+fades out of the way in good time before your snake reaches that corner (still tappable while faded).
 
 **Need the details?** The **Guide** button on the main menu (between the gear and the info dot) opens
 the full rules reference: the growth dial's numbers, the risk cap, what a Shed cuts and pays, every
