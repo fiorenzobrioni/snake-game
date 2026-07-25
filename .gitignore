@@ -509,9 +509,12 @@ local.properties
 # Native build cache
 .cxx/
 
-# Signing — never commit keystores or signing secrets
+# Signing — never commit release keystores or signing secrets.
+# The shared debug keystore in keystore/ is the one deliberate exception: it
+# only signs debug builds, so every machine and CI produce the same signature.
 *.jks
 *.keystore
+!keystore/debug.keystore
 keystore.properties
 
 # Kotlin

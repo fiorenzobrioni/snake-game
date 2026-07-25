@@ -12,8 +12,22 @@ android {
         applicationId = "com.callbackdev.snake"
         minSdk = 33
         targetSdk = 36
-        versionCode = 29
-        versionName = "2.0.0"
+        versionCode = 30
+        versionName = "3.0.0"
+    }
+
+    signingConfigs {
+        // Shared debug keystore (committed on purpose: a debug certificate has
+        // no release value) so every build - local or CI - carries the same
+        // signature. Without it each machine would sign with its own
+        // ~/.android/debug.keystore and Android would refuse to update the app
+        // in place, forcing an uninstall that wipes the test device's progress.
+        getByName("debug") {
+            storeFile = rootProject.file("keystore/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {

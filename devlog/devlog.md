@@ -13,6 +13,43 @@ Suggested format for each entry:
 
 ---
 
+## 2026-07-25 - Release 3.0.0: auto-growth ships, and the app changes identity
+
+**Done:** cut the `3.0.0` release (`versionCode 30`). Four changes went with the bump:
+- `versionName`/`versionCode` in `app/build.gradle.kts`. The About/Credits screen needed no edit: it
+  reads the version from `PackageManager` at runtime, so it follows the Gradle value on its own.
+- A shared **debug** keystore at `keystore/debug.keystore`, wired into `signingConfigs.debug`, with a
+  `!keystore/debug.keystore` exception added to the `*.keystore` ignore rule.
+- The Credits author line now reads "Developed by Callback Dev"; the copyright line keeps the legal
+  person (Fiorenzo Brioni), since that is who holds the GPL-3.0 copyright.
+- `PLANNING.md` (release entry + Phase 7 tick), `README.md` (author line, debug-signing note) and
+  `CLAUDE.md` (the secrets rule now distinguishes release from debug keystores).
+
+**Decisions:**
+- **3.0.0, not 2.1.0.** Two independent reasons, either of which would carry a major bump on its own.
+  (1) Phase 6.15 changed the *rule of the game*: the snake grows on its own, so food values, scoring
+  (the risk bonus), the Shed ability and the achievement ladder were all rebalanced around it, and
+  scores recorded under 2.0.0 are not comparable with scores recorded now. A minor version claims
+  backward compatibility this release cannot honour. (2) The `applicationId` moved from
+  `com.brioni.snake` to `com.callbackdev.snake`, which Android treats as a different app entirely.
+- **A new keystore rather than a copy of Saldo's.** Technically either works - both are throwaway
+  debug keys and the two apps have different `applicationId`s, so sharing a certificate would collide
+  with nothing. A Snake-specific key costs one `keytool` command and avoids a file whose certificate
+  says `CN=Saldo Debug` living in this repo, which would be a small lie to whoever reads it next.
+  Same shape as Saldo's otherwise: alias `androiddebugkey`, password `android`, 30 years.
+- **Publisher name vs legal name.** "Callback Dev" is a publishing identity, not a claim about who
+  wrote the code, so it belongs on the author line and the copyright stays with the person. This
+  also matches Saldo, which already ships `about_author` as "Developed by Callback Dev".
+
+**Issues:** the applicationId change means this release cannot update 2.0.0 in place - Android sees a
+new package and installs it alongside the old one, so the 2.0.0 install must be removed by hand and
+its highscores are lost. Unavoidable and one-off: the shared debug keystore now guarantees that every
+release from 3.0.0 onwards updates in place.
+
+**Next:** Step 7.2 (R8 / resource shrinking on a verified minified build).
+
+---
+
 ## 2026-07-25 - Step 6.15.11: the announcement plate goes opaque
 
 **Done:** the in-run announcement banner no longer washes the HUD through itself. Its plate was

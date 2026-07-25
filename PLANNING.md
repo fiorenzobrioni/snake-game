@@ -37,6 +37,26 @@ Roadmap, work in progress, TODOs, known bugs, and ideas. For the history of deve
 
 ## 🚀 Releases
 
+- **Android `3.0.0`** (`versionCode 30`, tag `v3.0.0`) - the "auto-growth" release. A major bump
+  because the core loop and the app's identity both changed:
+  - **The snake now grows by itself** (Phase 6.15). Length became a resource with a cost: food was
+    rebalanced around the growth clock, a **risk bonus** scales the score with the share of the board
+    you occupy, and the **Shed** ability cuts 35% of the tail for points. Runs recorded before this
+    release were played under different rules, so old highscores are not comparable.
+  - **Endless waves** - a named board-wide event every 45 seconds (hail included).
+  - **Achievements became a career ladder** with ranks instead of one flat list; **skin unlocks were
+    removed** - every skin is simply free.
+  - **In-app Guide** (rules reference read from the game's own constants), a rebuilt six-card
+    onboarding tour, the one-screen Custom Game setup, the optional **ghost replay** of your best
+    run (off by default), the Pixel skin redrawn as 5x5 sprite art, and the in-run announcement
+    plate.
+  - **`applicationId` moved from `com.brioni.snake` to the official `com.callbackdev.snake`**
+    (publisher **Callback Dev**). Android treats a new `applicationId` as a different app, so this
+    release installs **alongside** 2.0.0 rather than updating it - a one-off fresh install.
+  - **Debug builds are now signed with the shared keystore** at `keystore/debug.keystore`, so from
+    3.0.0 onwards every APK (local, CI or attached to a release) updates in place.
+  Distributed as a **debug-signed APK** on the GitHub Releases page; the Google Play track (signed
+  AAB) remains a later phase.
 - **Android `2.0.0`** (`versionCode 29`, tag `v2.0.0`) - the "premium" release. Consolidates every
   post-1.0.0 phase into one GitHub release: the fourth **Zen** mode (torus, no walls), mode-depth
   pacing (Campaign checkpoints, Time Attack pace multiplier + Fever Time, stepped Endless ramp, a
@@ -863,6 +883,12 @@ snake-game/
 - [x] **Step 7.1** - Final app icon / adaptive icon + branded **SplashScreen API**; set `versionCode`/`versionName`.
 - [x] **Release 2.0.0** - version bumped to `versionName 2.0.0` (`versionCode 29`) and published as the
       `v2.0.0` GitHub release, consolidating all post-1.0.0 work (Phases 6.10-6.13, Steps 7.8-7.15).
+- [x] **Release 3.0.0** - version bumped to `versionName 3.0.0` (`versionCode 30`) and published as the
+      `v3.0.0` GitHub release, consolidating Phase 6.15 (auto-growth, risk/Shed, Endless waves, the
+      achievement ladder, the in-app Guide), the ghost replay, the Pixel skin redraw and the move to
+      the official `com.callbackdev.snake` applicationId. Also introduces the shared **debug**
+      keystore (`keystore/debug.keystore`, committed on purpose) and the Callback Dev publisher name
+      in the Credits screen.
 - [ ] **Step 7.2** - Release hardening: **R8** + resource shrinking, verify the minified build runs.
 - [ ] **Step 7.3** - **Signing**: upload keystore wired via env/CI secrets (never committed) + **Play App Signing**.
 - [ ] **Step 7.4** - Build a signed **AAB**; **GitHub Actions** on `v*` tags → signed AAB artifact (optionally
