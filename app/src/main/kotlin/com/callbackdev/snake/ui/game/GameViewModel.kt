@@ -171,6 +171,9 @@ data class RunSummary(
     val maxCombo: Int,
     val durationMs: Long,
     val maxLength: Int,
+    /** Segments earned by eating, and segments cut away by shrinking (Step 6.15.2). */
+    val segmentsFromFood: Int,
+    val segmentsTrimmed: Int,
     val isCampaign: Boolean,
     val deepestLevel: Int,
     val deepestSpeed: Int,
@@ -432,6 +435,11 @@ class GameViewModel(
     private var runFlawlessLap = false
     private var runExtraLives = 0
     private var runMaxLength = 0
+    // Segments earned by eating vs cut away by shrinking. Unlike the peak length,
+    // neither is inflated by auto-growth, so the length goals they feed mean the
+    // same thing at every GrowthRate setting.
+    private var runSegmentsFromFood = 0
+    private var runSegmentsTrimmed = 0
 
     // Ghost replay recording (Step 6.9.12): the head cell + snake length captured
     // each tick of an eligible run, built into a GhostRun and persisted on a new
@@ -896,6 +904,8 @@ class GameViewModel(
         runFlawlessLap = false
         runExtraLives = 0
         runMaxLength = state.snake.size
+        runSegmentsFromFood = 0
+        runSegmentsTrimmed = 0
         newlyUnlocked = emptyList()
         newlyUnlockedSkins = emptyList()
         missionsProgress = emptyList()
@@ -1047,6 +1057,7 @@ class GameViewModel(
                     sfx.ate(event.food, event.combo)
                     haptics.eat()
                     runFoodsEaten++
+                    runSegmentsFromFood += grown
                     runMaxCombo = max(runMaxCombo, event.combo)
                 }
                 is GameEvent.Shrunk -> {
@@ -1058,6 +1069,7 @@ class GameViewModel(
                     }
                     sfx.shrunk(event.food)
                     haptics.eat()
+                    runSegmentsTrimmed += event.removed
                 }
                 is GameEvent.AutoGrew -> {
                     // A segment the snake did not earn: the HUD growth meter wraps
@@ -1126,6 +1138,7 @@ class GameViewModel(
                     haptics.special()
                     runUsedJackpot = true
                     runFoodsEaten++
+                    runSegmentsFromFood += event.growth
                 }
                 is GameEvent.TimeGained -> {
                     // Time Attack: a green burst + a rising "+Ns" callout.
@@ -1302,6 +1315,8 @@ class GameViewModel(
             maxCombo = runMaxCombo,
             durationMs = durationMs,
             maxLength = runMaxLength,
+            segmentsFromFood = runSegmentsFromFood,
+            segmentsTrimmed = runSegmentsTrimmed,
             isCampaign = mode == GameMode.Levels,
             deepestLevel = runMaxLevel,
             deepestSpeed = runMaxCycle,
@@ -1323,6 +1338,8 @@ class GameViewModel(
             flawlessLap = mode == GameMode.Levels && runFlawlessLap && !fromCheckpoint,
             extraLivesGained = runExtraLives,
             maxSnakeLength = runMaxLength,
+            segmentsFromFood = runSegmentsFromFood,
+            segmentsTrimmed = runSegmentsTrimmed,
         )
         // Persist scores, then evaluate achievements and skin unlocks against the
         // run. The Daily keeps its own per-day best (and streak); a Random challenge

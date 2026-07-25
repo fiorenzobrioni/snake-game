@@ -16,6 +16,8 @@ class MissionTest {
         usedStar: Boolean = false,
         usedJackpot: Boolean = false,
         maxSnakeLength: Int = 0,
+        segmentsFromFood: Int = 0,
+        segmentsTrimmed: Int = 0,
     ) = RunStats(
         mode = GameMode.Endless,
         score = score,
@@ -26,6 +28,8 @@ class MissionTest {
         usedStar = usedStar,
         usedJackpot = usedJackpot,
         maxSnakeLength = maxSnakeLength,
+        segmentsFromFood = segmentsFromFood,
+        segmentsTrimmed = segmentsTrimmed,
     )
 
     @Test
@@ -68,6 +72,18 @@ class MissionTest {
         assertTrue(powerup.completedBy(stats(usedStar = true)))
         assertTrue(powerup.completedBy(stats(usedJackpot = true)))
         assertTrue(powerup.completedBy(stats(usedExplosion = true)))
+    }
+
+    @Test
+    fun `the length missions read earned segments, not peak length`() {
+        val grow = Mission.byId("grow_20")!!
+        // Auto-growth inflates the peak length, so it must not satisfy the goal.
+        assertFalse(grow.completedBy(stats(maxSnakeLength = 200)))
+        assertTrue(grow.completedBy(stats(segmentsFromFood = 20)))
+        assertFalse(grow.completedBy(stats(segmentsFromFood = 19)))
+        val trim = Mission.byId("trim_30")!!
+        assertTrue(trim.completedBy(stats(segmentsTrimmed = 30)))
+        assertFalse(trim.completedBy(stats(segmentsTrimmed = 29)))
     }
 
     @Test

@@ -825,6 +825,10 @@ private fun RunRecap(summary: RunSummary) {
         RecapRow(stringResource(R.string.recap_combo), stringResource(R.string.recap_combo_value, summary.maxCombo))
         RecapRow(stringResource(R.string.recap_time), formatRunDuration(summary.durationMs))
         RecapRow(stringResource(R.string.recap_length), summary.maxLength.toString())
+        // The two numbers the length goals are actually judged on, so a run that
+        // ended long but under-fed can see why the badge did not land.
+        RecapRow(stringResource(R.string.recap_grown), summary.segmentsFromFood.toString())
+        RecapRow(stringResource(R.string.recap_trimmed), summary.segmentsTrimmed.toString())
         if (summary.isCampaign) {
             RecapRow(
                 stringResource(R.string.recap_level),

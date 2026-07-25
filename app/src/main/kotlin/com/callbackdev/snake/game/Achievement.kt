@@ -31,8 +31,27 @@ data class RunStats(
     val flawlessLap: Boolean = false,
     /** Levels mode: extra lives banked during the run. */
     val extraLivesGained: Int = 0,
-    /** The greatest snake length reached at any point during the run. */
+    /**
+     * The greatest snake length reached at any point during the run - the run's
+     * truthful peak, surfaced in the game-over recap.
+     *
+     * **Not** what the length goals are judged on: since Step 6.15.1 the snake
+     * also grows on its own ([GrowthRate]), so peak length is largely a function
+     * of how long the run lasted and which growth setting was picked - a
+     * duplicate of the survival goals, and worth a different amount on every
+     * setting. [segmentsFromFood] is the auto-growth-proof measure of the same
+     * ambition, and it means exactly the same thing at every setting including
+     * [GrowthRate.Off].
+     */
     val maxSnakeLength: Int = 0,
+    /**
+     * Segments the player *earned*: the total added by eating over the run (grow
+     * food plus a Jackpot's growth). Cumulative, so trimming the tail never takes
+     * it back - it measures how much snake you built, not how much you kept.
+     */
+    val segmentsFromFood: Int = 0,
+    /** Segments cut away by eating shrinking food over the run (cumulative). */
+    val segmentsTrimmed: Int = 0,
     /** Daily challenge: the consecutive-day streak after this run (0 otherwise). */
     val dailyStreak: Int = 0,
 )
@@ -69,17 +88,25 @@ enum class Achievement(
     FullCircle("Full Circle", "Clear all fifteen levels and reach Speed 2 without losing a life", { it.mode == GameMode.Levels && it.flawlessLap }),
     TowerMaster("Tower Master", "Reach Level 10 at Speed 2 in Campaign", { it.mode == GameMode.Levels && it.maxLevelDepth >= 25 }),
     TowerSovereign("Tower Sovereign", "Reach Level 10 at Speed 3 in Campaign", { it.mode == GameMode.Levels && it.maxLevelDepth >= 40 }),
-    LongHaul("Long Haul", "Grow the snake to 50 segments", { it.maxSnakeLength >= 50 }),
-    Anaconda("Anaconda", "Grow the snake to 100 segments", { it.maxSnakeLength >= 100 }),
-    Titanoboa("Titanoboa", "Grow the snake to 180 segments", { it.maxSnakeLength >= 180 }),
+    // The "big snake" family. Judged on segments *earned by eating*
+    // ([RunStats.segmentsFromFood]), not on peak length, so auto-growth can never
+    // hand them out for merely staying alive. The thresholds are halved against
+    // the pre-6.15.1 peak-length ones to match the halved grow table, keeping the
+    // number of pieces a player has to eat about the same as it always was.
+    LongHaul("Long Haul", "Grow 25 segments from food in one run", { it.segmentsFromFood >= 25 }),
+    Anaconda("Anaconda", "Grow 50 segments from food in one run", { it.segmentsFromFood >= 50 }),
+    Titanoboa("Titanoboa", "Grow 90 segments from food in one run", { it.segmentsFromFood >= 90 }),
     WeekWarrior("Week Warrior", "Reach a 7-day Daily streak", { it.dailyStreak >= 7 }),
     MonthMaster("Monthly Master", "Reach a 30-day Daily streak", { it.dailyStreak >= 30 }),
     Mythmaker("Mythmaker", "Score 10,000 in a single run", { it.score >= 10_000 }),
-    Leviathan("Leviathan", "Grow the snake to 250 segments", { it.maxSnakeLength >= 250 }),
+    Leviathan("Leviathan", "Grow 125 segments from food in one run", { it.segmentsFromFood >= 125 }),
     TowerAscendant("Tower Ascendant", "Reach Level 15 at Speed 3 in Campaign", { it.mode == GameMode.Levels && it.maxLevelDepth >= 45 }),
     InnerPeace("Inner Peace", "Flow for five minutes in one Zen run", { it.mode == GameMode.Zen && it.durationMs >= 300_000 }),
-    Ouroboros("Ouroboros", "Grow the snake to 60 segments in Zen", { it.mode == GameMode.Zen && it.maxSnakeLength >= 60 }),
+    Ouroboros("Ouroboros", "Grow 30 segments from food in one Zen run", { it.mode == GameMode.Zen && it.segmentsFromFood >= 30 }),
     EternalFlow("Eternal Flow", "Score 3000 in a Zen run", { it.mode == GameMode.Zen && it.score >= 3000 }),
+    // The counterweight the auto-growth rebalance created: keeping a snake short
+    // is now an active skill, so the trimming itself is worth a badge.
+    Sculptor("Sculptor", "Trim 50 segments with shrink food in one run", { it.segmentsTrimmed >= 50 }),
     ;
 
     companion object {

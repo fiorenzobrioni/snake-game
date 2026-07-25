@@ -21,11 +21,15 @@ class AchievementTest {
         maxLevelDepth: Int = 0,
         flawlessLap: Boolean = false,
         maxSnakeLength: Int = 0,
+        segmentsFromFood: Int = 0,
+        segmentsTrimmed: Int = 0,
         dailyStreak: Int = 0,
     ) = RunStats(
         mode, score, maxCombo, durationMs, foodsEaten, usedExplosion, usedStar, usedJackpot,
         maxLevelReached = maxLevelReached, maxSpeedCycle = maxSpeedCycle, maxLevelDepth = maxLevelDepth,
-        flawlessLap = flawlessLap, maxSnakeLength = maxSnakeLength, dailyStreak = dailyStreak,
+        flawlessLap = flawlessLap, maxSnakeLength = maxSnakeLength,
+        segmentsFromFood = segmentsFromFood, segmentsTrimmed = segmentsTrimmed,
+        dailyStreak = dailyStreak,
     )
 
     @Test
@@ -108,8 +112,8 @@ class AchievementTest {
     fun `top-tier score and length achievements gate on their thresholds`() {
         assertTrue(Achievement.Mythmaker.test(stats(score = 10_000)))
         assertFalse(Achievement.Mythmaker.test(stats(score = 9_999)))
-        assertTrue(Achievement.Leviathan.test(stats(maxSnakeLength = 250)))
-        assertFalse(Achievement.Leviathan.test(stats(maxSnakeLength = 249)))
+        assertTrue(Achievement.Leviathan.test(stats(segmentsFromFood = 125)))
+        assertFalse(Achievement.Leviathan.test(stats(segmentsFromFood = 124)))
     }
 
     @Test
@@ -128,12 +132,35 @@ class AchievementTest {
     }
 
     @Test
-    fun `length achievements gate on max snake length`() {
-        assertTrue(Achievement.LongHaul.test(stats(maxSnakeLength = 50)))
-        assertFalse(Achievement.LongHaul.test(stats(maxSnakeLength = 49)))
-        assertTrue(Achievement.Anaconda.test(stats(maxSnakeLength = 100)))
-        assertFalse(Achievement.Anaconda.test(stats(maxSnakeLength = 99)))
-        assertTrue(Achievement.Titanoboa.test(stats(maxSnakeLength = 180)))
-        assertFalse(Achievement.Titanoboa.test(stats(maxSnakeLength = 179)))
+    fun `length achievements gate on the segments earned from food`() {
+        assertTrue(Achievement.LongHaul.test(stats(segmentsFromFood = 25)))
+        assertFalse(Achievement.LongHaul.test(stats(segmentsFromFood = 24)))
+        assertTrue(Achievement.Anaconda.test(stats(segmentsFromFood = 50)))
+        assertFalse(Achievement.Anaconda.test(stats(segmentsFromFood = 49)))
+        assertTrue(Achievement.Titanoboa.test(stats(segmentsFromFood = 90)))
+        assertFalse(Achievement.Titanoboa.test(stats(segmentsFromFood = 89)))
+        assertTrue(Achievement.Ouroboros.test(stats(mode = GameMode.Zen, segmentsFromFood = 30)))
+        assertFalse(Achievement.Ouroboros.test(stats(mode = GameMode.Endless, segmentsFromFood = 30)))
+    }
+
+    @Test
+    fun `a long snake grown by the clock alone earns no length achievement`() {
+        // The whole point of judging earned segments: a run that merely survived
+        // long enough for auto-growth to stretch it out has achieved nothing here.
+        val grownByTheClock = stats(maxSnakeLength = 300, durationMs = 400_000)
+        val earned = Achievement.earnedBy(grownByTheClock, already = emptySet())
+        assertFalse(Achievement.LongHaul in earned)
+        assertFalse(Achievement.Anaconda in earned)
+        assertFalse(Achievement.Titanoboa in earned)
+        assertFalse(Achievement.Leviathan in earned)
+        // The survival achievements it did earn are still reported.
+        assertTrue(Achievement.Survivor in earned)
+        assertTrue(Achievement.Marathoner in earned)
+    }
+
+    @Test
+    fun `the sculptor badge gates on segments trimmed`() {
+        assertTrue(Achievement.Sculptor.test(stats(segmentsTrimmed = 50)))
+        assertFalse(Achievement.Sculptor.test(stats(segmentsTrimmed = 49)))
     }
 }

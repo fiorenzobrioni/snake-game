@@ -20,8 +20,8 @@ Roadmap, work in progress, TODOs, known bugs, and ideas. For the history of deve
 - [ ] Re-tune the food spawn weights / time gates after playtesting on a device
 - [ ] Playtest the five `GrowthRate` steps on a device and re-tune the base intervals if a Steady
       run lands outside the intended 2-4 minute arc
-- [ ] Revisit the three max-length achievements (`LongHaul` 25 / `Anaconda` 50 / `Titanoboa` 90):
-      with auto-growth, max length is largely time-driven, so they now overlap the survival goals
+- [x] Revisit the max-length achievements: with auto-growth, max length is largely time-driven, so
+      they overlapped the survival goals (done in Step 6.15.2)
 - [ ] Optionally enrich the synthesized SFX before Play release (background music is now Gemini-generated)
 
 ---
@@ -304,8 +304,10 @@ snake-game/
   - **Length-scaled scoring** - grow-food points scale with the current snake length (×1 short → ×5 cap,
     `GameEngine.lengthScoreFactor`), so the same bite is worth far more late in a run.
   - **HUD length** - the current snake length is shown in the fixed-height HUD second row.
-  - **Length achievements** - three new max-length achievements (`LongHaul` 25 / `Anaconda` 50 /
-    `Titanoboa` 90), tracked via `RunStats.maxSnakeLength`.
+  - **Length achievements** - three new max-length achievements (`LongHaul` / `Anaconda` /
+    `Titanoboa`), tracked via `RunStats.maxSnakeLength`. *(Retargeted in Step 6.15.2 onto
+    `RunStats.segmentsFromFood` - segments earned by eating - since auto-growth made peak length a
+    function of survival time.)*
 - [x] **Step 6.3** - Highscore tables per (level × size), per mode, in a "Records" screen.
 - [x] **Step 6.4** - Local achievements.
 - [x] **Step 6.5** - Extra modes: Endless, Time Attack.
@@ -691,6 +693,22 @@ snake-game/
       Board scale) as name + value + a segmented 5-notch gauge and the mode as a 2x2
       `SettingCardGrid`, every option visible and every caption kept. **HUD** shows the live length
       with a ring filling toward the next segment. Covered by `AutoGrowthTest`.
+
+- [x] **Step 6.15.2 - Length goals judged on earned segments.** Auto-growth turned peak length into a
+      function of survival time and of the chosen growth setting, so the five "big snake" achievements
+      (`LongHaul` / `Anaconda` / `Titanoboa` / `Leviathan` / `Ouroboros`) and the two length missions had
+      become second spellings of the survival goals - and were worth a different amount on every
+      setting. `RunStats` gained **`segmentsFromFood`** (segments earned by eating: grow food plus a
+      Jackpot's growth, cumulative) and **`segmentsTrimmed`**, both accumulated in `GameViewModel` from
+      the existing `Ate` / `JackpotHit` / `Shrunk` events. The five achievements now judge
+      `segmentsFromFood` with thresholds **halved** (25 / 50 / 90 / 125, Zen 30) to match the halved grow
+      table, so the number of pieces a player must eat is about what it always was, and the goals mean
+      exactly the same thing at every `GrowthRate` - `Off` included. The missions became `grow_20` /
+      `grow_45`, and the rebalance's new skill got its own goals: the **`Sculptor`** achievement (trim 50
+      segments in a run) and a `trim_30` mission, taking the roster from 30 to **31** achievements.
+      `RunStats.maxSnakeLength` stays as the run's truthful peak (the game-over recap, which also now
+      lists the grown / trimmed totals so an unearned badge explains itself). Covered by the reworked
+      `AchievementTest` / `MissionTest`.
 
 ### Phase 7 - Play Store distribution & cleanup
 

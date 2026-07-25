@@ -41,8 +41,12 @@ data class Mission(
             Mission("survive_120", "Survive 2 minutes", 120) { (it.durationMs / 1000L).toInt() },
             Mission("score_300", "Score 300 in one run", 300) { it.score },
             Mission("score_800", "Score 800 in one run", 800) { it.score },
-            Mission("length_20", "Grow to 20 segments", 20) { it.maxSnakeLength },
-            Mission("length_40", "Grow to 40 segments", 40) { it.maxSnakeLength },
+            // Earned length, not peak length: since auto-growth (Step 6.15.1) the
+            // snake lengthens on its own, so a peak-length goal would just be a
+            // second way of writing "survive N seconds".
+            Mission("grow_20", "Grow 20 segments from food", 20) { it.segmentsFromFood },
+            Mission("grow_45", "Grow 45 segments from food", 45) { it.segmentsFromFood },
+            Mission("trim_30", "Trim 30 segments with shrink food", 30) { it.segmentsTrimmed },
             Mission("powerup", "Grab a power-up (Star, Jackpot or Explosion)", 1) {
                 if (it.usedStar || it.usedJackpot || it.usedExplosion) 1 else 0
             },

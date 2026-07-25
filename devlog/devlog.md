@@ -13,6 +13,47 @@ Suggested format for each entry:
 
 ---
 
+## 2026-07-25 - Step 6.15.2: length goals judged on earned segments
+
+**Done:**
+- **The problem auto-growth created.** With the snake lengthening on its own, "reach N segments"
+  stopped being an achievement and became a restatement of "survive N seconds" - and its difficulty
+  now depended on the growth setting (at Relentless on a Colossal board, *Leviathan*'s 250 segments
+  arrived in under three minutes of merely staying alive).
+- **A new, auto-growth-proof metric.** `RunStats` gained `segmentsFromFood` (segments earned by
+  eating: grow food plus a Jackpot's growth, cumulative so a later trim never takes it back) and
+  `segmentsTrimmed`. Both are accumulated in `GameViewModel` from events that already existed
+  (`Ate` / `JackpotHit` / `Shrunk`), so the engine was not touched.
+- **The five "big snake" achievements retargeted.** `LongHaul` / `Anaconda` / `Titanoboa` /
+  `Leviathan` / `Ouroboros` (Zen) now test `segmentsFromFood`, with thresholds **halved**
+  (25 / 50 / 90 / 125, Zen 30) to match the halved grow table - so the number of pieces a player has
+  to eat is about what it always was, and the goal means the same thing at every `GrowthRate`,
+  including `Off`.
+- **The two length missions** became `grow_20` / `grow_45` on the same metric.
+- **A goal for the new skill.** Trimming is now a core play, so it got its own: the `Sculptor`
+  achievement (trim 50 segments in one run) and a `trim_30` mission. The roster goes 30 -> **31**.
+- **Recap.** The game-over card now lists *Grown from food* and *Trimmed* beside *Max length*, so a
+  run that ended long but under-fed can see why the badge did not land.
+- **Tests.** `AchievementTest` / `MissionTest` reworked, including the case that states the intent:
+  a run with `maxSnakeLength = 300` and no food earns the survival achievements and **none** of the
+  length ones.
+
+**Decisions:**
+- **Retarget, don't re-threshold.** Raising the numbers would have kept them time-driven, just
+  later, and still worth a different amount per growth setting. Changing the *measure* fixes both.
+- **`maxSnakeLength` stays** in `RunStats`: it is the run's truthful peak and the recap shows it. It
+  simply is not what the goals are judged on any more, which its KDoc now says.
+- **Existing unlocks are safe.** The persisted key is the enum `name`, so anyone who already earned
+  *Anaconda* keeps it; only future evaluations use the new test.
+- **Cumulative, not net.** `segmentsFromFood` deliberately ignores later trimming: it measures how
+  much snake you built, not how much you kept - otherwise the trimming the new balance demands would
+  fight the goal it feeds.
+
+**Issues:** none - the change is confined to the pure model plus two accumulators.
+
+**Next:** playtest whether the halved thresholds land where the old ones did in practice, and see
+whether `Sculptor`'s 50 segments is a badge or a formality once the growth pacing is tuned.
+
 ## 2026-07-25 - Phase 6.15: auto-growth (Step 6.15.1)
 
 **Done:**

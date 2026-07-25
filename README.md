@@ -36,8 +36,8 @@ The classic Snake mechanics, extended with configurable features so every run fe
   and reappears elsewhere, so looping around without eating won't stall the run. Special pieces stick
   around much longer (they're rare events worth reaching) but eventually time out too.
 - ✖️ **Combo multiplier** - eating in quick succession multiplies your score (up to ×5).
-- 📏 **Length-scaled scoring** - the longer your snake gets, the more each grow is worth (and you unlock
-  dedicated length achievements as you stretch out).
+- 📏 **Length-scaled scoring** - the longer your snake gets, the more each grow is worth (and trimming a
+  long tail pays proportionally more too).
 - 🚧 **Obstacles** - symmetric blocks that tend to clump into larger shapes and raise the difficulty.
 - 🎚️ **Levels & snake speed** - 5 obstacle layouts (*Beginner* → *Legend*) and 5 **independent**
   speeds (*Relaxed* → *Turbo*), mixable freely: play the dense Legend field at a gentle pace, or an
@@ -121,13 +121,16 @@ The classic Snake mechanics, extended with configurable features so every run fe
   penalty, each with a floating callout.
 - 🏆 **Records screen** - a best-score table per difficulty × board scale (and per mode), reachable
   from the main menu.
-- 🎖️ **Achievements** - thirty local milestones (combos, scores, endurance, eating sprees, using
-  power-ups, growing a very long snake, keeping a Daily streak…) that unlock as you play, with a dedicated
-  screen and an unlock banner on the game-over screen.
+- 🎖️ **Achievements** - thirty-one local milestones (combos, scores, endurance, eating sprees, using
+  power-ups, building length out of food, trimming a snake back down, keeping a Daily streak…) that
+  unlock as you play, with a dedicated screen and an unlock banner on the game-over screen. The length
+  ones count the segments you **earned by eating**, never the ones auto-growth handed you, so they mean
+  the same thing at every growth setting.
 - 📊 **Run recap** - the game-over screen shows a short summary of the run: foods eaten, best combo, time
-  survived, the snake's longest length and, in Campaign, the deepest level reached.
+  survived, the snake's longest length, the segments grown from food and trimmed away, and, in Campaign,
+  the deepest level reached.
 - 🎯 **Daily missions** - three rotating per-run goals (eat so many foods, reach a combo, survive a time,
-  score, grow long, grab a power-up) that refresh each day. The main menu's **Today's Missions** strip
+  score, grow segments out of food, trim segments away, grab a power-up) that refresh each day. The main menu's **Today's Missions** strip
   tracks which you've cleared today (tap it for the full list), and the **game-over screen** shows the
   day's missions with a tick on the ones done, highlighting any you just cleared.
 - ▶️ **Quick Play** - the main menu's **Play** button drops you straight into a run with your last-used
@@ -373,11 +376,12 @@ a countdown chip in the HUD. **Time Attack** also has two clock-only pieces - a 
 penalty), or raise **Special blocks** to *Frenzy* for constant chaos.
 
 **Achievements:** milestones unlock automatically as you play - high combos, long runs, using
-power-ups, growing a very long snake, and more. A banner appears on the game-over screen when one
-unlocks; browse the full list from the main menu.
+power-ups, building length out of food, trimming a snake back down, and more. A banner appears on the
+game-over screen when one unlocks; browse the full list from the main menu.
 
 **Daily missions:** alongside the static achievements, three goals rotate each day (eat a number of
-foods, reach a combo, survive a time, hit a score, grow long, or grab a power-up). They give a single
+foods, reach a combo, survive a time, hit a score, grow segments out of food, trim segments away, or
+grab a power-up). They give a single
 run a sense of purpose: the main menu's **Today's Missions** card shows which you've cleared today, and
 completing one pops a banner on the game-over screen. The set refreshes the next day.
 
