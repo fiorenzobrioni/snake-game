@@ -27,6 +27,11 @@
     <string name="menu_endless_speed_hint">Endless sets its own pace · it ramps as you survive</string>
     <string name="menu_campaign_speed_hint">Campaign paces itself · one speed step per lap</string>
     <string name="menu_zen_speed_hint">Pick your rhythm · the pace never ramps</string>
+    <!-- Custom setup: auto-growth - how fast the snake grows on its own. -->
+    <string name="menu_growth">Growth</string>
+    <string name="menu_growth_hint">+1 segment every %1$d steps · eat shrink food to trim</string>
+    <string name="menu_growth_hint_off">Classic rules · only food changes your length</string>
+    <string name="menu_growth_hint_zen">+1 segment every %1$d steps · gentler here than elsewhere</string>
     <!-- Custom setup: what the board scale changes (cells on the short side). -->
     <string name="menu_scale_hint">%1$d cells across the short side · finer grid, longer runs</string>
     <string name="menu_play">Play</string>
@@ -147,17 +152,17 @@
     <string name="onboarding_next">Next</string>
     <string name="onboarding_done">Start playing</string>
     <string name="onboarding_welcome_title">Welcome to Snake</string>
-    <string name="onboarding_welcome_body">Guide the snake to the glowing food and grow with every bite. It never stops moving - steer it clear of walls, obstacles and its own tail, and chain quick bites into a combo multiplier for serious scores.</string>
+    <string name="onboarding_welcome_body">Guide the snake to the glowing food. It never stops moving - and it never stops growing - so steer it clear of walls, obstacles and its own tail, and chain quick bites into a combo multiplier for serious scores.</string>
     <string name="onboarding_welcome_controls_hint">Steer your way - swipe anywhere, tap to turn, or use a classic D-pad. Change it any time in Settings.</string>
     <string name="onboarding_controls_swipe">Swipe</string>
     <string name="onboarding_controls_tap">Tap to turn</string>
     <string name="onboarding_controls_dpad">D-pad</string>
-    <string name="onboarding_food_title">Eat to grow</string>
-    <string name="onboarding_food_body">Food appears one piece at a time. Most of it feeds the snake, but read the colour - some pieces are working against you. Ignore a piece too long and it vanishes, so be decisive.</string>
+    <string name="onboarding_food_title">Grow, trim, repeat</string>
+    <string name="onboarding_food_body">Your snake lengthens on its own as a run goes on, and that clock never stops. Food is how you answer it: read the colour before you commit. Ignore a piece too long and it vanishes, so be decisive.</string>
     <string name="onboarding_food_grow">Grow</string>
-    <string name="onboarding_food_grow_desc">Green pieces add length and score. The larger the piece, the bigger the reward.</string>
+    <string name="onboarding_food_grow_desc">Green pieces pay the score, and add a little length. The larger the piece, the bigger the reward.</string>
     <string name="onboarding_food_shrink">Shrink</string>
-    <string name="onboarding_food_shrink_desc">Warm pieces trim your tail - handy when you are boxed in, but they cost points.</string>
+    <string name="onboarding_food_shrink_desc">Warm pieces cut your tail back. They pay far less than a bite, but they are how you buy room and keep the run going.</string>
     <string name="onboarding_food_mystery">Mystery</string>
     <string name="onboarding_food_mystery_desc">A \"?\" hides a random grow or shrink. Eat it to find out which.</string>
     <string name="onboarding_specials_title">Power-ups &amp; hazards</string>
@@ -198,6 +203,8 @@
     <string name="hud_level_speed">Level %1$d · Speed %2$d</string>
     <string name="hud_next_level">Next: %1$d</string>
     <string name="hud_lives">Lives: %1$d</string>
+    <!-- Auto-growth meter: read out for screen readers. -->
+    <string name="hud_length">Length: %1$d</string>
     <!-- Endless mode HUD: the current speed tier, e.g. "Speed 4". -->
     <string name="hud_endless_speed">Speed %1$d</string>
     <!-- In-run announcement banners -->

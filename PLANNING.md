@@ -18,6 +18,10 @@ Roadmap, work in progress, TODOs, known bugs, and ideas. For the history of deve
 - [ ] Verify smooth-motion interpolation on low-end devices
 - [ ] Verify the mystery "?" glyph renders crisply on small cells (dense boards)
 - [ ] Re-tune the food spawn weights / time gates after playtesting on a device
+- [ ] Playtest the five `GrowthRate` steps on a device and re-tune the base intervals if a Steady
+      run lands outside the intended 2-4 minute arc
+- [ ] Revisit the three max-length achievements (`LongHaul` 25 / `Anaconda` 50 / `Titanoboa` 90):
+      with auto-growth, max length is largely time-driven, so they now overlap the survival goals
 - [ ] Optionally enrich the synthesized SFX before Play release (background music is now Gemini-generated)
 
 ---
@@ -661,6 +665,33 @@ snake-game/
       debris and effects stay coherent. Naming kept deliberately generic (no third-party character names
       anywhere in code or UI) to stay clear of trademark concerns.
 
+### Phase 6.15 - Auto-growth (gameplay rebalance)
+
+> The pacing hole the mode-depth pass never closed: outside Time Attack a careful player could
+> circle an empty board indefinitely, so a run had no natural end and no forced decision. The snake
+> now grows **on its own**, which inverts the food economy - grow pieces are the score, shrink
+> pieces are the time - and gives every mode an arc.
+
+- [x] **Step 6.15.1 - Auto-growth + food rebalance + Custom setup redesign.** New pure-model
+      `game/GrowthRate.kt`: five settings (**Off** / Gentle / Steady / Brisk / Relentless) carrying a
+      base interval in **ticks** (0 / 45 / 30 / 20 / 13 on the reference board) and a **declared score
+      multiplier** (x1 / x1.05 / x1.15 / x1.3 / x1.5). `GameState` carries `growthRate` +
+      `growthProgress` and derives `autoGrowthIntervalTicks` / `autoGrowthFraction`; `GameEngine.tick`
+      counts steps and queues a free segment through the existing `pendingGrowth`, emitting
+      `GameEvent.AutoGrew`. The interval scales with the board's cell count
+      (`(REFERENCE_CELLS / cells) ^ 0.75`, clamped - between the linear side scaling of the vanish
+      times and the full area scaling of the obstacle counts), **Zen** stretches it by
+      `ZenMode.GROWTH_INTERVAL_FACTOR` (1.6) and a Campaign staging/respawn restarts it. Daily /
+      Random challenges pin `GrowthRate.CHALLENGE`. **Food rebalanced**: grow amounts halved
+      (1/2/3/4, mystery 1..6) with `GameEngine.GROW_POINTS_PER_SEGMENT` doubled to 20 (same score per
+      piece, half the length), shrink amounts unchanged (so a shrink out-trims a comparable grow),
+      shrink unlocked from tick one with a higher spawn weight whenever growth is on, and shrink
+      points scaled by the length being cut. **Setup screen redesigned** to fit one screen: new
+      `ui/components/SettingStepper.kt` renders the ordered settings (Level / Snake speed / Growth /
+      Board scale) as name + value + a segmented 5-notch gauge and the mode as a 2x2
+      `SettingCardGrid`, every option visible and every caption kept. **HUD** shows the live length
+      with a ring filling toward the next segment. Covered by `AutoGrowthTest`.
+
 ### Phase 7 - Play Store distribution & cleanup
 
 - [x] **Step 7.0** - Pre-publication polish: default **Back during play** is now **Keep playing** (fresh
@@ -917,6 +948,21 @@ snake-game/
   the confusion with the difficulty "Level" selector, but the enum constant name doubles as the
   DataStore key (saved mode preference + `ScoreKey.storageName()`), so the constant - and internal
   identifiers like `LevelsMode` - must stay `Levels` to keep existing highscores readable.
+- **Auto-growth is measured in ticks, not wall-clock** (`GrowthRate`, Step 6.15.1): a step is the
+  unit the board is made of, so the pressure per cell travelled is constant at any pace and speed
+  effects (Lightning / Snail / Freeze) or the Endless ramp cannot dilute it - and `tick` stays
+  deterministic. The free segment is **queued through `pendingGrowth`** (the tail is simply not
+  dropped), never applied to the body directly, so it composes with food, with the "pure effect"
+  specials that drop the tail, and with the length floor. The grace/coyote dodge re-derives the debt
+  from the state (`state.pendingGrowth + granted`) because it discards the tick's `body`.
+- **Growth level is priced, not keyed**: like `SnakeSpeed.timeAttackScoreFactor`, `GrowthRate`
+  carries a declared score multiplier and stays **out of `ScoreKey`**, so the leaderboards are not
+  fragmented by five and no stored record is orphaned. Note that `lengthScoreFactor` now rewards
+  length that is partly free - accepted, since the length is still a risk the player carries, and a
+  faster growth shortens the run.
+- **Highscores stored before Step 6.15.1 were set under the food-only rules** (no auto-growth, grow
+  food at 2/4/6/8). `GrowthRate.Off` reproduces those rules exactly if a record ever needs to be
+  compared like for like.
 - **Random obstacles are cluster-biased**: `generateObstacles` grows each new quadrant cell out of an
   already-placed one with probability `OBSTACLE_CLUSTER_BIAS` (0.6), so blocks clump into larger
   shapes instead of scattering as singletons. Per-level counts, 4-fold symmetry, border margins, the

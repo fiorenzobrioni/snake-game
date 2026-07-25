@@ -20,12 +20,18 @@ The classic Snake mechanics, extended with configurable features so every run fe
   the game board itself, laid on the animated **Meadow** lawn: a Retro-skin snake crawls across and
   the word **SNAKE** forms from Retro snake-body pieces in its wake, then it slips off-screen and
   the menu fades in.
+- 🐍 **Auto-growth** - the snake lengthens **by itself** as a run goes on, so circling an empty board
+  can never stall a game: every run has an arc and an end. The rhythm is a five-step **Growth** dial on
+  the Custom setup screen (*Off* for the classic food-only rules, up to *Relentless*), each step
+  declaring its own score multiplier, and it flips the food's role - grow pieces pay the score,
+  **shrink pieces buy the time**.
 - 🍽️ **Two food categories** - **grow** food makes the snake longer; **shrink** food trims it back.
 - 🔠 **Magnitude tiers + maxi sizes** - each category comes in several strengths, and a 2×2 **maxi**
   variant that amplifies the effect.
 - ❓ **Mystery pieces** - a "?" food per category with a random amount.
-- ⏳ **Time-gated progression** - early on you only see growing food; shrink, maxi and mystery pieces
-  unlock as the session goes on (sooner on harder levels), so a run ramps up in difficulty.
+- ⏳ **Time-gated progression** - maxi and mystery pieces unlock as the session goes on (sooner on
+  harder levels), so a run ramps up in difficulty. Shrink food is on the board from the first tick
+  whenever auto-growth is on - the brake is always within reach.
 - 💨 **Fresh board** - a regular food you ignore for too long fades away (with a little vanish burst)
   and reappears elsewhere, so looping around without eating won't stall the run. Special pieces stick
   around much longer (they're rare events worth reaching) but eventually time out too.
@@ -125,8 +131,9 @@ The classic Snake mechanics, extended with configurable features so every run fe
   tracks which you've cleared today (tap it for the full list), and the **game-over screen** shows the
   day's missions with a tick on the ones done, highlighting any you just cleared.
 - ▶️ **Quick Play** - the main menu's **Play** button drops you straight into a run with your last-used
-  settings; a separate **Custom** entry opens the full pre-game setup (mode, level, snake speed, board
-  scale) when you want to tweak everything.
+  settings; a separate **Custom** entry opens the full pre-game setup (mode, level, snake speed,
+  growth, board scale) when you want to tweak everything. Every setting is a labelled gauge with its
+  value and a one-line explanation of what it changes, and the whole screen fits without scrolling.
 - 📅 **Daily Challenge** - a date-seeded run with the same mode, level, board and **daily twist** for
   everyone that day (the twist rotates through **nine** flavours - Bonus Rush, Frenzy, Compact Arena,
   Grand Arena, Maxi Feast, Combo Rush, Overdrive, Old School or plain Standard - each described on the
@@ -181,14 +188,17 @@ The classic Snake mechanics, extended with configurable features so every run fe
 
 | Category | Tiers (standard growth/shrink) | Maxi (2×2) | Mystery "?" | Score |
 |----------|-------------------------------|------------|-------------|-------|
-| 🟢 **Grow**   | +2 / +4 / +6 / +8 | doubles the amount | random +2…+24 | `+10 × growth × combo × length bonus` |
-| 🟠 **Shrink** | −2 / −3 / −5      | doubles the amount | random −2…−14 | small symbolic bonus (5 / 10 maxi) |
+| 🟢 **Grow**   | +1 / +2 / +3 / +4 | doubles the amount | random +1…+12 | `+20 × growth × combo × length bonus` |
+| 🟠 **Shrink** | −2 / −3 / −5      | doubles the amount | random −2…−14 | `(5 / 10 maxi) × length bonus` |
 
 The snake never shrinks below **3 segments**. Grow food drives the score, scaled by the combo
 multiplier **and by your current length** - the longer the snake, the more each bite is worth (up to
-about ×5 for a very long snake), so growing pays off more and more as a run goes on. Shrink food is a
-tactical tool - it gives only token points but lets you cut your length to manoeuvre. Eating either
-floats the amount of segments gained or lost (**+N** / **−N**) at the food.
+about ×5 for a very long snake), so growing pays off more and more as a run goes on.
+
+Since the body now grows on its own (see *Auto-growth*), a grow piece adds **half** the length it
+used to while paying exactly the same score, and a shrink piece out-trims what a comparable grow
+piece adds: trimming is a real play, not a last resort, and its token points scale with the length
+you cut. Eating either floats the amount of segments gained or lost (**+N** / **−N**) at the food.
 
 ### ⚔️ Levels (obstacles)
 
@@ -229,6 +239,33 @@ uses its per-lap speed cycle.
 | 3     | Brisk   | 125       | ×1.2              |
 | 4     | Rapid   | 100       | ×1.35             |
 | 5     | Turbo   | 75        | ×1.5              |
+
+### 🐍 Auto-growth
+
+Your snake gets longer **whether or not you eat**. Every so many steps it keeps its tail instead of
+dropping it, so the body is a clock made physical: a run always builds toward a finish, and the
+question stops being "can I be careful forever?" and becomes "can I keep up?". The HUD carries a
+small ring beside the snake's live length that fills toward the next free segment.
+
+The **Growth** dial sits on the **Custom** setup screen and applies to every mode. Because a faster
+growth is strictly harder, each step declares a **score multiplier** (the same open risk/reward
+contract the Time Attack pace uses), so records stay on their existing (mode × level × scale) slots
+and nothing you already earned is orphaned.
+
+| Growth | Name       | Steps per free segment | Score |
+|--------|------------|------------------------|-------|
+| 1      | Off        | never                  | ×1    |
+| 2      | Gentle     | 45                     | ×1.05 |
+| 3      | Steady     | 30 *(default)*         | ×1.15 |
+| 4      | Brisk      | 20                     | ×1.3  |
+| 5      | Relentless | 13                     | ×1.5  |
+
+The step counts above are for the **Explorer** board; they scale with the board's size, so a Colossal
+arena grows the snake more often and a Cozy one less (filling a big board takes far more length than
+choking a small one). **Zen** stretches the interval further - the calm mode still has to end, but it
+must never feel like a race - and a **Campaign** respawn or level change restarts the clock with the
+snake. The seeded **Daily / Random** challenges pin *Steady* for everyone, like they already pin the
+pace and the hazard toggles.
 
 ### 📐 Board scale
 
@@ -284,13 +321,15 @@ baseline so AGSL GPU effects and other recent APIs are available without fallbac
 
 ## 🎮 How to play
 
-Guide the snake around the board, eat food to grow and score, and avoid the walls, the obstacles and your
-own body.
+Guide the snake around the board, eat food to score, and avoid the walls, the obstacles and your
+own body. Your snake also lengthens on its own as the run goes on, so playing safe is not a strategy -
+you have to keep eating, and eat the *right* pieces.
 
-**Food:** green = grow, warm/orange = shrink, "?" = a mystery amount. Bigger (2×2 maxi) pieces and the
-mystery and shrink foods only start appearing as the session runs on - so each run gets more eventful.
-Chain bites together to build a **combo** and multiply your score, and use shrink food to cut your length
-when the board gets tight (you never drop below 3 segments).
+**Food:** green = grow, warm/orange = shrink, "?" = a mystery amount. Bigger (2×2 maxi) and mystery
+pieces only start appearing as the session runs on - so each run gets more eventful. Chain bites
+together to build a **combo** and multiply your score. Remember the snake also grows **on its own**
+(see *Auto-growth*), so shrink food is how you keep room to manoeuvre - you never drop below 3
+segments.
 
 **Controls (touch):** by default you **swipe** anywhere on the board to change direction, with an
 adjustable **swipe sensitivity** in Settings (the default keeps the tuned feel). Prefer buttons? Switch
@@ -299,7 +338,7 @@ into four directional wedges (up / right / down / left) around a dead-zone hub, 
 moves between turns and the board keeps more height. For one-handed play there is also a **tap-to-turn** scheme: tap the left half of the board to
 turn left, the right half to turn right. Your choice is saved. 180° reversals are blocked, so you can't
 instantly fold back into your own body. Tap **Play** on the main menu to start instantly with your
-last-used settings, or **Custom** to pick the mode, level, snake speed and board scale first; pause and
+last-used settings, or **Custom** to pick the mode, level, snake speed, growth and board scale first; pause and
 restart from the in-game controls. Your best score is kept per (mode, level, scale).
 
 **Audio:** the game plays looping background music (it crossfades between the menu and gameplay) and

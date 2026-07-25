@@ -16,6 +16,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -29,6 +30,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -47,8 +49,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalDensity
@@ -297,6 +303,12 @@ fun GameScreen(
             Hud(
                 score = state.score,
                 combo = state.combo,
+                // Auto-growth: the body is a clock, so the HUD carries its face -
+                // the live length plus a ring filling toward the next free segment.
+                showGrowth = state.autoGrowthIntervalTicks > 0 && onBoard,
+                growthFraction = state.autoGrowthFraction,
+                snakeLength = state.snake.size,
+                growthEventId = viewModel.autoGrowEventId,
                 statusLabel = buildString {
                     if (viewModel.activeChallenge != null) {
                         val tag = when {
@@ -457,12 +469,17 @@ fun GameScreen(
                 selectedMode = viewModel.mode,
                 selectedLevel = viewModel.level,
                 selectedSnakeSpeed = viewModel.snakeSpeed,
+                selectedGrowthRate = viewModel.growthRate,
                 selectedScale = viewModel.scale,
+                // Read off the staged board, so the caption quotes the rhythm the
+                // player will actually get at the selected scale.
+                growthIntervalTicks = state.autoGrowthIntervalTicks,
                 campaignCheckpoint = viewModel.campaignCheckpoint,
                 campaignStartLevel = viewModel.campaignStartLevel,
                 onModeSelected = { viewModel.selectMode(it) },
                 onLevelSelected = { viewModel.selectLevel(it) },
                 onSnakeSpeedSelected = { viewModel.selectSnakeSpeed(it) },
+                onGrowthRateSelected = { viewModel.selectGrowthRate(it) },
                 onScaleSelected = { viewModel.selectScale(it) },
                 onCampaignStartSelected = { viewModel.selectCampaignStartLevel(it) },
                 onPlay = { viewModel.start() },
@@ -529,12 +546,76 @@ fun GameScreen(
 }
 
 /**
- * Fixed vertical slot for the effect-timer chips. The height is reserved
- * unconditionally — even with no effects running — so the board below (which
- * fills the remaining `weight(1f)` space) keeps a constant size. Otherwise the
- * row would appear/disappear with each power-up and visibly resize the board,
- * making the snake seem to jump.
+ * The auto-growth readout: the live snake length beside a ring that fills toward
+ * the next free segment, so the pressure is always legible without a number the
+ * player has to decode. It pops once each time a segment lands ([eventId]), which
+ * is the only cue growth gets - a sound or a haptic every few seconds would nag.
+ * Sized and padded to keep the HUD's fixed height (the board must never resize).
  */
+@Composable
+private fun GrowthMeter(
+    fraction: Float,
+    length: Int,
+    eventId: Int,
+    reduceMotion: Boolean,
+) {
+    // Smooth the per-tick steps; the wrap back to 0 is covered by the pop below.
+    val animated by animateFloatAsState(
+        targetValue = fraction.coerceIn(0f, 1f),
+        animationSpec = tween(durationMillis = 180, easing = LinearEasing),
+        label = "growthMeter",
+    )
+    val pop = remember { Animatable(1f) }
+    LaunchedEffect(eventId) {
+        if (eventId > 0 && !reduceMotion) {
+            pop.snapTo(1.45f)
+            pop.animateTo(1f, spring(dampingRatio = 0.45f))
+        }
+    }
+    val ring = MaterialTheme.colorScheme.primary
+    val track = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.22f)
+    val description = stringResource(R.string.hud_length, length)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .padding(start = 8.dp)
+            .semantics { contentDescription = description },
+    ) {
+        Box(
+            modifier = Modifier
+                .size(16.dp)
+                .graphicsLayer { scaleX = pop.value; scaleY = pop.value },
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val stroke = size.minDimension * 0.18f
+                val inset = stroke / 2f
+                drawCircle(
+                    color = track,
+                    radius = size.minDimension / 2f - inset,
+                    style = Stroke(width = stroke),
+                )
+                drawArc(
+                    color = ring,
+                    startAngle = -90f,
+                    sweepAngle = 360f * animated,
+                    useCenter = false,
+                    topLeft = Offset(inset, inset),
+                    size = Size(size.width - stroke, size.height - stroke),
+                    style = Stroke(width = stroke, cap = StrokeCap.Round),
+                )
+            }
+        }
+        Text(
+            text = length.toString(),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.85f),
+            maxLines = 1,
+            modifier = Modifier.padding(start = 4.dp),
+        )
+    }
+}
+
 /** The combo multiplier's colour, warming through tiers as the streak climbs. */
 @Composable
 private fun comboTierColor(combo: Int): Color = when {
@@ -546,7 +627,13 @@ private fun comboTierColor(combo: Int): Color = when {
 
 private val EffectTimersRowHeight = 34.dp
 
-/** A row of countdown chips for the timed effects currently running. */
+/**
+ * A row of countdown chips for the timed effects currently running, in a fixed
+ * vertical slot: the height is reserved unconditionally - even with no effects
+ * running - so the board below (which fills the remaining `weight(1f)` space)
+ * keeps a constant size. Otherwise the row would appear/disappear with each
+ * power-up and visibly resize the board, making the snake seem to jump.
+ */
 @Composable
 private fun EffectTimersRow(effects: List<com.callbackdev.snake.game.ActiveEffect>) {
     Row(
@@ -637,6 +724,10 @@ private fun Hud(
     timeLabel: String?,
     feverActive: Boolean,
     lives: Int,
+    showGrowth: Boolean,
+    growthFraction: Float,
+    snakeLength: Int,
+    growthEventId: Int,
     showPause: Boolean,
     reduceMotion: Boolean,
     onPause: () -> Unit,
@@ -705,6 +796,14 @@ private fun Hud(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
+            if (showGrowth) {
+                GrowthMeter(
+                    fraction = growthFraction,
+                    length = snakeLength,
+                    eventId = growthEventId,
+                    reduceMotion = reduceMotion,
+                )
+            }
             if (lives > 0) {
                 // Levels mode: the remaining snakes/lives. The row pops briefly
                 // when a heart is banked so an extra life never goes unnoticed.

@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilterChip
+import com.callbackdev.snake.ui.components.SettingCardGrid
+import com.callbackdev.snake.ui.components.SettingStepper
 import com.callbackdev.snake.ui.components.SnakeButton
 import com.callbackdev.snake.ui.components.SnakeOutlinedButton
 import androidx.compose.material3.MaterialTheme
@@ -43,11 +45,13 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.callbackdev.snake.R
 import com.callbackdev.snake.game.BoardScale
 import com.callbackdev.snake.game.GameMode
+import com.callbackdev.snake.game.GrowthRate
 import com.callbackdev.snake.game.Level
 import com.callbackdev.snake.game.SnakeSpeed
 
@@ -70,6 +74,8 @@ private fun overlayScrimColor(alpha: Float): Color {
 @Composable
 private fun OverlayScrim(
     alpha: Float = 0.72f,
+    horizontalPadding: Dp = 24.dp,
+    verticalPadding: Dp = 24.dp,
     content: @Composable () -> Unit,
 ) {
     // Vertically scrollable so a tall overlay (many selectors / a long recap +
@@ -80,7 +86,7 @@ private fun OverlayScrim(
             .fillMaxSize()
             .background(overlayScrimColor(alpha))
             .verticalScroll(rememberScrollState())
-            .padding(24.dp),
+            .padding(horizontal = horizontalPadding, vertical = verticalPadding),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -88,72 +94,64 @@ private fun OverlayScrim(
     }
 }
 
-/** Pre-game menu: title, level + board-scale selection, and Play. */
+/**
+ * Pre-game setup ("Custom game"): the run's mode, difficulty, pace, auto-growth
+ * and board size, then Play.
+ *
+ * Laid out to fit **one screen without scrolling** on a normal phone: a compact
+ * header instead of the full wordmark, the four ordered settings as
+ * [SettingStepper] gauges (numbered notches - every option visible, one tap
+ * away, and the current value readable as a level) and the unordered mode as a
+ * [SettingCardGrid]. Each row keeps its one-line caption, so nothing was traded
+ * away for the space. The scroll stays as a safety net for very short screens
+ * and large font scales.
+ *
+ * @param growthIntervalTicks steps between two free segments with the selected
+ *        growth on the selected board (0 when growth is off), for the caption.
+ */
 @Composable
 fun ReadyOverlay(
     selectedMode: GameMode,
     selectedLevel: Level,
     selectedSnakeSpeed: SnakeSpeed,
+    selectedGrowthRate: GrowthRate,
     selectedScale: BoardScale,
+    growthIntervalTicks: Int,
     campaignCheckpoint: Int,
     campaignStartLevel: Int,
     onModeSelected: (GameMode) -> Unit,
     onLevelSelected: (Level) -> Unit,
     onSnakeSpeedSelected: (SnakeSpeed) -> Unit,
+    onGrowthRateSelected: (GrowthRate) -> Unit,
     onScaleSelected: (BoardScale) -> Unit,
     onCampaignStartSelected: (Int) -> Unit,
     onPlay: () -> Unit,
 ) {
-    OverlayScrim(alpha = 0.55f) {
+    OverlayScrim(alpha = 0.55f, horizontalPadding = 20.dp, verticalPadding = 16.dp) {
         Text(
-            text = stringResource(R.string.game_title),
-            style = MaterialTheme.typography.displayMedium,
+            text = stringResource(R.string.menu_custom_game),
+            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
         )
 
         // Every selector carries a one-line caption, so each choice explains
         // itself; the mode's caption is its elevator pitch.
-        ChipSection(
-            title = stringResource(R.string.menu_mode),
-            caption = stringResource(
-                when (selectedMode) {
-                    GameMode.Endless -> R.string.menu_mode_hint_endless
-                    GameMode.TimeAttack -> R.string.menu_mode_hint_time_attack
-                    GameMode.Levels -> R.string.menu_mode_hint_campaign
-                    GameMode.Zen -> R.string.menu_mode_hint_zen
-                },
-            ),
-        ) {
-            GameMode.entries.forEach { gameMode ->
-                FilterChip(
-                    selected = gameMode == selectedMode,
-                    onClick = { onModeSelected(gameMode) },
-                    label = { Text(gameMode.displayName) },
-                )
-            }
-        }
-
-        // Campaign checkpoints: once the player has reached past level 1, the
-        // run may start from any reached level. Starting past 1 is a practice
-        // run (records count from a Level 1 start), which the caption states.
-        if (selectedMode == GameMode.Levels && campaignCheckpoint > 1) {
-            ChipSection(
-                title = stringResource(R.string.menu_campaign_start),
-                caption = if (campaignStartLevel > 1) {
-                    stringResource(R.string.menu_campaign_practice_note)
-                } else {
-                    stringResource(R.string.menu_campaign_start_hint)
-                },
-            ) {
-                (1..campaignCheckpoint).forEach { levelIndex ->
-                    FilterChip(
-                        selected = levelIndex == campaignStartLevel,
-                        onClick = { onCampaignStartSelected(levelIndex) },
-                        label = { Text(levelIndex.toString()) },
-                    )
-                }
-            }
+        Section {
+            SettingCardGrid(
+                title = stringResource(R.string.menu_mode),
+                options = GameMode.entries.map { it.displayName },
+                selectedIndex = selectedMode.ordinal,
+                onSelect = { onModeSelected(GameMode.entries[it]) },
+                caption = stringResource(
+                    when (selectedMode) {
+                        GameMode.Endless -> R.string.menu_mode_hint_endless
+                        GameMode.TimeAttack -> R.string.menu_mode_hint_time_attack
+                        GameMode.Levels -> R.string.menu_mode_hint_campaign
+                        GameMode.Zen -> R.string.menu_mode_hint_zen
+                    },
+                ),
+            )
         }
 
         // Campaign has its own speed curve and shaped boards, and Zen is an open
@@ -161,81 +159,146 @@ fun ReadyOverlay(
         // place but is disabled (and ignored by the ViewModel), so the menu
         // layout never reflows.
         val levelSelectable = selectedMode != GameMode.Levels && selectedMode != GameMode.Zen
-        ChipSection(
-            title = stringResource(R.string.menu_level),
-            enabled = levelSelectable,
-            // Spell out what the difficulty actually changes in each mode — or
-            // why the selector sleeps (Campaign designs its own boards, Zen has
-            // no obstacles at all).
-            caption = when (selectedMode) {
-                GameMode.Endless -> stringResource(
-                    R.string.menu_endless_level_hint,
-                    selectedLevel.obstacleCount,
-                    1 + selectedLevel.endlessTierHeadStart,
-                )
-                GameMode.TimeAttack -> stringResource(R.string.menu_ta_level_hint, selectedLevel.obstacleCount)
-                GameMode.Levels -> stringResource(R.string.menu_campaign_level_hint)
-                GameMode.Zen -> stringResource(R.string.menu_zen_level_hint)
-            },
-        ) {
-            Level.entries.forEach { level ->
-                FilterChip(
-                    selected = level == selectedLevel,
-                    onClick = { onLevelSelected(level) },
-                    label = { Text(level.label) },
-                    enabled = levelSelectable,
-                )
-            }
+        Section {
+            SettingStepper(
+                title = stringResource(R.string.menu_level),
+                valueLabel = selectedLevel.displayName,
+                options = Level.entries.map { "${it.ordinal + 1}" },
+                optionNames = Level.entries.map { it.displayName },
+                selectedIndex = selectedLevel.ordinal,
+                onSelect = { onLevelSelected(Level.entries[it]) },
+                enabled = levelSelectable,
+                // Spell out what the difficulty actually changes in each mode — or
+                // why the selector sleeps (Campaign designs its own boards, Zen has
+                // no obstacles at all).
+                caption = when (selectedMode) {
+                    GameMode.Endless -> stringResource(
+                        R.string.menu_endless_level_hint,
+                        selectedLevel.obstacleCount,
+                        1 + selectedLevel.endlessTierHeadStart,
+                    )
+                    GameMode.TimeAttack -> stringResource(R.string.menu_ta_level_hint, selectedLevel.obstacleCount)
+                    GameMode.Levels -> stringResource(R.string.menu_campaign_level_hint)
+                    GameMode.Zen -> stringResource(R.string.menu_zen_level_hint)
+                },
+            )
         }
 
         // Snake speed is independent of the level's obstacle layout. Endless ramps
         // its own pace and Levels paces by its speed cycle, so the selector is
         // disabled (and ignored) in those modes - the layout never reflows. In
-        // Time Attack the pace also declares its score multiplier on each chip;
+        // Time Attack the pace also declares its score multiplier on the value;
         // in Zen it simply sets the run's fixed rhythm.
         val speedSelectable = selectedMode == GameMode.TimeAttack || selectedMode == GameMode.Zen
         val showMultiplier = selectedMode == GameMode.TimeAttack
-        ChipSection(
-            title = stringResource(R.string.menu_snake_speed),
-            enabled = speedSelectable,
-            caption = when (selectedMode) {
-                GameMode.TimeAttack -> stringResource(R.string.menu_speed_multiplier_hint)
-                GameMode.Zen -> stringResource(R.string.menu_zen_speed_hint)
-                GameMode.Endless -> stringResource(R.string.menu_endless_speed_hint)
-                GameMode.Levels -> stringResource(R.string.menu_campaign_speed_hint)
-            },
-        ) {
-            SnakeSpeed.entries.forEach { speed ->
-                FilterChip(
-                    selected = speed == selectedSnakeSpeed,
-                    onClick = { onSnakeSpeedSelected(speed) },
-                    label = {
-                        Text(
-                            if (showMultiplier) "${speed.label} · ${speed.timeAttackFactorLabel}" else speed.label,
-                        )
-                    },
-                    enabled = speedSelectable,
-                )
-            }
+        Section {
+            SettingStepper(
+                title = stringResource(R.string.menu_snake_speed),
+                valueLabel = if (showMultiplier) {
+                    "${selectedSnakeSpeed.displayName} · ${selectedSnakeSpeed.timeAttackFactorLabel}"
+                } else {
+                    selectedSnakeSpeed.displayName
+                },
+                options = SnakeSpeed.entries.map { "${it.ordinal + 1}" },
+                optionNames = SnakeSpeed.entries.map { it.displayName },
+                selectedIndex = selectedSnakeSpeed.ordinal,
+                onSelect = { onSnakeSpeedSelected(SnakeSpeed.entries[it]) },
+                enabled = speedSelectable,
+                caption = when (selectedMode) {
+                    GameMode.TimeAttack -> stringResource(R.string.menu_speed_multiplier_hint)
+                    GameMode.Zen -> stringResource(R.string.menu_zen_speed_hint)
+                    GameMode.Endless -> stringResource(R.string.menu_endless_speed_hint)
+                    GameMode.Levels -> stringResource(R.string.menu_campaign_speed_hint)
+                },
+            )
         }
 
-        ChipSection(
-            title = stringResource(R.string.menu_board_scale),
-            caption = stringResource(R.string.menu_scale_hint, selectedScale.cellsOnShortSide),
-        ) {
-            BoardScale.entries.forEach { scale ->
-                FilterChip(
-                    selected = scale == selectedScale,
-                    onClick = { onScaleSelected(scale) },
-                    label = { Text(scale.label) },
-                )
+        // Auto-growth: the dial that decides how long a run can last. It applies
+        // to every mode (Zen just grows gentler), and the caption states both the
+        // concrete rhythm on this board and the score multiplier it declares.
+        Section {
+            SettingStepper(
+                title = stringResource(R.string.menu_growth),
+                valueLabel = if (selectedGrowthRate.isOn) {
+                    "${selectedGrowthRate.displayName} · ${selectedGrowthRate.scoreFactorLabel}"
+                } else {
+                    selectedGrowthRate.displayName
+                },
+                options = GrowthRate.entries.map { "${it.ordinal + 1}" },
+                optionNames = GrowthRate.entries.map { it.displayName },
+                selectedIndex = selectedGrowthRate.ordinal,
+                onSelect = { onGrowthRateSelected(GrowthRate.entries[it]) },
+                caption = when {
+                    !selectedGrowthRate.isOn -> stringResource(R.string.menu_growth_hint_off)
+                    selectedMode == GameMode.Zen ->
+                        stringResource(R.string.menu_growth_hint_zen, growthIntervalTicks)
+                    else -> stringResource(R.string.menu_growth_hint, growthIntervalTicks)
+                },
+            )
+        }
+
+        Section {
+            SettingStepper(
+                title = stringResource(R.string.menu_board_scale),
+                valueLabel = selectedScale.label,
+                options = BoardScale.entries.map { "${it.ordinal + 1}" },
+                optionNames = BoardScale.entries.map { it.label },
+                selectedIndex = selectedScale.ordinal,
+                onSelect = { onScaleSelected(BoardScale.entries[it]) },
+                caption = stringResource(R.string.menu_scale_hint, selectedScale.cellsOnShortSide),
+            )
+        }
+
+        // Campaign checkpoints: once the player has reached past level 1, the
+        // run may start from any reached level. Starting past 1 is a practice
+        // run (records count from a Level 1 start), which the caption states.
+        // Up to fifteen numbers, so this one stays a scrolling chip row.
+        if (selectedMode == GameMode.Levels && campaignCheckpoint > 1) {
+            Section {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        text = stringResource(R.string.menu_campaign_start),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.85f),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                    ) {
+                        (1..campaignCheckpoint).forEach { levelIndex ->
+                            FilterChip(
+                                selected = levelIndex == campaignStartLevel,
+                                onClick = { onCampaignStartSelected(levelIndex) },
+                                label = { Text(levelIndex.toString()) },
+                            )
+                        }
+                    }
+                    Text(
+                        text = if (campaignStartLevel > 1) {
+                            stringResource(R.string.menu_campaign_practice_note)
+                        } else {
+                            stringResource(R.string.menu_campaign_start_hint)
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.62f),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                    )
+                }
             }
         }
 
         SnakeButton(
             onClick = onPlay,
             modifier = Modifier
-                .padding(top = 24.dp)
+                .padding(top = 14.dp)
                 .widthIn(min = 200.dp),
         ) {
             Text(stringResource(R.string.action_play), style = MaterialTheme.typography.titleMedium)
@@ -243,43 +306,11 @@ fun ReadyOverlay(
     }
 }
 
+/** Uniform vertical rhythm between the setup screen's selector blocks. */
 @Composable
-private fun ChipSection(
-    title: String,
-    enabled: Boolean = true,
-    /** An optional explanatory line under the chips (what this choice changes). */
-    caption: String? = null,
-    chips: @Composable () -> Unit,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = if (enabled) 1f else 0.38f),
-        )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(top = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-        ) {
-            chips()
-        }
-        if (caption != null) {
-            Text(
-                text = caption,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 6.dp),
-            )
-        }
+private fun Section(content: @Composable () -> Unit) {
+    Box(modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) {
+        content()
     }
 }
 

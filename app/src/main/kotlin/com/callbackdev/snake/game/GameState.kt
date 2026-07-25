@@ -32,6 +32,13 @@ enum class GameStatus {
  * @param pendingDirection the next direction to commit, buffered from input
  *                         and already validated against 180° reversals.
  * @param pendingGrowth    segments still owed from eaten food, paid one per tick.
+ * @param growthRate       how fast the snake grows on its own, regardless of what
+ *                         it eats (a player setting; [GrowthRate.Off] restores the
+ *                         classic food-only rules).
+ * @param growthProgress   steps taken since the last free segment; when it reaches
+ *                         [autoGrowthIntervalTicks] a segment is granted and it
+ *                         wraps back. Reset by a Campaign level staging (the snake
+ *                         itself is reset there).
  * @param elapsedTicks     monotonic count of ticks since the game started;
  *                         drives the time-gated food progression.
  * @param combo            length of the current consecutive-eat streak (the
@@ -85,6 +92,13 @@ data class GameState(
     val score: Int,
     val pendingGrowth: Int,
     val status: GameStatus,
+    /**
+     * Auto-growth setting for this run. Defaults to [GrowthRate.Off] so a bare
+     * state (and every rules test built on one) keeps the classic behaviour; the
+     * ViewModel stamps the player's choice through [GameEngine.setup].
+     */
+    val growthRate: GrowthRate = GrowthRate.Off,
+    val growthProgress: Int = 0,
     val mode: GameMode = GameMode.Endless,
     val elapsedTicks: Int = 0,
     val playedMs: Long = 0,
@@ -154,6 +168,29 @@ data class GameState(
             if (hasEffect(EffectKind.Slow)) ms *= SLOW_FACTOR
             if (hasEffect(EffectKind.Freeze)) ms *= FREEZE_FACTOR
             return ms.toLong().coerceIn(MIN_TICK_MS, MAX_TICK_MS)
+        }
+
+    /**
+     * Steps between two free segments for this run - the [growthRate] scaled to
+     * the board's size, then to the mode. 0 while auto-growth is off.
+     *
+     * Zen stretches the interval ([ZenMode.GROWTH_INTERVAL_FACTOR]): the calm
+     * mode still has to end, but it must never feel like a race - the same
+     * reasoning that widens its combo window.
+     */
+    val autoGrowthIntervalTicks: Int
+        get() {
+            if (!growthRate.isOn) return 0
+            val base = growthRate.intervalTicksFor(board)
+            val modeFactor = if (mode == GameMode.Zen) ZenMode.GROWTH_INTERVAL_FACTOR else 1f
+            return (base * modeFactor).toInt().coerceAtLeast(GrowthRate.MIN_INTERVAL_TICKS)
+        }
+
+    /** Progress toward the next free segment (0..1); 0 while auto-growth is off. */
+    val autoGrowthFraction: Float
+        get() {
+            val interval = autoGrowthIntervalTicks
+            return if (interval <= 0) 0f else (growthProgress.toFloat() / interval).coerceIn(0f, 1f)
         }
 
     /**

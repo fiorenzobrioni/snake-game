@@ -18,6 +18,13 @@ sealed interface GameEvent {
      */
     data class Shrunk(val food: Food, val removed: Int, val points: Int) : GameEvent
 
+    /**
+     * Auto-growth ([GrowthRate]) granted a free segment this tick: the snake kept
+     * its tail without eating and is now [length] cells long. Advisory - it drives
+     * the HUD growth meter's pop, never a rule.
+     */
+    data class AutoGrew(val length: Int) : GameEvent
+
     /** The snake died on this tick. */
     data object Died : GameEvent
 

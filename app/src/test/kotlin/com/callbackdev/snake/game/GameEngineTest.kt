@@ -91,7 +91,7 @@ class GameEngineTest {
     @Test
     fun eatingGrowsSnakeAndScores() {
         val next = engine.tick(runningState(Direction.Right, foods = listOf(growFood(4))))
-        assertEquals(4 * 10, next.score) // first eat → combo x1
+        assertEquals(4 * GameEngine.GROW_POINTS_PER_SEGMENT, next.score) // first eat → combo x1
         assertEquals(4, next.snake.size) // +1 this tick, 3 more queued
         assertEquals(3, next.pendingGrowth)
         assertFalse(next.foods.any { it.position == Position(6, 5) })
@@ -106,7 +106,7 @@ class GameEngineTest {
             .copy(combo = 1, comboDeadlineTick = 100, elapsedTicks = 10)
         val next = engine.tick(state)
         assertEquals(2, next.combo)
-        assertEquals(3 * 10 * 2, next.score)
+        assertEquals(3 * GameEngine.GROW_POINTS_PER_SEGMENT * 2, next.score)
     }
 
     @Test
@@ -115,7 +115,7 @@ class GameEngineTest {
             .copy(combo = 4, comboDeadlineTick = 5, elapsedTicks = 10)
         val next = engine.tick(state)
         assertEquals(1, next.combo) // deadline passed → fresh streak
-        assertEquals(3 * 10 * 1, next.score)
+        assertEquals(3 * GameEngine.GROW_POINTS_PER_SEGMENT * 1, next.score)
     }
 
     @Test
@@ -130,9 +130,10 @@ class GameEngineTest {
             ),
         )
         val next = engine.tick(state)
-        // Body length at the bite = 25 → factor 1 + (25-5)/19 ≈ 2.05; 4*10*1*2.05 = 82.
-        assertEquals(82, next.score)
-        assertTrue(next.score > 4 * 10) // strictly more than the short-snake baseline
+        // Body length at the bite = 25 → factor 1 + (25-5)/19 ≈ 2.05; 4*20*1*2.05 = 164.
+        assertEquals(164, next.score)
+        // Strictly more than the short-snake baseline.
+        assertTrue(next.score > 4 * GameEngine.GROW_POINTS_PER_SEGMENT)
     }
 
     @Test
@@ -389,7 +390,7 @@ class GameEngineTest {
         }
         specs.filter { it.tier == FoodTier.Mystery }.forEach { spec ->
             when (val e = spec.effect) {
-                is FoodEffect.Grow -> assertTrue(e.segments in 2..24)
+                is FoodEffect.Grow -> assertTrue(e.segments in 1..12)
                 is FoodEffect.Shrink -> assertTrue(e.segments in 2..14)
                 else -> Unit // mystery foods are only ever Grow/Shrink
             }

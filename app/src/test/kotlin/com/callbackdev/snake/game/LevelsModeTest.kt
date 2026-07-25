@@ -125,7 +125,8 @@ class LevelsModeTest {
         assertEquals(2, next.levelIndex)
         assertEquals(1, next.speedCycle)
         assertEquals(0, next.levelFoodsEaten)
-        assertEquals(120, next.score) // the completing eat still pays its 20 points
+        // The completing eat still pays: 2 segments x GROW_POINTS_PER_SEGMENT.
+        assertEquals(100 + 2 * GameEngine.GROW_POINTS_PER_SEGMENT, next.score)
         assertEquals(501, next.elapsedTicks) // food-gate progression carries over
         assertEquals(spawnHead, next.head) // snake back at the spawn
         assertEquals(Direction.Up, next.direction)

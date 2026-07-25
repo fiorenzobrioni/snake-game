@@ -17,6 +17,7 @@ import com.callbackdev.snake.game.BackBehavior
 import com.callbackdev.snake.game.ControlScheme
 import com.callbackdev.snake.game.GameMode
 import com.callbackdev.snake.game.GhostRun
+import com.callbackdev.snake.game.GrowthRate
 import com.callbackdev.snake.game.Level
 import com.callbackdev.snake.game.ScoreKey
 import com.callbackdev.snake.game.Skin
@@ -37,6 +38,8 @@ data class Settings(
     val swipeSensitivity: Float = DEFAULT_SWIPE_SENSITIVITY,
     val backBehavior: BackBehavior = BackBehavior.DEFAULT,
     val snakeSpeed: SnakeSpeed = SnakeSpeed.DEFAULT,
+    /** How fast the snake grows on its own, regardless of what it eats. */
+    val growthRate: GrowthRate = GrowthRate.DEFAULT,
     val masterVolume: Float = DEFAULT_MASTER_VOLUME,
     val musicVolume: Float = DEFAULT_MUSIC_VOLUME,
     val sfxVolume: Float = DEFAULT_SFX_VOLUME,
@@ -92,6 +95,7 @@ class SettingsRepository(private val context: Context) {
             swipeSensitivity = prefs[SWIPE_SENSITIVITY] ?: DEFAULT_SWIPE_SENSITIVITY,
             backBehavior = prefs[BACK_BEHAVIOR].toEnum(BackBehavior::valueOf) ?: BackBehavior.DEFAULT,
             snakeSpeed = prefs[SNAKE_SPEED].toEnum(SnakeSpeed::valueOf) ?: SnakeSpeed.DEFAULT,
+            growthRate = prefs[GROWTH_RATE].toEnum(GrowthRate::valueOf) ?: GrowthRate.DEFAULT,
             masterVolume = prefs[MASTER_VOLUME] ?: DEFAULT_MASTER_VOLUME,
             musicVolume = prefs[MUSIC_VOLUME] ?: DEFAULT_MUSIC_VOLUME,
             sfxVolume = prefs[SFX_VOLUME] ?: DEFAULT_SFX_VOLUME,
@@ -114,6 +118,9 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setSnakeSpeed(speed: SnakeSpeed) =
         edit { it[SNAKE_SPEED] = speed.name }
+
+    suspend fun setGrowthRate(rate: GrowthRate) =
+        edit { it[GROWTH_RATE] = rate.name }
 
     suspend fun setScale(scale: BoardScale) =
         edit { it[SCALE] = scale.name }
@@ -371,6 +378,7 @@ class SettingsRepository(private val context: Context) {
     private companion object {
         val LEVEL = stringPreferencesKey("level")
         val SNAKE_SPEED = stringPreferencesKey("snake_speed")
+        val GROWTH_RATE = stringPreferencesKey("growth_rate")
         val SCALE = stringPreferencesKey("board_scale")
         val CONTROL = stringPreferencesKey("control_scheme")
         val SWIPE_SENSITIVITY = floatPreferencesKey("swipe_sensitivity")

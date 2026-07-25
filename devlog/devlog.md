@@ -13,6 +13,78 @@ Suggested format for each entry:
 
 ---
 
+## 2026-07-25 - Phase 6.15: auto-growth (Step 6.15.1)
+
+**Done:**
+- **The snake now grows by itself.** New pure-model `game/GrowthRate.kt`: five settings (Off /
+  Gentle / Steady / Brisk / Relentless) carrying a base interval in **ticks** (0 / 45 / 30 / 20 / 13)
+  and a declared **score multiplier** (x1 / x1.05 / x1.15 / x1.3 / x1.5). `GameState` gained
+  `growthRate` + `growthProgress` and the derived `autoGrowthIntervalTicks` /
+  `autoGrowthFraction`; `GameEngine.tick` counts the steps and, on the threshold, queues one
+  segment through the existing `pendingGrowth` (so the tail is simply not dropped) and emits
+  `GameEvent.AutoGrew`.
+- **Food rebalance.** Grow amounts **halved** (1/2/3/4 by tier, mystery 1..6) while
+  `GameEngine.GROW_POINTS_PER_SEGMENT` doubled 10 -> 20, so a piece pays exactly the same score
+  and costs half the room. Shrink amounts were left as they were (2/3/5), so a shrink now
+  out-trims a comparable grow. With growth on, shrink food **skips its 15 s unlock gate** and its
+  spawn weight rises 24 -> 34: the brake must always be reachable. Shrink points now scale with
+  the length being cut (`base x lengthScoreFactor`), so trimming a long body is a play, not a
+  sacrifice.
+- **Board / mode scaling.** The interval scales with the board's cell count
+  (`(REFERENCE_CELLS / cells) ^ 0.75`, clamped): Cozy ~53 steps per segment, Explorer 30, Epic ~18,
+  Colossal ~12 at Steady. Zen multiplies it by `ZenMode.GROWTH_INTERVAL_FACTOR` (1.6). A Campaign
+  level staging / respawn restarts the clock with the snake. The seeded Daily / Random challenges
+  pin `GrowthRate.CHALLENGE` (Steady), like the pace and hazard toggles.
+- **Custom setup screen redesigned to fit one screen.** New `ui/components/SettingStepper.kt`:
+  ordered settings (Level / Snake speed / Growth / Board scale) are now a row with the name, the
+  current value and a segmented 5-notch gauge (filled up to the selection, so the setting reads as
+  a level), and the unordered mode is a 2x2 `SettingCardGrid` - every option visible, nothing
+  behind a horizontal scroll. Each row keeps its one-line caption; the growth caption quotes the
+  concrete rhythm for the selected board ("+1 segment every 30 steps"). The full `SNAKE` wordmark
+  became a compact "Custom Game" header. Measured budget ~640dp against ~730dp of usable height on
+  a normal phone; the vertical scroll stays as a safety net (Campaign with checkpoints unlocked
+  adds a sixth row and can still scroll slightly on small screens).
+- **HUD.** With growth on, the HUD's second row carries the live snake length beside a small ring
+  filling toward the next free segment, popping once when a segment lands (`autoGrowEventId`).
+  Deliberately silent - a sound or haptic every few seconds would nag.
+- **Onboarding + docs.** The tour's food card now teaches the inverted economy; `README.md` gained
+  an *Auto-growth* section, an updated food table and reworded How-to-play.
+- **Tests.** New `AutoGrowthTest` (13 cases): the clock and its wrap, per-setting monotonicity,
+  board and Zen scaling, the Campaign reset, silence on the fatal tick, the grace-dodge carry, the
+  score multiplier, length-scaled shrink points, and the food table's shrink availability /
+  grow-vs-shrink magnitudes. Existing expectations that hard-coded `x 10` points were moved onto
+  `GameEngine.GROW_POINTS_PER_SEGMENT`.
+
+**Decisions:**
+- **Ticks, not wall-clock.** A step is the unit the board is made of, so the pressure per cell
+  travelled stays constant at any pace, and speed effects (Lightning / Snail / Freeze) or the
+  Endless ramp cannot dilute the growth. It also keeps the engine deterministic.
+- **A declared multiplier instead of a new record key.** Growth changes difficulty a lot, so it
+  could have joined `ScoreKey` - but that would fragment every leaderboard by five and dump all
+  existing records into one slot. The multiplier reuses the `SnakeSpeed.timeAttackScoreFactor`
+  contract already established for Time Attack: the choice is open, priced, and outside the key.
+- **The easiest step is `Off`.** It keeps the classic food-only rules available (and makes
+  pre-2.1 records reproducible) while the default sits on Steady, so every fresh *and* existing
+  install gets the new gameplay out of the box.
+- **Zen is included, not exempt.** The user asked for every mode; Zen keeps its identity through a
+  longer interval (the same reasoning that doubles its combo window) rather than an opt-out.
+- **Growth is queued through `pendingGrowth`**, not applied to the body directly, so it composes
+  for free with food, with the "pure effect" specials that drop the tail, and with the length floor.
+
+**Issues:**
+- The first `AutoGrowthTest` run exposed a real bug in the **grace/coyote dodge**: the early return
+  carried the tick's mutated `pendingGrowth`, which had already been decremented to pay the new
+  segment onto a `body` that the dodge then discards - so a segment granted on a dodge tick
+  vanished. The path now re-derives the debt as `state.pendingGrowth + (if (autoGrew) 1 else 0)`,
+  so a dodge can neither lose an owed segment nor silently pay one.
+- Two of the new tests initially ticked a straight-running snake for tens of ticks and hit the wall
+  (and the per-tick food refill) instead of measuring the clock. They now preset `growthProgress`
+  near the threshold and assert the interval arithmetic directly - deterministic and wall-free.
+
+**Next:** playtest the five growth steps on a device and re-tune the base intervals if a Steady run
+lands outside the intended 2-4 minute arc; consider whether the three max-length achievements
+(25 / 50 / 90) still mean anything now that length is largely time-driven.
+
 ## 2026-07-14 - Step 6.9.12: ghost replay of your best run
 
 **Done:**

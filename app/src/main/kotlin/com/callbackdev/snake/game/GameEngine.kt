@@ -30,6 +30,7 @@ class GameEngine(private val random: Random = Random.Default) {
         snakeSpeed: SnakeSpeed = SnakeSpeed.DEFAULT,
         modifier: ChallengeModifier = ChallengeModifier.None,
         startLevelIndex: Int = 1,
+        growthRate: GrowthRate = GrowthRate.Off,
     ): GameState {
         val snake = startingSnake(board)
         val isLevels = mode == GameMode.Levels
@@ -51,6 +52,7 @@ class GameEngine(private val random: Random = Random.Default) {
             score = 0,
             pendingGrowth = 0,
             status = GameStatus.Ready,
+            growthRate = growthRate,
             mode = mode,
             levelIndex = startLevel,
             lives = if (isLevels) LevelsMode.START_LIVES else 0,
@@ -74,6 +76,7 @@ class GameEngine(private val random: Random = Random.Default) {
                 state.board, state.snake, state.obstacles, state.walls, emptyList(),
                 elapsedTicks = 0, level = state.level, baseTickMillis = state.snakeSpeed.tickMillis,
                 mode = state.mode, reserved = state.hazardSpawnCells, modifier = state.modifier,
+                autoGrowth = state.growthRate.isOn,
             ),
             status = GameStatus.Running,
         )
@@ -91,6 +94,7 @@ class GameEngine(private val random: Random = Random.Default) {
                 elapsedTicks = state.elapsedTicks, level = state.level,
                 baseTickMillis = state.snakeSpeed.tickMillis, mode = state.mode,
                 reserved = state.hazardSpawnCells, modifier = state.modifier,
+                autoGrowth = state.growthRate.isOn,
             ),
             status = GameStatus.Running,
         )
@@ -111,8 +115,9 @@ class GameEngine(private val random: Random = Random.Default) {
         snakeSpeed: SnakeSpeed = SnakeSpeed.DEFAULT,
         modifier: ChallengeModifier = ChallengeModifier.None,
         startLevelIndex: Int = 1,
+        growthRate: GrowthRate = GrowthRate.Off,
     ): GameState =
-        start(setup(level, board, mode, snakeSpeed, modifier, startLevelIndex))
+        start(setup(level, board, mode, snakeSpeed, modifier, startLevelIndex, growthRate))
 
     /**
      * Buffers a direction change for the next tick. A 180° reversal of the
@@ -185,10 +190,11 @@ class GameEngine(private val random: Random = Random.Default) {
             (GameState.TIME_ATTACK_MS + state.timeAdjustMs - playedMs) in 1..GameState.FEVER_MS
         if (feverNow && !feverBefore) events.add(GameEvent.FeverStarted)
 
-        // Every point earned this tick is scaled by the declared Time Attack
-        // pace multiplier (a faster snake risks more, so it earns more) and by
-        // the Fever Time doubling while the finale runs.
-        val scoreBoost: Float = if (state.mode == GameMode.TimeAttack) {
+        // Every point earned this tick is scaled by the declared auto-growth
+        // multiplier (a body that fills the board on its own is a harder run, so
+        // it earns more), by the Time Attack pace multiplier (a faster snake
+        // risks more) and by the Fever Time doubling while the finale runs.
+        val scoreBoost: Float = state.growthRate.scoreFactor * if (state.mode == GameMode.TimeAttack) {
             state.snakeSpeed.timeAttackScoreFactor *
                 (if (feverNow) GameState.FEVER_SCORE_FACTOR else 1)
         } else {
@@ -248,6 +254,25 @@ class GameEngine(private val random: Random = Random.Default) {
         var lives = state.lives
         var levelFoodsEaten = state.levelFoodsEaten
 
+        // Auto-growth: the run's clock made physical. Every
+        // [GameState.autoGrowthIntervalTicks] steps the snake is owed one segment
+        // it did not earn, so circling an empty board can no longer stall a run
+        // forever - and shrinking food turns from a niche pick into the way to
+        // buy time. Queued through pendingGrowth (paid by simply not dropping the
+        // tail), so it stacks naturally with food and with the "pure effect"
+        // specials, and it is settled *before* the eat/tail chain below.
+        var growthProgress = state.growthProgress
+        val growthInterval = state.autoGrowthIntervalTicks
+        var autoGrew = false
+        if (growthInterval > 0) {
+            growthProgress++
+            if (growthProgress >= growthInterval) {
+                growthProgress -= growthInterval
+                pendingGrowth++
+                autoGrew = true
+            }
+        }
+
         val eaten = foods.firstOrNull { it.occupies(newHead) }
         if (eaten != null) {
             foods = foods - eaten
@@ -267,7 +292,7 @@ class GameEngine(private val random: Random = Random.Default) {
                         (COMBO_WINDOW_TICKS * state.modifier.comboWindowFactor * zenStretch).toInt()
                     // Longer snakes earn proportionally more per bite (up to a cap),
                     // so the same food is worth far more late in a run than early on.
-                    val points = (effect.segments * 10 * combo.coerceAtMost(MAX_COMBO) *
+                    val points = (effect.segments * GROW_POINTS_PER_SEGMENT * combo.coerceAtMost(MAX_COMBO) *
                         lengthScoreFactor(body.size) * scoreBoost).toInt()
                     score += points
                     pendingGrowth += effect.segments - 1 // head already added this tick
@@ -276,10 +301,14 @@ class GameEngine(private val random: Random = Random.Default) {
                 is FoodEffect.Shrink -> {
                     // Shrinking neither feeds nor breaks the grow combo; it just
                     // trims the tail down to the floor and pays a token score.
+                    // The token scales with the length being cut (read before the
+                    // trim): with auto-growth on, trimming a long body is the
+                    // skilful, survival-critical play, not a pure score sacrifice.
                     pendingGrowth = 0
+                    val lengthFactor = lengthScoreFactor(body.size)
                     val removed = trimTail(body, effect.segments)
                     val base = if (eaten.size == FoodSize.Maxi) SHRINK_POINTS_MAXI else SHRINK_POINTS
-                    val points = (base * scoreBoost).toInt()
+                    val points = (base * lengthFactor * scoreBoost).toInt()
                     score += points
                     events.add(GameEvent.Shrunk(eaten, removed, points))
                 }
@@ -392,6 +421,7 @@ class GameEngine(private val random: Random = Random.Default) {
                 mode = state.mode,
                 reserved = state.hazardSpawnCells,
                 modifier = state.modifier,
+                autoGrowth = state.growthRate.isOn,
             )
         }
 
@@ -439,6 +469,14 @@ class GameEngine(private val random: Random = Random.Default) {
                 pendingDirection = direction,
                 elapsedTicks = elapsedTicks,
                 playedMs = playedMs,
+                // The move was cancelled, but time was not: keep the growth clock
+                // running and carry the debt over. The body is discarded here, so
+                // the tick's own bookkeeping (which paid a segment by keeping the
+                // tail) must not be: re-derive the debt from the state, plus the
+                // segment auto-growth just granted, so a dodge can neither lose an
+                // owed segment nor silently pay one.
+                pendingGrowth = state.pendingGrowth + if (autoGrew) 1 else 0,
+                growthProgress = growthProgress,
                 combo = combo,
                 comboDeadlineTick = comboDeadlineTick,
                 debris = debris,
@@ -464,6 +502,10 @@ class GameEngine(private val random: Random = Random.Default) {
 
         val dead = crashed || timeUp
         if (dead) events.add(GameEvent.Died)
+
+        // Announce a free segment only on a tick the snake survived: on a fatal
+        // tick the growth is invisible anyway and the death cue owns the moment.
+        if (autoGrew && !dead) events.add(GameEvent.AutoGrew(body.size))
 
         // Near-miss: the head survived but is grazing a static hazard. Skipped
         // while invincible (Ghost passes through everything anyway); on a
@@ -494,6 +536,7 @@ class GameEngine(private val random: Random = Random.Default) {
             foods = foods,
             score = score,
             pendingGrowth = pendingGrowth,
+            growthProgress = growthProgress,
             elapsedTicks = elapsedTicks,
             playedMs = playedMs,
             combo = combo,
@@ -537,6 +580,9 @@ class GameEngine(private val random: Random = Random.Default) {
             foods = emptyList(),
             score = score,
             pendingGrowth = 0,
+            // The snake is back at its spawn length, so the growth clock restarts
+            // with it (unlike elapsedTicks, which spans the whole run).
+            growthProgress = 0,
             elapsedTicks = elapsedTicks,
             playedMs = playedMs,
             combo = 0,
@@ -697,6 +743,7 @@ class GameEngine(private val random: Random = Random.Default) {
         mode: GameMode = GameMode.Endless,
         reserved: Set<Position> = emptySet(),
         modifier: ChallengeModifier = ChallengeModifier.None,
+        autoGrowth: Boolean = false,
     ): List<Food> {
         var foods = existing
         val target = foodCountFor(board)
@@ -707,7 +754,10 @@ class GameEngine(private val random: Random = Random.Default) {
             val allowSpecial = specialAllowed && !modifier.suppressSpecials &&
                 mode != GameMode.Zen &&
                 foods.count { it.category == FoodCategory.Special } < MAX_SPECIALS_ON_BOARD
-            val food = spawnFood(board, snake, obstacles, walls, foods, elapsedTicks, level, baseTickMillis, hazardsEnabled, allowSpecial, specialFrequency, mode, reserved, modifier) ?: break
+            val food = spawnFood(
+                board, snake, obstacles, walls, foods, elapsedTicks, level, baseTickMillis,
+                hazardsEnabled, allowSpecial, specialFrequency, mode, reserved, modifier, autoGrowth,
+            ) ?: break
             foods = foods + food
         }
         return foods
@@ -733,10 +783,11 @@ class GameEngine(private val random: Random = Random.Default) {
         mode: GameMode,
         reserved: Set<Position>,
         modifier: ChallengeModifier = ChallengeModifier.None,
+        autoGrowth: Boolean = false,
     ): Food? {
         val spec = FoodTable.roll(
             random, elapsedTicks, level, baseTickMillis, hazardsEnabled, specialAllowed,
-            specialFrequency, mode, forceMaxi = modifier.forceMaxiFood,
+            specialFrequency, mode, forceMaxi = modifier.forceMaxiFood, autoGrowth = autoGrowth,
         )
         val span = spec.size.cellSpan
         // Top-left cell range that keeps the whole square off the border.
@@ -797,7 +848,19 @@ class GameEngine(private val random: Random = Random.Default) {
         /** The score multiplier is capped here. */
         const val MAX_COMBO = 5
 
-        /** Symbolic points for eating a shrinking food (standard / maxi). */
+        /**
+         * Points paid per segment of a growing food, before the combo, length and
+         * run multipliers. It was doubled (10 -> 20) when the [FoodTable] grow
+         * amounts were halved for the auto-growth rebalance, so a given piece is
+         * worth the same score as before while adding half the length.
+         */
+        const val GROW_POINTS_PER_SEGMENT = 20
+
+        /**
+         * Base points for eating a shrinking food (standard / maxi), scaled by the
+         * length being cut. Still modest against a grow bite - trimming buys room,
+         * eating feeds the score - but no longer purely symbolic.
+         */
         const val SHRINK_POINTS = 5
         const val SHRINK_POINTS_MAXI = 10
 
