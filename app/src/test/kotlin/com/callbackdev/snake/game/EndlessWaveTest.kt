@@ -128,29 +128,39 @@ class EndlessWaveTest {
     }
 
     @Test
-    fun `hail lands clear of the head, off the food, and never floods the board`() {
+    fun `hail lands as a block, clear of the head and off the food`() {
         val hailStart = EndlessWaves.FIRST_START_MS + 2 * EndlessWaves.PERIOD_MS
         var state = endlessState(playedMs = hailStart, elapsedTicks = 0)
         assertEquals(EndlessWave.Hailstorm, state.activeWave)
 
-        // Run the wave out and watch every block that lands.
+        val stoneCells = EndlessWaves.HAIL_SPAN * EndlessWaves.HAIL_SPAN
         val landed = ArrayList<Position>()
-        repeat(EndlessWaves.HAIL_INTERVAL_TICKS * (EndlessWaves.HAIL_MAX_BLOCKS + 4)) {
+        repeat(EndlessWaves.HAIL_INTERVAL_TICKS * (EndlessWaves.HAIL_MAX_STONES + 4)) {
+            val before = state.debris.size
             state = engine.tick(state)
             if (state.status != GameStatus.Running) return@repeat
             state.lastEvents.filterIsInstance<GameEvent.HailLanded>().forEach { event ->
                 landed.add(event.cell)
+                // A stone is a full HAIL_SPAN-square block of lethal cells.
+                assertEquals(before + stoneCells, state.debris.size)
                 val head = state.head
-                assertTrue(
-                    "hail must not land on the snake's nose",
-                    abs(event.cell.x - head.x) + abs(event.cell.y - head.y) >= EndlessWaves.HAIL_HEAD_CLEARANCE,
-                )
-                assertTrue("hail must not land on the snake", event.cell !in state.snake)
-                assertTrue("hail must not bury food", state.foods.none { it.occupies(event.cell) })
+                for (dx in 0 until EndlessWaves.HAIL_SPAN) {
+                    for (dy in 0 until EndlessWaves.HAIL_SPAN) {
+                        val c = Position(event.cell.x + dx, event.cell.y + dy)
+                        assertTrue("hail is on the board", c.x in 0 until board.width && c.y in 0 until board.height)
+                        assertTrue(
+                            "no part of a stone lands on the snake's nose",
+                            abs(c.x - head.x) + abs(c.y - head.y) >= EndlessWaves.HAIL_HEAD_CLEARANCE,
+                        )
+                        assertTrue("hail must not land on the snake", c !in state.snake)
+                        assertTrue("hail must not bury food", state.foods.none { it.occupies(c) })
+                        assertTrue("every stone cell is lethal", state.debris.any { d -> d.cell == c })
+                    }
+                }
             }
             assertTrue(
-                "the board never holds more hail than the cap",
-                state.debris.size <= EndlessWaves.HAIL_MAX_BLOCKS,
+                "the board never holds more stones than the cap",
+                state.debris.count { it.kind == DebrisKind.Hail } <= EndlessWaves.HAIL_MAX_STONES * stoneCells,
             )
         }
         assertTrue("the storm actually rained", landed.isNotEmpty())

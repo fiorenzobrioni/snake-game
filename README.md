@@ -38,7 +38,7 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - ✖️ **Combo multiplier** - eating in quick succession multiplies your score (up to ×5).
 - 🌊 **Endless waves** - every 45 seconds of an Endless run the board is swept by an event, in a fixed
   learnable rotation: a **Feast** (the board floods with food), a **Drought** (it all but dries up, with
-  the growth clock still ticking) and a **Hailstorm** (lethal blocks rain down, well clear of your head,
+  the growth clock still ticking) and a **Hailstorm** (2×2 ice stones rain down, well clear of your head,
   then melt). Each is announced and counts down in the HUD, so a long run has movements instead of one
   long crescendo.
 - 🎲 **Risk bonus** - every point is multiplied by how much of the board your body is covering (up to
@@ -49,7 +49,8 @@ The classic Snake mechanics, extended with configurable features so every run fe
   corner; when it fills, tap it to cut a third of your tail loose and **cash in** the risk you were
   carrying (the payout scales with the multiplier at the moment of the cut). It is the answer to being
   boxed in with no shrinking food in sight - and spending it means giving up the fat multiplier that
-  made you rich.
+  made you rich. The button is deliberately see-through and **fades to a whisper when the snake comes
+  into its corner**, so it never hides the cells you are steering through.
 - 🚧 **Obstacles** - symmetric blocks that tend to clump into larger shapes and raise the difficulty.
 - 🎚️ **Levels & snake speed** - 5 obstacle layouts (*Beginner* → *Legend*) and 5 **independent**
   speeds (*Relaxed* → *Turbo*), mixable freely: play the dense Legend field at a gentle pace, or an
@@ -201,6 +202,10 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - 💎 **Polished navigation** - an **animated GPU background** behind the menus, a **branded main menu** laid out as a "game launcher" (a glowing wordmark with a small in-game-style snake emblem that follows your selected skin as the hero, over a bottom-anchored cluster of actions grouped by type so everything fits one screen), **premium action buttons** (gradient-lit, with a tactile press), and **blur-dissolve** screen transitions.
 - ⏸️ **Auto-pause** - backgrounding the app mid-run pauses the game automatically, so the snake never keeps moving while you're away.
 - 📜 **Credits screen** - an in-app **Credits / About** page (author, license and asset attribution), reachable from the main menu.
+- 📖 **In-app Guide** - a rules reference on the main menu (between the gear and the info dot), in
+  collapsed chapters you open when you want the detail: the basics, length / risk / Shed, food,
+  power-ups, the four modes, the Endless waves, scoring, controls and progress. **Every number in it is
+  read from the game's own constants**, so the guide cannot drift out of date when the balance is tuned.
 - 🧭 **First-run tour** - a premium, skippable six-card tour on first launch, re-openable any time via **How to play** in Settings. Glass cards over the animated brand backdrop cover the goal (with the real in-game snake slithering in your skin), the food language, **length as a resource** (the growth clock, the risk bonus and the Shed button), the power-ups / hazards, the four game modes and the daily loop (Daily Challenge, missions, achievements, skins) - legends show the actual in-game pieces, icons and colours, steering is a glanceable three-chip row, and Back pages backwards instead of bailing out.
 
 ### 🍽️ Food system at a glance
@@ -323,7 +328,7 @@ is a rhythm you can plan around.
 |---|---|
 | 🍽️ **Feast** | The board floods with food (nine pieces at once). Gorge - or hold the length and let the risk bonus run. |
 | 🏜️ **Drought** | Food dries up to a single piece. The growth clock keeps ticking, so it is pure survival. |
-| 🧊 **Hailstorm** | Lethal blocks rain down and melt away. They never land within four cells of your head, so it is a route to solve, not an ambush. |
+| 🧊 **Hailstorm** | Chunky 2×2 **ice stones** rain down and melt away. None lands within four cells of your head, so it is a route to solve, not an ambush. |
 
 Every wave is announced by name and counts down in the HUD's timer row, in its own colour, alongside
 any power-up timers.
@@ -394,7 +399,13 @@ segments.
 
 **The Shed button:** the ring in the board's bottom corner fills as you eat and lights up when it is
 charged. Tap it to cut your tail loose for a payout - it is deliberately unclickable while charging,
-so a stray tap during play costs nothing and still reaches the board if you steer by tapping.
+so a stray tap during play costs nothing and still reaches the board if you steer by tapping, and it
+thins out of the way whenever your snake comes into that corner.
+
+**Need the details?** The **Guide** button on the main menu (between the gear and the info dot) opens
+the full rules reference: the growth dial's numbers, the risk cap, what a Shed cuts and pays, every
+power-up, the wave schedule, the scoring formula. Its figures are read straight from the game's own
+constants, so they always match what you are playing.
 
 **Controls (touch):** by default you **swipe** anywhere on the board to change direction, with an
 adjustable **swipe sensitivity** in Settings (the default keeps the tuned feel). Prefer buttons? Switch

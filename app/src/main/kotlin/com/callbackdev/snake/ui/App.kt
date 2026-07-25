@@ -42,6 +42,7 @@ import com.callbackdev.snake.ui.game.GameScreen
 import com.callbackdev.snake.ui.game.GameViewModel
 import com.callbackdev.snake.ui.achievements.AchievementsScreen
 import com.callbackdev.snake.ui.credits.CreditsScreen
+import com.callbackdev.snake.ui.help.HowToPlayScreen
 import com.callbackdev.snake.ui.daily.DailyChallengeScreen
 import com.callbackdev.snake.ui.daily.DailyHistoryScreen
 import com.callbackdev.snake.ui.daily.RandomChallengeScreen
@@ -54,7 +55,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /** The top-level destinations. [Intro] is the cold-launch brand splash. */
-private enum class Screen { Intro, Menu, Game, Daily, DailyHistory, Random, Settings, Records, Achievements, Credits, Onboarding }
+private enum class Screen { Intro, Menu, Game, Daily, DailyHistory, Random, Settings, Records, Achievements, Guide, Credits, Onboarding }
 
 /**
  * Root of the UI. Hosts a lightweight, state-based navigation between the main
@@ -182,6 +183,7 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
                         onRecords = { navigate(Screen.Records) },
                         onAchievements = { navigate(Screen.Achievements) },
                         onSettings = { navigate(Screen.Settings) },
+                        onGuide = { navigate(Screen.Guide) },
                         onCredits = { navigate(Screen.Credits) },
                         modifier = Modifier.fillMaxSize(),
                     )
@@ -256,6 +258,11 @@ fun App(repo: SettingsRepository, modifier: Modifier = Modifier) {
 
                     Screen.Achievements -> AchievementsScreen(
                         repo = repo,
+                        onBack = { navigate(Screen.Menu) },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+
+                    Screen.Guide -> HowToPlayScreen(
                         onBack = { navigate(Screen.Menu) },
                         modifier = Modifier.fillMaxSize(),
                     )

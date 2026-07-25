@@ -41,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -867,11 +868,15 @@ private fun RiskBadge() {
     }
 }
 
-/** The Shed button itself, charged, drawn by the in-game renderer. */
+/**
+ * The Shed button itself, charged, drawn by the in-game renderer. Nudged up in
+ * opacity because on a glass card there is no board to see through - in play the
+ * token is deliberately translucent.
+ */
 @Composable
 private fun ShedBadge() {
-    Canvas(modifier = Modifier.size(36.dp)) {
-        drawShedToken(accent = SpecialVisuals.ShedColor, fill = 1f, ready = true, pulse = 0f)
+    Canvas(modifier = Modifier.size(38.dp).alpha(0.95f)) {
+        drawShedToken(accent = SpecialVisuals.ShedColor, fill = 1f, ready = true, pulse = 1f)
     }
 }
 

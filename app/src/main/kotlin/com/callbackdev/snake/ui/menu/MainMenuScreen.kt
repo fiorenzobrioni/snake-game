@@ -85,6 +85,7 @@ fun MainMenuScreen(
     onRecords: () -> Unit,
     onAchievements: () -> Unit,
     onSettings: () -> Unit,
+    onGuide: () -> Unit,
     onCredits: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -220,6 +221,14 @@ fun MainMenuScreen(
                 onClick = onSettings,
                 icon = Icons.Filled.Settings,
                 contentDescription = stringResource(R.string.menu_settings),
+            )
+            // The rules reference sits between the gear and the info dot: the three
+            // "about the app" entries read as one group, and the guide is reachable
+            // from the landing screen instead of being buried in Settings.
+            MenuIconButton(
+                onClick = onGuide,
+                icon = MenuIcons.Guide,
+                contentDescription = stringResource(R.string.menu_guide),
             )
             MenuIconButton(
                 onClick = onCredits,

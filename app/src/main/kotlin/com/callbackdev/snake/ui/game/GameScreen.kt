@@ -494,14 +494,22 @@ fun GameScreen(
                 // thumb already rests: pinned over the board rather than in the
                 // control row, so it costs the board no height in any scheme.
                 if (state.status == GameStatus.Running) {
+                    // The button lives over the board, so it gets out of the way
+                    // when the snake actually comes to this corner: while the head
+                    // is inside ABILITY_CORNER_CELLS of the bottom-end corner it
+                    // fades to a whisper, and the cells underneath stay readable.
+                    val head = state.head
+                    val inCorner = head.x >= state.board.width - ABILITY_CORNER_CELLS &&
+                        head.y >= state.board.height - ABILITY_CORNER_CELLS
                     AbilityButton(
                         charge = state.abilityFraction,
                         ready = state.abilityReady,
                         reduceMotion = viewModel.reduceMotion,
+                        dimmed = inCorner,
                         onUse = { viewModel.useAbility() },
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
-                            .padding(end = 10.dp, bottom = 10.dp),
+                            .padding(end = 8.dp, bottom = 8.dp),
                     )
                 }
 
@@ -1069,6 +1077,13 @@ private fun AnnouncementBanner(
         )
     }
 }
+
+/**
+ * How far into the board's bottom-end corner the snake has to come before the Shed
+ * button fades out of its way. Roughly the button's own footprint plus a cell of
+ * warning, so it clears before the head is under it.
+ */
+private const val ABILITY_CORNER_CELLS = 5
 
 /** How long an announcement banner holds before fading. */
 private const val BANNER_HOLD_MS = 1100L

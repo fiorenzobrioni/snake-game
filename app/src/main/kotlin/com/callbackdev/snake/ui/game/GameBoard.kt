@@ -45,6 +45,7 @@ import androidx.compose.ui.util.lerp
 import com.callbackdev.snake.game.BoardDimensions
 import com.callbackdev.snake.game.BoardTerrain
 import com.callbackdev.snake.game.Debris
+import com.callbackdev.snake.game.DebrisKind
 import com.callbackdev.snake.game.Direction
 import com.callbackdev.snake.game.EffectKind
 import com.callbackdev.snake.game.Food
@@ -1093,11 +1094,19 @@ private fun DrawScope.drawDebris(
     time: Float,
 ) {
     if (debris.isEmpty()) return
+    // Hail is its own material - a block of ice, not a piece of snake - so it is
+    // drawn per cell by its own routine. Adjacent cells of a stone merge into one
+    // chunky 2x2 block, which is the whole point: a hazard you see coming.
+    debris.filter { it.kind == DebrisKind.Hail }.forEach { d ->
+        drawHailCell(d, cell, originX, originY)
+    }
+    val tail = debris.filter { it.kind == DebrisKind.Tail }
+    if (tail.isEmpty()) return
     // Split the (ordered) debris into runs of orthogonally-adjacent cells; each
     // run is one severed tail and is drawn as a single continuous body.
     val chains = ArrayList<List<Debris>>()
     var current = ArrayList<Debris>()
-    for (d in debris) {
+    for (d in tail) {
         val last = current.lastOrNull()
         if (last == null || isAdjacentCell(last.cell, d.cell)) {
             current.add(d)
@@ -1118,6 +1127,73 @@ private fun DrawScope.drawDebris(
         // Draw the debris in the skin's own body material (head omitted).
         drawSnakeBody(centers, cell, palette, alpha, time)
     }
+}
+
+/**
+ * One cell of an Endless **hail stone**: a slab of ice filling its cell, with a
+ * cold outer bloom, a bright rim, a top-lit face and a couple of internal facets.
+ *
+ * Drawn per cell on purpose - a stone is a 2x2 cluster, so four of these butt
+ * together into one big block whose seams read as facets in the ice. Filling the
+ * cell exactly matters: the drawing has to be the hitbox, or the hazard lies.
+ */
+private fun DrawScope.drawHailCell(d: Debris, cell: Float, originX: Float, originY: Float) {
+    val x = originX + d.cell.x * cell
+    val y = originY + d.cell.y * cell
+    val life = d.life
+    // Melting away: fades out over the last of its lifetime.
+    val alpha = (0.45f + 0.55f * life).coerceIn(0f, 1f)
+    val ice = SpecialVisuals.HailColor
+    val center = Offset(x + cell / 2f, y + cell / 2f)
+
+    // Cold bloom, so the stone separates from any terrain underneath it.
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(ice.copy(alpha = 0.30f * alpha), Color.Transparent),
+            center = center,
+            radius = cell * 0.95f,
+        ),
+        radius = cell * 0.95f,
+        center = center,
+    )
+    // The slab: a cool vertical gradient, brighter at the top like lit ice.
+    val corner = CornerRadius(cell * 0.18f)
+    drawRoundRect(
+        brush = Brush.verticalGradient(
+            colors = listOf(
+                lighten(ice, 0.45f).copy(alpha = alpha),
+                ice.copy(alpha = alpha),
+                darken(ice, 0.45f).copy(alpha = alpha),
+            ),
+            startY = y,
+            endY = y + cell,
+        ),
+        topLeft = Offset(x, y),
+        size = Size(cell, cell),
+        cornerRadius = corner,
+    )
+    // Rim: a hard bright edge sells "frozen solid" and marks the exact hitbox.
+    drawRoundRect(
+        color = lighten(ice, 0.65f).copy(alpha = 0.85f * alpha),
+        topLeft = Offset(x, y),
+        size = Size(cell, cell),
+        cornerRadius = corner,
+        style = Stroke(width = cell * 0.09f),
+    )
+    // Facets: a bright corner highlight and a thin diagonal crack.
+    drawRoundRect(
+        color = Color.White.copy(alpha = 0.55f * alpha),
+        topLeft = Offset(x + cell * 0.16f, y + cell * 0.14f),
+        size = Size(cell * 0.30f, cell * 0.22f),
+        cornerRadius = CornerRadius(cell * 0.10f),
+    )
+    drawLine(
+        color = Color.White.copy(alpha = 0.30f * alpha),
+        start = Offset(x + cell * 0.30f, y + cell * 0.78f),
+        end = Offset(x + cell * 0.76f, y + cell * 0.34f),
+        strokeWidth = cell * 0.06f,
+        cap = StrokeCap.Round,
+    )
 }
 
 /** Orthogonally adjacent (4-neighbour) cells - used to chain a severed tail. */

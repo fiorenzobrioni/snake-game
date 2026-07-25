@@ -442,16 +442,21 @@ class GameEngine(private val random: Random = Random.Default) {
             body.removeAt(body.lastIndex) // keep length: drop the tail
         }
 
-        // Hailstorm: a lethal block lands every few ticks, always well clear of the
+        // Hailstorm: a lethal stone lands every few ticks, always well clear of the
         // head (so it is a route to solve, never an ambush) and never on food, and
-        // melts on its own timer - the existing debris machinery does the rest.
+        // melts on its own timer - the existing debris machinery does the rest. Each
+        // stone is a HAIL_SPAN-square block, so it has the visual weight of a maxi
+        // piece rather than a stray pellet.
         if (wave == EndlessWave.Hailstorm && elapsedTicks % EndlessWaves.HAIL_INTERVAL_TICKS == 0) {
-            val live = debris.size
-            if (live < EndlessWaves.HAIL_MAX_BLOCKS) {
-                hailCell(board, body, state.obstacles, state.walls, foods, debris, state.hazardSpawnCells)?.let { cell ->
-                    debris = debris + Debris(cell, EndlessWaves.HAIL_LIFETIME_MS, EndlessWaves.HAIL_LIFETIME_MS)
-                    events.add(GameEvent.HailLanded(cell))
-                }
+            val stonesOnBoard = debris.count { it.kind == DebrisKind.Hail } / HAIL_STONE_CELLS
+            if (stonesOnBoard < EndlessWaves.HAIL_MAX_STONES) {
+                hailStone(board, body, state.obstacles, state.walls, foods, debris, state.hazardSpawnCells)
+                    ?.let { anchor ->
+                        debris = debris + hailCells(anchor).map {
+                            Debris(it, EndlessWaves.HAIL_LIFETIME_MS, EndlessWaves.HAIL_LIFETIME_MS, DebrisKind.Hail)
+                        }
+                        events.add(GameEvent.HailLanded(anchor))
+                    }
             }
         }
 
@@ -821,14 +826,23 @@ class GameEngine(private val random: Random = Random.Default) {
         return obstacles
     }
 
+    /** The cells one hail stone covers, given its top-left [anchor]. */
+    private fun hailCells(anchor: Position): List<Position> = buildList {
+        for (dx in 0 until EndlessWaves.HAIL_SPAN) {
+            for (dy in 0 until EndlessWaves.HAIL_SPAN) {
+                add(Position(anchor.x + dx, anchor.y + dy))
+            }
+        }
+    }
+
     /**
-     * A free cell for a Hailstorm block: random, at least
-     * [EndlessWaves.HAIL_HEAD_CLEARANCE] cells (Manhattan) from the head, and off
-     * the snake, the obstacles, the walls, the food, the existing debris and the
-     * Campaign hazard cells. Returns null when the board offers nowhere fair, so a
-     * crowded board simply gets no hail that tick.
+     * The top-left cell for a Hailstorm stone: random, with **every** cell of the
+     * block at least [EndlessWaves.HAIL_HEAD_CLEARANCE] away (Manhattan) from the
+     * head, and clear of the snake, the obstacles, the walls, the food, existing
+     * debris and the Campaign hazard cells. Returns null when the board offers
+     * nowhere fair, so a crowded board simply gets no hail that tick.
      */
-    private fun hailCell(
+    private fun hailStone(
         board: BoardDimensions,
         snake: List<Position>,
         obstacles: Set<Position>,
@@ -845,10 +859,16 @@ class GameEngine(private val random: Random = Random.Default) {
         taken.addAll(reserved)
         debris.forEach { taken.add(it.cell) }
         foods.forEach { taken.addAll(it.cells()) }
+        val maxX = board.width - EndlessWaves.HAIL_SPAN
+        val maxY = board.height - EndlessWaves.HAIL_SPAN
+        if (maxX < 0 || maxY < 0) return null
         repeat(MAX_SPAWN_ATTEMPTS) {
-            val cell = Position(random.nextInt(0, board.width), random.nextInt(0, board.height))
-            val clearOfHead = abs(cell.x - head.x) + abs(cell.y - head.y) >= EndlessWaves.HAIL_HEAD_CLEARANCE
-            if (clearOfHead && cell !in taken) return cell
+            val anchor = Position(random.nextInt(0, maxX + 1), random.nextInt(0, maxY + 1))
+            val cells = hailCells(anchor)
+            val fair = cells.all { c ->
+                c !in taken && abs(c.x - head.x) + abs(c.y - head.y) >= EndlessWaves.HAIL_HEAD_CLEARANCE
+            }
+            if (fair) return anchor
         }
         return null
     }
@@ -1035,6 +1055,9 @@ class GameEngine(private val random: Random = Random.Default) {
         const val VANISH_REFERENCE_SHORT_SIDE = 19
 
         private const val MAX_SPAWN_ATTEMPTS = 200
+
+        /** Cells one Endless hail stone occupies (its span squared). */
+        private const val HAIL_STONE_CELLS = EndlessWaves.HAIL_SPAN * EndlessWaves.HAIL_SPAN
 
         /** Rows/columns kept clear next to every border for symmetric obstacles. */
         private const val OBSTACLE_MARGIN = 2

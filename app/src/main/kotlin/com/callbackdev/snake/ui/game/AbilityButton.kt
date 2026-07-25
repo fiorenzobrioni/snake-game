@@ -51,14 +51,22 @@ import kotlin.math.sin
  * the HUD's growth ring), a glassy token body, and a hand-drawn glyph of a tail
  * being cut loose. While charging it is quiet and unclickable - a stray tap
  * during play must cost nothing, and with tap-to-turn steering it has to let the
- * touch through to the board. The moment it fills it lights up, breathes, and
- * throws a soft halo, so the escape valve announces itself without a word.
+ * touch through to the board.
+ *
+ * Because it sits *over* the play area, it is deliberately built to be looked
+ * through: no opaque plate, a barely-there body, and no halo bleeding onto the
+ * board - the ring and the glyph carry it. And when the snake actually comes into
+ * that corner ([dimmed]) it thins out to a whisper, so the button never hides the
+ * cells the player is steering through. It still brightens the moment it charges,
+ * which is the one thing it has to say.
  */
 @Composable
 fun AbilityButton(
     charge: Float,
     ready: Boolean,
     reduceMotion: Boolean,
+    /** True while the snake is in this corner: the button all but disappears. */
+    dimmed: Boolean,
     onUse: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -87,6 +95,17 @@ fun AbilityButton(
         label = "shedBreathValue",
     )
     val pulse = if (!ready || reduceMotion) 0f else breath
+    // How present the button is: readable when charged, quiet while filling, and
+    // almost gone while the snake is threading through its corner.
+    val opacity by animateFloatAsState(
+        targetValue = when {
+            dimmed -> DimmedAlpha
+            ready -> ReadyAlpha
+            else -> IdleAlpha
+        },
+        animationSpec = tween(durationMillis = 220),
+        label = "shedOpacity",
+    )
     val pop = remember { Animatable(1f) }
     LaunchedEffect(ready) {
         if (ready && !reduceMotion) {
@@ -108,7 +127,7 @@ fun AbilityButton(
                 val s = press * pop.value
                 scaleX = s
                 scaleY = s
-                alpha = if (ready) 1f else 0.55f
+                alpha = opacity
             }
             // Only clickable once charged, so an accidental tap while it is still
             // filling reaches the board (tap-to-turn) instead of being swallowed.
@@ -127,7 +146,13 @@ fun AbilityButton(
     }
 }
 
-private val ButtonSize = 64.dp
+/** Comfortably tappable but no bigger: it is parked on top of the play area. */
+private val ButtonSize = 52.dp
+
+/** How opaque the token is while filling, once charged, and while the snake is under it. */
+private const val IdleAlpha = 0.40f
+private const val ReadyAlpha = 0.88f
+private const val DimmedAlpha = 0.14f
 
 /**
  * The token: halo, charge ring, body, bevel and the tail-cut glyph. Kept as one
@@ -141,28 +166,20 @@ internal fun DrawScope.drawShedToken(accent: Color, fill: Float, ready: Boolean,
     val ringWidth = r * 0.13f
     val bodyRadius = r - ringWidth * 1.9f
 
-    // Halo: only once charged, breathing with the pulse.
-    if (ready) {
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(accent.copy(alpha = 0.34f + 0.16f * pulse), Color.Transparent),
-                center = center,
-                radius = r * (1.05f + 0.12f * pulse),
-            ),
-            radius = r * (1.05f + 0.12f * pulse),
-            center = center,
-        )
-    }
-
-    // Grounding disc, so the token reads over any terrain.
-    drawCircle(color = Color(0xFF0A0E10).copy(alpha = 0.78f), radius = bodyRadius, center = center)
-    // Body: top-lit glass, brighter and tinted once ready.
+    // No halo: a bloom out here would wash over the board cells around the corner,
+    // which is exactly what this button must not do. Once charged, the ring itself
+    // breathes instead (below).
+    //
+    // A whisper of a plate - just enough to keep the glyph legible over a bright
+    // terrain, far too little to hide what is under it.
+    drawCircle(color = Color(0xFF0A0E10).copy(alpha = 0.30f), radius = bodyRadius, center = center)
+    // Body: top-lit glass, tinted once ready, always see-through.
     drawCircle(
         brush = Brush.verticalGradient(
             colors = if (ready) {
-                listOf(accent.copy(alpha = 0.55f), accent.copy(alpha = 0.16f))
+                listOf(accent.copy(alpha = 0.30f), accent.copy(alpha = 0.08f))
             } else {
-                listOf(Color.White.copy(alpha = 0.10f), Color.White.copy(alpha = 0.02f))
+                listOf(Color.White.copy(alpha = 0.07f), Color.White.copy(alpha = 0.02f))
             },
             startY = center.y - bodyRadius,
             endY = center.y + bodyRadius,
@@ -170,9 +187,9 @@ internal fun DrawScope.drawShedToken(accent: Color, fill: Float, ready: Boolean,
         radius = bodyRadius,
         center = center,
     )
-    // Bevel: a bright top arc and a soft bottom shadow give the token depth.
+    // Bevel: a bright top arc gives the token just enough depth to look pressable.
     drawArc(
-        color = Color.White.copy(alpha = if (ready) 0.45f else 0.20f),
+        color = Color.White.copy(alpha = if (ready) 0.35f else 0.16f),
         startAngle = 200f,
         sweepAngle = 140f,
         useCenter = false,
@@ -191,9 +208,16 @@ internal fun DrawScope.drawShedToken(accent: Color, fill: Float, ready: Boolean,
         style = Stroke(width = ringWidth),
     )
     if (fill > 0.001f) {
+        // Once charged the ring itself pulses - the "I am ready" signal, kept
+        // inside the button's own footprint instead of glowing onto the board.
+        val ringAlpha = if (ready) 0.80f + 0.20f * pulse else 1f
         drawArc(
             brush = Brush.sweepGradient(
-                colors = listOf(accent.copy(alpha = 0.75f), accent, accent.copy(alpha = 0.75f)),
+                colors = listOf(
+                    accent.copy(alpha = 0.75f * ringAlpha),
+                    accent.copy(alpha = ringAlpha),
+                    accent.copy(alpha = 0.75f * ringAlpha),
+                ),
                 center = center,
             ),
             startAngle = -90f,
@@ -201,7 +225,7 @@ internal fun DrawScope.drawShedToken(accent: Color, fill: Float, ready: Boolean,
             useCenter = false,
             topLeft = Offset(center.x - ringRadius, center.y - ringRadius),
             size = Size(ringRadius * 2f, ringRadius * 2f),
-            style = Stroke(width = ringWidth, cap = StrokeCap.Round),
+            style = Stroke(width = ringWidth * if (ready) 1.25f else 1f, cap = StrokeCap.Round),
         )
     }
 

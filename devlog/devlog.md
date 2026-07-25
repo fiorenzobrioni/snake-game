@@ -13,6 +13,46 @@ Suggested format for each entry:
 
 ---
 
+## 2026-07-25 - Step 6.15.9: hail stones, a see-through Shed button, and the in-app Guide
+
+**Done:**
+- **Hail is a 2x2 stone.** A single-cell hail block read as a stray piece of snake and was easy to miss
+  on a busy board. Hail now lands as a `HAIL_SPAN`-square cluster of `Debris` cells (max 4 stones), and
+  `Debris` carries a `DebrisKind` so the renderer can give hail its own material: an icy slab filling
+  its cell exactly, with a cold bloom, a hard bright rim, a lit face and facet lines. Four adjacent
+  cells merge into one chunky block whose seams read as facets in the ice.
+- **The Shed button stopped hiding the corner.** 52dp instead of 64, **no halo at all**, a 0.30-alpha
+  plate instead of 0.78, a translucent body - and it fades to 0.14 whenever the head comes within
+  `ABILITY_CORNER_CELLS` of that corner. The "ready" signal moved from the halo into the charge ring, so
+  it stays inside the button's own footprint.
+- **New in-app Guide** (`ui/help/HowToPlayScreen`), reached from a hand-drawn `MenuIcons.Guide` button
+  between Settings and Credits on the main menu: nine collapsible chapters covering the basics, the
+  length economy, food, specials, the modes, the waves, scoring, controls and progress.
+
+**Decisions:**
+- **The hail drawing had to grow with its hitbox, not past it.** The tempting fix was to draw a bigger
+  block over a one-cell hazard - which would have been a lie about where the lethal cells are. Making the
+  stone genuinely 2x2 keeps the drawing honest and, as a bonus, gives it the same footprint as a maxi
+  food or a power-up token, so it belongs to the game's existing visual vocabulary.
+- **The Shed button stays where the thumb is.** Moving it below the board would have ended the occlusion
+  outright, but it would also have cost every player board height (the control row is empty under the
+  swipe and tap schemes) and put a primary action away from where the hand already rests. Making it
+  see-through, smaller, halo-free and self-effacing solves the actual complaint without that price.
+- **Every number in the Guide is read from the model.** A hand-written manual rots at the first
+  re-tune - and we have re-tuned the growth three times in one day. `GrowthRate.entries` renders its own
+  table, `GameEngine.SHED_FRACTION` writes its own percentage, `EndlessWaves` states its own schedule.
+  The prose explains *why*; the constants state *what*.
+- **The Guide goes on the menu, not into Settings.** Settings already hosts the replayable tour, and
+  burying a reference two screens deep is how references go unread.
+- The specials chapter names each effect using the **same strings the HUD chips use**, rather than emoji
+  or a second set of glyph drawings: the tour's legend already shows the real tokens.
+
+**Issues:** none.
+
+**Next:** the pending device pass on the wave cadence and the ladder thresholds.
+
+---
+
 ## 2026-07-25 - Step 6.15.8: ghost off by default, skin unlocks removed
 
 **Done:**

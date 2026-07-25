@@ -810,6 +810,26 @@ snake-game/
       are free from the start: a look is expression, not a reward to grind for. `SkinTest` lost its four
       unlock cases; README, the onboarding copy and this plan were corrected.
 
+- [x] **Step 6.15.9 - Hail stones, a see-through Shed button, and the in-app Guide.** (1) **Hail is
+      now a 2x2 stone** (`EndlessWaves.HAIL_SPAN`, four `Debris` cells per stone, `HAIL_MAX_STONES` = 4)
+      instead of a single cell: a lone 1-cell block read as a stray snake fragment and was easy to miss.
+      `Debris` gained a `DebrisKind` (`Tail` / `Hail`) so the renderer can draw hail as its own material -
+      an icy slab filling its cell exactly (the drawing *is* the hitbox), with a cold bloom, a bright rim,
+      a lit face and facet lines; four adjacent cells butt into one chunky block whose seams read as ice
+      facets. Tail debris still renders as snake body. (2) The **Shed button was hiding the board corner**:
+      it is now 52dp (from 64), has **no halo** (the bloom was painting over the cells around it), a barely
+      there plate (0.30 alpha, from 0.78) and a translucent body - and it **fades to 0.14 alpha whenever
+      the head is within `ABILITY_CORNER_CELLS` of that corner**, so it gets out of the way exactly when
+      it would matter. The "ready" pulse moved from the halo into the ring, staying inside the button's own
+      footprint. (3) New **`ui/help/HowToPlayScreen`** - the rules reference, reached from a hand-drawn
+      `MenuIcons.Guide` button placed between Settings and Credits on the main menu. Nine collapsible
+      chapters (basics, length/risk/Shed, food, specials, modes, waves, scoring, controls, progress) whose
+      **every figure is interpolated from the model's constants** (`GrowthRate.entries`,
+      `GameState.RISK_FULL_FILL`, `GameEngine.SHED_FRACTION`, `EndlessWaves`, `LevelsMode`,
+      `Achievement.entries.size`, ...), so it re-tunes itself with the balance and cannot rot into a lie -
+      the usual fate of a hand-written manual. It complements the tour rather than repeating it: the cards
+      sell why to play, the guide explains how it works.
+
 ### Phase 7 - Play Store distribution & cleanup
 
 - [x] **Step 7.0** - Pre-publication polish: default **Back during play** is now **Keep playing** (fresh

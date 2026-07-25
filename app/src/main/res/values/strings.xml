@@ -153,6 +153,78 @@
     <string name="settings_ghost_replay">Ghost of your best run</string>
     <string name="settings_how_to_play">How to play</string>
 
+    <!-- In-app Guide (reference): every number is interpolated from the model's
+         own constants, so the copy can never drift from the rules. -->
+    <string name="guide_title">Guide</string>
+    <string name="menu_guide">Guide</string>
+    <string name="guide_intro">How everything actually works. Tap a chapter to open it.</string>
+    <string name="guide_footer">Prefer the short version? Replay the five-minute tour from Settings, under How to play.</string>
+
+    <string name="guide_basics_title">The basics</string>
+    <string name="guide_basics_goal">Steer the snake, eat food, score. It never stops moving and it never stops growing.</string>
+    <string name="guide_basics_death">You die on the walls, on obstacles, on level walls, on lingering debris and on your own body. In Zen the edges wrap instead, so only your own body can end a run.</string>
+    <string name="guide_basics_grace">A beat-late turn still counts: your first lethal step freezes the head for one tick instead of killing you. That dodge re-arms with your next safe move.</string>
+    <string name="guide_basics_floor">However much you trim, the snake never drops below %1$d segments.</string>
+
+    <string name="guide_length_title">Length, risk and Shed</string>
+    <string name="guide_length_growth">Your snake lengthens on its own. The Growth dial on the Custom Game screen sets how fast, and each step declares a score multiplier, because a faster clock is a harder run.</string>
+    <string name="guide_length_growth_row">+1 segment every %1$d steps · %2$s score</string>
+    <string name="guide_length_growth_off">Classic rules: only food changes your length · x1 score</string>
+    <string name="guide_length_growth_scaling">Those step counts are for the Explorer board and scale with its size: a Colossal arena grows you more often, a Cozy one less. Zen grows gentler than every other mode, and a Campaign respawn restarts the clock.</string>
+    <string name="guide_length_risk">Every point is multiplied by how much of the board your body covers - from x1 on an empty board up to x%2$d once you fill %1$d%% of the playable cells. Obstacles and level walls count against that area, so a cluttered board pays out sooner.</string>
+    <string name="guide_length_risk_hud">Past a certain heat the HUD shows the live multiplier next to your combo and the board frame smoulders. That is the game telling you the bet is on.</string>
+    <string name="guide_length_shed">Shed: eating charges the ring in the board corner - %1$d bites, or half that if you keep a combo of %2$d or better alive. Tap it when charged to cut %3$d%% of your tail loose.</string>
+    <string name="guide_length_shed_payout">The Shed pays out for the risk you were carrying at the moment of the cut, so holding on longer really does pay more - but the multiplier collapses with the length you just cut. That trade is the whole decision.</string>
+
+    <string name="guide_food_title">Food</string>
+    <string name="guide_food_grow">Green pieces pay the score and add a little length. Four strengths, from a nibble to a feast.</string>
+    <string name="guide_food_shrink">Warm pieces cut your tail back. They pay far less than a bite, but with the growth clock running they are how you buy room.</string>
+    <string name="guide_food_shrink_cap">One piece can never cut more than %1$d%% of your current length. The cap only bites when you are already short: on a long snake it is wider than the biggest piece in the game, so a lucky find is worth all of what it looks like.</string>
+    <string name="guide_food_maxi">Maxi pieces (2x2) double the effect of their standard counterpart.</string>
+    <string name="guide_food_mystery">A \"?\" piece hides a random amount of either kind. The amount is decided when it appears, not when you eat it.</string>
+    <string name="guide_food_vanish">Ignore a regular piece for about %1$d seconds and it fades away, reappearing elsewhere. Special pieces linger far longer. Bigger boards give everything proportionally more time.</string>
+
+    <string name="guide_specials_title">Power-ups and hazards</string>
+    <string name="guide_specials_intro">Deeper into a run, rare 2x2 special pieces appear. Hazards are ringed in red, and the piece flashes a warning the tick before you would eat it.</string>
+    <string name="guide_specials_lightning">Lightning: speeds the snake up for a frantic burst.</string>
+    <string name="guide_specials_star">Star: invincible - pass straight through walls, obstacles and yourself.</string>
+    <string name="guide_specials_freeze">Freeze: slows time right down, and no new specials appear while it lasts.</string>
+    <string name="guide_specials_jackpot">Jackpot: a large score bonus plus a few segments.</string>
+    <string name="guide_specials_quake">Earthquake: shakes the board for several seconds. Nothing else - but good luck reading it.</string>
+    <string name="guide_specials_explosion">Explosion: splits the snake; the severed tail stays lethal until it fades.</string>
+    <string name="guide_specials_snail">Snail: slows you to a crawl and takes your rhythm with it.</string>
+    <string name="guide_specials_hazards_off">Prefer a gentler game? Turn Hazards off in Settings and only the helpful ones appear. Special frequency is a setting too.</string>
+
+    <string name="guide_modes_title">The four modes</string>
+    <string name="guide_modes_endless">Endless: one life, no ceiling. The pace climbs through announced speed tiers, and waves sweep the board (see below).</string>
+    <string name="guide_modes_time_attack">Time Attack: score as much as you can in %1$d seconds. Exclusive clock pieces stretch or shave your remaining time, your chosen pace declares a score multiplier, and the last %2$d seconds are Fever Time at x%3$d points.</string>
+    <string name="guide_modes_campaign">Campaign: %1$d hand-shaped boards, %2$d foods to clear each, %3$d lives. Every completed lap speeds the next one up. Gates open and close, teleport pads move you across the board, and an exclusive piece grants an extra life. Reached levels become checkpoints you can start from - practice starts are not recorded.</string>
+    <string name="guide_modes_zen">Zen: a borderless torus. No obstacles, no hazards, no power-ups, no ramp - the pace is the one you pick and only your own body can end the flow.</string>
+
+    <string name="guide_waves_title">Endless waves</string>
+    <string name="guide_waves_intro">An Endless run plays undisturbed for %1$d seconds, then a wave sweeps the board every %2$d seconds, lasting %3$d each. They rotate in a fixed order, so you can plan around them.</string>
+    <string name="guide_waves_feast">The board floods with food - %1$d pieces at once. Gorge, or hold your length and let the risk bonus run.</string>
+    <string name="guide_waves_drought">Food dries up to %1$d piece. The growth clock keeps ticking: pure survival.</string>
+    <string name="guide_waves_hail">Lethal ice blocks rain down and melt away. None ever lands within %1$d cells of your head, so it is a route to solve, not an ambush.</string>
+
+    <string name="guide_score_title">Scoring</string>
+    <string name="guide_score_formula">A grow piece pays %1$d points per segment, multiplied by your combo (capped at x%2$d), by the risk bonus and by the growth dial\'s multiplier.</string>
+    <string name="guide_score_combo">The combo climbs with each bite taken before the streak lapses, and the HUD warms as it goes. Shrinking food neither feeds nor breaks it.</string>
+    <string name="guide_score_shrink">Trimming pays a small amount that scales with the length you cut, so cutting a long tail is worth something.</string>
+    <string name="guide_score_records">Your best is kept per mode, difficulty and board size. Beating it mid-run is announced on the spot.</string>
+
+    <string name="guide_controls_title">Controls</string>
+    <string name="guide_controls_schemes">Three schemes in Settings: swipe anywhere on the board (the default, with adjustable sensitivity), a compact four-wedge dial, or tap the left/right half of the board to turn.</string>
+    <string name="guide_controls_reversal">A 180-degree reversal is always refused, so you can never fold straight back into yourself.</string>
+    <string name="guide_controls_pause">Pause from the HUD. Resuming runs a 3-2-1 countdown with a beacon on your head, so you get your bearings before the snake moves.</string>
+    <string name="guide_controls_back">What the system Back gesture does during play is a setting: pause, or keep playing (in which case a back swipe steers instead).</string>
+
+    <string name="guide_progress_title">Progress</string>
+    <string name="guide_progress_achievements">%1$d achievements on a %2$d-rank ladder. A rank reveals once you have earned enough badges overall, so the goals arrive a handful at a time.</string>
+    <string name="guide_progress_missions">%1$d missions rotate every day and any mode counts toward them.</string>
+    <string name="guide_progress_daily">The Daily Challenge is the same seeded run for everyone, with a twist of the day - beat it daily to build a streak. Random Challenge is a one-off shuffle that records nothing.</string>
+    <string name="guide_progress_ghost">Want something to chase? Turn Ghost of your best run on in Settings and a translucent replay of your best race runs alongside you.</string>
+
     <!-- First-run onboarding / tutorial (redesigned in 1.2.0) -->
     <string name="onboarding_skip">Skip</string>
     <string name="onboarding_next">Next</string>

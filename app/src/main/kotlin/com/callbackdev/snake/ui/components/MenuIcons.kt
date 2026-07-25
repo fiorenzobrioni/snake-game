@@ -106,6 +106,42 @@ object MenuIcons {
         }
     }
 
+    /**
+     * Guide: an open book with a question mark on the page - "how does this work?"
+     * rather than the bare "?" of a help tooltip, so it reads as a manual next to
+     * the gear and the info dot.
+     */
+    val Guide: ImageVector by lazy {
+        icon("MenuGuide") {
+            // The two open pages, meeting at a spine.
+            path(fill = SolidColor(Color.White)) {
+                moveTo(3.2f, 5.2f)
+                curveTo(6.1f, 4.1f, 9f, 4.1f, 11.3f, 5.6f)
+                lineTo(11.3f, 19.4f)
+                curveTo(9f, 18.1f, 6.1f, 18.1f, 3.2f, 19f)
+                close()
+                moveTo(20.8f, 5.2f)
+                curveTo(17.9f, 4.1f, 15f, 4.1f, 12.7f, 5.6f)
+                lineTo(12.7f, 19.4f)
+                curveTo(15f, 18.1f, 17.9f, 18.1f, 20.8f, 19f)
+                close()
+            }
+            // The question mark, punched dark into the right-hand page.
+            path(
+                stroke = SolidColor(Color.Black),
+                strokeLineWidth = 1.5f,
+                strokeLineCap = StrokeCap.Round,
+            ) {
+                moveTo(15f, 9.4f)
+                curveTo(15f, 7.6f, 18.4f, 7.6f, 18.4f, 9.8f)
+                curveTo(18.4f, 11.4f, 16.7f, 11.6f, 16.7f, 13.2f)
+            }
+            path(fill = SolidColor(Color.Black)) {
+                circle(16.7f, 15.4f, 0.95f)
+            }
+        }
+    }
+
     /** Achievements: a ribboned medal ring with a star at its heart. */
     val Medal: ImageVector by lazy {
         icon("MenuMedal") {

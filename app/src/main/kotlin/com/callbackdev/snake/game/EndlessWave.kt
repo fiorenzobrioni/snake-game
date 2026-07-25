@@ -25,8 +25,8 @@ enum class EndlessWave(val displayName: String) {
     Drought("Drought"),
 
     /**
-     * Hailstorm: lethal blocks rain onto the board, then melt away. They never
-     * land next to the head, so it is a puzzle to route around, not an ambush.
+     * Hailstorm: chunky lethal stones rain onto the board, then melt away. They
+     * never land next to the head, so it is a puzzle to route around, not an ambush.
      */
     Hailstorm("Hailstorm"),
 }
@@ -53,16 +53,23 @@ object EndlessWaves {
     /** Simultaneous foods during [EndlessWave.Drought]. */
     const val DROUGHT_FOOD_COUNT = 1
 
-    /** A hail block lands every this many ticks while [EndlessWave.Hailstorm] runs. */
+    /** A hail stone lands every this many ticks while [EndlessWave.Hailstorm] runs. */
     const val HAIL_INTERVAL_TICKS = 14
 
-    /** At most this many hail blocks may be on the board at once. */
-    const val HAIL_MAX_BLOCKS = 8
+    /**
+     * Cells on a side of one hail stone. A stone is a 2x2 block - the same
+     * footprint as a maxi food or a power-up token, so it carries real visual
+     * weight and reads as a hazard at a glance instead of a stray pellet.
+     */
+    const val HAIL_SPAN = 2
 
-    /** Cells around the head kept clear of hail, so a block never lands on the snake's nose. */
+    /** At most this many hail *stones* (each [HAIL_SPAN] squared cells) at once. */
+    const val HAIL_MAX_STONES = 4
+
+    /** Cells around the head kept clear of hail, so a stone never lands on the snake's nose. */
     const val HAIL_HEAD_CLEARANCE = 4
 
-    /** How long a hail block stays lethal before melting (outlasting the wave a little). */
+    /** How long a hail stone stays lethal before melting (outlasting the wave a little). */
     const val HAIL_LIFETIME_MS = 15_000L
 
     /** The wave running at [playedMs], or null between waves (and before the first). */
