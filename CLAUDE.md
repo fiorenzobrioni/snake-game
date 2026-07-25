@@ -64,7 +64,9 @@ To keep the codebase maintainable, agents must respect these structural rules:
 - **Branch**: develop on the feature branch assigned for the task. Do not push to `main` without explicit permission.
 - **Plan-driven**: before adding a feature, check `PLANNING.md` for the matching step and complete steps in order. Every step must remain **buildable and testable** on its own.
 - **Assets**: new graphic/audio/font/shader assets must be free with a compatible license (MIT/CC0/CC-BY). Record source and license in `docs/CREDITS.md` in the same change.
-- **Secrets**: never commit keystores or signing material (`*.jks`, `*.keystore`, `keystore.properties` are git-ignored). `local.properties` is machine-specific and git-ignored.
+- **Secrets**: never commit **release** keystores or signing material (`*.jks`, `*.keystore`, `keystore.properties` are git-ignored). `local.properties` is machine-specific and git-ignored.
+- **Shared debug keystore**: `keystore/debug.keystore` is the one deliberate exception, committed and wired into `signingConfigs.debug` in `app/build.gradle.kts`. It makes every build - local or CI - carry the same signature, so a new debug APK updates the test device in place instead of forcing an uninstall that wipes progress. Never regenerate or replace it: it is a debug-only key with no publishing value and needs no CI secret.
+- **Version bumps**: `versionCode` +1 and a matching `versionName` are part of the release change itself (see the Releases section of `PLANNING.md`), not a separate build.
 
 ## Documentation files
 
@@ -90,6 +92,7 @@ Keeping these current is part of the task, not an afterthought.
 | `app/src/main/kotlin/com/callbackdev/snake/ui/theme/` | Material 3 theme (Color/Theme/Type) |
 | `app/build.gradle.kts` | Android application module config |
 | `gradle/libs.versions.toml` | Dependency/version catalog |
+| `keystore/debug.keystore` | Shared debug signing key (committed on purpose; debug-only) |
 | `app/src/main/AndroidManifest.xml` | Single portrait `MainActivity`, launcher |
 | `docs/CREDITS.md` | Asset sources & licenses |
 | `README.md` | User documentation (English) |

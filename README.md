@@ -387,6 +387,13 @@ baseline so AGSL GPU effects and other recent APIs are available without fallbac
 > The Android SDK location is read from `local.properties` (created by Android Studio) or the
 > `ANDROID_HOME` environment variable.
 
+> **Debug signing.** Debug builds are signed with the shared keystore committed at
+> `keystore/debug.keystore` (alias `androiddebugkey`, password `android`), not with each machine's
+> personal `~/.android/debug.keystore`. Every build - local, CI or the APK attached to a release -
+> therefore carries the same signature, so a newer APK installs **over** the previous one and keeps
+> your scores and settings. A debug certificate has no publishing value, which is why committing it
+> is safe; release signing is a separate, never-committed keystore (Phase 7).
+
 ---
 
 ## 🎮 How to play
@@ -493,7 +500,8 @@ For architecture notes, conventions and the file map, see [`CLAUDE.md`](CLAUDE.m
 The app includes a **Credits** screen, reachable from the main menu, summarizing authorship and asset
 attribution. In short:
 
-- **Author** - Fiorenzo Brioni. Released as free software under the **GNU GPL v3.0**.
+- **Author** - published under the **Callback Dev** name; copyright Fiorenzo Brioni. Released as free
+  software under the **GNU GPL v3.0**.
 - **Music** - the looping menu and gameplay tracks are **generated with Google Gemini** (Lyria), used
   in accordance with [Google's generative-AI terms of service](https://policies.google.com/terms/generative-ai).
   They are bundled as OGG/Vorbis and post-processed in-repo (silence trimmed and an equal-power

@@ -106,7 +106,7 @@
     <string name="credits_title">Credits</string>
     <!-- "Version <name>" -->
     <string name="credits_version">Version %1$s</string>
-    <string name="credits_author">Created by Fiorenzo Brioni</string>
+    <string name="credits_author">Developed by Callback Dev</string>
     <string name="credits_copyright">© 2026 Fiorenzo Brioni</string>
     <string name="credits_tagline">Inspired by the classic Snake, reimagined as a native Android game - a personal project for learning Google Antigravity and Claude Code, and a fond nod to a childhood favourite.</string>
     <string name="credits_section_license">License</string>
