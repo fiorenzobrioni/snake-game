@@ -13,6 +13,31 @@ Suggested format for each entry:
 
 ---
 
+## 2026-07-25 - Step 6.15.11: the announcement plate goes opaque
+
+**Done:** the in-run announcement banner no longer washes the HUD through itself. Its plate was
+`Color.Black` at 45% alpha; it is now fully opaque - a dark base tinted with the event's accent, a
+hairline rim in the same accent and a 10dp shadow lifting it off the HUD.
+
+**Decisions:**
+- **The transparency was paying for something that no longer exists.** At 45% it was the right call while
+  the banner sat over the playfield: a soft label was cheaper than hidden cells. Now that it sits over the
+  HUD, the only thing showing through is the score line - which can wait a beat - so the alpha was buying
+  nothing and charging legibility for it.
+- **Opaque, not flat.** A plain filled rectangle would read as a system toast dropped onto the game. The
+  slab is built from the same vocabulary as every other surface here (top-lit gradient, accent tint, thin
+  rim, shadow) so it still belongs to the board.
+- **Fixed base tones instead of `colorScheme`.** The announcement accents (Fever amber, Surge gold, Shed
+  cyan, the wave colours) are bright arcade colours drawn to sit on a dark ground. Pulling the plate from
+  the scheme would make it pale in the light theme and leave those accents floating on it, so the slab
+  stays dark in both themes and the message keeps the same weight.
+
+**Issues:** none.
+
+**Next:** the pending device pass on the wave cadence and the ladder thresholds.
+
+---
+
 ## 2026-07-25 - Step 6.15.10: Shed clearance in dp, banners over the HUD, no leftover frame
 
 **Done:**

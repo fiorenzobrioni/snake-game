@@ -844,6 +844,14 @@ snake-game/
       nothing Compose observes and **the last painted frame stayed on screen** - the finished run's sparks
       and "+N" labels lingering behind the setup and game-over overlays. One `frameNanos` bump after the
       clear forces the redraw.
+- [x] **Step 6.15.11 - The announcement plate goes opaque.** Follow-up to 6.15.10 (2). The banner's
+      half-transparent wash was the right trade *over the board*, where seeing the cells underneath was
+      worth a slightly soft label. Over the HUD it buys nothing and costs legibility: the score digits
+      showing through the message made both hard to read. The plate is now fully opaque - a dark base
+      (`BannerPlateTop`/`BannerPlateBottom`) tinted with the event's accent, a hairline rim of that accent
+      and a 10dp shadow, so it reads as a slab lifted off the HUD instead of a wash blended into it. The
+      base tones are fixed rather than scheme-derived, because the announcement accents are bright arcade
+      colours drawn for a dark ground: the slab stays dark in the light theme too.
 
 ### Phase 7 - Play Store distribution & cleanup
 

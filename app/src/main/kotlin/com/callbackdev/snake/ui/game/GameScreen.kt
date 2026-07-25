@@ -49,10 +49,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -1034,9 +1037,18 @@ private const val FEVER_MUSIC_TEMPO = 1.12f
 
 /**
  * A short, centred in-run announcement ("Fever ×2!", "Speed 5!", "New record!"):
- * punches in over the top of the board, holds a beat and fades. Under
+ * punches in over the top of the HUD, holds a beat and fades. Under
  * reduce-motion it appears and disappears without the punch. One banner at a
  * time — a newer event simply restarts the animation with the new text.
+ *
+ * The plate is **opaque**. It used to be a half-transparent wash, which was the
+ * right trade while the banner sat over the play area: seeing the cells under it
+ * mattered more than a perfectly crisp label. Now that it lives over the HUD that
+ * trade buys nothing - the score line it covers can wait a beat - and letting the
+ * digits underneath show through the message only made both harder to read. So it
+ * is a solid slab of the game's own material: a dark base tinted with the event's
+ * accent, a hairline rim of the same accent, and a shadow to lift it clear of the
+ * HUD instead of blending into it.
  */
 @Composable
 private fun AnnouncementBanner(
@@ -1082,19 +1094,43 @@ private fun AnnouncementBanner(
             alpha = t.coerceIn(0f, 1f)
         },
     ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = color,
-            maxLines = 1,
+        Box(
             modifier = Modifier
-                .clip(RoundedCornerShape(14.dp))
-                .background(Color.Black.copy(alpha = 0.45f))
-                .padding(horizontal = 18.dp, vertical = 6.dp),
-        )
+                .shadow(elevation = 10.dp, shape = BannerShape)
+                .background(
+                    brush = Brush.verticalGradient(
+                        listOf(
+                            lerp(BannerPlateTop, color, 0.18f),
+                            lerp(BannerPlateBottom, color, 0.06f),
+                        ),
+                    ),
+                    shape = BannerShape,
+                )
+                .border(width = 1.dp, color = color.copy(alpha = 0.5f), shape = BannerShape)
+                .padding(horizontal = 18.dp, vertical = 7.dp),
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = color,
+                maxLines = 1,
+            )
+        }
     }
 }
+
+/** The announcement plate: shared by its background, its rim and its shadow. */
+private val BannerShape = RoundedCornerShape(14.dp)
+
+/**
+ * The plate's base tones, top-lit like every other surface in the game. Fixed
+ * rather than taken from the colour scheme: the announcement accents are bright
+ * arcade colours drawn to sit on a dark board, so the slab stays dark in the light
+ * theme too and the message keeps the same weight in both.
+ */
+private val BannerPlateTop = Color(0xFF171E24)
+private val BannerPlateBottom = Color(0xFF0A0D11)
 
 /**
  * The Shed button's reach from the board's bottom-end corner: its own size plus the
