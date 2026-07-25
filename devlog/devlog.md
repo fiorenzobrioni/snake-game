@@ -13,6 +13,52 @@ Suggested format for each entry:
 
 ---
 
+## 2026-07-25 - Steps 6.15.5-6.15.7: Endless waves, the achievement ladder, onboarding & header polish
+
+**Done:**
+- **Endless waves** (Step 6.15.5). New pure `game/EndlessWave.kt`: **Feast** (9 foods on the board),
+  **Drought** (1) and **Hailstorm** (lethal blocks raining in and melting) on a fixed rotation - 12 s
+  long, first at 45 s, one every 45 s after. Announced by name, given a voice from the existing SFX
+  palette, and counted down by a chip in the reserved effect-timer row (`WaveChip`, sharing a new
+  `TimerChip` body with the power-up chips). Endless only.
+- **The achievement career ladder** (Step 6.15.6). `game/AchievementTier.kt` groups all 38 badges into
+  five ranks - Hatchling, Forager, Stalker, Constrictor, Mythic - revealed by *total* badges earned.
+  The Achievements screen now leads with a rank card and a bar to the next rank, groups the badges by
+  tier with earned counts, and shows sealed tiers as cards that state the cost and the number of feats
+  inside. A promotion is celebrated on the game-over overlay.
+- **Onboarding refresh** (Step 6.15.7). Six cards instead of five: the new **"Length is the game"**
+  card teaches the growth clock, the risk bonus and the Shed button, using the growth ring, an `x5`
+  badge and the **real** `drawShedToken` renderer. Endless now names its waves, the meta card names the
+  five-rank ladder and the new grow/trim missions, and the welcome card sells the risk bet.
+- **Custom Game header aligned** with every other screen: pinned at the very top with the selectors
+  scrolling below, and the HUD alpha-hidden while `Ready`.
+
+**Decisions:**
+- **Waves are a pure function of `playedMs`.** No wave state to carry, persist or resync - the clock
+  *is* the schedule, which also keeps a seeded run reproducible and makes the whole thing testable
+  without running a game.
+- **A fixed rotation, not a random draw.** A rhythm the player can learn is a rhythm they can plan
+  around; random events at this cadence would read as unfairness rather than as pacing.
+- **Hail is a route, not an ambush**: nothing lands within four cells of the head, never on food, and
+  the count is capped - the blocks reuse the existing `Debris` timer so they melt on their own.
+- **The ladder gates on a total count, never on clearing the previous tier.** With mode-specific and
+  streak-based badges in the set, a "clear it all" gate would let one stubborn entry lock a player out
+  of the rest of the game for good. A unit test asserts every threshold is reachable from the badges
+  revealed below it.
+- **No skin tied to a rank.** It was the obvious reward, but `Skin.ALL_UNLOCKED_PREVIEW` currently
+  bypasses every unlock gate, so it would have been invisible code. The rank itself is the reward,
+  displayed where it is earned.
+- **The tour uses the real renderers** for the new card's badges, as the food and specials legends
+  already do - `drawShedToken` went `internal` rather than being copied, so the tutorial can never
+  drift from the button.
+
+**Issues:** none blocking. Worth noting the Custom Game header fix needed the HUD hidden as well as the
+header repositioned - with a translucent scrim, "pinned at the top" is not enough if something is still
+drawing above it.
+
+**Next:** device pass on the waves (the Hailstorm cadence is the one to watch) and on the ladder's
+reveal thresholds; then the pre-release checks in Phase 7.
+
 ## 2026-07-25 - Step 6.15.4: the risk bonus and the Shed ability
 
 **Done:**

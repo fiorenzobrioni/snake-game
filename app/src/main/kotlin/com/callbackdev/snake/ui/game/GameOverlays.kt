@@ -14,6 +14,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -129,183 +130,214 @@ fun ReadyOverlay(
     onPlay: () -> Unit,
     onBack: () -> Unit,
 ) {
-    OverlayScrim(alpha = 0.55f, horizontalPadding = 20.dp, verticalPadding = 16.dp) {
-        // The same header the other secondary screens wear (Settings, Records,
-        // Daily...): the back affordance lives top-left everywhere, so this
-        // screen is no longer the one place the player has to guess.
+    // The header is **pinned at the very top of the screen**, exactly where the
+    // other secondary screens put theirs (Settings, Records, Daily...), with the
+    // selectors scrolling in the space below it - rather than riding along inside
+    // the centred column, which left it hanging below the game HUD.
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(overlayScrimColor(0.55f)),
+    ) {
         ScreenHeader(
             title = stringResource(R.string.menu_custom_game),
             onBack = onBack,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
         )
-
-        // Every selector carries a one-line caption, so each choice explains
-        // itself; the mode's caption is its elevator pitch.
-        Section {
-            SettingCardGrid(
-                title = stringResource(R.string.menu_mode),
-                options = GameMode.entries.map { it.displayName },
-                selectedIndex = selectedMode.ordinal,
-                onSelect = { onModeSelected(GameMode.entries[it]) },
-                caption = stringResource(
-                    when (selectedMode) {
-                        GameMode.Endless -> R.string.menu_mode_hint_endless
-                        GameMode.TimeAttack -> R.string.menu_mode_hint_time_attack
-                        GameMode.Levels -> R.string.menu_mode_hint_campaign
-                        GameMode.Zen -> R.string.menu_mode_hint_zen
-                    },
-                ),
-            )
-        }
-
-        // Campaign has its own speed curve and shaped boards, and Zen is an open
-        // torus with no obstacles: in both, the difficulty selector stays in
-        // place but is disabled (and ignored by the ViewModel), so the menu
-        // layout never reflows.
-        val levelSelectable = selectedMode != GameMode.Levels && selectedMode != GameMode.Zen
-        Section {
-            SettingStepper(
-                title = stringResource(R.string.menu_level),
-                valueLabel = selectedLevel.displayName,
-                options = Level.entries.map { "${it.ordinal + 1}" },
-                optionNames = Level.entries.map { it.displayName },
-                selectedIndex = selectedLevel.ordinal,
-                onSelect = { onLevelSelected(Level.entries[it]) },
-                enabled = levelSelectable,
-                // Spell out what the difficulty actually changes in each mode — or
-                // why the selector sleeps (Campaign designs its own boards, Zen has
-                // no obstacles at all).
-                caption = when (selectedMode) {
-                    GameMode.Endless -> stringResource(
-                        R.string.menu_endless_level_hint,
-                        selectedLevel.obstacleCount,
-                        1 + selectedLevel.endlessTierHeadStart,
-                    )
-                    GameMode.TimeAttack -> stringResource(R.string.menu_ta_level_hint, selectedLevel.obstacleCount)
-                    GameMode.Levels -> stringResource(R.string.menu_campaign_level_hint)
-                    GameMode.Zen -> stringResource(R.string.menu_zen_level_hint)
-                },
-            )
-        }
-
-        // Snake speed is independent of the level's obstacle layout. Endless ramps
-        // its own pace and Levels paces by its speed cycle, so the selector is
-        // disabled (and ignored) in those modes - the layout never reflows. In
-        // Time Attack the pace also declares its score multiplier on the value;
-        // in Zen it simply sets the run's fixed rhythm.
-        val speedSelectable = selectedMode == GameMode.TimeAttack || selectedMode == GameMode.Zen
-        val showMultiplier = selectedMode == GameMode.TimeAttack
-        Section {
-            SettingStepper(
-                title = stringResource(R.string.menu_snake_speed),
-                valueLabel = if (showMultiplier) {
-                    "${selectedSnakeSpeed.displayName} · ${selectedSnakeSpeed.timeAttackFactorLabel}"
-                } else {
-                    selectedSnakeSpeed.displayName
-                },
-                options = SnakeSpeed.entries.map { "${it.ordinal + 1}" },
-                optionNames = SnakeSpeed.entries.map { it.displayName },
-                selectedIndex = selectedSnakeSpeed.ordinal,
-                onSelect = { onSnakeSpeedSelected(SnakeSpeed.entries[it]) },
-                enabled = speedSelectable,
-                caption = when (selectedMode) {
-                    GameMode.TimeAttack -> stringResource(R.string.menu_speed_multiplier_hint)
-                    GameMode.Zen -> stringResource(R.string.menu_zen_speed_hint)
-                    GameMode.Endless -> stringResource(R.string.menu_endless_speed_hint)
-                    GameMode.Levels -> stringResource(R.string.menu_campaign_speed_hint)
-                },
-            )
-        }
-
-        // Auto-growth: the dial that decides how long a run can last. It applies
-        // to every mode (Zen just grows gentler), and the caption states both the
-        // concrete rhythm on this board and the score multiplier it declares.
-        Section {
-            SettingStepper(
-                title = stringResource(R.string.menu_growth),
-                valueLabel = if (selectedGrowthRate.isOn) {
-                    "${selectedGrowthRate.displayName} · ${selectedGrowthRate.scoreFactorLabel}"
-                } else {
-                    selectedGrowthRate.displayName
-                },
-                options = GrowthRate.entries.map { "${it.ordinal + 1}" },
-                optionNames = GrowthRate.entries.map { it.displayName },
-                selectedIndex = selectedGrowthRate.ordinal,
-                onSelect = { onGrowthRateSelected(GrowthRate.entries[it]) },
-                caption = when {
-                    !selectedGrowthRate.isOn -> stringResource(R.string.menu_growth_hint_off)
-                    selectedMode == GameMode.Zen ->
-                        stringResource(R.string.menu_growth_hint_zen, growthIntervalTicks)
-                    else -> stringResource(R.string.menu_growth_hint, growthIntervalTicks)
-                },
-            )
-        }
-
-        Section {
-            SettingStepper(
-                title = stringResource(R.string.menu_board_scale),
-                valueLabel = selectedScale.label,
-                options = BoardScale.entries.map { "${it.ordinal + 1}" },
-                optionNames = BoardScale.entries.map { it.label },
-                selectedIndex = selectedScale.ordinal,
-                onSelect = { onScaleSelected(BoardScale.entries[it]) },
-                caption = stringResource(R.string.menu_scale_hint, selectedScale.cellsOnShortSide),
-            )
-        }
-
-        // Campaign checkpoints: once the player has reached past level 1, the
-        // run may start from any reached level. Starting past 1 is a practice
-        // run (records count from a Level 1 start), which the caption states.
-        // Up to fifteen numbers, so this one stays a scrolling chip row.
-        if (selectedMode == GameMode.Levels && campaignCheckpoint > 1) {
+        SetupContent(horizontalPadding = 20.dp) {
+            // Every selector carries a one-line caption, so each choice explains
+            // itself; the mode's caption is its elevator pitch.
             Section {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text(
-                        text = stringResource(R.string.menu_campaign_start),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.85f),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState())
-                            .padding(top = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
-                    ) {
-                        (1..campaignCheckpoint).forEach { levelIndex ->
-                            FilterChip(
-                                selected = levelIndex == campaignStartLevel,
-                                onClick = { onCampaignStartSelected(levelIndex) },
-                                label = { Text(levelIndex.toString()) },
-                            )
-                        }
-                    }
-                    Text(
-                        text = if (campaignStartLevel > 1) {
-                            stringResource(R.string.menu_campaign_practice_note)
-                        } else {
-                            stringResource(R.string.menu_campaign_start_hint)
+                SettingCardGrid(
+                    title = stringResource(R.string.menu_mode),
+                    options = GameMode.entries.map { it.displayName },
+                    selectedIndex = selectedMode.ordinal,
+                    onSelect = { onModeSelected(GameMode.entries[it]) },
+                    caption = stringResource(
+                        when (selectedMode) {
+                            GameMode.Endless -> R.string.menu_mode_hint_endless
+                            GameMode.TimeAttack -> R.string.menu_mode_hint_time_attack
+                            GameMode.Levels -> R.string.menu_mode_hint_campaign
+                            GameMode.Zen -> R.string.menu_mode_hint_zen
                         },
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.62f),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                    )
+                    ),
+                )
+            }
+
+            // Campaign has its own speed curve and shaped boards, and Zen is an open
+            // torus with no obstacles: in both, the difficulty selector stays in
+            // place but is disabled (and ignored by the ViewModel), so the menu
+            // layout never reflows.
+            val levelSelectable = selectedMode != GameMode.Levels && selectedMode != GameMode.Zen
+            Section {
+                SettingStepper(
+                    title = stringResource(R.string.menu_level),
+                    valueLabel = selectedLevel.displayName,
+                    options = Level.entries.map { "${it.ordinal + 1}" },
+                    optionNames = Level.entries.map { it.displayName },
+                    selectedIndex = selectedLevel.ordinal,
+                    onSelect = { onLevelSelected(Level.entries[it]) },
+                    enabled = levelSelectable,
+                    // Spell out what the difficulty actually changes in each mode — or
+                    // why the selector sleeps (Campaign designs its own boards, Zen has
+                    // no obstacles at all).
+                    caption = when (selectedMode) {
+                        GameMode.Endless -> stringResource(
+                            R.string.menu_endless_level_hint,
+                            selectedLevel.obstacleCount,
+                            1 + selectedLevel.endlessTierHeadStart,
+                        )
+                        GameMode.TimeAttack -> stringResource(R.string.menu_ta_level_hint, selectedLevel.obstacleCount)
+                        GameMode.Levels -> stringResource(R.string.menu_campaign_level_hint)
+                        GameMode.Zen -> stringResource(R.string.menu_zen_level_hint)
+                    },
+                )
+            }
+
+            // Snake speed is independent of the level's obstacle layout. Endless ramps
+            // its own pace and Levels paces by its speed cycle, so the selector is
+            // disabled (and ignored) in those modes - the layout never reflows. In
+            // Time Attack the pace also declares its score multiplier on the value;
+            // in Zen it simply sets the run's fixed rhythm.
+            val speedSelectable = selectedMode == GameMode.TimeAttack || selectedMode == GameMode.Zen
+            val showMultiplier = selectedMode == GameMode.TimeAttack
+            Section {
+                SettingStepper(
+                    title = stringResource(R.string.menu_snake_speed),
+                    valueLabel = if (showMultiplier) {
+                        "${selectedSnakeSpeed.displayName} · ${selectedSnakeSpeed.timeAttackFactorLabel}"
+                    } else {
+                        selectedSnakeSpeed.displayName
+                    },
+                    options = SnakeSpeed.entries.map { "${it.ordinal + 1}" },
+                    optionNames = SnakeSpeed.entries.map { it.displayName },
+                    selectedIndex = selectedSnakeSpeed.ordinal,
+                    onSelect = { onSnakeSpeedSelected(SnakeSpeed.entries[it]) },
+                    enabled = speedSelectable,
+                    caption = when (selectedMode) {
+                        GameMode.TimeAttack -> stringResource(R.string.menu_speed_multiplier_hint)
+                        GameMode.Zen -> stringResource(R.string.menu_zen_speed_hint)
+                        GameMode.Endless -> stringResource(R.string.menu_endless_speed_hint)
+                        GameMode.Levels -> stringResource(R.string.menu_campaign_speed_hint)
+                    },
+                )
+            }
+
+            // Auto-growth: the dial that decides how long a run can last. It applies
+            // to every mode (Zen just grows gentler), and the caption states both the
+            // concrete rhythm on this board and the score multiplier it declares.
+            Section {
+                SettingStepper(
+                    title = stringResource(R.string.menu_growth),
+                    valueLabel = if (selectedGrowthRate.isOn) {
+                        "${selectedGrowthRate.displayName} · ${selectedGrowthRate.scoreFactorLabel}"
+                    } else {
+                        selectedGrowthRate.displayName
+                    },
+                    options = GrowthRate.entries.map { "${it.ordinal + 1}" },
+                    optionNames = GrowthRate.entries.map { it.displayName },
+                    selectedIndex = selectedGrowthRate.ordinal,
+                    onSelect = { onGrowthRateSelected(GrowthRate.entries[it]) },
+                    caption = when {
+                        !selectedGrowthRate.isOn -> stringResource(R.string.menu_growth_hint_off)
+                        selectedMode == GameMode.Zen ->
+                            stringResource(R.string.menu_growth_hint_zen, growthIntervalTicks)
+                        else -> stringResource(R.string.menu_growth_hint, growthIntervalTicks)
+                    },
+                )
+            }
+
+            Section {
+                SettingStepper(
+                    title = stringResource(R.string.menu_board_scale),
+                    valueLabel = selectedScale.label,
+                    options = BoardScale.entries.map { "${it.ordinal + 1}" },
+                    optionNames = BoardScale.entries.map { it.label },
+                    selectedIndex = selectedScale.ordinal,
+                    onSelect = { onScaleSelected(BoardScale.entries[it]) },
+                    caption = stringResource(R.string.menu_scale_hint, selectedScale.cellsOnShortSide),
+                )
+            }
+
+            // Campaign checkpoints: once the player has reached past level 1, the
+            // run may start from any reached level. Starting past 1 is a practice
+            // run (records count from a Level 1 start), which the caption states.
+            // Up to fifteen numbers, so this one stays a scrolling chip row.
+            if (selectedMode == GameMode.Levels && campaignCheckpoint > 1) {
+                Section {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.menu_campaign_start),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.85f),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
+                                .padding(top = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                        ) {
+                            (1..campaignCheckpoint).forEach { levelIndex ->
+                                FilterChip(
+                                    selected = levelIndex == campaignStartLevel,
+                                    onClick = { onCampaignStartSelected(levelIndex) },
+                                    label = { Text(levelIndex.toString()) },
+                                )
+                            }
+                        }
+                        Text(
+                            text = if (campaignStartLevel > 1) {
+                                stringResource(R.string.menu_campaign_practice_note)
+                            } else {
+                                stringResource(R.string.menu_campaign_start_hint)
+                            },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.62f),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                        )
+                    }
                 }
             }
-        }
 
-        SnakeButton(
-            onClick = onPlay,
-            modifier = Modifier
-                .padding(top = 14.dp)
-                .widthIn(min = 200.dp),
-        ) {
-            Text(stringResource(R.string.action_play), style = MaterialTheme.typography.titleMedium)
+            SnakeButton(
+                onClick = onPlay,
+                modifier = Modifier
+                    .padding(top = 14.dp)
+                    .widthIn(min = 200.dp),
+            ) {
+                Text(stringResource(R.string.action_play), style = MaterialTheme.typography.titleMedium)
+            }
         }
+    }
+}
+
+/**
+ * The setup selectors' scroll area: centres them in whatever height is left under
+ * the pinned header, and scrolls only when they cannot fit (very short screens or
+ * a large font scale).
+ */
+@Composable
+private fun ColumnScope.SetupContent(
+    horizontalPadding: Dp,
+    content: @Composable () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .weight(1f)
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = horizontalPadding)
+            .padding(bottom = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        content()
     }
 }
 
@@ -547,6 +579,8 @@ fun GameOverOverlay(
     isNewBest: Boolean,
     unlocked: List<String>,
     unlockedSkins: List<String> = emptyList(),
+    /** Non-null when this run promoted the player up the achievement ladder. */
+    newRank: String? = null,
     onPlayAgain: () -> Unit,
     onSetup: () -> Unit,
     onMenu: () -> Unit,
@@ -656,6 +690,36 @@ fun GameOverOverlay(
                         )
                     }
                 }
+            }
+        }
+        if (newRank != null) {
+            // The ladder's promotion: the loudest of the three post-run banners,
+            // because it is the rarest.
+            Column(
+                modifier = Modifier
+                    .padding(top = 16.dp)
+                    .fillMaxWidth()
+                    .background(
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.20f),
+                        RoundedCornerShape(12.dp),
+                    )
+                    .padding(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = stringResource(R.string.rank_up),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Text(
+                    text = newRank,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
             }
         }
         if (unlocked.isNotEmpty()) {

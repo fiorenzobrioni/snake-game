@@ -74,6 +74,7 @@ import com.callbackdev.snake.ui.game.SkinPalette
 import com.callbackdev.snake.ui.game.SnakeEmblem
 import com.callbackdev.snake.ui.game.SpecialVisuals
 import com.callbackdev.snake.ui.game.drawGlyph
+import com.callbackdev.snake.ui.game.drawShedToken
 import com.callbackdev.snake.ui.game.drawSpecialToken
 import com.callbackdev.snake.ui.game.paletteFor
 import kotlinx.coroutines.launch
@@ -81,18 +82,19 @@ import kotlin.math.abs
 import kotlin.math.sin
 
 /**
- * First-run tour (redesigned for 1.2.0): a skippable 5-card pager that sells the
- * game the way a Play-Store title should - welcome & goal, the food language, the
+ * First-run tour: a skippable 6-card pager that sells the game the way a
+ * Play-Store title should - welcome & goal, the food language, **length as a
+ * resource** (the auto-growth clock, the risk bonus and the Shed ability), the
  * specials, the four modes and the daily meta loop - so a new player lands in the
  * menu already knowing why to come back tomorrow. Shown once on first launch
  * (gated by [SettingsRepository.onboardingCompleted]) and re-openable from
  * Settings.
  *
  * Design notes, following the usual mobile-onboarding practices:
- * - **Five focused cards, one idea each.** The old dedicated "how to steer" page
+ * - **Six focused cards, one idea each.** The old dedicated "how to steer" page
  *   is gone - steering is one glanceable chip row on the welcome card (the swipe
  *   default just works), which freed room for what a player actually cannot
- *   guess: the mode roster and the daily/meta loop.
+ *   guess: the length economy, the mode roster and the daily/meta loop.
  * - **Skippable at every step** (low-emphasis Skip up top; the last page swaps it
  *   for the primary "Start playing"), an animated page indicator for orientation,
  *   and system-back pages *backwards* (finishing only from the first card).
@@ -118,7 +120,7 @@ fun OnboardingScreen(
         initial = Settings(Level.Beginner, BoardScale.Classic, ControlScheme.Swipe),
     )
     val palette = remember(settings.skin) { paletteFor(settings.skin) }
-    val pageCount = 5
+    val pageCount = 6
     val pagerState = rememberPagerState(pageCount = { pageCount })
     val scope = rememberCoroutineScope()
     val lastPage = pagerState.currentPage == pageCount - 1
@@ -184,8 +186,9 @@ fun OnboardingScreen(
                 when (page) {
                     0 -> WelcomePage(palette, offset, timeSeconds)
                     1 -> FoodPage(palette, offset, textMeasurer, timeSeconds)
-                    2 -> SpecialsPage(palette, offset, textMeasurer)
-                    3 -> ModesPage(palette)
+                    2 -> LengthPage(palette, timeSeconds)
+                    3 -> SpecialsPage(palette, offset, textMeasurer)
+                    4 -> ModesPage(palette)
                     else -> MetaPage(palette)
                 }
             }
@@ -281,7 +284,41 @@ private fun FoodPage(palette: SkinPalette, parallax: Float, textMeasurer: TextMe
     }
 }
 
-/** Page 2: power-ups and hazards, drawn by the exact in-game token renderer. */
+/**
+ * Page 2: length as a resource - the pillar the auto-growth pass introduced.
+ * A player cannot guess any of these three from watching the board, and together
+ * they are what the game is now *about*: the clock that lengthens you, the bonus
+ * that pays you for carrying it, and the button that buys you out.
+ */
+@Composable
+private fun LengthPage(palette: SkinPalette, time: Float) {
+    PageColumn {
+        PageTitle(stringResource(R.string.onboarding_length_title), palette.snakeHead)
+        PageBody(stringResource(R.string.onboarding_length_body))
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            InfoRow(
+                title = stringResource(R.string.onboarding_length_growth),
+                description = stringResource(R.string.onboarding_length_growth_desc),
+                titleColor = palette.snakeHead,
+            ) { GrowthBadge(palette.snakeHead, time) }
+            InfoRow(
+                title = stringResource(R.string.onboarding_length_risk),
+                description = stringResource(R.string.onboarding_length_risk_desc),
+                titleColor = SpecialVisuals.RiskColor,
+            ) { RiskBadge() }
+            InfoRow(
+                title = stringResource(R.string.onboarding_length_shed),
+                description = stringResource(R.string.onboarding_length_shed_desc),
+                titleColor = SpecialVisuals.ShedColor,
+            ) { ShedBadge() }
+        }
+    }
+}
+
+/** Page 3: power-ups and hazards, drawn by the exact in-game token renderer. */
 @Composable
 private fun SpecialsPage(palette: SkinPalette, parallax: Float, textMeasurer: TextMeasurer) {
     PageColumn {
@@ -782,6 +819,62 @@ private fun ControlChip(glyph: ControlGlyph, label: String, accent: Color, modif
 
 /** Body text colours, fixed light so they always read on the dark backdrop. */
 private val BodyText = Color(0xFFD7DEE6)
+/**
+ * The growth meter as the HUD draws it: a ring filling toward the next free
+ * segment, sweeping slowly so the "it never stops" idea is visible at a glance.
+ */
+@Composable
+private fun GrowthBadge(accent: Color, time: Float) {
+    val fraction = ((time * 0.35f) % 1f)
+    Canvas(modifier = Modifier.size(30.dp)) {
+        val stroke = size.minDimension * 0.14f
+        val inset = stroke / 2f
+        drawCircle(
+            color = Color.White.copy(alpha = 0.18f),
+            radius = size.minDimension / 2f - inset,
+            style = Stroke(width = stroke),
+        )
+        drawArc(
+            color = accent,
+            startAngle = -90f,
+            sweepAngle = 360f * fraction,
+            useCenter = false,
+            topLeft = Offset(inset, inset),
+            size = Size(size.width - stroke, size.height - stroke),
+            style = Stroke(width = stroke, cap = StrokeCap.Round),
+        )
+    }
+}
+
+/** The risk multiplier as the HUD shows it: a hot "x5" in the crimson accent. */
+@Composable
+private fun RiskBadge() {
+    val shape = RoundedCornerShape(9.dp)
+    Box(
+        modifier = Modifier
+            .size(32.dp)
+            .clip(shape)
+            .background(SpecialVisuals.RiskColor.copy(alpha = 0.18f))
+            .border(1.dp, SpecialVisuals.RiskColor.copy(alpha = 0.55f), shape),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = "x5",
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            color = SpecialVisuals.RiskColor,
+        )
+    }
+}
+
+/** The Shed button itself, charged, drawn by the in-game renderer. */
+@Composable
+private fun ShedBadge() {
+    Canvas(modifier = Modifier.size(36.dp)) {
+        drawShedToken(accent = SpecialVisuals.ShedColor, fill = 1f, ready = true, pulse = 0f)
+    }
+}
+
 private val BodyDim = Color(0xFF9AA4B0)
 
 /** Near-black ink for the symbol drawn on a special's bright disc. */

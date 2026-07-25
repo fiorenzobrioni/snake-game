@@ -131,9 +131,11 @@ private val ButtonSize = 64.dp
 
 /**
  * The token: halo, charge ring, body, bevel and the tail-cut glyph. Kept as one
- * DrawScope function so the whole button is a single canvas pass.
+ * DrawScope function so the whole button is a single canvas pass - and shared with
+ * the onboarding tour, which teaches the ability with the real renderer rather
+ * than a lookalike.
  */
-private fun DrawScope.drawShedToken(accent: Color, fill: Float, ready: Boolean, pulse: Float) {
+internal fun DrawScope.drawShedToken(accent: Color, fill: Float, ready: Boolean, pulse: Float) {
     val r = size.minDimension / 2f
     val center = Offset(size.width / 2f, size.height / 2f)
     val ringWidth = r * 0.13f

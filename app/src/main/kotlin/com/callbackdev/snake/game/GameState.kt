@@ -198,6 +198,22 @@ data class GameState(
             return if (interval <= 0) 0f else (growthProgress.toFloat() / interval).coerceIn(0f, 1f)
         }
 
+    /**
+     * The [EndlessWave] sweeping the board right now, or null. A pure function of
+     * the run's played time, so nothing extra has to be tracked (see
+     * [EndlessWaves]); only Endless has waves.
+     */
+    val activeWave: EndlessWave?
+        get() = if (mode == GameMode.Endless) EndlessWaves.activeAt(playedMs) else null
+
+    /** Milliseconds left of the running wave (0 when none is), for the HUD countdown. */
+    val waveRemainingMs: Long
+        get() = if (mode == GameMode.Endless) EndlessWaves.remainingMsAt(playedMs) else 0
+
+    /** Progress through the running wave (0..1), for the HUD countdown bar. */
+    val waveFraction: Float
+        get() = if (mode == GameMode.Endless) EndlessWaves.fractionAt(playedMs) else 0f
+
     /** Cells the snake can actually use: the whole board minus obstacles and walls. */
     val playableCells: Int
         get() = (board.width * board.height - obstacles.size - walls.size).coerceAtLeast(1)

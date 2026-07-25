@@ -75,6 +75,7 @@ import com.callbackdev.snake.game.ControlScheme
 import com.callbackdev.snake.game.DEFAULT_ASPECT
 import com.callbackdev.snake.game.Direction
 import com.callbackdev.snake.game.EffectKind
+import com.callbackdev.snake.game.EndlessWave
 import com.callbackdev.snake.game.GameMode
 import com.callbackdev.snake.game.GameState
 import com.callbackdev.snake.game.GameStatus
@@ -330,7 +331,13 @@ fun GameScreen(
                     stringResource(R.string.hud_endless_speed, state.endlessSpeedTier)
                 else -> null
             }
+            // During setup the HUD carries nothing worth reading (score 0, and the
+            // status line only repeats the selectors), and it would show through
+            // the overlay above its pinned header. Alpha-hidden rather than
+            // removed, so the space stays reserved and the board never resizes
+            // between setup and play.
             Hud(
+                modifier = Modifier.alpha(if (state.status == GameStatus.Ready) 0f else 1f),
                 score = state.score,
                 combo = state.combo,
                 // Auto-growth: the body is a clock, so the HUD carries its face -
@@ -375,7 +382,13 @@ fun GameScreen(
                 onPause = { audio.playPause(); viewModel.togglePause() },
             )
 
-            EffectTimersRow(effects = state.effectTimers)
+            EffectTimersRow(
+                effects = state.effectTimers,
+                // The Endless wave rides in the same reserved row as the power-up
+                // timers: it is exactly that, a timer the player must play around.
+                wave = if (playing) state.activeWave else null,
+                waveFraction = state.waveFraction,
+            )
 
             BoxWithConstraints(
                 modifier = Modifier
@@ -575,6 +588,7 @@ fun GameScreen(
                     summary = viewModel.lastSummary,
                     unlocked = viewModel.newlyUnlocked.map { it.title },
                     unlockedSkins = viewModel.newlyUnlockedSkins.map { it.displayName },
+                    newRank = viewModel.newRank?.displayName,
                     missions = viewModel.missionsProgress,
                     onPlayAgain = { viewModel.playAgain() },
                     onSetup = { viewModel.toSetup() },
@@ -735,7 +749,11 @@ private val EffectTimersRowHeight = 34.dp
  * power-up and visibly resize the board, making the snake seem to jump.
  */
 @Composable
-private fun EffectTimersRow(effects: List<com.callbackdev.snake.game.ActiveEffect>) {
+private fun EffectTimersRow(
+    effects: List<com.callbackdev.snake.game.ActiveEffect>,
+    wave: EndlessWave?,
+    waveFraction: Float,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -744,8 +762,30 @@ private fun EffectTimersRow(effects: List<com.callbackdev.snake.game.ActiveEffec
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // The wave first: it is the loudest thing happening to the board.
+        if (wave != null) WaveChip(wave = wave, fraction = waveFraction)
         effects.forEach { effect -> EffectChip(effect) }
     }
+}
+
+/**
+ * The running Endless wave, as a countdown chip in the timer row: the wave's name
+ * over a bar that drains as it passes, in the wave's own colour. Same shape as the
+ * power-up timer chips, because it is the same promise - this will end, plan for it.
+ */
+@Composable
+private fun WaveChip(wave: EndlessWave, fraction: Float) {
+    val color = when (wave) {
+        EndlessWave.Feast -> SpecialVisuals.FeastColor
+        EndlessWave.Drought -> SpecialVisuals.DroughtColor
+        EndlessWave.Hailstorm -> SpecialVisuals.HailColor
+    }
+    val label = when (wave) {
+        EndlessWave.Feast -> stringResource(R.string.wave_feast)
+        EndlessWave.Drought -> stringResource(R.string.wave_drought)
+        EndlessWave.Hailstorm -> stringResource(R.string.wave_hailstorm)
+    }
+    TimerChip(label = label, color = color, fraction = 1f - fraction.coerceIn(0f, 1f))
 }
 
 @Composable
@@ -758,6 +798,12 @@ private fun EffectChip(effect: com.callbackdev.snake.game.ActiveEffect) {
         com.callbackdev.snake.game.EffectKind.Freeze -> stringResource(R.string.effect_freeze)
         com.callbackdev.snake.game.EffectKind.Quake -> stringResource(R.string.effect_quake)
     }
+    TimerChip(label = label, color = color, fraction = effect.fraction)
+}
+
+/** A labelled chip over a draining bar - the shared body of the timer row's chips. */
+@Composable
+private fun TimerChip(label: String, color: Color, fraction: Float) {
     Column(
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
@@ -781,7 +827,7 @@ private fun EffectChip(effect: com.callbackdev.snake.game.ActiveEffect) {
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .fillMaxWidth(effect.fraction)
+                    .fillMaxWidth(fraction.coerceIn(0f, 1f))
                     .clip(RoundedCornerShape(2.dp))
                     .background(color),
             )
@@ -818,6 +864,7 @@ private fun ControlRegion(
  */
 @Composable
 private fun Hud(
+    modifier: Modifier = Modifier,
     score: Int,
     combo: Int,
     riskFactor: Float,
@@ -836,7 +883,7 @@ private fun Hud(
     // Rolling score counter (step 3.6).
     val animatedScore by animateIntAsState(targetValue = score, animationSpec = tween(300), label = "score")
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp),
     ) {
@@ -995,6 +1042,12 @@ private fun AnnouncementBanner(
         BannerKind.SpeedUp -> stringResource(R.string.banner_speed_up, event.value) to SpecialVisuals.SurgeColor
         BannerKind.NewRecord -> stringResource(R.string.banner_new_record) to SpecialVisuals.RecordColor
         BannerKind.ShedReady -> stringResource(R.string.banner_shed_ready) to SpecialVisuals.ShedColor
+        BannerKind.Wave -> when (event.wave) {
+            EndlessWave.Feast -> stringResource(R.string.banner_wave_feast) to SpecialVisuals.FeastColor
+            EndlessWave.Drought -> stringResource(R.string.banner_wave_drought) to SpecialVisuals.DroughtColor
+            EndlessWave.Hailstorm -> stringResource(R.string.banner_wave_hailstorm) to SpecialVisuals.HailColor
+            null -> "" to SpecialVisuals.FeastColor
+        }
     }
     Box(
         modifier = modifier.graphicsLayer {

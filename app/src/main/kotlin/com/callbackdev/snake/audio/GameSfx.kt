@@ -48,6 +48,12 @@ interface GameSfx {
     /** The Shed ability was spent: the tail is cut loose. */
     fun shed()
 
+    /** Endless: a wave event ([wave]) just started. */
+    fun waveStarted(wave: com.callbackdev.snake.game.EndlessWave)
+
+    /** Endless (Hailstorm): a lethal block landed on the board. */
+    fun hailLanded()
+
     /** No-op sink — the ViewModel's default, so it runs and tests without audio. */
     object None : GameSfx {
         override fun ate(food: Food, combo: Int) {}
@@ -63,5 +69,7 @@ interface GameSfx {
         override fun recordBroken() {}
         override fun shedReady() {}
         override fun shed() {}
+        override fun waveStarted(wave: com.callbackdev.snake.game.EndlessWave) {}
+        override fun hailLanded() {}
     }
 }

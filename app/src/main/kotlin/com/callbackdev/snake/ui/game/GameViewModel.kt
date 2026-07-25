@@ -16,6 +16,7 @@ import com.callbackdev.snake.audio.GameSfx
 import com.callbackdev.snake.data.DEFAULT_SWIPE_SENSITIVITY
 import com.callbackdev.snake.data.SettingsRepository
 import com.callbackdev.snake.game.Achievement
+import com.callbackdev.snake.game.AchievementTier
 import com.callbackdev.snake.game.BackBehavior
 import com.callbackdev.snake.game.BoardDimensions
 import com.callbackdev.snake.game.BoardScale
@@ -23,6 +24,7 @@ import com.callbackdev.snake.game.BoardTerrain
 import com.callbackdev.snake.game.ControlScheme
 import com.callbackdev.snake.game.Challenge
 import com.callbackdev.snake.game.EffectKind
+import com.callbackdev.snake.game.EndlessWave
 import com.callbackdev.snake.game.DEFAULT_ASPECT
 import com.callbackdev.snake.game.Direction
 import com.callbackdev.snake.game.FoodEffect
@@ -117,6 +119,9 @@ enum class BannerKind {
 
     /** The Shed ability finished charging for the first time this run. */
     ShedReady,
+
+    /** Endless: a wave event just started; the banner names it. */
+    Wave,
 }
 
 /**
@@ -124,7 +129,7 @@ enum class BannerKind {
  * and colour; [value] carries the Endless speed tier). Surfaced with a monotonic
  * id so repeats are observable.
  */
-data class BannerEvent(val kind: BannerKind, val value: Int = 0)
+data class BannerEvent(val kind: BannerKind, val value: Int = 0, val wave: EndlessWave? = null)
 
 /**
  * A whole-snake particle effect to play over the body [cells] (head first). Used
@@ -355,6 +360,13 @@ class GameViewModel(
     var nearMissEventId by mutableIntStateOf(0)
         private set
 
+    /**
+     * The rank this run promoted the player to (Step 6.15.5), or null. Surfaced on
+     * the game-over overlay and cleared at the start of the next run.
+     */
+    var newRank by mutableStateOf<AchievementTier?>(null)
+        private set
+
     /** Bumped each time auto-growth grants a free segment, so the HUD meter can pop. */
     var autoGrowEventId by mutableIntStateOf(0)
         private set
@@ -453,6 +465,7 @@ class GameViewModel(
     private var runSegmentsFromFood = 0
     private var runSegmentsTrimmed = 0
     private var runSegmentsShed = 0
+    private var runWaves = 0
     /** One "Shed ready!" banner per run; the button's pulse says the rest. */
     private var shedAnnounced = false
 
@@ -948,9 +961,11 @@ class GameViewModel(
         runSegmentsFromFood = 0
         runSegmentsTrimmed = 0
         runSegmentsShed = 0
+        runWaves = 0
         shedAnnounced = false
         newlyUnlocked = emptyList()
         newlyUnlockedSkins = emptyList()
+        newRank = null
         missionsProgress = emptyList()
         beginGhostRun()
     }
@@ -1231,6 +1246,22 @@ class GameViewModel(
                     sfx.feverStarted()
                     haptics.special()
                 }
+                is GameEvent.WaveStarted -> {
+                    // A wave is a movement in the run: announced loudly, then
+                    // tracked by the countdown chip until it passes.
+                    banner(BannerKind.Wave, wave = event.wave)
+                    sfx.waveStarted(event.wave)
+                    haptics.special()
+                    runWaves++
+                }
+                is GameEvent.WaveEnded -> Unit // the chip disappearing is the cue
+                is GameEvent.HailLanded -> {
+                    // Each block lands with its own little impact, so the board
+                    // never changes silently under the player.
+                    eatEvent = EatEvent(event.cell, 1, SpecialVisuals.HailColor, BurstStyle.Implode)
+                    eatEventId++
+                    sfx.hailLanded()
+                }
                 is GameEvent.SpeedTierUp -> {
                     // Endless ramp step: seen (banner + frame flash) and heard.
                     banner(BannerKind.SpeedUp, event.tier)
@@ -1348,9 +1379,9 @@ class GameViewModel(
     private fun lastRunFromCheckpointCandidate(): Boolean =
         mode == GameMode.Levels && runStartLevelIndex > 1
 
-    /** Flashes a HUD announcement [kind] (with an optional [value]). */
-    private fun banner(kind: BannerKind, value: Int = 0) {
-        bannerEvent = BannerEvent(kind, value)
+    /** Flashes a HUD announcement [kind] (with an optional [value] / [wave]). */
+    private fun banner(kind: BannerKind, value: Int = 0, wave: EndlessWave? = null) {
+        bannerEvent = BannerEvent(kind, value, wave)
         bannerEventId++
     }
 
@@ -1431,6 +1462,12 @@ class GameViewModel(
             if (earned.isNotEmpty()) {
                 repo.addUnlockedAchievements(earned.map { it.name })
                 newlyUnlocked = earned
+                // Career ladder: a run that pushed the total past a reveal
+                // threshold promotes the player, which the game-over overlay
+                // celebrates (the ladder's own reward, see AchievementTier).
+                val before = AchievementTier.rankFor(unlockedAchievements.size)
+                val after = AchievementTier.rankFor(unlockedAchievements.size + earned.size)
+                if (after != before) newRank = after
             }
             // Reward progression: unlock gated skins reached by this run's score /
             // the post-run streak, and surface them in the game-over banner.

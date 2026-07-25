@@ -100,6 +100,17 @@ sealed interface GameEvent {
     data class SpeedTierUp(val tier: Int) : GameEvent
 
     /**
+     * Endless: an [EndlessWave] just started ([wave]) or just ended. Drives the
+     * announcement banner, the HUD countdown chip and the wave's sound.
+     */
+    data class WaveStarted(val wave: EndlessWave) : GameEvent
+
+    data class WaveEnded(val wave: EndlessWave) : GameEvent
+
+    /** Endless (Hailstorm): a lethal hail block landed on [cell]. */
+    data class HailLanded(val cell: Position) : GameEvent
+
+    /**
      * An uneaten regular food timed out and was removed (a fresh one is spawned
      * elsewhere in the same tick). Specials never vanish. Drives the "vanish"
      * particle burst.

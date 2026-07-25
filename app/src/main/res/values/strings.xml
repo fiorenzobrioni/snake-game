@@ -81,6 +81,15 @@
     <string name="achievements_title">Achievements</string>
     <!-- "<unlocked> / <total> unlocked" -->
     <string name="achievements_progress">%1$d / %2$d unlocked</string>
+    <!-- Career ladder: the rank card and the tier groups. -->
+    <string name="achievements_rank_label">Your rank</string>
+    <string name="achievements_rank_next">%1$d more to reach %2$s</string>
+    <string name="achievements_rank_max">Every rank earned - the ladder is yours</string>
+    <string name="achievements_tier_count">%1$d / %2$d</string>
+    <string name="achievements_tier_sealed">Sealed</string>
+    <string name="achievements_tier_locked">Earn %1$d more achievements to reveal this rank</string>
+    <string name="achievements_tier_hidden">%1$d feats waiting inside</string>
+    <string name="rank_up">New rank!</string>
     <string name="achievement_unlocked">Achievement unlocked!</string>
 
     <!-- Rotating missions (Step 6.9.5) -->
@@ -165,6 +174,15 @@
     <string name="onboarding_food_shrink_desc">Warm pieces cut your tail back. They pay far less than a bite, but they are how you buy room and keep the run going.</string>
     <string name="onboarding_food_mystery">Mystery</string>
     <string name="onboarding_food_mystery_desc">A \"?\" hides a random grow or shrink. Eat it to find out which.</string>
+    <!-- Card 3: length as a resource (auto-growth, the risk bonus, the Shed ability). -->
+    <string name="onboarding_length_title">Length is the game</string>
+    <string name="onboarding_length_body">Your snake lengthens on its own, so the board is always closing in. That makes length a resource to spend, not just a score to grow.</string>
+    <string name="onboarding_length_growth">It grows by itself</string>
+    <string name="onboarding_length_growth_desc">Every few steps the snake keeps its tail. Nothing stops that clock - shrink food and the Shed button are your only brakes. Pick the pace in Custom Game.</string>
+    <string name="onboarding_length_risk">Risk pays</string>
+    <string name="onboarding_length_risk_desc">The more of the board you cover, the more every bite is worth - up to five times. Running long is a bet, and the HUD shows what it is paying.</string>
+    <string name="onboarding_length_shed">Shed, when it counts</string>
+    <string name="onboarding_length_shed_desc">Eating charges the ring in the board corner. Tap it to cut a third of your tail loose and cash in the risk you were carrying - your way out of a dead end.</string>
     <string name="onboarding_specials_title">Power-ups &amp; hazards</string>
     <string name="onboarding_specials_body">Deeper into a run, rare special blocks appear. Power-ups help you; hazards are ringed in red and make life harder. Prefer a gentler game? Turn hazards off any time in Settings.</string>
     <string name="onboarding_powerups">Power-ups</string>
@@ -180,7 +198,7 @@
     <string name="onboarding_snail_desc">Slows you to a crawl - manageable, but you lose your rhythm.</string>
     <string name="onboarding_modes_title">Four ways to play</string>
     <string name="onboarding_modes_body">From white-knuckle sprints to pure flow. Every mode keeps its own records for each difficulty and board size.</string>
-    <string name="onboarding_mode_endless_desc">The pace ratchets up the longer you survive. One life, no ceiling - how far can you go?</string>
+    <string name="onboarding_mode_endless_desc">The pace ratchets up the longer you survive, and waves sweep the board: a Feast, a Drought, a Hailstorm. One life, no ceiling.</string>
     <string name="onboarding_mode_time_attack_desc">Two minutes on the clock, score multipliers for the brave and a double-points Fever finale.</string>
     <string name="onboarding_mode_campaign_desc">Fifteen hand-shaped boards with three lives and checkpoints - and every lap spins faster.</string>
     <string name="onboarding_mode_zen_desc">No walls, no hazards, no hurry: the edges wrap around. Only your own tail can end the flow.</string>
@@ -189,9 +207,9 @@
     <string name="onboarding_meta_daily">Daily Challenge</string>
     <string name="onboarding_meta_daily_desc">One seeded run per day, the same for every player. Beat it daily to build your streak.</string>
     <string name="onboarding_meta_missions">Today\'s Missions</string>
-    <string name="onboarding_meta_missions_desc">Three rotating goals refresh each day - clear them in any mode you like.</string>
+    <string name="onboarding_meta_missions_desc">Three rotating goals refresh each day - eat, score, survive, grow or trim - and any mode counts.</string>
     <string name="onboarding_meta_achievements">Achievements &amp; records</string>
-    <string name="onboarding_meta_achievements_desc">Over 30 feats to unlock, plus a best score for every mode, difficulty and board.</string>
+    <string name="onboarding_meta_achievements_desc">Thirty-eight feats on a five-rank ladder that opens up as you play, plus a best score for every mode, difficulty and board.</string>
     <string name="onboarding_meta_skins">Skins &amp; arenas</string>
     <string name="onboarding_meta_skins_desc">Earn snake skins and animated board worlds, then dress the whole game in them.</string>
     <string name="onboarding_replay_hint">You can reopen this guide any time from Settings.</string>
@@ -218,6 +236,13 @@
     <string name="banner_fever">Fever ×2!</string>
     <string name="banner_speed_up">Speed %1$d!</string>
     <string name="banner_shed_ready">Shed ready!</string>
+    <!-- Endless wave events: the announcement banners and the HUD countdown chips. -->
+    <string name="banner_wave_feast">Feast!</string>
+    <string name="banner_wave_drought">Drought!</string>
+    <string name="banner_wave_hailstorm">Hailstorm!</string>
+    <string name="wave_feast">Feast</string>
+    <string name="wave_drought">Drought</string>
+    <string name="wave_hailstorm">Hail</string>
     <string name="banner_new_record">New record!</string>
     <!-- Active power-up timer chips -->
     <string name="effect_lightning">Lightning</string>

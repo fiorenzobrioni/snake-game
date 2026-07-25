@@ -252,6 +252,17 @@ class GameEngine(private val random: Random = Random.Default) {
             }
         }
 
+        // Endless waves: a fixed rotation of timed board events (Feast / Drought /
+        // Hailstorm) so a long run has movements instead of one long crescendo.
+        // Both edges are announced; the rules below read the wave straight off the
+        // clock, so nothing extra is carried on the state.
+        val waveBefore = if (state.mode == GameMode.Endless) EndlessWaves.activeAt(state.playedMs) else null
+        val wave = if (state.mode == GameMode.Endless) EndlessWaves.activeAt(playedMs) else null
+        if (wave != waveBefore) {
+            waveBefore?.let { events.add(GameEvent.WaveEnded(it)) }
+            wave?.let { events.add(GameEvent.WaveStarted(it)) }
+        }
+
         // Age timed effects; expired ones fire an event and drop out.
         var effectTimers = state.effectTimers.map { it.copy(remainingMs = it.remainingMs - elapsedMs) }
         effectTimers.filter { it.remainingMs <= 0 }.forEach { events.add(GameEvent.EffectExpired(it.kind)) }
@@ -431,6 +442,19 @@ class GameEngine(private val random: Random = Random.Default) {
             body.removeAt(body.lastIndex) // keep length: drop the tail
         }
 
+        // Hailstorm: a lethal block lands every few ticks, always well clear of the
+        // head (so it is a route to solve, never an ambush) and never on food, and
+        // melts on its own timer - the existing debris machinery does the rest.
+        if (wave == EndlessWave.Hailstorm && elapsedTicks % EndlessWaves.HAIL_INTERVAL_TICKS == 0) {
+            val live = debris.size
+            if (live < EndlessWaves.HAIL_MAX_BLOCKS) {
+                hailCell(board, body, state.obstacles, state.walls, foods, debris, state.hazardSpawnCells)?.let { cell ->
+                    debris = debris + Debris(cell, EndlessWaves.HAIL_LIFETIME_MS, EndlessWaves.HAIL_LIFETIME_MS)
+                    events.add(GameEvent.HailLanded(cell))
+                }
+            }
+        }
+
         // Vanish the single oldest food that has sat uneaten too long, so looping
         // without eating keeps the board fresh. Specials linger much longer than
         // regular food (they are rare events worth waiting for) but no longer stay
@@ -455,11 +479,15 @@ class GameEngine(private val random: Random = Random.Default) {
         }
 
         // Top the board back up — covers both an eaten food and a vanished one.
-        if (foods.size < foodCountFor(board)) {
+        // A Feast floods the board and a Drought starves it; between waves the
+        // board's own count applies.
+        val foodTarget = EndlessWaves.foodCountFor(wave) ?: foodCountFor(board)
+        if (foods.size < foodTarget) {
             val freezeActive = effectTimers.any { it.kind == EffectKind.Freeze }
             val specialsOnBoard = foods.count { it.category == FoodCategory.Special }
             foods = refill(
                 board, body, state.obstacles, state.walls, foods, elapsedTicks, state.level,
+                target = foodTarget,
                 baseTickMillis = baseTickMs,
                 hazardsEnabled = hazardsEnabled,
                 specialAllowed = specialsOnBoard < MAX_SPECIALS_ON_BOARD && !freezeActive,
@@ -793,6 +821,38 @@ class GameEngine(private val random: Random = Random.Default) {
         return obstacles
     }
 
+    /**
+     * A free cell for a Hailstorm block: random, at least
+     * [EndlessWaves.HAIL_HEAD_CLEARANCE] cells (Manhattan) from the head, and off
+     * the snake, the obstacles, the walls, the food, the existing debris and the
+     * Campaign hazard cells. Returns null when the board offers nowhere fair, so a
+     * crowded board simply gets no hail that tick.
+     */
+    private fun hailCell(
+        board: BoardDimensions,
+        snake: List<Position>,
+        obstacles: Set<Position>,
+        walls: Set<Position>,
+        foods: List<Food>,
+        debris: List<Debris>,
+        reserved: Set<Position>,
+    ): Position? {
+        val head = snake.first()
+        val taken = HashSet<Position>()
+        taken.addAll(snake)
+        taken.addAll(obstacles)
+        taken.addAll(walls)
+        taken.addAll(reserved)
+        debris.forEach { taken.add(it.cell) }
+        foods.forEach { taken.addAll(it.cells()) }
+        repeat(MAX_SPAWN_ATTEMPTS) {
+            val cell = Position(random.nextInt(0, board.width), random.nextInt(0, board.height))
+            val clearOfHead = abs(cell.x - head.x) + abs(cell.y - head.y) >= EndlessWaves.HAIL_HEAD_CLEARANCE
+            if (clearOfHead && cell !in taken) return cell
+        }
+        return null
+    }
+
     /** Tops the board up to [foodCountFor] items, skipping if no cell is free. */
     private fun refill(
         board: BoardDimensions,
@@ -802,6 +862,8 @@ class GameEngine(private val random: Random = Random.Default) {
         existing: List<Food>,
         elapsedTicks: Int,
         level: Level,
+        /** Foods to keep on the board; defaults to the board's own count. */
+        target: Int = foodCountFor(board),
         baseTickMillis: Long = SnakeSpeed.DEFAULT.tickMillis,
         hazardsEnabled: Boolean = true,
         specialAllowed: Boolean = true,
@@ -812,7 +874,6 @@ class GameEngine(private val random: Random = Random.Default) {
         autoGrowth: Boolean = false,
     ): List<Food> {
         var foods = existing
-        val target = foodCountFor(board)
         while (foods.size < target) {
             // A special is allowed only while fewer than the cap are on the board
             // (never under the Old School twist, and never in Zen - the calm

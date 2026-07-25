@@ -36,6 +36,11 @@ The classic Snake mechanics, extended with configurable features so every run fe
   and reappears elsewhere, so looping around without eating won't stall the run. Special pieces stick
   around much longer (they're rare events worth reaching) but eventually time out too.
 - ✖️ **Combo multiplier** - eating in quick succession multiplies your score (up to ×5).
+- 🌊 **Endless waves** - every 45 seconds of an Endless run the board is swept by an event, in a fixed
+  learnable rotation: a **Feast** (the board floods with food), a **Drought** (it all but dries up, with
+  the growth clock still ticking) and a **Hailstorm** (lethal blocks rain down, well clear of your head,
+  then melt). Each is announced and counts down in the HUD, so a long run has movements instead of one
+  long crescendo.
 - 🎲 **Risk bonus** - every point is multiplied by how much of the board your body is covering (up to
   ×5). Staying long stops being pure downside and becomes a **bet**: the fuller the arena, the richer
   every bite, right up until you run out of room. The HUD calls the live multiplier out and the board
@@ -128,14 +133,17 @@ The classic Snake mechanics, extended with configurable features so every run fe
   penalty, each with a floating callout.
 - 🏆 **Records screen** - a best-score table per difficulty × board scale (and per mode), reachable
   from the main menu.
-- 🎖️ **Achievements** - thirty-eight local milestones (combos, scores, endurance, eating sprees, using
-  power-ups, building length out of food, trimming a snake back down, keeping a Daily streak…) that
-  unlock as you play, with a dedicated screen and an unlock banner on the game-over screen. The length
-  ones count the segments you **earned by eating**, never the ones auto-growth handed you, so they mean
-  the same thing at every growth setting. A handful are deliberately hard: score big while staying
-  under twenty segments (*Featherweight*), grow sixty segments without ever trimming (*Purist*), or
-  last three minutes - and score 5000 - with the growth dial at *Relentless* (*Unbowed*, *Apex
-  Predator*).
+- 🎖️ **Achievements on a career ladder** - thirty-eight local milestones grouped into **five ranks**
+  (*Hatchling → Forager → Stalker → Constrictor → Mythic*). A rank reveals once you have earned enough
+  badges in total, so the list opens up as you play instead of dumping every late-game goal on you at
+  launch - and no single stubborn badge can ever wall you out, because the gate is a count, not a
+  clean sweep. The Achievements screen leads with your rank and a bar toward the next one; sealed ranks
+  say what they cost and how many feats they hide; a promotion is celebrated on the game-over screen.
+  The length badges count the segments you **earned by eating**, never the ones auto-growth handed you,
+  so they mean the same thing at every growth setting. A handful are deliberately hard: score big while
+  staying under twenty segments (*Featherweight*), grow sixty segments without ever trimming
+  (*Purist*), or last three minutes - and score 5000 - with the growth dial at *Relentless*
+  (*Unbowed*, *Apex Predator*).
 - 📊 **Run recap** - the game-over screen shows a short summary of the run: foods eaten, best combo, time
   survived, the snake's longest length, the segments grown from food and trimmed away, and, in Campaign,
   the deepest level reached.
@@ -195,7 +203,7 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - 💎 **Polished navigation** - an **animated GPU background** behind the menus, a **branded main menu** laid out as a "game launcher" (a glowing wordmark with a small in-game-style snake emblem that follows your selected skin as the hero, over a bottom-anchored cluster of actions grouped by type so everything fits one screen), **premium action buttons** (gradient-lit, with a tactile press), and **blur-dissolve** screen transitions.
 - ⏸️ **Auto-pause** - backgrounding the app mid-run pauses the game automatically, so the snake never keeps moving while you're away.
 - 📜 **Credits screen** - an in-app **Credits / About** page (author, license and asset attribution), reachable from the main menu.
-- 🧭 **First-run tour** - a premium, skippable five-card tour on first launch, re-openable any time via **How to play** in Settings. Glass cards over the animated brand backdrop cover the goal (with the real in-game snake slithering in your skin), the food language, the power-ups / hazards, the four game modes and the daily loop (Daily Challenge, missions, achievements, skins) - legends show the actual in-game pieces, icons and colours, steering is a glanceable three-chip row, and Back pages backwards instead of bailing out.
+- 🧭 **First-run tour** - a premium, skippable six-card tour on first launch, re-openable any time via **How to play** in Settings. Glass cards over the animated brand backdrop cover the goal (with the real in-game snake slithering in your skin), the food language, **length as a resource** (the growth clock, the risk bonus and the Shed button), the power-ups / hazards, the four game modes and the daily loop (Daily Challenge, missions, achievements, skins) - legends show the actual in-game pieces, icons and colours, steering is a glanceable three-chip row, and Back pages backwards instead of bailing out.
 
 ### 🍽️ Food system at a glance
 
@@ -307,6 +315,21 @@ and you never get to make it.
 | Shed cut | 35% of the body, tail first |
 | Shed payout | 8 points per segment × the risk multiplier |
 
+### 🌊 Endless waves
+
+An Endless run plays undisturbed for 45 seconds, then a **wave** sweeps the board for 12 seconds, and
+another every 45 seconds after that. They rotate in a fixed order on purpose: a rhythm you can learn
+is a rhythm you can plan around.
+
+| Wave | What happens |
+|---|---|
+| 🍽️ **Feast** | The board floods with food (nine pieces at once). Gorge - or hold the length and let the risk bonus run. |
+| 🏜️ **Drought** | Food dries up to a single piece. The growth clock keeps ticking, so it is pure survival. |
+| 🧊 **Hailstorm** | Lethal blocks rain down and melt away. They never land within four cells of your head, so it is a route to solve, not an ambush. |
+
+Every wave is announced by name and counts down in the HUD's timer row, in its own colour, alongside
+any power-up timers.
+
 ### 📐 Board scale
 
 The board is **responsive**: pick a granularity and the grid is computed from your device's play-area
@@ -391,8 +414,8 @@ sound effects for eating, shrinking, mystery pieces, game over and button taps. 
 automatically pauses when you leave the app and yields to other apps' audio.
 
 **Game modes:** choose your mode on the **Custom** setup screen -
-**Endless** (the snake keeps accelerating through announced speed tiers the longer you survive; the
-default), **Time Attack** (score as much as possible in 120 seconds - your pace sets a declared
+**Endless** (the snake keeps accelerating through announced speed tiers the longer you survive, and
+every 45 seconds a wave sweeps the board - Feast, Drought or Hailstorm; the default), **Time Attack** (score as much as possible in 120 seconds - your pace sets a declared
 score multiplier, the exclusive **+5s** / **−3s** clock pieces stretch or shave your remaining time,
 and the last 20 seconds are **Fever Time** with double points), **Campaign** (clear fifteen shaped
 boards by eating 12 foods each, with 3 lives, an exclusive 2×2 extra-life piece, a speed-up every
@@ -417,8 +440,11 @@ a countdown chip in the HUD. **Time Attack** also has two clock-only pieces - a 
 penalty), or raise **Special blocks** to *Frenzy* for constant chaos.
 
 **Achievements:** milestones unlock automatically as you play - high combos, long runs, using
-power-ups, building length out of food, trimming a snake back down, and more. A banner appears on the
-game-over screen when one unlocks; browse the full list from the main menu.
+power-ups, building length out of food, trimming a snake back down, and more. They sit on a **five-rank
+ladder**: each rank reveals once you have earned enough badges overall, so the goals arrive a handful
+at a time instead of all at once, and reaching a new rank is celebrated on the game-over screen. A
+banner also appears whenever a single badge unlocks; browse your rank and the whole ladder from the
+main menu.
 
 **Daily missions:** alongside the static achievements, three goals rotate each day (eat a number of
 foods, reach a combo, survive a time, hit a score, grow segments out of food, trim segments away, or

@@ -43,6 +43,11 @@ object SpecialVisuals {
     /** The Shed ability: the cool cyan of the charge ring and the tail cut. */
     val ShedColor = Color(0xFF40E0D0)
 
+    /** Endless waves: the Feast's warm gold, the Drought's dusty amber, the Hailstorm's icy blue. */
+    val FeastColor = Color(0xFFFFC246)
+    val DroughtColor = Color(0xFFC08A4A)
+    val HailColor = Color(0xFF8FD8FF)
+
     /** Zen mode: the soft teal of the breathing frame (open, wrapping edges). */
     val ZenColor = Color(0xFF80CBC4)
 

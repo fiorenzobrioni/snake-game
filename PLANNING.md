@@ -439,8 +439,9 @@ snake-game/
       submits the daily score first, then reads `dailyStreak()` so the streak is current before evaluation.
 
 - [x] **Step 6.9.9 - Unlockable skins.** Skins now carry a `SkinUnlock` rule (`Always` / `Score` / `Streak`).
-      Retro (the new default) and Classic are always unlocked and listed first; Neon (score 500), Pixel
-      (score 1500), Aurora (7-day streak) and Ember (30-day streak) are gated. An `unlocked_skins` set in
+      Retro (the new default) and Classic are always unlocked and listed first; Neon, Pixel (both
+      score-gated), Aurora (7-day streak) and Ember (30-day streak) are gated. *(The score thresholds
+      were later raised to 1500 / 5000 - see `Skin.kt`, which is authoritative.)* An `unlocked_skins` set in
       `SettingsRepository` persists earned skins; `Skin.newlyUnlocked` evaluates new unlocks on game-over;
       the Settings picker shows locked cards (dimmed, lock badge, requirement hint) that can't be selected,
       and the game-over overlay surfaces any skin just unlocked.
@@ -761,6 +762,47 @@ snake-game/
       dissolve envelope (that one fades the living body - right for a death or a level-up, wrong
       here). Covered by `RiskAndAbilityTest`; the reworked score tests now express their expectations
       through `GameState.riskFactorFor` instead of baking numbers in.
+
+- [x] **Step 6.15.5 - Endless waves.** Endless escalated its pace but nothing ever *happened* in it:
+      minute five played like minute two, only faster. New pure-model `game/EndlessWave.kt`: three
+      events - **Feast** (board floods to 9 foods), **Drought** (down to 1, with the growth clock still
+      running) and **Hailstorm** (lethal blocks rain in, melting on their own timer) - on a fixed
+      rotation, 12 s long, starting at 45 s and repeating every 45 s. Everything is a **pure function of
+      `playedMs`** (`EndlessWaves.activeAt/remainingMsAt/fractionAt`), so no extra state is carried and a
+      seeded run stays reproducible; the rotation is deliberately fixed rather than random, because a
+      rhythm the player can learn is a rhythm they can plan around. `GameEngine.tick` announces both
+      edges (`GameEvent.WaveStarted` / `WaveEnded`), swaps the food target through the existing refill
+      and, during a Hailstorm, drops a block every `HAIL_INTERVAL_TICKS` on a free cell at least
+      `HAIL_HEAD_CLEARANCE` cells from the head (never on food, capped at `HAIL_MAX_BLOCKS`) reusing the
+      `Debris` machinery. Surfaced as a named announcement banner, a per-wave SFX out of the existing
+      palette, an impact burst per hail block, and a **countdown chip in the reserved effect-timer row**
+      (`WaveChip`, sharing the new `TimerChip` body with the power-up chips). Endless only - Zen stays
+      calm and Time Attack is too short. Covered by `EndlessWaveTest`.
+- [x] **Step 6.15.6 - Achievements as a career ladder.** Thirty-eight badges in one flat list was a
+      checklist, not a journey: everything visible from the first launch, the hardest entries sitting
+      next to "eat your first food". New pure `game/AchievementTier.kt` groups them into five ranks
+      (**Hatchling / Forager / Stalker / Constrictor / Mythic**), each revealed once the player has
+      earned `revealAt` badges **in total** - a count, never "clear the previous tier", so no single
+      stubborn badge (a 30-day streak, a flawless lap) can wall anyone out; `AchievementTierTest`
+      asserts full non-overlapping coverage *and* that every threshold is reachable from the badges
+      revealed below it. The Achievements screen was rebuilt around it: a **rank card** with a bar
+      toward the next rank leads, then per-tier groups with earned counts, with sealed tiers shown as
+      cards stating the cost and how many feats they hide (a goal, not a blank); the Material `Card`s
+      became the app's own glass/gradient family. A promotion is celebrated on the game-over overlay
+      (`GameViewModel.newRank`). *(No skin was tied to a rank: `Skin.ALL_UNLOCKED_PREVIEW` currently
+      bypasses every gate, so the reward would have been invisible - the rank itself is the reward.)*
+- [x] **Step 6.15.7 - Onboarding refresh + Custom Game header alignment.** (1) The tour grew from five
+      cards to **six**: a new **"Length is the game"** card (card 3) teaches the three things a player
+      cannot guess from watching the board - the growth clock, the risk bonus and the Shed button - with
+      the growth ring, an `x5` risk badge and the **real** `drawShedToken` renderer (made `internal` for
+      the tour, following the rule that every legend uses the actual in-game drawing). The Endless mode
+      card now names the waves, the meta card's achievements row names the five-rank ladder and the
+      missions row the new grow/trim goals, and the welcome card mentions the risk bonus and the Shed
+      button. (2) The **Custom Game header** now sits where every other screen's does: the setup overlay
+      pins its `ScreenHeader` at the very top of the screen with the selectors scrolling below it
+      (instead of the header riding inside the centred column, which left it hanging under the game
+      HUD), and the HUD is alpha-hidden while `Ready` - it reads nothing useful during setup, and the
+      space stays reserved so the board never resizes between setup and play.
 
 ### Phase 7 - Play Store distribution & cleanup
 
