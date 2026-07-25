@@ -1,6 +1,7 @@
 package com.callbackdev.snake.game
 
 import kotlin.math.abs
+import kotlin.math.ceil
 import kotlin.math.min
 import kotlin.random.Random
 
@@ -602,10 +603,25 @@ class GameEngine(private val random: Random = Random.Default) {
         )
     }
 
-    /** Drops up to [segments] tail cells, never below the length floor; returns how many went. */
+    /**
+     * Drops tail cells for a shrinking food and returns how many actually went.
+     *
+     * Two limits apply. The hard [MIN_SNAKE_LENGTH] floor, and - the important one
+     * - a **share of the body**: a single piece can never cut more than
+     * [MAX_SHRINK_FRACTION] of the current length (at least one cell, so a shrink
+     * always does something). Without it a couple of big pieces dumped any snake
+     * straight back to the floor, which cancelled the auto-growth pressure
+     * outright: length stopped being a resource to manage and became a switch.
+     *
+     * The cap is deliberately shaped so it **only binds when the snake is short**:
+     * at 60 segments it allows 18, more than the largest piece in the table, so a
+     * big find is worth exactly as much as it looks when you are in real trouble.
+     * Trimming is strong when you are long and gentle when you are already safe.
+     */
     private fun trimTail(body: MutableList<Position>, segments: Int): Int {
+        val share = ceil(body.size * MAX_SHRINK_FRACTION).toInt().coerceAtLeast(1)
         val removable = (body.size - MIN_SNAKE_LENGTH).coerceAtLeast(0)
-        val removed = segments.coerceAtMost(removable)
+        val removed = minOf(segments, share, removable)
         repeat(removed) { body.removeAt(body.lastIndex) }
         return removed
     }
@@ -838,6 +854,13 @@ class GameEngine(private val random: Random = Random.Default) {
 
         /** The snake never shrinks below this many segments. */
         const val MIN_SNAKE_LENGTH = 3
+
+        /**
+         * The largest share of the body a single shrinking food may cut (see
+         * [trimTail]). Keeps the length a resource that has to be managed instead
+         * of a switch two big pieces could flip back to the floor.
+         */
+        const val MAX_SHRINK_FRACTION = 0.30f
 
         /** Segments the snake spawns with (it can still be shrunk down to [MIN_SNAKE_LENGTH]). */
         const val START_LENGTH = 4

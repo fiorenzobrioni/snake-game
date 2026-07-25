@@ -69,6 +69,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.callbackdev.snake.R
 import com.callbackdev.snake.audio.GameAudio
+import com.callbackdev.snake.ui.components.ShrinkToFitText
 import com.callbackdev.snake.game.BackBehavior
 import com.callbackdev.snake.game.ControlScheme
 import com.callbackdev.snake.game.DEFAULT_ASPECT
@@ -483,6 +484,8 @@ fun GameScreen(
                 onScaleSelected = { viewModel.selectScale(it) },
                 onCampaignStartSelected = { viewModel.selectCampaignStartLevel(it) },
                 onPlay = { viewModel.start() },
+                // Same exit as the system Back from setup: nothing is at stake here.
+                onBack = { viewModel.toSetup(); onExitToMenu() },
             )
 
             GameStatus.LevelIntro -> LevelIntroOverlay(
@@ -916,28 +919,3 @@ private fun AnnouncementBanner(
 /** How long an announcement banner holds before fading. */
 private const val BANNER_HOLD_MS = 1100L
 
-/**
- * A single-line text that steps its font size down (never below half) instead
- * of wrapping or clipping when the available width runs out — keyed on the
- * text length so it re-grows when the content gets shorter again.
- */
-@Composable
-private fun ShrinkToFitText(
-    text: String,
-    style: TextStyle,
-    color: Color,
-    modifier: Modifier = Modifier,
-) {
-    var scale by remember(text.length) { mutableFloatStateOf(1f) }
-    Text(
-        text = text,
-        style = style,
-        color = color,
-        fontWeight = FontWeight.Bold,
-        fontSize = style.fontSize * scale,
-        maxLines = 1,
-        softWrap = false,
-        onTextLayout = { if (it.hasVisualOverflow && scale > 0.5f) scale *= 0.92f },
-        modifier = modifier,
-    )
-}

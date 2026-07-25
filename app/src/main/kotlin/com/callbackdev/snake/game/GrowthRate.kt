@@ -13,7 +13,8 @@ import kotlin.math.roundToInt
  * score, **shrinking pieces are the way to buy time**.
  *
  * The five settings run from [Off] (the classic rules: only food changes your
- * length) to [Relentless]. Because a faster growth is strictly harder, each step
+ * length) to [Relentless], which on the reference board adds a segment roughly
+ * every second. Because a faster growth is strictly harder, each step
  * carries a declared [scoreFactor] applied to every point earned in the run -
  * the same risk/reward contract [SnakeSpeed.timeAttackScoreFactor] uses - so the
  * choice stays outside [ScoreKey] and no existing highscore is orphaned.
@@ -34,10 +35,10 @@ enum class GrowthRate(
     val scoreFactor: Float,
 ) {
     Off("Off", 0, 1.0f),
-    Gentle("Gentle", 45, 1.05f),
-    Steady("Steady", 30, 1.15f),
-    Brisk("Brisk", 20, 1.3f),
-    Relentless("Relentless", 13, 1.5f);
+    Gentle("Gentle", 24, 1.1f),
+    Steady("Steady", 16, 1.25f),
+    Brisk("Brisk", 10, 1.5f),
+    Relentless("Relentless", 6, 1.8f);
 
     /** True for every setting but [Off]: the snake gains segments by itself. */
     val isOn: Boolean get() = baseIntervalTicks > 0
@@ -45,7 +46,7 @@ enum class GrowthRate(
     /** 1-based number for display, e.g. "3. Steady". */
     val label: String get() = "${ordinal + 1}. $displayName"
 
-    /** The multiplier as a short display tag, e.g. "x1.15" ("x1" for [Off]). */
+    /** The multiplier as a short display tag, e.g. "x1.25" ("x1" for [Off]). */
     val scoreFactorLabel: String
         get() = "x" + scoreFactor.toString().trimEnd('0').trimEnd('.')
 
@@ -95,7 +96,11 @@ enum class GrowthRate(
         const val MIN_BOARD_FACTOR = 0.30
         const val MAX_BOARD_FACTOR = 2.50
 
-        /** However the scaling lands, never grow more often than this. */
-        const val MIN_INTERVAL_TICKS = 4
+        /**
+         * However the scaling lands, never grow more often than this. Low enough
+         * that the top two settings stay distinct on the largest boards, where the
+         * size scaling pushes both toward the floor.
+         */
+        const val MIN_INTERVAL_TICKS = 3
     }
 }

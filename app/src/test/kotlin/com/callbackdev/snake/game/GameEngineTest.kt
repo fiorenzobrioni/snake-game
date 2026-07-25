@@ -169,11 +169,9 @@ class GameEngineTest {
         assertEquals(4, grown.snake.size)
         assertEquals(4, grown.pendingGrowth) // 1 paid now + 4 queued = 5 total
 
-        // Mystery Shrink(4) on a long snake: exactly 4 tail cells removed.
-        val longSnake = listOf(
-            Position(5, 5), Position(4, 5), Position(3, 5), Position(2, 5),
-            Position(1, 5), Position(1, 6), Position(1, 7), Position(1, 8),
-        )
+        // Mystery Shrink(4) on a long-enough snake: all 4 tail cells removed (a
+        // 14-cell body is well clear of the share cap, see shrinkNeverCutsMoreThanItsShareOfTheBody).
+        val longSnake = (0 until 14).map { Position(5 - it % 6, 5 + it / 6) }
         val shrinkMystery = Food(
             Position(6, 5), FoodCategory.Shrink, FoodTier.Mystery, FoodSize.Standard, FoodEffect.Shrink(4),
         )
@@ -184,6 +182,29 @@ class GameEngineTest {
         assertEquals(4, removed)
         // The head advanced (+1) and four tail cells dropped → net = size + 1 - 4.
         assertEquals(longSnake.size + 1 - 4, shrunk.snake.size)
+    }
+
+    @Test
+    fun shrinkNeverCutsMoreThanItsShareOfTheBody() {
+        // The cap is a share of the current length, so one big piece can no longer
+        // dump a snake back to the floor: a 10-cell body (9 + the head added this
+        // tick) loses at most ceil(10 * 0.30) = 3.
+        val body = (0 until 9).map { Position(5 - it % 5, 5 + it / 5) }
+        val state = runningState(Direction.Right, foods = listOf(shrinkFood(9))).copy(snake = body)
+        val next = engine.tick(state)
+        val removed = next.lastEvents.filterIsInstance<GameEvent.Shrunk>().single().removed
+        assertEquals(3, removed)
+        assertEquals(body.size + 1 - 3, next.snake.size)
+
+        // On a long snake the cap is wider than any piece in the table, so a big
+        // find is worth exactly what it says when the player is in real trouble.
+        val long = (0 until 60).map { Position(1 + it % 15, 5 + it / 15) }
+        val big = engine.tick(
+            runningState(Direction.Up, foods = listOf(
+                Food(Position(1, 4), FoodCategory.Shrink, FoodTier.Large, FoodSize.Maxi, FoodEffect.Shrink(10)),
+            )).copy(snake = long, direction = Direction.Up, pendingDirection = Direction.Up),
+        )
+        assertEquals(10, big.lastEvents.filterIsInstance<GameEvent.Shrunk>().single().removed)
     }
 
     @Test

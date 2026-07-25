@@ -121,11 +121,14 @@ The classic Snake mechanics, extended with configurable features so every run fe
   penalty, each with a floating callout.
 - 🏆 **Records screen** - a best-score table per difficulty × board scale (and per mode), reachable
   from the main menu.
-- 🎖️ **Achievements** - thirty-one local milestones (combos, scores, endurance, eating sprees, using
+- 🎖️ **Achievements** - thirty-eight local milestones (combos, scores, endurance, eating sprees, using
   power-ups, building length out of food, trimming a snake back down, keeping a Daily streak…) that
   unlock as you play, with a dedicated screen and an unlock banner on the game-over screen. The length
   ones count the segments you **earned by eating**, never the ones auto-growth handed you, so they mean
-  the same thing at every growth setting.
+  the same thing at every growth setting. A handful are deliberately hard: score big while staying
+  under twenty segments (*Featherweight*), grow sixty segments without ever trimming (*Purist*), or
+  last three minutes - and score 5000 - with the growth dial at *Relentless* (*Unbowed*, *Apex
+  Predator*).
 - 📊 **Run recap** - the game-over screen shows a short summary of the run: foods eaten, best combo, time
   survived, the snake's longest length, the segments grown from food and trimmed away, and, in Campaign,
   the deepest level reached.
@@ -203,6 +206,12 @@ used to while paying exactly the same score, and a shrink piece out-trims what a
 piece adds: trimming is a real play, not a last resort, and its token points scale with the length
 you cut. Eating either floats the amount of segments gained or lost (**+N** / **−N**) at the food.
 
+A shrink piece can never cut more than **30% of your current length**. The cap is shaped so it only
+bites when you are already short: at 60 segments it allows 18 - more than the biggest piece in the
+table, so a lucky find is worth every bit of what it looks like when you are in real trouble - while
+a couple of big pieces can no longer dump a long snake straight back to the minimum. Length is a
+resource you manage, not a switch you flip.
+
 ### ⚔️ Levels (obstacles)
 
 The **Level** sets how many obstacles are placed and, in **Endless**, how hot the speed ramp starts
@@ -258,12 +267,13 @@ and nothing you already earned is orphaned.
 | Growth | Name       | Steps per free segment | Score |
 |--------|------------|------------------------|-------|
 | 1      | Off        | never                  | ×1    |
-| 2      | Gentle     | 45                     | ×1.05 |
-| 3      | Steady     | 30 *(default)*         | ×1.15 |
-| 4      | Brisk      | 20                     | ×1.3  |
-| 5      | Relentless | 13                     | ×1.5  |
+| 2      | Gentle     | 24                     | ×1.1  |
+| 3      | Steady     | 16 *(default)*         | ×1.25 |
+| 4      | Brisk      | 10                     | ×1.5  |
+| 5      | Relentless | 6                      | ×1.8  |
 
-The step counts above are for the **Explorer** board; they scale with the board's size, so a Colossal
+At *Relentless* that is about a segment a second at the relaxed pace. The step counts above are for
+the **Explorer** board; they scale with the board's size, so a Colossal
 arena grows the snake more often and a Cozy one less (filling a big board takes far more length than
 choking a small one). **Zen** stretches the interval further - the calm mode still has to end, but it
 must never feel like a race - and a **Campaign** respawn or level change restarts the clock with the

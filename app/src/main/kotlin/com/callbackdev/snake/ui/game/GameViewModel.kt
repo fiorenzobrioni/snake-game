@@ -1340,6 +1340,8 @@ class GameViewModel(
             maxSnakeLength = runMaxLength,
             segmentsFromFood = runSegmentsFromFood,
             segmentsTrimmed = runSegmentsTrimmed,
+            // The dial the run was played on, for the top-tier badges.
+            growthRate = state.growthRate,
         )
         // Persist scores, then evaluate achievements and skin unlocks against the
         // run. The Daily keeps its own per-day best (and streak); a Random challenge

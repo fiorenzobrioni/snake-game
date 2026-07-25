@@ -23,13 +23,14 @@ class AchievementTest {
         maxSnakeLength: Int = 0,
         segmentsFromFood: Int = 0,
         segmentsTrimmed: Int = 0,
+        growthRate: GrowthRate = GrowthRate.Off,
         dailyStreak: Int = 0,
     ) = RunStats(
         mode, score, maxCombo, durationMs, foodsEaten, usedExplosion, usedStar, usedJackpot,
         maxLevelReached = maxLevelReached, maxSpeedCycle = maxSpeedCycle, maxLevelDepth = maxLevelDepth,
         flawlessLap = flawlessLap, maxSnakeLength = maxSnakeLength,
         segmentsFromFood = segmentsFromFood, segmentsTrimmed = segmentsTrimmed,
-        dailyStreak = dailyStreak,
+        growthRate = growthRate, dailyStreak = dailyStreak,
     )
 
     @Test
@@ -162,5 +163,36 @@ class AchievementTest {
     fun `the sculptor badge gates on segments trimmed`() {
         assertTrue(Achievement.Sculptor.test(stats(segmentsTrimmed = 50)))
         assertFalse(Achievement.Sculptor.test(stats(segmentsTrimmed = 49)))
+    }
+
+    @Test
+    fun `featherweight needs a big score from a short snake`() {
+        assertTrue(Achievement.Featherweight.test(stats(score = 3000, maxSnakeLength = 20)))
+        // One segment too long, or one point short.
+        assertFalse(Achievement.Featherweight.test(stats(score = 3000, maxSnakeLength = 21)))
+        assertFalse(Achievement.Featherweight.test(stats(score = 2999, maxSnakeLength = 20)))
+        // A default (unrecorded) length must never satisfy it.
+        assertFalse(Achievement.Featherweight.test(stats(score = 9999)))
+    }
+
+    @Test
+    fun `purist needs earned length with the brake untouched`() {
+        assertTrue(Achievement.Purist.test(stats(segmentsFromFood = 60)))
+        assertFalse(Achievement.Purist.test(stats(segmentsFromFood = 60, segmentsTrimmed = 1)))
+        assertFalse(Achievement.Purist.test(stats(segmentsFromFood = 59)))
+    }
+
+    @Test
+    fun `the top-dial badges require the relentless growth setting`() {
+        val hard = stats(score = 5000, durationMs = 180_000, growthRate = GrowthRate.Relentless)
+        assertTrue(Achievement.Unbowed.test(hard))
+        assertTrue(Achievement.ApexPredator.test(hard))
+        // The same run on any easier dial earns neither.
+        val easier = stats(score = 5000, durationMs = 180_000, growthRate = GrowthRate.Brisk)
+        assertFalse(Achievement.Unbowed.test(easier))
+        assertFalse(Achievement.ApexPredator.test(easier))
+        // ...while the setting-agnostic tiers still land.
+        assertTrue(Achievement.Grandmaster.test(easier))
+        assertTrue(Achievement.Survivor.test(easier))
     }
 }

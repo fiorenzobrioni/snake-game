@@ -13,6 +13,48 @@ Suggested format for each entry:
 
 ---
 
+## 2026-07-25 - Step 6.15.3: growth doubled, shrink capped, 35 achievements, header polish
+
+**Done:**
+- **Auto-growth roughly doubled**, from the first device playtest: base intervals 45/30/20/13 ->
+  **24/16/10/6** steps, multipliers x1.1 / x1.25 / x1.5 / x1.8, `MIN_INTERVAL_TICKS` 4 -> 3 (so
+  Brisk and Relentless stay distinct once the board scaling pushes both toward the floor).
+- **Shrink food capped to a share of the body.** `GameEngine.trimTail` now removes at most
+  `ceil(length * MAX_SHRINK_FRACTION)` (0.30), on top of the existing hard floor.
+- **Achievements 34 -> 38.** `Featherweight` (score 3000 with a peak length <= 20), `Purist` (60
+  segments from food, zero trimming), `Unbowed` (survive 3 minutes at Relentless) and `ApexPredator`
+  (score 5000 at Relentless). The last two read the new `RunStats.growthRate`.
+- **UI.** Screen titles shrink to fit instead of truncating (the shared
+  `ui/components/ShrinkToFitText`, extracted from the HUD score's private copy), and the Custom setup
+  screen now wears the standard `ScreenHeader`.
+
+**Decisions:**
+- **Halve the interval, don't grant +2 segments.** Both double the pressure, but a smoother, more
+  frequent +1 reads better: the HUD ring fills at a steady rate and the body never jumps two cells at
+  once, which would have looked like a bug next to the one-cell food growth.
+- **Cap the trim by share, not by a bigger floor.** Raising `MIN_SNAKE_LENGTH` would have made short
+  snakes safe in a different way and done nothing about the dump itself. A share cap fixes the
+  actual complaint (two big pieces reset the run) while *keeping the big pieces fully powerful at the
+  lengths where they matter* - at 60 segments the cap allows 18, more than the table's largest piece.
+  Descending from 30 to the floor now takes six or more pieces, during which the clock keeps adding.
+- **Two badges gated on `Relentless`.** The growth dial is the game's difficulty dial, so asking for
+  the top of it is the same contract the mode-specific achievements already use. The seeded
+  challenges pin Steady, so they cannot be farmed there.
+- **`RunStats.maxSnakeLength` earns its keep again** through `Featherweight`: peak length is a poor
+  measure of ambition but a perfect measure of restraint.
+
+**Issues:** a bookkeeping error of mine surfaced here - the achievement count I had reported (30, then
+31) came from a stale line in Step 7.0's PLANNING note that I repeated without counting the enum. The
+roster actually held **33** entries before this phase, so `Sculptor` made 34 and the four new badges
+make **38**, not the 35 the request asked for. The counts in `README` / `PLANNING` are now the
+measured ones. Separately, the shrink cap broke one existing expectation (`mysteryFoodAppliesItsResolvedAmount` cut
+4 from a 9-cell body, which the cap now limits to 3). The test was rewritten on a body long enough to
+be clear of the cap, and `shrinkNeverCutsMoreThanItsShareOfTheBody` was added to pin both sides of
+the rule: capped when short, untouched when long.
+
+**Next:** another device pass on the doubled growth now that the brake is capped - the two changes
+push in opposite directions and the top two settings are the ones to watch.
+
 ## 2026-07-25 - Step 6.15.2: length goals judged on earned segments
 
 **Done:**
@@ -31,7 +73,7 @@ Suggested format for each entry:
   including `Off`.
 - **The two length missions** became `grow_20` / `grow_45` on the same metric.
 - **A goal for the new skill.** Trimming is now a core play, so it got its own: the `Sculptor`
-  achievement (trim 50 segments in one run) and a `trim_30` mission. The roster goes 30 -> **31**.
+  achievement (trim 50 segments in one run) and a `trim_30` mission. The roster goes 33 -> **34**.
 - **Recap.** The game-over card now lists *Grown from food* and *Trimmed* beside *Max length*, so a
   run that ended long but under-fed can see why the badge did not land.
 - **Tests.** `AchievementTest` / `MissionTest` reworked, including the case that states the intent:

@@ -18,8 +18,11 @@ Roadmap, work in progress, TODOs, known bugs, and ideas. For the history of deve
 - [ ] Verify smooth-motion interpolation on low-end devices
 - [ ] Verify the mystery "?" glyph renders crisply on small cells (dense boards)
 - [ ] Re-tune the food spawn weights / time gates after playtesting on a device
-- [ ] Playtest the five `GrowthRate` steps on a device and re-tune the base intervals if a Steady
-      run lands outside the intended 2-4 minute arc
+- [x] Playtest the five `GrowthRate` steps on a device and re-tune the base intervals (done in
+      Step 6.15.3: intervals roughly halved after the first device pass; re-check the top settings
+      now that shrink food is capped to a share of the body)
+- [ ] Re-playtest the growth / shrink balance after Step 6.15.3 and check whether `Sculptor`'s 50
+      trimmed segments is a badge or a formality
 - [x] Revisit the max-length achievements: with auto-growth, max length is largely time-driven, so
       they overlapped the survival goals (done in Step 6.15.2)
 - [ ] Optionally enrich the synthesized SFX before Play release (background music is now Gemini-generated)
@@ -705,10 +708,33 @@ snake-game/
       table, so the number of pieces a player must eat is about what it always was, and the goals mean
       exactly the same thing at every `GrowthRate` - `Off` included. The missions became `grow_20` /
       `grow_45`, and the rebalance's new skill got its own goals: the **`Sculptor`** achievement (trim 50
-      segments in a run) and a `trim_30` mission, taking the roster from 30 to **31** achievements.
+      segments in a run) and a `trim_30` mission, taking the roster from 33 to **34** achievements.
       `RunStats.maxSnakeLength` stays as the run's truthful peak (the game-over recap, which also now
       lists the grown / trimmed totals so an unearned badge explains itself). Covered by the reworked
       `AchievementTest` / `MissionTest`.
+
+- [x] **Step 6.15.3 - Growth doubled, shrink capped, 35 achievements, header polish (device
+      feedback).** (1) **Auto-growth roughly doubled** - the base intervals went 45/30/20/13 ->
+      **24/16/10/6** steps (Relentless is about a segment a second at the relaxed pace) and the
+      declared multipliers followed (x1.1 / x1.25 / x1.5 / x1.8); `MIN_INTERVAL_TICKS` dropped 4 -> 3
+      so the top two settings stay distinct on the largest boards. Chosen over "+2 segments per
+      trigger" because a smoother, more frequent +1 reads better on the HUD meter and on the body.
+      (2) **Shrink food capped to a share of the body** (`GameEngine.MAX_SHRINK_FRACTION` = 0.30, in
+      `trimTail`): the reported problem was that even at maximum growth a couple of big pieces dumped
+      the snake straight back to the 3-segment floor, which cancelled the pressure outright. The cap
+      only binds while the snake is short - at 60 segments it allows 18, more than the largest piece
+      in the table - so trimming stays fully powerful exactly when the player is in trouble and
+      length becomes a resource to manage rather than a switch. (3) **Achievements 34 -> 38**:
+      `Featherweight` (score 3000 with peak length <= 20 - which gives `RunStats.maxSnakeLength` a
+      real job again), `Purist` (60 segments from food with zero trimming), and two gated on the top
+      of the difficulty dial via the new `RunStats.growthRate` - `Unbowed` (survive 3 minutes at
+      Relentless) and `ApexPredator` (score 5000 at Relentless). The roster goes 34 -> **38** (the
+      "35" the request asked for was based on a stale count of 30 carried over from Step 7.0's note;
+      the enum actually held 33 entries before this phase). (4) **UI**: screen titles now shrink
+      to fit instead of truncating ("Daily Challen..." / "Random Chall..." were clipped on a normal
+      phone) via a shared `ui/components/ShrinkToFitText` extracted from the HUD score; and the
+      Custom setup wears the standard `ScreenHeader` (top-left back button + centred title), so it is
+      no longer the one screen without a visible way back.
 
 ### Phase 7 - Play Store distribution & cleanup
 

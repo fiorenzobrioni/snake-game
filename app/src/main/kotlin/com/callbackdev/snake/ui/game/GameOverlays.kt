@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilterChip
+import com.callbackdev.snake.ui.components.ScreenHeader
 import com.callbackdev.snake.ui.components.SettingCardGrid
 import com.callbackdev.snake.ui.components.SettingStepper
 import com.callbackdev.snake.ui.components.SnakeButton
@@ -126,13 +127,15 @@ fun ReadyOverlay(
     onScaleSelected: (BoardScale) -> Unit,
     onCampaignStartSelected: (Int) -> Unit,
     onPlay: () -> Unit,
+    onBack: () -> Unit,
 ) {
     OverlayScrim(alpha = 0.55f, horizontalPadding = 20.dp, verticalPadding = 16.dp) {
-        Text(
-            text = stringResource(R.string.menu_custom_game),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
+        // The same header the other secondary screens wear (Settings, Records,
+        // Daily...): the back affordance lives top-left everywhere, so this
+        // screen is no longer the one place the player has to guess.
+        ScreenHeader(
+            title = stringResource(R.string.menu_custom_game),
+            onBack = onBack,
         )
 
         // Every selector carries a one-line caption, so each choice explains

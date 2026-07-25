@@ -52,6 +52,12 @@ data class RunStats(
     val segmentsFromFood: Int = 0,
     /** Segments cut away by eating shrinking food over the run (cumulative). */
     val segmentsTrimmed: Int = 0,
+    /**
+     * The auto-growth setting the run was played on. The game's difficulty dial,
+     * so the top-tier badges can ask for the top of it - the same way the
+     * mode-specific ones ask for a mode.
+     */
+    val growthRate: GrowthRate = GrowthRate.Off,
     /** Daily challenge: the consecutive-day streak after this run (0 otherwise). */
     val dailyStreak: Int = 0,
 )
@@ -107,6 +113,30 @@ enum class Achievement(
     // The counterweight the auto-growth rebalance created: keeping a snake short
     // is now an active skill, so the trimming itself is worth a badge.
     Sculptor("Sculptor", "Trim 50 segments with shrink food in one run", { it.segmentsTrimmed >= 50 }),
+    // Two badges for playing *against* the length rather than with it: scoring
+    // big while staying small, and running with the brake untouched.
+    Featherweight(
+        "Featherweight",
+        "Score 3000 with a snake never longer than 20 segments",
+        { it.score >= 3000 && it.maxSnakeLength in 1..20 },
+    ),
+    Purist(
+        "Purist",
+        "Grow 60 segments from food without trimming once",
+        { it.segmentsFromFood >= 60 && it.segmentsTrimmed == 0 },
+    ),
+    // The top of the difficulty dial. Relentless adds a segment about every
+    // second, so both of these are meant to stay rare.
+    Unbowed(
+        "Unbowed",
+        "Survive three minutes at Relentless growth",
+        { it.growthRate == GrowthRate.Relentless && it.durationMs >= 180_000 },
+    ),
+    ApexPredator(
+        "Apex Predator",
+        "Score 5000 in a run at Relentless growth",
+        { it.growthRate == GrowthRate.Relentless && it.score >= 5000 },
+    ),
     ;
 
     companion object {
