@@ -282,9 +282,8 @@ snake-game/
       (default) / Classic / Neon / Pixel / Aurora / Ember. Render style is driven by `SkinPalette.useGlow`
       (head glow + food halos) and `SkinPalette.snakeStyle` (the per-skin snake body material). *(Updated
       2026-07-01: the old boolean `segmentedBody` was replaced by the `SnakeStyle` enum in Step 6.9.19,
-      giving Neon / Aurora / Ember bespoke bodies.)* Skins carry an unlock rule and only Retro + Classic
-      are free (see Step 6.9.9), though a pre-release `Skin.ALL_UNLOCKED_PREVIEW` flag currently makes them
-      all selectable (see Step 6.9.19).
+      giving Neon / Aurora / Ember bespoke bodies.)* *(All six skins are free: the unlock rules were
+      removed in Step 6.15.8.)*
 - [x] **Step 6.2** - **Special food pieces / power-ups & hazards** (extends the Phase 2.5 food system).
       All are **maxi-sized** with a distinctive shape/symbol, **time-gated** (appear later in a session)
       and surfaced through the existing `GameEvent` channel + HUD timers. They add `FoodCategory.Special`,
@@ -438,13 +437,10 @@ snake-game/
       also rewards skins: Aurora unlocks at 7 days, Ember at 30 (see Step 6.9.9). `GameViewModel.onGameOver`
       submits the daily score first, then reads `dailyStreak()` so the streak is current before evaluation.
 
-- [x] **Step 6.9.9 - Unlockable skins.** Skins now carry a `SkinUnlock` rule (`Always` / `Score` / `Streak`).
-      Retro (the new default) and Classic are always unlocked and listed first; Neon, Pixel (both
-      score-gated), Aurora (7-day streak) and Ember (30-day streak) are gated. *(The score thresholds
-      were later raised to 1500 / 5000 - see `Skin.kt`, which is authoritative.)* An `unlocked_skins` set in
-      `SettingsRepository` persists earned skins; `Skin.newlyUnlocked` evaluates new unlocks on game-over;
-      the Settings picker shows locked cards (dimmed, lock badge, requirement hint) that can't be selected,
-      and the game-over overlay surfaces any skin just unlocked.
+- [-] **Step 6.9.9 - Unlockable skins.** *(Shipped, then **removed entirely** in Step 6.15.8: skins are
+      expression, not reward, so every skin is free from the start. The `SkinUnlock` rules, the
+      `unlocked_skins` store, the locked cards in Settings and the game-over "skin unlocked" banner are all
+      gone. Kept here as the record of a decision reversed.)*
 
 - [x] **Step 6.9.10 - Weekly challenge / local Daily history.** `DailyHistoryScreen` ("This Week", reached
       from the Daily hub) shows the last 7 days of Daily results - best per day plus that day's twist - and a
@@ -467,8 +463,8 @@ snake-game/
       its run ended on. **Scope:** only the fixed-board modes (Endless / Time Attack / Zen) - Campaign is
       excluded (lives, respawns and per-level shapes make one overlaid ghost meaningless) - and never in a
       seeded Daily / Random challenge. **Optional:** made a Gameplay setting (`Ghost of your best run`,
-      default on); turning it off hides the ghost immediately (recording still happens, so a best set with
-      it off is still available when re-enabled).
+      *default off since Step 6.15.8*); turning it off hides the ghost immediately (recording still
+      happens, so a best set with it off is still available when re-enabled).
 
 - [x] **Step 6.9.13 - Per-skin item shapes.** Board items now match their skin's visual language: the flat
       skins (Retro / Pixel) render regular food **and** special power-ups / hazards as rounded squares
@@ -548,10 +544,8 @@ snake-game/
       corner on the blocks). *(Updated 2026-07-04: Pixel later moved off Blocks to its own 5x5 sprite body -
       see Step 6.14.1.)* Debris (severed tails) render in the same per-skin body. Animation reuses the
       `time` already passed to `drawSnake`, so the game loop is untouched. Also added
-      `Skin.ALL_UNLOCKED_PREVIEW` (currently `true`): while set, every skin is selectable and the game-over
-      "skin unlocked" toasts are suppressed - a temporary pre-release convenience to trial all skins. The
-      underlying `SkinUnlock` rules / `Skin.newlyUnlocked` logic are untouched (still covered by `SkinTest`);
-      flip the flag to `false` to restore gating before an official release.
+      `Skin.ALL_UNLOCKED_PREVIEW`, a pre-release flag that made every skin selectable. *(Both the flag and
+      the gating it bypassed were deleted in Step 6.15.8 - the skins are simply free.)*
 
 ### Phase 6.10 - Mode depth & pacing ✅ (implemented, post-1.0.0)
 
@@ -789,8 +783,8 @@ snake-game/
       toward the next rank leads, then per-tier groups with earned counts, with sealed tiers shown as
       cards stating the cost and how many feats they hide (a goal, not a blank); the Material `Card`s
       became the app's own glass/gradient family. A promotion is celebrated on the game-over overlay
-      (`GameViewModel.newRank`). *(No skin was tied to a rank: `Skin.ALL_UNLOCKED_PREVIEW` currently
-      bypasses every gate, so the reward would have been invisible - the rank itself is the reward.)*
+      (`GameViewModel.newRank`). *(No skin was tied to a rank - and Step 6.15.8 then removed skin gating
+      altogether, so the rank itself is the reward.)*
 - [x] **Step 6.15.7 - Onboarding refresh + Custom Game header alignment.** (1) The tour grew from five
       cards to **six**: a new **"Length is the game"** card (card 3) teaches the three things a player
       cannot guess from watching the board - the growth clock, the risk bonus and the Shed button - with
@@ -803,6 +797,18 @@ snake-game/
       (instead of the header riding inside the centred column, which left it hanging under the game
       HUD), and the HUD is alpha-hidden while `Ready` - it reads nothing useful during setup, and the
       space stays reserved so the board never resizes between setup and play.
+
+- [x] **Step 6.15.8 - Ghost off by default, skin unlocks removed.** (1) The **ghost replay** now ships
+      **off** (`Settings.ghostReplayEnabled` / the `GameViewModel` seed): it is a lovely feature for a
+      player chasing a record, but a second snake on the board is noise for someone still learning the
+      new length economy - it stays one toggle away in Settings. (2) The **skin unlock system is gone**,
+      not just bypassed: `SkinUnlock`, `Skin.unlock`, `Skin.defaultUnlocked`, `Skin.newlyUnlocked` and
+      `Skin.ALL_UNLOCKED_PREVIEW` deleted, along with the `unlocked_skins` DataStore set and its
+      accessors, the locked/dimmed cards and lock badge in the Settings picker, the game-over "skin
+      unlocked" banner (`GameViewModel.newlyUnlockedSkins`) and the debug "unlock all themes" menu
+      shortcut with its `SHOW_DEBUG_UNLOCK_SKINS` flag. All six skins (and, as before, all six terrains)
+      are free from the start: a look is expression, not a reward to grind for. `SkinTest` lost its four
+      unlock cases; README, the onboarding copy and this plan were corrected.
 
 ### Phase 7 - Play Store distribution & cleanup
 

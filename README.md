@@ -61,12 +61,10 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - 🎮 **Control schemes** - **swipe** by default (with adjustable sensitivity), a compact **wedge dial** (a single key split into four directional wedges), or one-handed **tap-to-turn**.
   A forgiving **coyote frame** makes a beat-late turn still count: the first lethal step makes the head
   hesitate one tick (instead of dying), giving you a moment to turn away - re-armed by your next safe move.
-- 🎨 **Skins** - six selectable looks, each its own palette and render style, picked in Settings from
-  **live preview cards**: each card shows the skin's snake slithering in place, drawn through the real
-  gameplay renderer so its animated body material previews exactly as it plays. **Retro** (the default) and
-  **Classic** are unlocked from the start; the rest are earned: **Neon** (score 1500 in a run), **Pixel**
-  (score 5000), **Aurora** (a 7-day Daily streak) and **Ember** (a 30-day Daily streak). Locked skins show
-  their unlock condition in Settings. The glow skins (Classic / Neon / Aurora / Ember) draw food as
+- 🎨 **Skins** - six selectable looks, each its own palette and render style, **all free from the
+  start**, picked in Settings from **live preview cards**: each card shows the skin's snake slithering in
+  place, drawn through the real gameplay renderer so its animated body material previews exactly as it
+  plays. **Retro** is the default. The glow skins (Classic / Neon / Aurora / Ember) draw food as
   haloed round pieces; the flat skins (Retro / Pixel) render food as squares (crisp on Pixel, lightly
   rounded on Retro). Each skin also has its **own snake body**: Classic a glossy tapered tube, Retro
   chiselled blocks, **Pixel** a chain of 5x5-pixel sprite tiles in classic 80s arcade colours (blue
@@ -106,8 +104,8 @@ The classic Snake mechanics, extended with configurable features so every run fe
   fiery orange-red) as the streak climbs.
 - 👻 **Ghost replay** - race a translucent "ghost" of your own best run, retracing its path tick-for-tick
   alongside the live snake (in **Endless**, **Time Attack** and **Zen**). It fades in at the start and
-  out the moment you outlast it. On by default; turn **Ghost of your best run** off in Settings for a
-  clean board.
+  out the moment you outlast it. **Off by default** - switch **Ghost of your best run** on in Settings
+  when you want something to chase.
 - 👁️ **Reduce motion & flashing** - an accessibility toggle in Settings that damps the screen shake, the
   particle bursts and the near-miss flash for a calmer, flash-free board.
 - ✨ **Rich 2D visuals** - the snake renders in each skin's own body style (see **Skins** - glossy tube,
@@ -158,8 +156,8 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - 📅 **Daily Challenge** - a date-seeded run with the same mode, level, board and **daily twist** for
   everyone that day (the twist rotates through **nine** flavours - Bonus Rush, Frenzy, Compact Arena,
   Grand Arena, Maxi Feast, Combo Rush, Overdrive, Old School or plain Standard - each described on the
-  Daily card; the obstacle layout and food sequence come from the day's seed). Beat your **best today** and build a **day streak** (which
-  unlocks the Aurora and Ember skins at 7 and 30 days). A **This Week** screen shows your last 7 days of
+  Daily card; the obstacle layout and food sequence come from the day's seed). Beat your **best today** and build a **day streak**.
+  A **This Week** screen shows your last 7 days of
   Daily results and a weekly best / total; tap any day there to **replay** that day's exact challenge -
   just for fun, your recorded results are never overwritten. Reached from the main menu.
 - 🎲 **Random Challenge** - a one-off surprise run for variety: **Shuffle** for a fresh mode / level /

@@ -100,7 +100,6 @@
     <!-- Note: action_play is retained for the in-game Ready overlay Play button. -->
     <string name="menu_settings">Settings</string>
     <string name="menu_credits">Credits</string>
-    <string name="menu_debug_unlock_themes">Unlock all themes (debug)</string>
     <string name="action_play">Play</string>
 
     <!-- Credits / About -->
@@ -148,8 +147,6 @@
     <!-- Paired headers: the two cosmetic pickers read as "Snake skin" / "Board terrain". -->
     <string name="settings_skin">Snake skin</string>
     <string name="settings_terrain">Board terrain</string>
-    <string name="skin_locked">Locked</string>
-    <string name="skin_unlocked">Skin unlocked!</string>
     <string name="settings_theme">Theme</string>
     <string name="settings_hazards">Hazards (earthquake, explosion, snail)</string>
     <string name="settings_special_frequency">Special blocks</string>
@@ -211,7 +208,7 @@
     <string name="onboarding_meta_achievements">Achievements &amp; records</string>
     <string name="onboarding_meta_achievements_desc">Thirty-eight feats on a five-rank ladder that opens up as you play, plus a best score for every mode, difficulty and board.</string>
     <string name="onboarding_meta_skins">Skins &amp; arenas</string>
-    <string name="onboarding_meta_skins_desc">Earn snake skins and animated board worlds, then dress the whole game in them.</string>
+    <string name="onboarding_meta_skins_desc">Six snake skins and six animated board worlds, all free from the start - dress the whole game in them.</string>
     <string name="onboarding_replay_hint">You can reopen this guide any time from Settings.</string>
 
     <!-- HUD -->

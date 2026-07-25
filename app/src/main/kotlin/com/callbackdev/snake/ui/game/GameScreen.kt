@@ -587,7 +587,6 @@ fun GameScreen(
                     practiceRun = viewModel.lastRunFromCheckpoint,
                     summary = viewModel.lastSummary,
                     unlocked = viewModel.newlyUnlocked.map { it.title },
-                    unlockedSkins = viewModel.newlyUnlockedSkins.map { it.displayName },
                     newRank = viewModel.newRank?.displayName,
                     missions = viewModel.missionsProgress,
                     onPlayAgain = { viewModel.playAgain() },

@@ -13,6 +13,38 @@ Suggested format for each entry:
 
 ---
 
+## 2026-07-25 - Step 6.15.8: ghost off by default, skin unlocks removed
+
+**Done:**
+- **Ghost replay defaults to off** (`Settings.ghostReplayEnabled`, plus the `GameViewModel` seed and the
+  README wording). Still one toggle away in Settings.
+- **The skin unlock system is deleted, not disabled.** Gone: `SkinUnlock`, `Skin.unlock`,
+  `Skin.defaultUnlocked`, `Skin.newlyUnlocked`, `Skin.ALL_UNLOCKED_PREVIEW`, the `unlocked_skins`
+  DataStore set with `unlockedSkins()` / `addUnlockedSkins()`, the locked/dimmed cards and lock badge in
+  the Settings picker, the game-over "skin unlocked" banner (`newlyUnlockedSkins` and its overlay
+  section), the debug "unlock all themes" menu shortcut and its `SHOW_DEBUG_UNLOCK_SKINS` flag, and the
+  three orphaned strings. `Skin` is now just `(displayName)`.
+- `SkinTest` lost its four unlock cases and gained one that states the new contract; README, the
+  onboarding meta copy and PLANNING were corrected (including two older entries that described the
+  gating as live).
+
+**Decisions:**
+- **Delete rather than keep behind a flag.** The gating was already inert behind
+  `ALL_UNLOCKED_PREVIEW = true`, so keeping the rules "just in case" meant carrying an unlock system,
+  a persisted set and a UI locked-state path that nothing exercised - the classic way for dead code to
+  rot into a bug. The decision is recorded in PLANNING (Step 6.9.9 is marked as reversed) rather than in
+  the code.
+- **Ghost off, not removed.** Opposite call, opposite reasoning: the feature works and is wanted by
+  record-chasers, it is just the wrong *default* next to the new length economy, where a second snake on
+  the board is one more thing to parse.
+
+**Issues:** none. The compiler found every call site: the only surprise was the debug menu shortcut,
+which was the last user of `addUnlockedSkins`.
+
+**Next:** the pending device pass on the wave cadence and the ladder thresholds.
+
+---
+
 ## 2026-07-25 - Steps 6.15.5-6.15.7: Endless waves, the achievement ladder, onboarding & header polish
 
 **Done:**

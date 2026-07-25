@@ -578,7 +578,6 @@ fun GameOverOverlay(
     bestScore: Int,
     isNewBest: Boolean,
     unlocked: List<String>,
-    unlockedSkins: List<String> = emptyList(),
     /** Non-null when this run promoted the player up the achievement ladder. */
     newRank: String? = null,
     onPlayAgain: () -> Unit,
@@ -743,35 +742,6 @@ fun GameOverOverlay(
                 unlocked.forEach { title ->
                     Text(
                         text = title,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(top = 2.dp),
-                    )
-                }
-            }
-        }
-        if (unlockedSkins.isNotEmpty()) {
-            Column(
-                modifier = Modifier
-                    .padding(top = 16.dp)
-                    .fillMaxWidth()
-                    .background(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                        RoundedCornerShape(12.dp),
-                    )
-                    .padding(12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(
-                    text = stringResource(R.string.skin_unlocked),
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                unlockedSkins.forEach { name ->
-                    Text(
-                        text = name,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onBackground,
                         textAlign = TextAlign.Center,

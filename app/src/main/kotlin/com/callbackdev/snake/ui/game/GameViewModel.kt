@@ -270,7 +270,7 @@ class GameViewModel(
         private set
 
     /** Whether to replay a translucent ghost of the best run alongside play (setting). */
-    var ghostReplayEnabled by mutableStateOf(true)
+    var ghostReplayEnabled by mutableStateOf(false)
         private set
 
     /**
@@ -415,9 +415,6 @@ class GameViewModel(
     var newlyUnlocked by mutableStateOf<List<Achievement>>(emptyList())
         private set
 
-    /** Skins unlocked by the most recent run (for the game-over banner). */
-    var newlyUnlockedSkins by mutableStateOf<List<Skin>>(emptyList())
-        private set
 
     /**
      * Today's rotating missions with their status after the most recent run, for
@@ -964,7 +961,6 @@ class GameViewModel(
         runWaves = 0
         shedAnnounced = false
         newlyUnlocked = emptyList()
-        newlyUnlockedSkins = emptyList()
         newRank = null
         missionsProgress = emptyList()
         beginGhostRun()
@@ -1468,17 +1464,6 @@ class GameViewModel(
                 val before = AchievementTier.rankFor(unlockedAchievements.size)
                 val after = AchievementTier.rankFor(unlockedAchievements.size + earned.size)
                 if (after != before) newRank = after
-            }
-            // Reward progression: unlock gated skins reached by this run's score /
-            // the post-run streak, and surface them in the game-over banner.
-            val unlockedSkins = repo.unlockedSkins().first()
-            // During the pre-release preview all skins are already available, so
-            // suppress the "skin unlocked" surfacing (the gates are bypassed).
-            val newSkins = if (Skin.ALL_UNLOCKED_PREVIEW) emptyList()
-            else Skin.newlyUnlocked(score, streak, unlockedSkins)
-            if (newSkins.isNotEmpty()) {
-                repo.addUnlockedSkins(newSkins.map { it.name })
-                newlyUnlockedSkins = newSkins
             }
         }
         // Evaluate today's rotating missions (Step 6.9.5) and surface the full set

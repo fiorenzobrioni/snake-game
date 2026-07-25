@@ -57,8 +57,8 @@ data class Settings(
     val themeMode: ThemeMode = ThemeMode.Dark,
     /** First-run flag: true once the player has seen (or skipped) the tutorial. */
     val onboardingCompleted: Boolean = false,
-    /** Replay a translucent ghost of your best run alongside the live one (default on). */
-    val ghostReplayEnabled: Boolean = true,
+    /** Replay a translucent ghost of your best run alongside the live one (default off). */
+    val ghostReplayEnabled: Boolean = false,
 )
 
 /**
@@ -109,7 +109,7 @@ class SettingsRepository(private val context: Context) {
             mode = prefs[MODE].toEnum(GameMode::valueOf) ?: GameMode.Endless,
             themeMode = prefs[THEME_MODE].toEnum(ThemeMode::valueOf) ?: ThemeMode.Dark,
             onboardingCompleted = prefs[ONBOARDING_COMPLETED] ?: false,
-            ghostReplayEnabled = prefs[GHOST_REPLAY_ENABLED] ?: true,
+            ghostReplayEnabled = prefs[GHOST_REPLAY_ENABLED] ?: false,
         )
     }
 
@@ -320,17 +320,6 @@ class SettingsRepository(private val context: Context) {
         edit { it[UNLOCKED_ACHIEVEMENTS] = (it[UNLOCKED_ACHIEVEMENTS] ?: emptySet()) + ids }
 
     /**
-     * The set of unlocked skin ids (enum names) beyond the always-available ones.
-     * [Skin.defaultUnlocked] are not stored here; combine with this set in the UI.
-     */
-    fun unlockedSkins(): Flow<Set<String>> =
-        context.dataStore.data.map { it[UNLOCKED_SKINS] ?: emptySet() }
-
-    /** Adds [ids] to the unlocked skin set (idempotent). */
-    suspend fun addUnlockedSkins(ids: Collection<String>) =
-        edit { it[UNLOCKED_SKINS] = (it[UNLOCKED_SKINS] ?: emptySet()) + ids }
-
-    /**
      * The mission ids completed on [epochDay] (Step 6.9.5). Completions are stored
      * tagged with their day ("epochDay/id") so the daily rotation resets naturally:
      * yesterday's completions never satisfy today's goals.
@@ -398,7 +387,6 @@ class SettingsRepository(private val context: Context) {
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         val GHOST_REPLAY_ENABLED = booleanPreferencesKey("ghost_replay_enabled")
         val UNLOCKED_ACHIEVEMENTS = stringSetPreferencesKey("unlocked_achievements")
-        val UNLOCKED_SKINS = stringSetPreferencesKey("unlocked_skins")
         val COMPLETED_MISSIONS = stringSetPreferencesKey("completed_missions")
         val DAILY_STREAK = intPreferencesKey("daily_streak")
         val DAILY_LAST_DAY = longPreferencesKey("daily_last_day")
