@@ -32,4 +32,11 @@ object ZenMode {
      * about maintaining flow at a calm pace, not racing a tight timer.
      */
     const val COMBO_WINDOW_FACTOR = 2f
+
+    /**
+     * How much longer the auto-growth interval is in Zen ([GrowthRate]). Zen is
+     * not exempt - a run still has to reach an end - but the pressure is dialled
+     * back so the mode keeps its unhurried character.
+     */
+    const val GROWTH_INTERVAL_FACTOR = 1.6f
 }

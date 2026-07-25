@@ -18,6 +18,13 @@ Roadmap, work in progress, TODOs, known bugs, and ideas. For the history of deve
 - [ ] Verify smooth-motion interpolation on low-end devices
 - [ ] Verify the mystery "?" glyph renders crisply on small cells (dense boards)
 - [ ] Re-tune the food spawn weights / time gates after playtesting on a device
+- [x] Playtest the five `GrowthRate` steps on a device and re-tune the base intervals (done in
+      Step 6.15.3: intervals roughly halved after the first device pass; re-check the top settings
+      now that shrink food is capped to a share of the body)
+- [ ] Re-playtest the growth / shrink balance after Step 6.15.3 and check whether `Sculptor`'s 50
+      trimmed segments is a badge or a formality
+- [x] Revisit the max-length achievements: with auto-growth, max length is largely time-driven, so
+      they overlapped the survival goals (done in Step 6.15.2)
 - [ ] Optionally enrich the synthesized SFX before Play release (background music is now Gemini-generated)
 
 ---
@@ -275,9 +282,8 @@ snake-game/
       (default) / Classic / Neon / Pixel / Aurora / Ember. Render style is driven by `SkinPalette.useGlow`
       (head glow + food halos) and `SkinPalette.snakeStyle` (the per-skin snake body material). *(Updated
       2026-07-01: the old boolean `segmentedBody` was replaced by the `SnakeStyle` enum in Step 6.9.19,
-      giving Neon / Aurora / Ember bespoke bodies.)* Skins carry an unlock rule and only Retro + Classic
-      are free (see Step 6.9.9), though a pre-release `Skin.ALL_UNLOCKED_PREVIEW` flag currently makes them
-      all selectable (see Step 6.9.19).
+      giving Neon / Aurora / Ember bespoke bodies.)* *(All six skins are free: the unlock rules were
+      removed in Step 6.15.8.)*
 - [x] **Step 6.2** - **Special food pieces / power-ups & hazards** (extends the Phase 2.5 food system).
       All are **maxi-sized** with a distinctive shape/symbol, **time-gated** (appear later in a session)
       and surfaced through the existing `GameEvent` channel + HUD timers. They add `FoodCategory.Special`,
@@ -298,10 +304,14 @@ snake-game/
   - **Earthquake / Explosion rebalance** - see Step 6.2 bullets above (sustained-shake malus; 1/3 split
     with longer-lived debris).
   - **Length-scaled scoring** - grow-food points scale with the current snake length (×1 short → ×5 cap,
-    `GameEngine.lengthScoreFactor`), so the same bite is worth far more late in a run.
+    `GameEngine.lengthScoreFactor`), so the same bite is worth far more late in a run. *(Replaced in
+    Step 6.15.4 by `GameState.riskFactor`, which scales with the share of the **board** covered - the
+    old factor was blind to the arena size.)*
   - **HUD length** - the current snake length is shown in the fixed-height HUD second row.
-  - **Length achievements** - three new max-length achievements (`LongHaul` 25 / `Anaconda` 50 /
-    `Titanoboa` 90), tracked via `RunStats.maxSnakeLength`.
+  - **Length achievements** - three new max-length achievements (`LongHaul` / `Anaconda` /
+    `Titanoboa`), tracked via `RunStats.maxSnakeLength`. *(Retargeted in Step 6.15.2 onto
+    `RunStats.segmentsFromFood` - segments earned by eating - since auto-growth made peak length a
+    function of survival time.)*
 - [x] **Step 6.3** - Highscore tables per (level × size), per mode, in a "Records" screen.
 - [x] **Step 6.4** - Local achievements.
 - [x] **Step 6.5** - Extra modes: Endless, Time Attack.
@@ -390,11 +400,14 @@ snake-game/
       still-open Step 6.9.9), so inventing a currency here would be premature. Completion (and a lifetime
       `completedMissionsTotal`) is persisted, leaving the door open for a reward once Step 6.9.9 lands.
 
-- [ ] **Step 6.9.6 - Player-activated power-up (one slot).** A single chargeable ability the player
-      triggers on demand (e.g. a one-shot **Dash** that skips a few cells, or a **Bomb** that clears nearby
-      debris/obstacles), instead of only random pickups - adds a tactical decision. Impl: a `GameState`
-      "charge" field filled by play (e.g. by combos), a HUD button, and an engine action; respect
-      determinism so it stays test-friendly.
+- [x] **Step 6.9.6 - Player-activated power-up (one slot).** A single chargeable ability the player
+      triggers on demand, instead of only random pickups - adds a tactical decision. **Done** in
+      Step 6.15.4 as **Shed** rather than the Dash / Bomb this step originally sketched: once
+      auto-growth landed, the moment with no answer was not "I want to move faster" but "I am too
+      long, boxed in, and there is no shrinking food in reach". `GameState.abilityCharge` fills on
+      eating (double on a live combo), `GameEngine.useAbility` cuts `SHED_FRACTION` of the tail loose
+      for a risk-scaled payout, and a drawn charge-ring button sits in the board's corner. Pure and
+      deterministic - the action consumes no randomness.
 
 - [x] **Step 6.9.7 - Environmental hazards in Campaign.** The level shapes are already procedural, so they
       lend themselves to **moving walls** (gates that open/close on a cycle) and **teleport pads** (enter
@@ -424,12 +437,10 @@ snake-game/
       also rewards skins: Aurora unlocks at 7 days, Ember at 30 (see Step 6.9.9). `GameViewModel.onGameOver`
       submits the daily score first, then reads `dailyStreak()` so the streak is current before evaluation.
 
-- [x] **Step 6.9.9 - Unlockable skins.** Skins now carry a `SkinUnlock` rule (`Always` / `Score` / `Streak`).
-      Retro (the new default) and Classic are always unlocked and listed first; Neon (score 500), Pixel
-      (score 1500), Aurora (7-day streak) and Ember (30-day streak) are gated. An `unlocked_skins` set in
-      `SettingsRepository` persists earned skins; `Skin.newlyUnlocked` evaluates new unlocks on game-over;
-      the Settings picker shows locked cards (dimmed, lock badge, requirement hint) that can't be selected,
-      and the game-over overlay surfaces any skin just unlocked.
+- [-] **Step 6.9.9 - Unlockable skins.** *(Shipped, then **removed entirely** in Step 6.15.8: skins are
+      expression, not reward, so every skin is free from the start. The `SkinUnlock` rules, the
+      `unlocked_skins` store, the locked cards in Settings and the game-over "skin unlocked" banner are all
+      gone. Kept here as the record of a decision reversed.)*
 
 - [x] **Step 6.9.10 - Weekly challenge / local Daily history.** `DailyHistoryScreen` ("This Week", reached
       from the Daily hub) shows the last 7 days of Daily results - best per day plus that day's twist - and a
@@ -452,8 +463,8 @@ snake-game/
       its run ended on. **Scope:** only the fixed-board modes (Endless / Time Attack / Zen) - Campaign is
       excluded (lives, respawns and per-level shapes make one overlaid ghost meaningless) - and never in a
       seeded Daily / Random challenge. **Optional:** made a Gameplay setting (`Ghost of your best run`,
-      default on); turning it off hides the ghost immediately (recording still happens, so a best set with
-      it off is still available when re-enabled).
+      *default off since Step 6.15.8*); turning it off hides the ghost immediately (recording still
+      happens, so a best set with it off is still available when re-enabled).
 
 - [x] **Step 6.9.13 - Per-skin item shapes.** Board items now match their skin's visual language: the flat
       skins (Retro / Pixel) render regular food **and** special power-ups / hazards as rounded squares
@@ -533,10 +544,8 @@ snake-game/
       corner on the blocks). *(Updated 2026-07-04: Pixel later moved off Blocks to its own 5x5 sprite body -
       see Step 6.14.1.)* Debris (severed tails) render in the same per-skin body. Animation reuses the
       `time` already passed to `drawSnake`, so the game loop is untouched. Also added
-      `Skin.ALL_UNLOCKED_PREVIEW` (currently `true`): while set, every skin is selectable and the game-over
-      "skin unlocked" toasts are suppressed - a temporary pre-release convenience to trial all skins. The
-      underlying `SkinUnlock` rules / `Skin.newlyUnlocked` logic are untouched (still covered by `SkinTest`);
-      flip the flag to `false` to restore gating before an official release.
+      `Skin.ALL_UNLOCKED_PREVIEW`, a pre-release flag that made every skin selectable. *(Both the flag and
+      the gating it bypassed were deleted in Step 6.15.8 - the skins are simply free.)*
 
 ### Phase 6.10 - Mode depth & pacing ✅ (implemented, post-1.0.0)
 
@@ -660,6 +669,189 @@ snake-game/
       `PixelPalette.snakeBody/snakeHead/snakeOutline/snakeEye` mirror the sprite inks so palette-tinted
       debris and effects stay coherent. Naming kept deliberately generic (no third-party character names
       anywhere in code or UI) to stay clear of trademark concerns.
+
+### Phase 6.15 - Auto-growth (gameplay rebalance)
+
+> The pacing hole the mode-depth pass never closed: outside Time Attack a careful player could
+> circle an empty board indefinitely, so a run had no natural end and no forced decision. The snake
+> now grows **on its own**, which inverts the food economy - grow pieces are the score, shrink
+> pieces are the time - and gives every mode an arc.
+
+- [x] **Step 6.15.1 - Auto-growth + food rebalance + Custom setup redesign.** New pure-model
+      `game/GrowthRate.kt`: five settings (**Off** / Gentle / Steady / Brisk / Relentless) carrying a
+      base interval in **ticks** (0 / 45 / 30 / 20 / 13 on the reference board) and a **declared score
+      multiplier** (x1 / x1.05 / x1.15 / x1.3 / x1.5). `GameState` carries `growthRate` +
+      `growthProgress` and derives `autoGrowthIntervalTicks` / `autoGrowthFraction`; `GameEngine.tick`
+      counts steps and queues a free segment through the existing `pendingGrowth`, emitting
+      `GameEvent.AutoGrew`. The interval scales with the board's cell count
+      (`(REFERENCE_CELLS / cells) ^ 0.75`, clamped - between the linear side scaling of the vanish
+      times and the full area scaling of the obstacle counts), **Zen** stretches it by
+      `ZenMode.GROWTH_INTERVAL_FACTOR` (1.6) and a Campaign staging/respawn restarts it. Daily /
+      Random challenges pin `GrowthRate.CHALLENGE`. **Food rebalanced**: grow amounts halved
+      (1/2/3/4, mystery 1..6) with `GameEngine.GROW_POINTS_PER_SEGMENT` doubled to 20 (same score per
+      piece, half the length), shrink amounts unchanged (so a shrink out-trims a comparable grow),
+      shrink unlocked from tick one with a higher spawn weight whenever growth is on, and shrink
+      points scaled by the length being cut. **Setup screen redesigned** to fit one screen: new
+      `ui/components/SettingStepper.kt` renders the ordered settings (Level / Snake speed / Growth /
+      Board scale) as name + value + a segmented 5-notch gauge and the mode as a 2x2
+      `SettingCardGrid`, every option visible and every caption kept. **HUD** shows the live length
+      with a ring filling toward the next segment. Covered by `AutoGrowthTest`.
+
+- [x] **Step 6.15.2 - Length goals judged on earned segments.** Auto-growth turned peak length into a
+      function of survival time and of the chosen growth setting, so the five "big snake" achievements
+      (`LongHaul` / `Anaconda` / `Titanoboa` / `Leviathan` / `Ouroboros`) and the two length missions had
+      become second spellings of the survival goals - and were worth a different amount on every
+      setting. `RunStats` gained **`segmentsFromFood`** (segments earned by eating: grow food plus a
+      Jackpot's growth, cumulative) and **`segmentsTrimmed`**, both accumulated in `GameViewModel` from
+      the existing `Ate` / `JackpotHit` / `Shrunk` events. The five achievements now judge
+      `segmentsFromFood` with thresholds **halved** (25 / 50 / 90 / 125, Zen 30) to match the halved grow
+      table, so the number of pieces a player must eat is about what it always was, and the goals mean
+      exactly the same thing at every `GrowthRate` - `Off` included. The missions became `grow_20` /
+      `grow_45`, and the rebalance's new skill got its own goals: the **`Sculptor`** achievement (trim 50
+      segments in a run) and a `trim_30` mission, taking the roster from 33 to **34** achievements.
+      `RunStats.maxSnakeLength` stays as the run's truthful peak (the game-over recap, which also now
+      lists the grown / trimmed totals so an unearned badge explains itself). Covered by the reworked
+      `AchievementTest` / `MissionTest`.
+
+- [x] **Step 6.15.3 - Growth doubled, shrink capped, 35 achievements, header polish (device
+      feedback).** (1) **Auto-growth roughly doubled** - the base intervals went 45/30/20/13 ->
+      **24/16/10/6** steps (Relentless is about a segment a second at the relaxed pace) and the
+      declared multipliers followed (x1.1 / x1.25 / x1.5 / x1.8); `MIN_INTERVAL_TICKS` dropped 4 -> 3
+      so the top two settings stay distinct on the largest boards. Chosen over "+2 segments per
+      trigger" because a smoother, more frequent +1 reads better on the HUD meter and on the body.
+      (2) **Shrink food capped to a share of the body** (`GameEngine.MAX_SHRINK_FRACTION` = 0.30, in
+      `trimTail`): the reported problem was that even at maximum growth a couple of big pieces dumped
+      the snake straight back to the 3-segment floor, which cancelled the pressure outright. The cap
+      only binds while the snake is short - at 60 segments it allows 18, more than the largest piece
+      in the table - so trimming stays fully powerful exactly when the player is in trouble and
+      length becomes a resource to manage rather than a switch. (3) **Achievements 34 -> 38**:
+      `Featherweight` (score 3000 with peak length <= 20 - which gives `RunStats.maxSnakeLength` a
+      real job again), `Purist` (60 segments from food with zero trimming), and two gated on the top
+      of the difficulty dial via the new `RunStats.growthRate` - `Unbowed` (survive 3 minutes at
+      Relentless) and `ApexPredator` (score 5000 at Relentless). The roster goes 34 -> **38** (the
+      "35" the request asked for was based on a stale count of 30 carried over from Step 7.0's note;
+      the enum actually held 33 entries before this phase). (4) **UI**: screen titles now shrink
+      to fit instead of truncating ("Daily Challen..." / "Random Chall..." were clipped on a normal
+      phone) via a shared `ui/components/ShrinkToFitText` extracted from the HUD score; and the
+      Custom setup wears the standard `ScreenHeader` (top-left back button + centred title), so it is
+      no longer the one screen without a visible way back.
+
+- [x] **Step 6.15.4 - Risk bonus + the Shed ability.** The pair that turns length from a punishment
+      into a decision. (1) **Risk bonus**: `GameEngine.lengthScoreFactor` (raw length, blind to the
+      arena) was replaced by `GameState.riskFactor` - x1 to x5 tracking `snake.size / playableCells`,
+      capped at `RISK_FULL_FILL` (20%) and counting obstacles / Campaign walls out of the playable
+      area. It applies to grow bites, shrink tokens and the Shed payout. Without it the optimal line
+      under auto-growth is "trim at every opportunity" and length is pure downside; with it, running
+      loaded is a bet the score pays out on. Surfaced as a throbbing `Risk x3.4` chip beside the combo
+      (from `RISK_ALERT_FACTOR` up, warming amber -> crimson) and a sustained crimson smoulder on the
+      board frame (`GameBoard`'s new `riskGlow`, a slow 1.4 s breath, steady under reduce-motion).
+      (2) **Shed** (closes Step 6.9.6): `GameState.abilityCharge` fills +1 per grow bite (+2 on a
+      combo of `ABILITY_COMBO_BONUS_AT`), `GameEngine.useAbility` cuts `SHED_FRACTION` (35%) of the
+      tail loose, pays `SHED_POINTS_PER_SEGMENT` x the live risk, drops owed growth and spends the
+      charge - and is a no-op (charge kept) when the snake is too short to cut. A hand-drawn
+      `ui/game/AbilityButton` (charge ring, glass token, tail-with-a-cut glyph, halo + breath when
+      ready) sits in the board's bottom corner, deliberately **unclickable while charging** so a
+      stray tap still reaches the board under tap-to-turn steering. The severed tail sparkles away
+      through a new `BurstStyle.Shed`, which reuses the whole-snake burst path **without** its
+      dissolve envelope (that one fades the living body - right for a death or a level-up, wrong
+      here). Covered by `RiskAndAbilityTest`; the reworked score tests now express their expectations
+      through `GameState.riskFactorFor` instead of baking numbers in.
+
+- [x] **Step 6.15.5 - Endless waves.** Endless escalated its pace but nothing ever *happened* in it:
+      minute five played like minute two, only faster. New pure-model `game/EndlessWave.kt`: three
+      events - **Feast** (board floods to 9 foods), **Drought** (down to 1, with the growth clock still
+      running) and **Hailstorm** (lethal blocks rain in, melting on their own timer) - on a fixed
+      rotation, 12 s long, starting at 45 s and repeating every 45 s. Everything is a **pure function of
+      `playedMs`** (`EndlessWaves.activeAt/remainingMsAt/fractionAt`), so no extra state is carried and a
+      seeded run stays reproducible; the rotation is deliberately fixed rather than random, because a
+      rhythm the player can learn is a rhythm they can plan around. `GameEngine.tick` announces both
+      edges (`GameEvent.WaveStarted` / `WaveEnded`), swaps the food target through the existing refill
+      and, during a Hailstorm, drops a block every `HAIL_INTERVAL_TICKS` on a free cell at least
+      `HAIL_HEAD_CLEARANCE` cells from the head (never on food, capped at `HAIL_MAX_BLOCKS`) reusing the
+      `Debris` machinery. Surfaced as a named announcement banner, a per-wave SFX out of the existing
+      palette, an impact burst per hail block, and a **countdown chip in the reserved effect-timer row**
+      (`WaveChip`, sharing the new `TimerChip` body with the power-up chips). Endless only - Zen stays
+      calm and Time Attack is too short. Covered by `EndlessWaveTest`.
+- [x] **Step 6.15.6 - Achievements as a career ladder.** Thirty-eight badges in one flat list was a
+      checklist, not a journey: everything visible from the first launch, the hardest entries sitting
+      next to "eat your first food". New pure `game/AchievementTier.kt` groups them into five ranks
+      (**Hatchling / Forager / Stalker / Constrictor / Mythic**), each revealed once the player has
+      earned `revealAt` badges **in total** - a count, never "clear the previous tier", so no single
+      stubborn badge (a 30-day streak, a flawless lap) can wall anyone out; `AchievementTierTest`
+      asserts full non-overlapping coverage *and* that every threshold is reachable from the badges
+      revealed below it. The Achievements screen was rebuilt around it: a **rank card** with a bar
+      toward the next rank leads, then per-tier groups with earned counts, with sealed tiers shown as
+      cards stating the cost and how many feats they hide (a goal, not a blank); the Material `Card`s
+      became the app's own glass/gradient family. A promotion is celebrated on the game-over overlay
+      (`GameViewModel.newRank`). *(No skin was tied to a rank - and Step 6.15.8 then removed skin gating
+      altogether, so the rank itself is the reward.)*
+- [x] **Step 6.15.7 - Onboarding refresh + Custom Game header alignment.** (1) The tour grew from five
+      cards to **six**: a new **"Length is the game"** card (card 3) teaches the three things a player
+      cannot guess from watching the board - the growth clock, the risk bonus and the Shed button - with
+      the growth ring, an `x5` risk badge and the **real** `drawShedToken` renderer (made `internal` for
+      the tour, following the rule that every legend uses the actual in-game drawing). The Endless mode
+      card now names the waves, the meta card's achievements row names the five-rank ladder and the
+      missions row the new grow/trim goals, and the welcome card mentions the risk bonus and the Shed
+      button. (2) The **Custom Game header** now sits where every other screen's does: the setup overlay
+      pins its `ScreenHeader` at the very top of the screen with the selectors scrolling below it
+      (instead of the header riding inside the centred column, which left it hanging under the game
+      HUD), and the HUD is alpha-hidden while `Ready` - it reads nothing useful during setup, and the
+      space stays reserved so the board never resizes between setup and play.
+
+- [x] **Step 6.15.8 - Ghost off by default, skin unlocks removed.** (1) The **ghost replay** now ships
+      **off** (`Settings.ghostReplayEnabled` / the `GameViewModel` seed): it is a lovely feature for a
+      player chasing a record, but a second snake on the board is noise for someone still learning the
+      new length economy - it stays one toggle away in Settings. (2) The **skin unlock system is gone**,
+      not just bypassed: `SkinUnlock`, `Skin.unlock`, `Skin.defaultUnlocked`, `Skin.newlyUnlocked` and
+      `Skin.ALL_UNLOCKED_PREVIEW` deleted, along with the `unlocked_skins` DataStore set and its
+      accessors, the locked/dimmed cards and lock badge in the Settings picker, the game-over "skin
+      unlocked" banner (`GameViewModel.newlyUnlockedSkins`) and the debug "unlock all themes" menu
+      shortcut with its `SHOW_DEBUG_UNLOCK_SKINS` flag. All six skins (and, as before, all six terrains)
+      are free from the start: a look is expression, not a reward to grind for. `SkinTest` lost its four
+      unlock cases; README, the onboarding copy and this plan were corrected.
+
+- [x] **Step 6.15.9 - Hail stones, a see-through Shed button, and the in-app Guide.** (1) **Hail is
+      now a 2x2 stone** (`EndlessWaves.HAIL_SPAN`, four `Debris` cells per stone, `HAIL_MAX_STONES` = 4)
+      instead of a single cell: a lone 1-cell block read as a stray snake fragment and was easy to miss.
+      `Debris` gained a `DebrisKind` (`Tail` / `Hail`) so the renderer can draw hail as its own material -
+      an icy slab filling its cell exactly (the drawing *is* the hitbox), with a cold bloom, a bright rim,
+      a lit face and facet lines; four adjacent cells butt into one chunky block whose seams read as ice
+      facets. Tail debris still renders as snake body. (2) The **Shed button was hiding the board corner**:
+      it is now 52dp (from 64), has **no halo** (the bloom was painting over the cells around it), a barely
+      there plate (0.30 alpha, from 0.78) and a translucent body - and it **fades to 0.14 alpha whenever
+      the head is within `ABILITY_CORNER_CELLS` of that corner**, so it gets out of the way exactly when
+      it would matter. The "ready" pulse moved from the halo into the ring, staying inside the button's own
+      footprint. (3) New **`ui/help/HowToPlayScreen`** - the rules reference, reached from a hand-drawn
+      `MenuIcons.Guide` button placed between Settings and Credits on the main menu. Nine collapsible
+      chapters (basics, length/risk/Shed, food, specials, modes, waves, scoring, controls, progress) whose
+      **every figure is interpolated from the model's constants** (`GrowthRate.entries`,
+      `GameState.RISK_FULL_FILL`, `GameEngine.SHED_FRACTION`, `EndlessWaves`, `LevelsMode`,
+      `Achievement.entries.size`, ...), so it re-tunes itself with the balance and cannot rot into a lie -
+      the usual fate of a hand-written manual. It complements the tour rather than repeating it: the cards
+      sell why to play, the guide explains how it works.
+
+- [x] **Step 6.15.10 - Shed clearance in dp, banners over the HUD, no leftover frame.** Three device
+      notes. (1) The Shed button's fade-out trigger was a **fixed cell count**, which meant a different
+      physical distance on every board scale - on Colossal the snake was already under the button before
+      it faded. It is now derived from the button's own footprint: `AbilityButtonReach` (60dp) divided by
+      the **measured cell size**, times `ABILITY_CLEARANCE_FACTOR` (2.8) for reaction time - so the
+      clearance is the same distance on Cozy and on Colossal, and roughly twice what it used to be on the
+      reference board. (2) The **in-run announcement banner moved off the board**: it now pins to the top
+      of the screen over the **HUD** instead of over the playfield's top rows. The score line it briefly
+      covers can wait a second; the board cannot. (3) **The leftover frame is gone.** `GameBoard` cleared
+      its particle and floating-text lists when the effects loop stopped, but those are deliberately plain
+      collections (they churn every frame and must not allocate snapshots), so emptying them changed
+      nothing Compose observes and **the last painted frame stayed on screen** - the finished run's sparks
+      and "+N" labels lingering behind the setup and game-over overlays. One `frameNanos` bump after the
+      clear forces the redraw.
+- [x] **Step 6.15.11 - The announcement plate goes opaque.** Follow-up to 6.15.10 (2). The banner's
+      half-transparent wash was the right trade *over the board*, where seeing the cells underneath was
+      worth a slightly soft label. Over the HUD it buys nothing and costs legibility: the score digits
+      showing through the message made both hard to read. The plate is now fully opaque - a dark base
+      (`BannerPlateTop`/`BannerPlateBottom`) tinted with the event's accent, a hairline rim of that accent
+      and a 10dp shadow, so it reads as a slab lifted off the HUD instead of a wash blended into it. The
+      base tones are fixed rather than scheme-derived, because the announcement accents are bright arcade
+      colours drawn for a dark ground: the slab stays dark in the light theme too.
 
 ### Phase 7 - Play Store distribution & cleanup
 
@@ -917,6 +1109,21 @@ snake-game/
   the confusion with the difficulty "Level" selector, but the enum constant name doubles as the
   DataStore key (saved mode preference + `ScoreKey.storageName()`), so the constant - and internal
   identifiers like `LevelsMode` - must stay `Levels` to keep existing highscores readable.
+- **Auto-growth is measured in ticks, not wall-clock** (`GrowthRate`, Step 6.15.1): a step is the
+  unit the board is made of, so the pressure per cell travelled is constant at any pace and speed
+  effects (Lightning / Snail / Freeze) or the Endless ramp cannot dilute it - and `tick` stays
+  deterministic. The free segment is **queued through `pendingGrowth`** (the tail is simply not
+  dropped), never applied to the body directly, so it composes with food, with the "pure effect"
+  specials that drop the tail, and with the length floor. The grace/coyote dodge re-derives the debt
+  from the state (`state.pendingGrowth + granted`) because it discards the tick's `body`.
+- **Growth level is priced, not keyed**: like `SnakeSpeed.timeAttackScoreFactor`, `GrowthRate`
+  carries a declared score multiplier and stays **out of `ScoreKey`**, so the leaderboards are not
+  fragmented by five and no stored record is orphaned. The score multiplier that rewards length is
+  now `GameState.riskFactor` (Step 6.15.4), which is what makes carrying auto-growth's free length a
+  deliberate bet rather than pure downside.
+- **Highscores stored before Step 6.15.1 were set under the food-only rules** (no auto-growth, grow
+  food at 2/4/6/8). `GrowthRate.Off` reproduces those rules exactly if a record ever needs to be
+  compared like for like.
 - **Random obstacles are cluster-biased**: `generateObstacles` grows each new quadrant cell out of an
   already-placed one with probability `OBSTACLE_CLUSTER_BIAS` (0.6), so blocks clump into larger
   shapes instead of scattering as singletons. Per-level counts, 4-fold symmetry, border margins, the

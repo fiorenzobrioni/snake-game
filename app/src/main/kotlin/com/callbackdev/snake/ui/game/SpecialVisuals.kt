@@ -32,6 +32,22 @@ object SpecialVisuals {
     /** Mid-run record broken: a bright celebratory green. */
     val RecordColor = Color(0xFF69F0AE)
 
+    /**
+     * The risk bonus: the hot crimson the board frame smoulders with while the
+     * snake is filling the arena, and the colour of the HUD's risk multiplier.
+     * Deliberately hotter and redder than the Fever amber - Fever is a gift, this
+     * is a warning you are being paid to ignore.
+     */
+    val RiskColor = Color(0xFFFF3D5A)
+
+    /** The Shed ability: the cool cyan of the charge ring and the tail cut. */
+    val ShedColor = Color(0xFF40E0D0)
+
+    /** Endless waves: the Feast's warm gold, the Drought's dusty amber, the Hailstorm's icy blue. */
+    val FeastColor = Color(0xFFFFC246)
+    val DroughtColor = Color(0xFFC08A4A)
+    val HailColor = Color(0xFF8FD8FF)
+
     /** Zen mode: the soft teal of the breathing frame (open, wrapping edges). */
     val ZenColor = Color(0xFF80CBC4)
 

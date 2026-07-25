@@ -45,6 +45,7 @@ import androidx.compose.ui.util.lerp
 import com.callbackdev.snake.game.BoardDimensions
 import com.callbackdev.snake.game.BoardTerrain
 import com.callbackdev.snake.game.Debris
+import com.callbackdev.snake.game.DebrisKind
 import com.callbackdev.snake.game.Direction
 import com.callbackdev.snake.game.EffectKind
 import com.callbackdev.snake.game.Food
@@ -208,6 +209,12 @@ fun GameBoard(
     // Time Attack Fever Time: a sustained amber frame glow (0..1, pulsed by the
     // caller) that keeps burning while the double-points finale runs.
     feverGlow: Float = 0f,
+    /**
+     * Risk-bonus intensity (0..1): the board frame smoulders crimson while the
+     * snake is filling the arena, so the multiplier the HUD reads out is also
+     * felt at the edges of the eye.
+     */
+    riskGlow: Float = 0f,
     // Endless speed-tier step: a one-shot golden frame flare (1→0 envelope) so
     // every pace change is visible on the board itself, not just the HUD.
     surgeFlash: Float = 0f,
@@ -257,6 +264,13 @@ fun GameBoard(
             particles.clear()
             floatingTexts.clear()
             dissolve.snapTo(1f)
+            // Redraw once after clearing. The particle and text lists are plain
+            // collections (deliberately - they churn every frame and must not
+            // allocate snapshots), so emptying them changes nothing Compose
+            // observes: without this the *last painted frame* stays on screen and
+            // the finished run's sparks and "+N" labels linger behind the setup
+            // and game-over overlays.
+            frameNanos = System.nanoTime()
             return@LaunchedEffect
         }
         var lastNanos = System.nanoTime()
@@ -291,8 +305,12 @@ fun GameBoard(
             val blast = event.style == BurstStyle.Blast
             val cells = event.cells.size
             dissolve.snapTo(1f)
-            // Fade the body out alongside the staggered bursts.
-            launch { dissolve.animateTo(0f, tween(durationMillis = BodyBurstTiming.dissolveMs(cells).toInt(), easing = FastOutLinearInEasing)) }
+            // Fade the body out alongside the staggered bursts - but only when the
+            // burst *is* the whole snake (death, level-up). A Shed burst covers the
+            // severed tail alone: the snake it left behind is still being played.
+            if (event.style != BurstStyle.Shed) {
+                launch { dissolve.animateTo(0f, tween(durationMillis = BodyBurstTiming.dissolveMs(cells).toInt(), easing = FastOutLinearInEasing)) }
+            }
             // Ripple the emissions head-to-tail on the shared schedule. Pacing is
             // wall-clock based with catch-up: each delay() resume has to wait for
             // the busy main thread, so on a long snake naive per-cell delays would
@@ -342,7 +360,10 @@ fun GameBoard(
             when (event.style) {
                 BurstStyle.Eat -> emitEatBurst(particles, cx, cy, event.color, event.span, event.combo)
                 BurstStyle.Implode -> emitImplodeBurst(particles, cx, cy, event.color, event.span)
-                BurstStyle.Vanish -> emitVanishBurst(particles, cx, cy, event.color, event.span)
+                // Shed only ever arrives as a whole-body burst (the severed tail),
+                // never as a single-cell eat event, but the sparkle is the same.
+                BurstStyle.Vanish, BurstStyle.Shed ->
+                    emitVanishBurst(particles, cx, cy, event.color, event.span)
                 BurstStyle.Blast -> emitExplosionBurst(particles, cx, cy, event.color, event.span)
             }
             // Always reset first: a previous ring animation may have just been
@@ -351,7 +372,7 @@ fun GameBoard(
             // would stay frozen at a mid value and linger on the board as a stray
             // circle. Only the non-vanish styles then play the expanding ring.
             eatRing.snapTo(0f)
-            if (event.style != BurstStyle.Vanish) {
+            if (event.style != BurstStyle.Vanish && event.style != BurstStyle.Shed) {
                 eatRing.animateTo(1f, tween(durationMillis = if (event.style == BurstStyle.Blast) 520 else 360, easing = FastOutLinearInEasing))
             }
         }
@@ -698,6 +719,15 @@ fun GameBoard(
             val amber = SpecialVisuals.FeverColor
             frame(amber.copy(alpha = 0.30f * feverGlow), borderWidth * 3.2f) // outer heat
             frame(amber.copy(alpha = 0.85f * feverGlow), borderWidth * 1.4f) // burning line
+        }
+
+        // Risk bonus: a sustained crimson smoulder while the body fills the board.
+        // Drawn under the one-shot flares so a near-miss or a speed step still
+        // reads on top of it.
+        if (riskGlow > 0.001f) {
+            val crimson = SpecialVisuals.RiskColor
+            frame(crimson.copy(alpha = 0.26f * riskGlow), borderWidth * 3.6f) // outer bloom
+            frame(crimson.copy(alpha = 0.80f * riskGlow), borderWidth * 1.5f) // hot line
         }
 
         // Endless speed-up surge: a quick golden flare along the frame.
@@ -1071,11 +1101,19 @@ private fun DrawScope.drawDebris(
     time: Float,
 ) {
     if (debris.isEmpty()) return
+    // Hail is its own material - a block of ice, not a piece of snake - so it is
+    // drawn per cell by its own routine. Adjacent cells of a stone merge into one
+    // chunky 2x2 block, which is the whole point: a hazard you see coming.
+    debris.filter { it.kind == DebrisKind.Hail }.forEach { d ->
+        drawHailCell(d, cell, originX, originY)
+    }
+    val tail = debris.filter { it.kind == DebrisKind.Tail }
+    if (tail.isEmpty()) return
     // Split the (ordered) debris into runs of orthogonally-adjacent cells; each
     // run is one severed tail and is drawn as a single continuous body.
     val chains = ArrayList<List<Debris>>()
     var current = ArrayList<Debris>()
-    for (d in debris) {
+    for (d in tail) {
         val last = current.lastOrNull()
         if (last == null || isAdjacentCell(last.cell, d.cell)) {
             current.add(d)
@@ -1096,6 +1134,73 @@ private fun DrawScope.drawDebris(
         // Draw the debris in the skin's own body material (head omitted).
         drawSnakeBody(centers, cell, palette, alpha, time)
     }
+}
+
+/**
+ * One cell of an Endless **hail stone**: a slab of ice filling its cell, with a
+ * cold outer bloom, a bright rim, a top-lit face and a couple of internal facets.
+ *
+ * Drawn per cell on purpose - a stone is a 2x2 cluster, so four of these butt
+ * together into one big block whose seams read as facets in the ice. Filling the
+ * cell exactly matters: the drawing has to be the hitbox, or the hazard lies.
+ */
+private fun DrawScope.drawHailCell(d: Debris, cell: Float, originX: Float, originY: Float) {
+    val x = originX + d.cell.x * cell
+    val y = originY + d.cell.y * cell
+    val life = d.life
+    // Melting away: fades out over the last of its lifetime.
+    val alpha = (0.45f + 0.55f * life).coerceIn(0f, 1f)
+    val ice = SpecialVisuals.HailColor
+    val center = Offset(x + cell / 2f, y + cell / 2f)
+
+    // Cold bloom, so the stone separates from any terrain underneath it.
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(ice.copy(alpha = 0.30f * alpha), Color.Transparent),
+            center = center,
+            radius = cell * 0.95f,
+        ),
+        radius = cell * 0.95f,
+        center = center,
+    )
+    // The slab: a cool vertical gradient, brighter at the top like lit ice.
+    val corner = CornerRadius(cell * 0.18f)
+    drawRoundRect(
+        brush = Brush.verticalGradient(
+            colors = listOf(
+                lighten(ice, 0.45f).copy(alpha = alpha),
+                ice.copy(alpha = alpha),
+                darken(ice, 0.45f).copy(alpha = alpha),
+            ),
+            startY = y,
+            endY = y + cell,
+        ),
+        topLeft = Offset(x, y),
+        size = Size(cell, cell),
+        cornerRadius = corner,
+    )
+    // Rim: a hard bright edge sells "frozen solid" and marks the exact hitbox.
+    drawRoundRect(
+        color = lighten(ice, 0.65f).copy(alpha = 0.85f * alpha),
+        topLeft = Offset(x, y),
+        size = Size(cell, cell),
+        cornerRadius = corner,
+        style = Stroke(width = cell * 0.09f),
+    )
+    // Facets: a bright corner highlight and a thin diagonal crack.
+    drawRoundRect(
+        color = Color.White.copy(alpha = 0.55f * alpha),
+        topLeft = Offset(x + cell * 0.16f, y + cell * 0.14f),
+        size = Size(cell * 0.30f, cell * 0.22f),
+        cornerRadius = CornerRadius(cell * 0.10f),
+    )
+    drawLine(
+        color = Color.White.copy(alpha = 0.30f * alpha),
+        start = Offset(x + cell * 0.30f, y + cell * 0.78f),
+        end = Offset(x + cell * 0.76f, y + cell * 0.34f),
+        strokeWidth = cell * 0.06f,
+        cap = StrokeCap.Round,
+    )
 }
 
 /** Orthogonally adjacent (4-neighbour) cells - used to chain a severed tail. */

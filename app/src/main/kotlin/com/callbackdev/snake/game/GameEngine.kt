@@ -1,6 +1,7 @@
 package com.callbackdev.snake.game
 
 import kotlin.math.abs
+import kotlin.math.ceil
 import kotlin.math.min
 import kotlin.random.Random
 
@@ -30,6 +31,7 @@ class GameEngine(private val random: Random = Random.Default) {
         snakeSpeed: SnakeSpeed = SnakeSpeed.DEFAULT,
         modifier: ChallengeModifier = ChallengeModifier.None,
         startLevelIndex: Int = 1,
+        growthRate: GrowthRate = GrowthRate.Off,
     ): GameState {
         val snake = startingSnake(board)
         val isLevels = mode == GameMode.Levels
@@ -51,6 +53,7 @@ class GameEngine(private val random: Random = Random.Default) {
             score = 0,
             pendingGrowth = 0,
             status = GameStatus.Ready,
+            growthRate = growthRate,
             mode = mode,
             levelIndex = startLevel,
             lives = if (isLevels) LevelsMode.START_LIVES else 0,
@@ -74,6 +77,7 @@ class GameEngine(private val random: Random = Random.Default) {
                 state.board, state.snake, state.obstacles, state.walls, emptyList(),
                 elapsedTicks = 0, level = state.level, baseTickMillis = state.snakeSpeed.tickMillis,
                 mode = state.mode, reserved = state.hazardSpawnCells, modifier = state.modifier,
+                autoGrowth = state.growthRate.isOn,
             ),
             status = GameStatus.Running,
         )
@@ -91,6 +95,7 @@ class GameEngine(private val random: Random = Random.Default) {
                 elapsedTicks = state.elapsedTicks, level = state.level,
                 baseTickMillis = state.snakeSpeed.tickMillis, mode = state.mode,
                 reserved = state.hazardSpawnCells, modifier = state.modifier,
+                autoGrowth = state.growthRate.isOn,
             ),
             status = GameStatus.Running,
         )
@@ -111,8 +116,9 @@ class GameEngine(private val random: Random = Random.Default) {
         snakeSpeed: SnakeSpeed = SnakeSpeed.DEFAULT,
         modifier: ChallengeModifier = ChallengeModifier.None,
         startLevelIndex: Int = 1,
+        growthRate: GrowthRate = GrowthRate.Off,
     ): GameState =
-        start(setup(level, board, mode, snakeSpeed, modifier, startLevelIndex))
+        start(setup(level, board, mode, snakeSpeed, modifier, startLevelIndex, growthRate))
 
     /**
      * Buffers a direction change for the next tick. A 180° reversal of the
@@ -138,6 +144,44 @@ class GameEngine(private val random: Random = Random.Default) {
 
     fun turnRight(state: GameState): GameState =
         changeDirection(state, state.direction.turnedRight)
+
+    /**
+     * Spends the charged **Shed** ability: cuts [SHED_FRACTION] of the body loose
+     * in one go and pays out for the risk it was carrying.
+     *
+     * It is the one thing the player can *do* beyond steering, and it exists
+     * because auto-growth created a moment with no answer: too long, closing in on
+     * yourself, and no shrinking food within reach. Shed is that answer - but it
+     * is not free, because the length it cuts is also the [GameState.riskFactor]
+     * that was multiplying every bite. Spending it trades a fat multiplier for
+     * room to breathe, which is exactly the decision the risk bonus is there to
+     * pose. The payout scales with the risk carried at the moment of the cut, so
+     * holding on longer before cashing out really does pay more.
+     *
+     * A no-op unless the run is [GameStatus.Running] and [GameState.abilityReady];
+     * the charge is also kept (not burnt) when the snake is already too short to
+     * cut, so the ability can never be wasted by a mistimed tap.
+     */
+    fun useAbility(state: GameState): GameState {
+        if (state.status != GameStatus.Running || !state.abilityReady) return state
+        val body = state.snake
+        val share = ceil(body.size * SHED_FRACTION).toInt()
+        val removable = (body.size - MIN_SNAKE_LENGTH).coerceAtLeast(0)
+        val removed = minOf(share, removable)
+        if (removed <= 0) return state // nothing to cut: keep the charge for later
+        val kept = body.subList(0, body.size - removed).toList()
+        val shed = body.subList(body.size - removed, body.size).toList()
+        val points = (removed * SHED_POINTS_PER_SEGMENT * state.riskFactor * state.growthRate.scoreFactor).toInt()
+        return state.copy(
+            snake = kept,
+            // Owed growth is cut loose with the tail - shedding then re-growing
+            // from a queued bite would undo the escape a beat later.
+            pendingGrowth = 0,
+            score = state.score + points,
+            abilityCharge = 0,
+            lastEvents = listOf(GameEvent.AbilityUsed(shed, removed, points)),
+        )
+    }
 
     /** Toggles between [GameStatus.Running] and [GameStatus.Paused]. */
     fun togglePause(state: GameState): GameState = when (state.status) {
@@ -185,10 +229,11 @@ class GameEngine(private val random: Random = Random.Default) {
             (GameState.TIME_ATTACK_MS + state.timeAdjustMs - playedMs) in 1..GameState.FEVER_MS
         if (feverNow && !feverBefore) events.add(GameEvent.FeverStarted)
 
-        // Every point earned this tick is scaled by the declared Time Attack
-        // pace multiplier (a faster snake risks more, so it earns more) and by
-        // the Fever Time doubling while the finale runs.
-        val scoreBoost: Float = if (state.mode == GameMode.TimeAttack) {
+        // Every point earned this tick is scaled by the declared auto-growth
+        // multiplier (a body that fills the board on its own is a harder run, so
+        // it earns more), by the Time Attack pace multiplier (a faster snake
+        // risks more) and by the Fever Time doubling while the finale runs.
+        val scoreBoost: Float = state.growthRate.scoreFactor * if (state.mode == GameMode.TimeAttack) {
             state.snakeSpeed.timeAttackScoreFactor *
                 (if (feverNow) GameState.FEVER_SCORE_FACTOR else 1)
         } else {
@@ -205,6 +250,17 @@ class GameEngine(private val random: Random = Random.Default) {
             ) {
                 events.add(GameEvent.SpeedTierUp(tierNow))
             }
+        }
+
+        // Endless waves: a fixed rotation of timed board events (Feast / Drought /
+        // Hailstorm) so a long run has movements instead of one long crescendo.
+        // Both edges are announced; the rules below read the wave straight off the
+        // clock, so nothing extra is carried on the state.
+        val waveBefore = if (state.mode == GameMode.Endless) EndlessWaves.activeAt(state.playedMs) else null
+        val wave = if (state.mode == GameMode.Endless) EndlessWaves.activeAt(playedMs) else null
+        if (wave != waveBefore) {
+            waveBefore?.let { events.add(GameEvent.WaveEnded(it)) }
+            wave?.let { events.add(GameEvent.WaveStarted(it)) }
         }
 
         // Age timed effects; expired ones fire an event and drop out.
@@ -247,6 +303,28 @@ class GameEngine(private val random: Random = Random.Default) {
         var timeAdjustMs = state.timeAdjustMs
         var lives = state.lives
         var levelFoodsEaten = state.levelFoodsEaten
+        var abilityCharge = state.abilityCharge
+        // Fixed for the whole tick (obstacles and walls only change on a staging).
+        val playableCells = state.playableCells
+
+        // Auto-growth: the run's clock made physical. Every
+        // [GameState.autoGrowthIntervalTicks] steps the snake is owed one segment
+        // it did not earn, so circling an empty board can no longer stall a run
+        // forever - and shrinking food turns from a niche pick into the way to
+        // buy time. Queued through pendingGrowth (paid by simply not dropping the
+        // tail), so it stacks naturally with food and with the "pure effect"
+        // specials, and it is settled *before* the eat/tail chain below.
+        var growthProgress = state.growthProgress
+        val growthInterval = state.autoGrowthIntervalTicks
+        var autoGrew = false
+        if (growthInterval > 0) {
+            growthProgress++
+            if (growthProgress >= growthInterval) {
+                growthProgress -= growthInterval
+                pendingGrowth++
+                autoGrew = true
+            }
+        }
 
         val eaten = foods.firstOrNull { it.occupies(newHead) }
         if (eaten != null) {
@@ -265,10 +343,14 @@ class GameEngine(private val random: Random = Random.Default) {
                     val zenStretch = if (state.mode == GameMode.Zen) ZenMode.COMBO_WINDOW_FACTOR else 1f
                     comboDeadlineTick = elapsedTicks +
                         (COMBO_WINDOW_TICKS * state.modifier.comboWindowFactor * zenStretch).toInt()
-                    // Longer snakes earn proportionally more per bite (up to a cap),
-                    // so the same food is worth far more late in a run than early on.
-                    val points = (effect.segments * 10 * combo.coerceAtMost(MAX_COMBO) *
-                        lengthScoreFactor(body.size) * scoreBoost).toInt()
+                    // The fuller the board, the more a bite is worth: carrying a
+                    // long body is a bet the score pays out on (see riskFactor).
+                    val points = (effect.segments * GROW_POINTS_PER_SEGMENT * combo.coerceAtMost(MAX_COMBO) *
+                        GameState.riskFactorFor(body.size, playableCells) * scoreBoost).toInt()
+                    // Eating charges the Shed ability; a bite landed on a live
+                    // streak charges it twice as fast.
+                    abilityCharge = (abilityCharge + if (combo >= ABILITY_COMBO_BONUS_AT) 2 else 1)
+                        .coerceAtMost(ABILITY_CHARGE_FULL)
                     score += points
                     pendingGrowth += effect.segments - 1 // head already added this tick
                     events.add(GameEvent.Ate(eaten, points, combo.coerceAtMost(MAX_COMBO)))
@@ -276,10 +358,14 @@ class GameEngine(private val random: Random = Random.Default) {
                 is FoodEffect.Shrink -> {
                     // Shrinking neither feeds nor breaks the grow combo; it just
                     // trims the tail down to the floor and pays a token score.
+                    // The token scales with the length being cut (read before the
+                    // trim): with auto-growth on, trimming a long body is the
+                    // skilful, survival-critical play, not a pure score sacrifice.
                     pendingGrowth = 0
+                    val lengthFactor = GameState.riskFactorFor(body.size, playableCells)
                     val removed = trimTail(body, effect.segments)
                     val base = if (eaten.size == FoodSize.Maxi) SHRINK_POINTS_MAXI else SHRINK_POINTS
-                    val points = (base * scoreBoost).toInt()
+                    val points = (base * lengthFactor * scoreBoost).toInt()
                     score += points
                     events.add(GameEvent.Shrunk(eaten, removed, points))
                 }
@@ -356,6 +442,24 @@ class GameEngine(private val random: Random = Random.Default) {
             body.removeAt(body.lastIndex) // keep length: drop the tail
         }
 
+        // Hailstorm: a lethal stone lands every few ticks, always well clear of the
+        // head (so it is a route to solve, never an ambush) and never on food, and
+        // melts on its own timer - the existing debris machinery does the rest. Each
+        // stone is a HAIL_SPAN-square block, so it has the visual weight of a maxi
+        // piece rather than a stray pellet.
+        if (wave == EndlessWave.Hailstorm && elapsedTicks % EndlessWaves.HAIL_INTERVAL_TICKS == 0) {
+            val stonesOnBoard = debris.count { it.kind == DebrisKind.Hail } / HAIL_STONE_CELLS
+            if (stonesOnBoard < EndlessWaves.HAIL_MAX_STONES) {
+                hailStone(board, body, state.obstacles, state.walls, foods, debris, state.hazardSpawnCells)
+                    ?.let { anchor ->
+                        debris = debris + hailCells(anchor).map {
+                            Debris(it, EndlessWaves.HAIL_LIFETIME_MS, EndlessWaves.HAIL_LIFETIME_MS, DebrisKind.Hail)
+                        }
+                        events.add(GameEvent.HailLanded(anchor))
+                    }
+            }
+        }
+
         // Vanish the single oldest food that has sat uneaten too long, so looping
         // without eating keeps the board fresh. Specials linger much longer than
         // regular food (they are rare events worth waiting for) but no longer stay
@@ -380,11 +484,15 @@ class GameEngine(private val random: Random = Random.Default) {
         }
 
         // Top the board back up — covers both an eaten food and a vanished one.
-        if (foods.size < foodCountFor(board)) {
+        // A Feast floods the board and a Drought starves it; between waves the
+        // board's own count applies.
+        val foodTarget = EndlessWaves.foodCountFor(wave) ?: foodCountFor(board)
+        if (foods.size < foodTarget) {
             val freezeActive = effectTimers.any { it.kind == EffectKind.Freeze }
             val specialsOnBoard = foods.count { it.category == FoodCategory.Special }
             foods = refill(
                 board, body, state.obstacles, state.walls, foods, elapsedTicks, state.level,
+                target = foodTarget,
                 baseTickMillis = baseTickMs,
                 hazardsEnabled = hazardsEnabled,
                 specialAllowed = specialsOnBoard < MAX_SPECIALS_ON_BOARD && !freezeActive,
@@ -392,6 +500,7 @@ class GameEngine(private val random: Random = Random.Default) {
                 mode = state.mode,
                 reserved = state.hazardSpawnCells,
                 modifier = state.modifier,
+                autoGrowth = state.growthRate.isOn,
             )
         }
 
@@ -406,6 +515,7 @@ class GameEngine(private val random: Random = Random.Default) {
                 state, events,
                 levelIndex = nextIndex, speedCycle = nextCycle, lives = lives,
                 score = score, elapsedTicks = elapsedTicks, playedMs = playedMs,
+                abilityCharge = abilityCharge,
             )
         }
 
@@ -439,6 +549,15 @@ class GameEngine(private val random: Random = Random.Default) {
                 pendingDirection = direction,
                 elapsedTicks = elapsedTicks,
                 playedMs = playedMs,
+                // The move was cancelled, but time was not: keep the growth clock
+                // running and carry the debt over. The body is discarded here, so
+                // the tick's own bookkeeping (which paid a segment by keeping the
+                // tail) must not be: re-derive the debt from the state, plus the
+                // segment auto-growth just granted, so a dodge can neither lose an
+                // owed segment nor silently pay one.
+                pendingGrowth = state.pendingGrowth + if (autoGrew) 1 else 0,
+                growthProgress = growthProgress,
+                abilityCharge = abilityCharge,
                 combo = combo,
                 comboDeadlineTick = comboDeadlineTick,
                 debris = debris,
@@ -458,12 +577,22 @@ class GameEngine(private val random: Random = Random.Default) {
                 state, events,
                 levelIndex = state.levelIndex, speedCycle = state.speedCycle, lives = lives - 1,
                 score = score, elapsedTicks = elapsedTicks, playedMs = playedMs,
-                levelFoodsEaten = levelFoodsEaten,
+                abilityCharge = abilityCharge, levelFoodsEaten = levelFoodsEaten,
             )
         }
 
         val dead = crashed || timeUp
         if (dead) events.add(GameEvent.Died)
+
+        // Announce a free segment only on a tick the snake survived: on a fatal
+        // tick the growth is invisible anyway and the death cue owns the moment.
+        if (autoGrew && !dead) events.add(GameEvent.AutoGrew(body.size))
+
+        // The Shed ability just finished charging: announce it once, on the tick
+        // it crosses, so the player knows the escape valve is available.
+        if (!dead && abilityCharge >= ABILITY_CHARGE_FULL && state.abilityCharge < ABILITY_CHARGE_FULL) {
+            events.add(GameEvent.AbilityCharged)
+        }
 
         // Near-miss: the head survived but is grazing a static hazard. Skipped
         // while invincible (Ghost passes through everything anyway); on a
@@ -494,6 +623,8 @@ class GameEngine(private val random: Random = Random.Default) {
             foods = foods,
             score = score,
             pendingGrowth = pendingGrowth,
+            growthProgress = growthProgress,
+            abilityCharge = abilityCharge,
             elapsedTicks = elapsedTicks,
             playedMs = playedMs,
             combo = combo,
@@ -527,6 +658,7 @@ class GameEngine(private val random: Random = Random.Default) {
         score: Int,
         elapsedTicks: Int,
         playedMs: Long,
+        abilityCharge: Int,
         levelFoodsEaten: Int = 0,
     ): GameState {
         val hazards = LevelsMode.hazardsFor(levelIndex, state.board)
@@ -537,6 +669,12 @@ class GameEngine(private val random: Random = Random.Default) {
             foods = emptyList(),
             score = score,
             pendingGrowth = 0,
+            // The snake is back at its spawn length, so the growth clock restarts
+            // with it (unlike elapsedTicks, which spans the whole run). The ability
+            // charge is *earned*, so it carries over like the score and the lives -
+            // including the charge from the very bite that completed the level.
+            growthProgress = 0,
+            abilityCharge = abilityCharge,
             elapsedTicks = elapsedTicks,
             playedMs = playedMs,
             combo = 0,
@@ -556,21 +694,28 @@ class GameEngine(private val random: Random = Random.Default) {
         )
     }
 
-    /** Drops up to [segments] tail cells, never below the length floor; returns how many went. */
+    /**
+     * Drops tail cells for a shrinking food and returns how many actually went.
+     *
+     * Two limits apply. The hard [MIN_SNAKE_LENGTH] floor, and - the important one
+     * - a **share of the body**: a single piece can never cut more than
+     * [MAX_SHRINK_FRACTION] of the current length (at least one cell, so a shrink
+     * always does something). Without it a couple of big pieces dumped any snake
+     * straight back to the floor, which cancelled the auto-growth pressure
+     * outright: length stopped being a resource to manage and became a switch.
+     *
+     * The cap is deliberately shaped so it **only binds when the snake is short**:
+     * at 60 segments it allows 18, more than the largest piece in the table, so a
+     * big find is worth exactly as much as it looks when you are in real trouble.
+     * Trimming is strong when you are long and gentle when you are already safe.
+     */
     private fun trimTail(body: MutableList<Position>, segments: Int): Int {
+        val share = ceil(body.size * MAX_SHRINK_FRACTION).toInt().coerceAtLeast(1)
         val removable = (body.size - MIN_SNAKE_LENGTH).coerceAtLeast(0)
-        val removed = segments.coerceAtMost(removable)
+        val removed = minOf(segments, share, removable)
         repeat(removed) { body.removeAt(body.lastIndex) }
         return removed
     }
-
-    /**
-     * Grow-score multiplier from the current snake [length]. Ramps from 1x for a
-     * short snake up to [MAX_LENGTH_FACTOR] for a very long one, so a bite is
-     * worth a lot more late in a run than at the start.
-     */
-    private fun lengthScoreFactor(length: Int): Float =
-        (1f + (length - LENGTH_FACTOR_START) / LENGTH_FACTOR_STEP).coerceIn(1f, MAX_LENGTH_FACTOR)
 
     /** Restarts a [kind] timer at its full [durationMs] (one instance per kind). */
     private fun addOrRefresh(timers: List<ActiveEffect>, kind: EffectKind, durationMs: Long): List<ActiveEffect> =
@@ -681,6 +826,53 @@ class GameEngine(private val random: Random = Random.Default) {
         return obstacles
     }
 
+    /** The cells one hail stone covers, given its top-left [anchor]. */
+    private fun hailCells(anchor: Position): List<Position> = buildList {
+        for (dx in 0 until EndlessWaves.HAIL_SPAN) {
+            for (dy in 0 until EndlessWaves.HAIL_SPAN) {
+                add(Position(anchor.x + dx, anchor.y + dy))
+            }
+        }
+    }
+
+    /**
+     * The top-left cell for a Hailstorm stone: random, with **every** cell of the
+     * block at least [EndlessWaves.HAIL_HEAD_CLEARANCE] away (Manhattan) from the
+     * head, and clear of the snake, the obstacles, the walls, the food, existing
+     * debris and the Campaign hazard cells. Returns null when the board offers
+     * nowhere fair, so a crowded board simply gets no hail that tick.
+     */
+    private fun hailStone(
+        board: BoardDimensions,
+        snake: List<Position>,
+        obstacles: Set<Position>,
+        walls: Set<Position>,
+        foods: List<Food>,
+        debris: List<Debris>,
+        reserved: Set<Position>,
+    ): Position? {
+        val head = snake.first()
+        val taken = HashSet<Position>()
+        taken.addAll(snake)
+        taken.addAll(obstacles)
+        taken.addAll(walls)
+        taken.addAll(reserved)
+        debris.forEach { taken.add(it.cell) }
+        foods.forEach { taken.addAll(it.cells()) }
+        val maxX = board.width - EndlessWaves.HAIL_SPAN
+        val maxY = board.height - EndlessWaves.HAIL_SPAN
+        if (maxX < 0 || maxY < 0) return null
+        repeat(MAX_SPAWN_ATTEMPTS) {
+            val anchor = Position(random.nextInt(0, maxX + 1), random.nextInt(0, maxY + 1))
+            val cells = hailCells(anchor)
+            val fair = cells.all { c ->
+                c !in taken && abs(c.x - head.x) + abs(c.y - head.y) >= EndlessWaves.HAIL_HEAD_CLEARANCE
+            }
+            if (fair) return anchor
+        }
+        return null
+    }
+
     /** Tops the board up to [foodCountFor] items, skipping if no cell is free. */
     private fun refill(
         board: BoardDimensions,
@@ -690,6 +882,8 @@ class GameEngine(private val random: Random = Random.Default) {
         existing: List<Food>,
         elapsedTicks: Int,
         level: Level,
+        /** Foods to keep on the board; defaults to the board's own count. */
+        target: Int = foodCountFor(board),
         baseTickMillis: Long = SnakeSpeed.DEFAULT.tickMillis,
         hazardsEnabled: Boolean = true,
         specialAllowed: Boolean = true,
@@ -697,9 +891,9 @@ class GameEngine(private val random: Random = Random.Default) {
         mode: GameMode = GameMode.Endless,
         reserved: Set<Position> = emptySet(),
         modifier: ChallengeModifier = ChallengeModifier.None,
+        autoGrowth: Boolean = false,
     ): List<Food> {
         var foods = existing
-        val target = foodCountFor(board)
         while (foods.size < target) {
             // A special is allowed only while fewer than the cap are on the board
             // (never under the Old School twist, and never in Zen - the calm
@@ -707,7 +901,10 @@ class GameEngine(private val random: Random = Random.Default) {
             val allowSpecial = specialAllowed && !modifier.suppressSpecials &&
                 mode != GameMode.Zen &&
                 foods.count { it.category == FoodCategory.Special } < MAX_SPECIALS_ON_BOARD
-            val food = spawnFood(board, snake, obstacles, walls, foods, elapsedTicks, level, baseTickMillis, hazardsEnabled, allowSpecial, specialFrequency, mode, reserved, modifier) ?: break
+            val food = spawnFood(
+                board, snake, obstacles, walls, foods, elapsedTicks, level, baseTickMillis,
+                hazardsEnabled, allowSpecial, specialFrequency, mode, reserved, modifier, autoGrowth,
+            ) ?: break
             foods = foods + food
         }
         return foods
@@ -733,10 +930,11 @@ class GameEngine(private val random: Random = Random.Default) {
         mode: GameMode,
         reserved: Set<Position>,
         modifier: ChallengeModifier = ChallengeModifier.None,
+        autoGrowth: Boolean = false,
     ): Food? {
         val spec = FoodTable.roll(
             random, elapsedTicks, level, baseTickMillis, hazardsEnabled, specialAllowed,
-            specialFrequency, mode, forceMaxi = modifier.forceMaxiFood,
+            specialFrequency, mode, forceMaxi = modifier.forceMaxiFood, autoGrowth = autoGrowth,
         )
         val span = spec.size.cellSpan
         // Top-left cell range that keeps the whole square off the border.
@@ -785,8 +983,30 @@ class GameEngine(private val random: Random = Random.Default) {
         /** At most this many specials (power-ups / hazards) may share the board. */
         const val MAX_SPECIALS_ON_BOARD = 2
 
+        /**
+         * Bites needed to charge the Shed ability, and the streak from which a
+         * bite charges double. Tuned so a focused player earns a Shed roughly
+         * once a minute - often enough to be part of the plan, rare enough that
+         * spending it is a decision.
+         */
+        const val ABILITY_CHARGE_FULL = 10
+        const val ABILITY_COMBO_BONUS_AT = 3
+
+        /** The share of the body a Shed cuts loose (see [useAbility]). */
+        const val SHED_FRACTION = 0.35f
+
+        /** Points per shed segment, before the risk and growth multipliers. */
+        const val SHED_POINTS_PER_SEGMENT = 8
+
         /** The snake never shrinks below this many segments. */
         const val MIN_SNAKE_LENGTH = 3
+
+        /**
+         * The largest share of the body a single shrinking food may cut (see
+         * [trimTail]). Keeps the length a resource that has to be managed instead
+         * of a switch two big pieces could flip back to the floor.
+         */
+        const val MAX_SHRINK_FRACTION = 0.30f
 
         /** Segments the snake spawns with (it can still be shrunk down to [MIN_SNAKE_LENGTH]). */
         const val START_LENGTH = 4
@@ -797,18 +1017,21 @@ class GameEngine(private val random: Random = Random.Default) {
         /** The score multiplier is capped here. */
         const val MAX_COMBO = 5
 
-        /** Symbolic points for eating a shrinking food (standard / maxi). */
-        const val SHRINK_POINTS = 5
-        const val SHRINK_POINTS_MAXI = 10
+        /**
+         * Points paid per segment of a growing food, before the combo, length and
+         * run multipliers. It was doubled (10 -> 20) when the [FoodTable] grow
+         * amounts were halved for the auto-growth rebalance, so a given piece is
+         * worth the same score as before while adding half the length.
+         */
+        const val GROW_POINTS_PER_SEGMENT = 20
 
         /**
-         * Grow-score length scaling: the multiplier is 1x at [LENGTH_FACTOR_START]
-         * segments and climbs by 1 per [LENGTH_FACTOR_STEP] extra segments, capped
-         * at [MAX_LENGTH_FACTOR] (reached around length 81 with these values).
+         * Base points for eating a shrinking food (standard / maxi), scaled by the
+         * length being cut. Still modest against a grow bite - trimming buys room,
+         * eating feeds the score - but no longer purely symbolic.
          */
-        const val LENGTH_FACTOR_START = 5f
-        const val LENGTH_FACTOR_STEP = 19f
-        const val MAX_LENGTH_FACTOR = 5f
+        const val SHRINK_POINTS = 5
+        const val SHRINK_POINTS_MAXI = 10
 
         /**
          * How long an uneaten *regular* food survives before it vanishes and is
@@ -832,6 +1055,9 @@ class GameEngine(private val random: Random = Random.Default) {
         const val VANISH_REFERENCE_SHORT_SIDE = 19
 
         private const val MAX_SPAWN_ATTEMPTS = 200
+
+        /** Cells one Endless hail stone occupies (its span squared). */
+        private const val HAIL_STONE_CELLS = EndlessWaves.HAIL_SPAN * EndlessWaves.HAIL_SPAN
 
         /** Rows/columns kept clear next to every border for symmetric obstacles. */
         private const val OBSTACLE_MARGIN = 2

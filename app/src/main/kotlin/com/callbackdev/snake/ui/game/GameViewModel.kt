@@ -16,6 +16,7 @@ import com.callbackdev.snake.audio.GameSfx
 import com.callbackdev.snake.data.DEFAULT_SWIPE_SENSITIVITY
 import com.callbackdev.snake.data.SettingsRepository
 import com.callbackdev.snake.game.Achievement
+import com.callbackdev.snake.game.AchievementTier
 import com.callbackdev.snake.game.BackBehavior
 import com.callbackdev.snake.game.BoardDimensions
 import com.callbackdev.snake.game.BoardScale
@@ -23,6 +24,7 @@ import com.callbackdev.snake.game.BoardTerrain
 import com.callbackdev.snake.game.ControlScheme
 import com.callbackdev.snake.game.Challenge
 import com.callbackdev.snake.game.EffectKind
+import com.callbackdev.snake.game.EndlessWave
 import com.callbackdev.snake.game.DEFAULT_ASPECT
 import com.callbackdev.snake.game.Direction
 import com.callbackdev.snake.game.FoodEffect
@@ -32,6 +34,7 @@ import com.callbackdev.snake.game.GameMode
 import com.callbackdev.snake.game.GameState
 import com.callbackdev.snake.game.GameStatus
 import com.callbackdev.snake.game.GhostRun
+import com.callbackdev.snake.game.GrowthRate
 import com.callbackdev.snake.game.Level
 import com.callbackdev.snake.game.LevelsMode
 import com.callbackdev.snake.game.Mission
@@ -63,6 +66,13 @@ enum class BurstStyle {
 
     /** A big, fiery two-tone detonation with embers — the Explosion hazard. */
     Blast,
+
+    /**
+     * The Shed ability's release: the same sparkle as [Vanish], but applied to a
+     * severed *piece* of the snake rather than the whole body - so, unlike the
+     * death and level-up bursts, it must not fade the surviving snake out.
+     */
+    Shed,
 }
 
 /**
@@ -106,6 +116,12 @@ enum class BannerKind {
 
     /** The live score just passed the stored best for this slot. */
     NewRecord,
+
+    /** The Shed ability finished charging for the first time this run. */
+    ShedReady,
+
+    /** Endless: a wave event just started; the banner names it. */
+    Wave,
 }
 
 /**
@@ -113,7 +129,7 @@ enum class BannerKind {
  * and colour; [value] carries the Endless speed tier). Surfaced with a monotonic
  * id so repeats are observable.
  */
-data class BannerEvent(val kind: BannerKind, val value: Int = 0)
+data class BannerEvent(val kind: BannerKind, val value: Int = 0, val wave: EndlessWave? = null)
 
 /**
  * A whole-snake particle effect to play over the body [cells] (head first). Used
@@ -170,6 +186,11 @@ data class RunSummary(
     val maxCombo: Int,
     val durationMs: Long,
     val maxLength: Int,
+    /** Segments earned by eating, and segments cut away by shrinking (Step 6.15.2). */
+    val segmentsFromFood: Int,
+    val segmentsTrimmed: Int,
+    /** Segments cut loose with the Shed ability; the recap hides the row at zero. */
+    val segmentsShed: Int,
     val isCampaign: Boolean,
     val deepestLevel: Int,
     val deepestSpeed: Int,
@@ -208,6 +229,14 @@ class GameViewModel(
     var snakeSpeed by mutableStateOf(SnakeSpeed.DEFAULT)
         private set
 
+    /**
+     * How fast the snake grows on its own (loaded from settings). Stamped onto the
+     * state at setup and honoured by the engine; the seeded challenges pin
+     * [GrowthRate.CHALLENGE] instead, so a shared run stays comparable.
+     */
+    var growthRate by mutableStateOf(GrowthRate.DEFAULT)
+        private set
+
     /** Active steering scheme (loaded from settings). */
     var controlScheme by mutableStateOf(DEFAULT_CONTROL)
         private set
@@ -241,7 +270,7 @@ class GameViewModel(
         private set
 
     /** Whether to replay a translucent ghost of the best run alongside play (setting). */
-    var ghostReplayEnabled by mutableStateOf(true)
+    var ghostReplayEnabled by mutableStateOf(false)
         private set
 
     /**
@@ -264,7 +293,9 @@ class GameViewModel(
     /** The colour palette + style flags for the active [skin]. */
     val palette: SkinPalette get() = paletteFor(skin)
 
-    var state by mutableStateOf(engine.setup(DEFAULT_LEVEL, boardFor(DEFAULT_SCALE, DEFAULT_ASPECT)))
+    var state by mutableStateOf(
+        engine.setup(DEFAULT_LEVEL, boardFor(DEFAULT_SCALE, DEFAULT_ASPECT), growthRate = GrowthRate.DEFAULT),
+    )
         private set
 
     /** The snake as it was before the most recent tick, for smooth motion. */
@@ -329,6 +360,17 @@ class GameViewModel(
     var nearMissEventId by mutableIntStateOf(0)
         private set
 
+    /**
+     * The rank this run promoted the player to (Step 6.15.5), or null. Surfaced on
+     * the game-over overlay and cleared at the start of the next run.
+     */
+    var newRank by mutableStateOf<AchievementTier?>(null)
+        private set
+
+    /** Bumped each time auto-growth grants a free segment, so the HUD meter can pop. */
+    var autoGrowEventId by mutableIntStateOf(0)
+        private set
+
     /** Latest hazard telegraph and a monotonic id so repeats are observable. */
     var hazardWarn: HazardWarnEvent? = null
         private set
@@ -373,9 +415,6 @@ class GameViewModel(
     var newlyUnlocked by mutableStateOf<List<Achievement>>(emptyList())
         private set
 
-    /** Skins unlocked by the most recent run (for the game-over banner). */
-    var newlyUnlockedSkins by mutableStateOf<List<Skin>>(emptyList())
-        private set
 
     /**
      * Today's rotating missions with their status after the most recent run, for
@@ -417,6 +456,15 @@ class GameViewModel(
     private var runFlawlessLap = false
     private var runExtraLives = 0
     private var runMaxLength = 0
+    // Segments earned by eating vs cut away by shrinking. Unlike the peak length,
+    // neither is inflated by auto-growth, so the length goals they feed mean the
+    // same thing at every GrowthRate setting.
+    private var runSegmentsFromFood = 0
+    private var runSegmentsTrimmed = 0
+    private var runSegmentsShed = 0
+    private var runWaves = 0
+    /** One "Shed ready!" banner per run; the button's pulse says the rest. */
+    private var shedAnnounced = false
 
     // Ghost replay recording (Step 6.9.12): the head cell + snake length captured
     // each tick of an eligible run, built into a GhostRun and persisted on a new
@@ -487,7 +535,12 @@ class GameViewModel(
             if (saved > 1 && mode == GameMode.Levels && state.status == GameStatus.Ready &&
                 activeChallenge == null && state.levelIndex != campaignStartFor(mode)
             ) {
-                resetTo(engine.setup(LevelsMode.SCORE_LEVEL, state.board, mode, snakeSpeed, startLevelIndex = campaignStartFor(mode)))
+                resetTo(
+                    engine.setup(
+                        LevelsMode.SCORE_LEVEL, state.board, mode, snakeSpeed,
+                        startLevelIndex = campaignStartFor(mode), growthRate = growthRate,
+                    ),
+                )
             }
         }
         // Seed level/scale/scheme from persisted settings; only re-apply while
@@ -521,15 +574,22 @@ class GameViewModel(
                     val levelChanged = targetLevel != state.level
                     val modeChanged = settings.mode != mode
                     val speedChanged = settings.snakeSpeed != snakeSpeed
+                    val growthChanged = settings.growthRate != growthRate
                     mode = settings.mode
                     scale = settings.scale
                     snakeSpeed = settings.snakeSpeed
+                    growthRate = settings.growthRate
                     if (levelChanged || modeChanged) {
-                        resetTo(engine.setup(targetLevel, boardFor(scale, lastAspect), mode, snakeSpeed, startLevelIndex = campaignStartFor(mode)))
-                    } else if (speedChanged) {
-                        // Pace only: no board/obstacle rebuild needed, just restamp
-                        // the speed so the loop reads it from the next tick on.
-                        state = state.copy(snakeSpeed = snakeSpeed)
+                        resetTo(
+                            engine.setup(
+                                targetLevel, boardFor(scale, lastAspect), mode, snakeSpeed,
+                                startLevelIndex = campaignStartFor(mode), growthRate = growthRate,
+                            ),
+                        )
+                    } else if (speedChanged || growthChanged) {
+                        // Pace / growth only: no board/obstacle rebuild needed, just
+                        // restamp them so the loop reads them from the next tick on.
+                        state = state.copy(snakeSpeed = snakeSpeed, growthRate = growthRate)
                         reconfigureBoard()
                     } else {
                         reconfigureBoard()
@@ -544,7 +604,7 @@ class GameViewModel(
         if (state.status != GameStatus.Ready) return
         if (pinnedLevelFor(mode) != null) return // the selector is disabled and ignored
         viewModelScope.launch { repo.setLevel(level) }
-        resetTo(engine.setup(level, state.board, mode, snakeSpeed))
+        resetTo(engine.setup(level, state.board, mode, snakeSpeed, growthRate = growthRate))
         refreshBest()
     }
 
@@ -566,6 +626,17 @@ class GameViewModel(
         state = state.copy(snakeSpeed = speed)
     }
 
+    /**
+     * Picks how fast the snake grows on its own. Like the pace, it is read live
+     * from the state each tick, so a restamp is enough - no board rebuild.
+     */
+    fun selectGrowthRate(rate: GrowthRate) {
+        if (state.status != GameStatus.Ready) return
+        growthRate = rate
+        viewModelScope.launch { repo.setGrowthRate(rate) }
+        state = state.copy(growthRate = rate)
+    }
+
     fun selectMode(newMode: GameMode) {
         if (state.status != GameStatus.Ready) return
         mode = newMode
@@ -573,7 +644,12 @@ class GameViewModel(
         // Levels/Zen pin their score level; leaving them, the settings collector
         // restores the user's persisted difficulty right after this reset.
         val level = pinnedLevelFor(newMode) ?: state.level
-        resetTo(engine.setup(level, state.board, newMode, snakeSpeed, startLevelIndex = campaignStartFor(newMode)))
+        resetTo(
+            engine.setup(
+                level, state.board, newMode, snakeSpeed,
+                startLevelIndex = campaignStartFor(newMode), growthRate = growthRate,
+            ),
+        )
         refreshBest()
     }
 
@@ -588,7 +664,12 @@ class GameViewModel(
         val clamped = levelIndex.coerceIn(1, campaignCheckpoint)
         campaignStartLevel = clamped
         viewModelScope.launch { repo.setCampaignStartLevel(clamped) }
-        resetTo(engine.setup(LevelsMode.SCORE_LEVEL, state.board, mode, snakeSpeed, startLevelIndex = clamped))
+        resetTo(
+            engine.setup(
+                LevelsMode.SCORE_LEVEL, state.board, mode, snakeSpeed,
+                startLevelIndex = clamped, growthRate = growthRate,
+            ),
+        )
         refreshBest()
     }
 
@@ -684,13 +765,21 @@ class GameViewModel(
         mode = challenge.mode
         scale = challenge.scale
         snakeSpeed = challenge.modifier.speedOverride ?: SnakeSpeed.DEFAULT
+        // A shared, seeded run must play by shared rules: the player's own growth
+        // setting is pinned away, like the pace and the hazard toggles above.
+        growthRate = GrowthRate.CHALLENGE
         // Pin the spawn-affecting toggles so a seeded run is reproducible,
         // applying the modifier (Bonus Rush, Frenzy, ...) on top; the remaining
         // twists (Maxi Feast, Combo Rush, Old School, Overdrive's Endless boost)
         // ride along inside the state's modifier for the engine to honour.
         hazardsEnabled = challenge.modifier.hazardsOverride ?: true
         specialFrequency = challenge.modifier.specialFrequencyOverride ?: SpecialFrequency.Standard
-        resetTo(engine.setup(challenge.level, boardFor(scale, lastAspect), mode, snakeSpeed, challenge.modifier))
+        resetTo(
+            engine.setup(
+                challenge.level, boardFor(scale, lastAspect), mode, snakeSpeed, challenge.modifier,
+                growthRate = growthRate,
+            ),
+        )
         resetTo(engine.start(state))
         isNewBest = false
         refreshBest()
@@ -701,7 +790,12 @@ class GameViewModel(
     private fun reconfigureBoard() {
         val dims = boardFor(scale, lastAspect)
         if (dims != state.board) {
-            resetTo(engine.setup(state.level, dims, mode, snakeSpeed, state.modifier, campaignStartFor(mode)))
+            resetTo(
+                engine.setup(
+                    state.level, dims, mode, snakeSpeed, state.modifier, campaignStartFor(mode),
+                    growthRate = state.growthRate,
+                ),
+            )
         }
     }
 
@@ -725,6 +819,32 @@ class GameViewModel(
 
     fun turnRight() {
         state = engine.turnRight(state)
+    }
+
+    /**
+     * Spends the charged **Shed** ability: cuts a share of the tail loose for a
+     * risk-scaled payout (see [GameEngine.useAbility]). Driven by the board's
+     * ability button; a no-op when the charge is not full, so a stray tap costs
+     * nothing. The cut tail bursts away and the surviving body keeps its current
+     * interpolation - only the removed cells disappear, so the snake never jumps.
+     */
+    fun useAbility() {
+        val before = state
+        val after = engine.useAbility(before)
+        if (after === before) return
+        val used = after.lastEvents.filterIsInstance<GameEvent.AbilityUsed>().firstOrNull() ?: return
+        state = after
+        // The severed tail dissolves like a Campaign level-up vanish (a clean
+        // release), not like the Explosion's blast: nothing went wrong here.
+        bodyBurst = BodyBurstEvent(used.cells, BurstStyle.Shed)
+        bodyBurstId++
+        if (used.points > 0) {
+            floatingText = FloatingTextEvent(used.cells.first(), 1, "+${used.points}", SpecialVisuals.ShedColor)
+            floatingTextId++
+        }
+        sfx.shed()
+        haptics.special()
+        runSegmentsShed += used.segments
     }
 
     fun togglePause() {
@@ -769,7 +889,12 @@ class GameViewModel(
         // A Daily Challenge replays the exact same seeded run (retry for a better
         // score); a normal run just starts a fresh game with the current config.
         activeChallenge?.let { startChallenge(it); return }
-        resetTo(engine.newGame(state.level, state.board, mode, snakeSpeed, startLevelIndex = campaignStartFor(mode)))
+        resetTo(
+            engine.newGame(
+                state.level, state.board, mode, snakeSpeed,
+                startLevelIndex = campaignStartFor(mode), growthRate = growthRate,
+            ),
+        )
         isNewBest = false
         beginRun()
         afterReset()
@@ -830,8 +955,13 @@ class GameViewModel(
         runFlawlessLap = false
         runExtraLives = 0
         runMaxLength = state.snake.size
+        runSegmentsFromFood = 0
+        runSegmentsTrimmed = 0
+        runSegmentsShed = 0
+        runWaves = 0
+        shedAnnounced = false
         newlyUnlocked = emptyList()
-        newlyUnlockedSkins = emptyList()
+        newRank = null
         missionsProgress = emptyList()
         beginGhostRun()
     }
@@ -923,12 +1053,22 @@ class GameViewModel(
                 hazardsEnabled = s.hazardsEnabled
                 specialFrequency = s.specialFrequency
                 val level = pinnedLevelFor(mode) ?: s.level
-                resetTo(engine.setup(level, boardFor(scale, lastAspect), mode, snakeSpeed, startLevelIndex = campaignStartFor(mode)))
+                resetTo(
+                    engine.setup(
+                        level, boardFor(scale, lastAspect), mode, snakeSpeed,
+                        startLevelIndex = campaignStartFor(mode), growthRate = growthRate,
+                    ),
+                )
                 refreshBest()
             }
             return
         }
-        resetTo(engine.setup(state.level, state.board, mode, snakeSpeed, startLevelIndex = campaignStartFor(mode)))
+        resetTo(
+            engine.setup(
+                state.level, state.board, mode, snakeSpeed,
+                startLevelIndex = campaignStartFor(mode), growthRate = growthRate,
+            ),
+        )
         refreshBest()
     }
 
@@ -971,6 +1111,7 @@ class GameViewModel(
                     sfx.ate(event.food, event.combo)
                     haptics.eat()
                     runFoodsEaten++
+                    runSegmentsFromFood += grown
                     runMaxCombo = max(runMaxCombo, event.combo)
                 }
                 is GameEvent.Shrunk -> {
@@ -982,6 +1123,25 @@ class GameViewModel(
                     }
                     sfx.shrunk(event.food)
                     haptics.eat()
+                    runSegmentsTrimmed += event.removed
+                }
+                GameEvent.AbilityCharged -> {
+                    // Announce the escape valve the first time it fills in a run;
+                    // after that the button's own ready-pulse carries the message.
+                    if (!shedAnnounced) {
+                        shedAnnounced = true
+                        banner(BannerKind.ShedReady)
+                        sfx.shedReady()
+                        haptics.special()
+                    }
+                }
+                // Raised by useAbility (outside the tick), never by the tick itself.
+                is GameEvent.AbilityUsed -> Unit
+                is GameEvent.AutoGrew -> {
+                    // A segment the snake did not earn: the HUD growth meter wraps
+                    // and pops. Deliberately silent - a cue every few seconds would
+                    // become nagging, and the meter is always on screen anyway.
+                    autoGrowEventId++
                 }
                 GameEvent.Died -> {
                     deathEventId++
@@ -1044,6 +1204,7 @@ class GameViewModel(
                     haptics.special()
                     runUsedJackpot = true
                     runFoodsEaten++
+                    runSegmentsFromFood += event.growth
                 }
                 is GameEvent.TimeGained -> {
                     // Time Attack: a green burst + a rising "+Ns" callout.
@@ -1080,6 +1241,22 @@ class GameViewModel(
                     banner(BannerKind.Fever)
                     sfx.feverStarted()
                     haptics.special()
+                }
+                is GameEvent.WaveStarted -> {
+                    // A wave is a movement in the run: announced loudly, then
+                    // tracked by the countdown chip until it passes.
+                    banner(BannerKind.Wave, wave = event.wave)
+                    sfx.waveStarted(event.wave)
+                    haptics.special()
+                    runWaves++
+                }
+                is GameEvent.WaveEnded -> Unit // the chip disappearing is the cue
+                is GameEvent.HailLanded -> {
+                    // Each block lands with its own little impact, so the board
+                    // never changes silently under the player.
+                    eatEvent = EatEvent(event.cell, 1, SpecialVisuals.HailColor, BurstStyle.Implode)
+                    eatEventId++
+                    sfx.hailLanded()
                 }
                 is GameEvent.SpeedTierUp -> {
                     // Endless ramp step: seen (banner + frame flash) and heard.
@@ -1198,9 +1375,9 @@ class GameViewModel(
     private fun lastRunFromCheckpointCandidate(): Boolean =
         mode == GameMode.Levels && runStartLevelIndex > 1
 
-    /** Flashes a HUD announcement [kind] (with an optional [value]). */
-    private fun banner(kind: BannerKind, value: Int = 0) {
-        bannerEvent = BannerEvent(kind, value)
+    /** Flashes a HUD announcement [kind] (with an optional [value] / [wave]). */
+    private fun banner(kind: BannerKind, value: Int = 0, wave: EndlessWave? = null) {
+        bannerEvent = BannerEvent(kind, value, wave)
         bannerEventId++
     }
 
@@ -1220,6 +1397,9 @@ class GameViewModel(
             maxCombo = runMaxCombo,
             durationMs = durationMs,
             maxLength = runMaxLength,
+            segmentsFromFood = runSegmentsFromFood,
+            segmentsTrimmed = runSegmentsTrimmed,
+            segmentsShed = runSegmentsShed,
             isCampaign = mode == GameMode.Levels,
             deepestLevel = runMaxLevel,
             deepestSpeed = runMaxCycle,
@@ -1241,6 +1421,10 @@ class GameViewModel(
             flawlessLap = mode == GameMode.Levels && runFlawlessLap && !fromCheckpoint,
             extraLivesGained = runExtraLives,
             maxSnakeLength = runMaxLength,
+            segmentsFromFood = runSegmentsFromFood,
+            segmentsTrimmed = runSegmentsTrimmed,
+            // The dial the run was played on, for the top-tier badges.
+            growthRate = state.growthRate,
         )
         // Persist scores, then evaluate achievements and skin unlocks against the
         // run. The Daily keeps its own per-day best (and streak); a Random challenge
@@ -1274,17 +1458,12 @@ class GameViewModel(
             if (earned.isNotEmpty()) {
                 repo.addUnlockedAchievements(earned.map { it.name })
                 newlyUnlocked = earned
-            }
-            // Reward progression: unlock gated skins reached by this run's score /
-            // the post-run streak, and surface them in the game-over banner.
-            val unlockedSkins = repo.unlockedSkins().first()
-            // During the pre-release preview all skins are already available, so
-            // suppress the "skin unlocked" surfacing (the gates are bypassed).
-            val newSkins = if (Skin.ALL_UNLOCKED_PREVIEW) emptyList()
-            else Skin.newlyUnlocked(score, streak, unlockedSkins)
-            if (newSkins.isNotEmpty()) {
-                repo.addUnlockedSkins(newSkins.map { it.name })
-                newlyUnlockedSkins = newSkins
+                // Career ladder: a run that pushed the total past a reveal
+                // threshold promotes the player, which the game-over overlay
+                // celebrates (the ladder's own reward, see AchievementTier).
+                val before = AchievementTier.rankFor(unlockedAchievements.size)
+                val after = AchievementTier.rankFor(unlockedAchievements.size + earned.size)
+                if (after != before) newRank = after
             }
         }
         // Evaluate today's rotating missions (Step 6.9.5) and surface the full set

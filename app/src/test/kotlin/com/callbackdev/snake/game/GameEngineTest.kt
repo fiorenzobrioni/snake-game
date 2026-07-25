@@ -15,6 +15,15 @@ class GameEngineTest {
 
     private val engine = GameEngine(Random(42))
 
+    /**
+     * The risk multiplier every point is scaled by, for a [length]-cell snake on
+     * the tests' empty 18x26 board. Expectations are written through the model's
+     * own helper rather than baked in, so the balance can be re-tuned without
+     * rewriting arithmetic by hand.
+     */
+    private fun risk(length: Int, cells: Int = 18 * 26): Float =
+        GameState.riskFactorFor(length, cells)
+
     /** A minimal running state: head at (5,5), 3 cells, no food/obstacles. */
     private fun runningState(
         direction: Direction = Direction.Right,
@@ -91,7 +100,8 @@ class GameEngineTest {
     @Test
     fun eatingGrowsSnakeAndScores() {
         val next = engine.tick(runningState(Direction.Right, foods = listOf(growFood(4))))
-        assertEquals(4 * 10, next.score) // first eat → combo x1
+        // 4 segments at combo x1, scaled by the risk the 4-cell body carries.
+        assertEquals((4 * GameEngine.GROW_POINTS_PER_SEGMENT * risk(4)).toInt(), next.score)
         assertEquals(4, next.snake.size) // +1 this tick, 3 more queued
         assertEquals(3, next.pendingGrowth)
         assertFalse(next.foods.any { it.position == Position(6, 5) })
@@ -106,7 +116,7 @@ class GameEngineTest {
             .copy(combo = 1, comboDeadlineTick = 100, elapsedTicks = 10)
         val next = engine.tick(state)
         assertEquals(2, next.combo)
-        assertEquals(3 * 10 * 2, next.score)
+        assertEquals((3 * GameEngine.GROW_POINTS_PER_SEGMENT * 2 * risk(4)).toInt(), next.score)
     }
 
     @Test
@@ -115,11 +125,11 @@ class GameEngineTest {
             .copy(combo = 4, comboDeadlineTick = 5, elapsedTicks = 10)
         val next = engine.tick(state)
         assertEquals(1, next.combo) // deadline passed → fresh streak
-        assertEquals(3 * 10 * 1, next.score)
+        assertEquals((3 * GameEngine.GROW_POINTS_PER_SEGMENT * 1 * risk(4)).toInt(), next.score)
     }
 
     @Test
-    fun growScoreScalesWithSnakeLength() {
+    fun growScoreScalesWithBoardFill() {
         // A long (24-cell) column heading down eats a grow food just past its head.
         val column = (24 downTo 1).map { Position(5, it) } // head at (5,24)
         val state = runningState(Direction.Down).copy(
@@ -130,9 +140,10 @@ class GameEngineTest {
             ),
         )
         val next = engine.tick(state)
-        // Body length at the bite = 25 → factor 1 + (25-5)/19 ≈ 2.05; 4*10*1*2.05 = 82.
-        assertEquals(82, next.score)
-        assertTrue(next.score > 4 * 10) // strictly more than the short-snake baseline
+        // A 25-cell body fills ~5.3% of the 468 playable cells → risk ≈ x2.07.
+        assertEquals((4 * GameEngine.GROW_POINTS_PER_SEGMENT * risk(25)).toInt(), next.score)
+        // Strictly more than the same bite taken by a short snake on the same board.
+        assertTrue(next.score > (4 * GameEngine.GROW_POINTS_PER_SEGMENT * risk(4)).toInt())
     }
 
     @Test
@@ -168,11 +179,9 @@ class GameEngineTest {
         assertEquals(4, grown.snake.size)
         assertEquals(4, grown.pendingGrowth) // 1 paid now + 4 queued = 5 total
 
-        // Mystery Shrink(4) on a long snake: exactly 4 tail cells removed.
-        val longSnake = listOf(
-            Position(5, 5), Position(4, 5), Position(3, 5), Position(2, 5),
-            Position(1, 5), Position(1, 6), Position(1, 7), Position(1, 8),
-        )
+        // Mystery Shrink(4) on a long-enough snake: all 4 tail cells removed (a
+        // 14-cell body is well clear of the share cap, see shrinkNeverCutsMoreThanItsShareOfTheBody).
+        val longSnake = (0 until 14).map { Position(5 - it % 6, 5 + it / 6) }
         val shrinkMystery = Food(
             Position(6, 5), FoodCategory.Shrink, FoodTier.Mystery, FoodSize.Standard, FoodEffect.Shrink(4),
         )
@@ -186,13 +195,36 @@ class GameEngineTest {
     }
 
     @Test
+    fun shrinkNeverCutsMoreThanItsShareOfTheBody() {
+        // The cap is a share of the current length, so one big piece can no longer
+        // dump a snake back to the floor: a 10-cell body (9 + the head added this
+        // tick) loses at most ceil(10 * 0.30) = 3.
+        val body = (0 until 9).map { Position(5 - it % 5, 5 + it / 5) }
+        val state = runningState(Direction.Right, foods = listOf(shrinkFood(9))).copy(snake = body)
+        val next = engine.tick(state)
+        val removed = next.lastEvents.filterIsInstance<GameEvent.Shrunk>().single().removed
+        assertEquals(3, removed)
+        assertEquals(body.size + 1 - 3, next.snake.size)
+
+        // On a long snake the cap is wider than any piece in the table, so a big
+        // find is worth exactly what it says when the player is in real trouble.
+        val long = (0 until 60).map { Position(1 + it % 15, 5 + it / 15) }
+        val big = engine.tick(
+            runningState(Direction.Up, foods = listOf(
+                Food(Position(1, 4), FoodCategory.Shrink, FoodTier.Large, FoodSize.Maxi, FoodEffect.Shrink(10)),
+            )).copy(snake = long, direction = Direction.Up, pendingDirection = Direction.Up),
+        )
+        assertEquals(10, big.lastEvents.filterIsInstance<GameEvent.Shrunk>().single().removed)
+    }
+
+    @Test
     fun shrinkAwardsReducedSymbolicPoints() {
         val std = engine.tick(runningState(Direction.Right, foods = listOf(shrinkFood(2))))
-        assertEquals(GameEngine.SHRINK_POINTS, std.score)
+        assertEquals((GameEngine.SHRINK_POINTS * risk(4)).toInt(), std.score)
         val maxi = engine.tick(
             runningState(Direction.Right, foods = listOf(shrinkFood(2, FoodSize.Maxi))),
         )
-        assertEquals(GameEngine.SHRINK_POINTS_MAXI, maxi.score)
+        assertEquals((GameEngine.SHRINK_POINTS_MAXI * risk(4)).toInt(), maxi.score)
     }
 
     @Test
@@ -389,7 +421,7 @@ class GameEngineTest {
         }
         specs.filter { it.tier == FoodTier.Mystery }.forEach { spec ->
             when (val e = spec.effect) {
-                is FoodEffect.Grow -> assertTrue(e.segments in 2..24)
+                is FoodEffect.Grow -> assertTrue(e.segments in 1..12)
                 is FoodEffect.Shrink -> assertTrue(e.segments in 2..14)
                 else -> Unit // mystery foods are only ever Grow/Shrink
             }

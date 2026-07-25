@@ -35,7 +35,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,7 +53,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import com.callbackdev.snake.BuildConfig
 import com.callbackdev.snake.R
 import com.callbackdev.snake.data.SettingsRepository
 import com.callbackdev.snake.game.Mission
@@ -66,15 +64,7 @@ import com.callbackdev.snake.ui.components.SnakeButton
 import com.callbackdev.snake.ui.game.SnakeEmblem
 import com.callbackdev.snake.ui.game.paletteFor
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
 import java.time.LocalDate
-
-/**
- * Master switch for the debug-only "unlock all themes" shortcut. Kept `false` for now so
- * the button is hidden and inert even in debug APKs; flip to `true` (and run a debug
- * build) to bring it back when grinding the unlock conditions becomes tedious.
- */
-private const val SHOW_DEBUG_UNLOCK_SKINS = false
 
 /**
  * The app's landing screen, laid out as a "game launcher": the brand (a skin-
@@ -95,6 +85,7 @@ fun MainMenuScreen(
     onRecords: () -> Unit,
     onAchievements: () -> Unit,
     onSettings: () -> Unit,
+    onGuide: () -> Unit,
     onCredits: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -226,24 +217,18 @@ fun MainMenuScreen(
             modifier = Modifier.align(Alignment.TopEnd),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            // Debug-only shortcut: unlock every skin so they can be tried without
-            // grinding the unlock conditions. Wrapped in BuildConfig.DEBUG so it is
-            // compiled out of release APKs / the store bundle, and additionally gated by
-            // SHOW_DEBUG_UNLOCK_SKINS so it stays hidden even in debug builds for now.
-            if (BuildConfig.DEBUG && SHOW_DEBUG_UNLOCK_SKINS) {
-                val scope = rememberCoroutineScope()
-                MenuIconButton(
-                    onClick = {
-                        scope.launch { repo.addUnlockedSkins(Skin.entries.map { it.name }) }
-                    },
-                    icon = Icons.Filled.Build,
-                    contentDescription = stringResource(R.string.menu_debug_unlock_themes),
-                )
-            }
             MenuIconButton(
                 onClick = onSettings,
                 icon = Icons.Filled.Settings,
                 contentDescription = stringResource(R.string.menu_settings),
+            )
+            // The rules reference sits between the gear and the info dot: the three
+            // "about the app" entries read as one group, and the guide is reachable
+            // from the landing screen instead of being buried in Settings.
+            MenuIconButton(
+                onClick = onGuide,
+                icon = MenuIcons.Guide,
+                contentDescription = stringResource(R.string.menu_guide),
             )
             MenuIconButton(
                 onClick = onCredits,

@@ -125,7 +125,10 @@ class LevelsModeTest {
         assertEquals(2, next.levelIndex)
         assertEquals(1, next.speedCycle)
         assertEquals(0, next.levelFoodsEaten)
-        assertEquals(120, next.score) // the completing eat still pays its 20 points
+        // The completing eat still pays, exactly what its own event reported.
+        val ate = next.lastEvents.filterIsInstance<GameEvent.Ate>().single()
+        assertTrue(ate.points > 0)
+        assertEquals(100 + ate.points, next.score)
         assertEquals(501, next.elapsedTicks) // food-gate progression carries over
         assertEquals(spawnHead, next.head) // snake back at the spawn
         assertEquals(Direction.Up, next.direction)

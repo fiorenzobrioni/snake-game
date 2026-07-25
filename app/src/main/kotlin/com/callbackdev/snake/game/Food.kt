@@ -172,6 +172,16 @@ object FoodTable {
     const val TIME_BONUS_SECONDS = 5
     const val TIME_PENALTY_SECONDS = 3
 
+    /**
+     * Spawn weights of the two regular branches. With auto-growth on, the shrink
+     * branch is lifted close to the grow one: the player must always have a brake
+     * within reach, otherwise the growth stops being a challenge and becomes a
+     * timer they cannot argue with.
+     */
+    const val WEIGHT_GROW = 40
+    const val WEIGHT_SHRINK = 24
+    const val WEIGHT_SHRINK_AUTO_GROWTH = 34
+
     /** Harder levels shrink the gates so hazards arrive earlier. */
     private fun levelGateFactor(level: Level): Double = 1.0 - level.ordinal * 0.1
 
@@ -192,6 +202,10 @@ object FoodTable {
      *        special only in [GameMode.Levels].
      * @param forceMaxi when true (the Maxi Feast challenge twist), every
      *        grow/shrink food spawns maxi (2x2) with no unlock gate.
+     * @param autoGrowth true while the run has auto-growth on ([GrowthRate]).
+     *        Shrinking food is then the player's only brake, so it skips its
+     *        unlock gate and spawns more often - a snake growing from tick one
+     *        must never be left without a way to trim.
      */
     fun roll(
         random: Random,
@@ -203,17 +217,21 @@ object FoodTable {
         specialFrequency: SpecialFrequency = SpecialFrequency.Standard,
         mode: GameMode = GameMode.Endless,
         forceMaxi: Boolean = false,
+        autoGrowth: Boolean = false,
     ): FoodSpec {
         val elapsedMs = elapsedTicks.toLong() * baseTickMillis
         val factor = levelGateFactor(level)
-        val shrinkUnlocked = elapsedMs >= (GATE_SHRINK_MS * factor)
+        val shrinkUnlocked = autoGrowth || elapsedMs >= (GATE_SHRINK_MS * factor)
         val maxiUnlocked = forceMaxi || elapsedMs >= (GATE_MAXI_MS * factor)
         val mysteryUnlocked = elapsedMs >= (GATE_MYSTERY_MS * factor)
         val specialUnlocked = elapsedMs >= (GATE_SPECIAL_MS * factor * specialFrequency.gateFactor)
 
         val entries = buildList {
-            add(Weighted(40) { growSpec(random, maxiUnlocked, forceMaxi) })
-            if (shrinkUnlocked) add(Weighted(24) { shrinkSpec(random, maxiUnlocked, forceMaxi) })
+            add(Weighted(WEIGHT_GROW) { growSpec(random, maxiUnlocked, forceMaxi) })
+            if (shrinkUnlocked) {
+                val weight = if (autoGrowth) WEIGHT_SHRINK_AUTO_GROWTH else WEIGHT_SHRINK
+                add(Weighted(weight) { shrinkSpec(random, maxiUnlocked, forceMaxi) })
+            }
             if (mysteryUnlocked) {
                 add(Weighted(9) { mysterySpec(random, FoodCategory.Grow, maxiUnlocked, forceMaxi) })
                 add(Weighted(6) { mysterySpec(random, FoodCategory.Shrink, maxiUnlocked, forceMaxi) })
@@ -275,8 +293,8 @@ object FoodTable {
     ): FoodSpec {
         val size = rollSize(random, maxiUnlocked, forceMaxi)
         val effect = if (category == FoodCategory.Grow) {
-            // Standard 2..12, maxi 4..24.
-            FoodEffect.Grow(random.nextInt(2, 13) * size.cellSpan)
+            // Standard 1..6, maxi 2..12 (halved with the rest of the grow table).
+            FoodEffect.Grow(random.nextInt(1, 7) * size.cellSpan)
         } else {
             // Standard 2..8, maxi 4..14 (clamped by the engine's length floor).
             val base = random.nextInt(2, 9)
@@ -289,14 +307,27 @@ object FoodTable {
     private fun rollSize(random: Random, maxiUnlocked: Boolean, forceMaxi: Boolean = false): FoodSize =
         if (forceMaxi || (maxiUnlocked && random.nextInt(100) < 25)) FoodSize.Maxi else FoodSize.Standard
 
+    /**
+     * Segments a growing food adds, by tier. **Halved** against the pre-auto-growth
+     * table (2/4/6/8): with the body growing on its own, food-driven growth is no
+     * longer the main source of length, and a bite that added eight segments made
+     * the shrinking pieces unable to keep up. The score per piece is unchanged -
+     * [GameEngine.GROW_POINTS_PER_SEGMENT] was doubled to compensate - so eating
+     * still pays exactly as much, it just costs less room.
+     */
     private fun growBase(tier: FoodTier): Int = when (tier) {
-        FoodTier.Small -> 2
-        FoodTier.Medium -> 4
-        FoodTier.Large -> 6
-        FoodTier.Huge -> 8
-        FoodTier.Mystery -> 4
+        FoodTier.Small -> 1
+        FoodTier.Medium -> 2
+        FoodTier.Large -> 3
+        FoodTier.Huge -> 4
+        FoodTier.Mystery -> 2
     }
 
+    /**
+     * Segments a shrinking food trims, by tier. Deliberately left where it was
+     * while the grow table halved, so a shrink now out-trims what a comparable
+     * grow piece adds: it is the counterweight to auto-growth.
+     */
     private fun shrinkBase(tier: FoodTier): Int = when (tier) {
         FoodTier.Small -> 2
         FoodTier.Medium -> 3

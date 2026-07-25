@@ -16,6 +16,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -29,6 +30,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -47,8 +49,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalDensity
@@ -63,14 +72,18 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.callbackdev.snake.R
 import com.callbackdev.snake.audio.GameAudio
+import com.callbackdev.snake.ui.components.ShrinkToFitText
 import com.callbackdev.snake.game.BackBehavior
 import com.callbackdev.snake.game.ControlScheme
 import com.callbackdev.snake.game.DEFAULT_ASPECT
 import com.callbackdev.snake.game.Direction
 import com.callbackdev.snake.game.EffectKind
+import com.callbackdev.snake.game.EndlessWave
 import com.callbackdev.snake.game.GameMode
+import com.callbackdev.snake.game.GameState
 import com.callbackdev.snake.game.GameStatus
 import com.callbackdev.snake.game.LevelsMode
+import kotlin.math.ceil
 import kotlin.math.roundToInt
 import kotlin.math.cos
 import kotlin.math.sin
@@ -256,6 +269,34 @@ fun GameScreen(
         else -> zenBreath
     }
 
+    // Risk bonus: the frame smoulders while the snake is filling the board, its
+    // intensity tracking the live multiplier. It breathes with the same slow
+    // pulse as the Fever heat (steady under reduce-motion), so the two read as
+    // the same family of "the stakes just went up" cues.
+    val riskLevel = if (state.status == GameStatus.Running && state.inRiskZone) {
+        ((state.riskFactor - GameState.RISK_ALERT_FACTOR) /
+            (GameState.MAX_RISK_FACTOR - GameState.RISK_ALERT_FACTOR)).coerceIn(0f, 1f)
+    } else {
+        0f
+    }
+    val riskTarget by animateFloatAsState(
+        targetValue = riskLevel,
+        animationSpec = tween(durationMillis = 400),
+        label = "riskLevel",
+    )
+    // A slower, heavier breath than the Fever flicker: this is dread, not heat.
+    val riskTransition = rememberInfiniteTransition(label = "riskBreath")
+    val riskPulse by riskTransition.animateFloat(
+        initialValue = 0.45f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            tween(durationMillis = 1400, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "riskPulse",
+    )
+    val riskGlow = riskTarget * (if (viewModel.reduceMotion) 0.8f else riskPulse)
+
     // Endless speed-tier surge: a one-shot golden flare of the board frame each
     // time the ramp steps up, so the pace change is visible where the eyes are.
     val surgeFlash = remember { Animatable(0f) }
@@ -294,9 +335,24 @@ fun GameScreen(
                     stringResource(R.string.hud_endless_speed, state.endlessSpeedTier)
                 else -> null
             }
+            // During setup the HUD carries nothing worth reading (score 0, and the
+            // status line only repeats the selectors), and it would show through
+            // the overlay above its pinned header. Alpha-hidden rather than
+            // removed, so the space stays reserved and the board never resizes
+            // between setup and play.
             Hud(
+                modifier = Modifier.alpha(if (state.status == GameStatus.Ready) 0f else 1f),
                 score = state.score,
                 combo = state.combo,
+                // Auto-growth: the body is a clock, so the HUD carries its face -
+                // the live length plus a ring filling toward the next free segment.
+                // Risk bonus: shown from the alert threshold up, so the HUD stays
+                // calm while the multiplier is still near x1.
+                riskFactor = if (playing && state.inRiskZone) state.riskFactor else 0f,
+                showGrowth = state.autoGrowthIntervalTicks > 0 && onBoard,
+                growthFraction = state.autoGrowthFraction,
+                snakeLength = state.snake.size,
+                growthEventId = viewModel.autoGrowEventId,
                 statusLabel = buildString {
                     if (viewModel.activeChallenge != null) {
                         val tag = when {
@@ -330,7 +386,13 @@ fun GameScreen(
                 onPause = { audio.playPause(); viewModel.togglePause() },
             )
 
-            EffectTimersRow(effects = state.effectTimers)
+            EffectTimersRow(
+                effects = state.effectTimers,
+                // The Endless wave rides in the same reserved row as the power-up
+                // timers: it is exactly that, a timer the player must play around.
+                wave = if (playing) state.activeWave else null,
+                waveFraction = state.waveFraction,
+            )
 
             BoxWithConstraints(
                 modifier = Modifier
@@ -418,6 +480,9 @@ fun GameScreen(
                     // terrain-accented) and inheriting the board's shake.
                     dangerFlash = nearMissFlash.value,
                     feverGlow = feverGlow,
+                    // Risk bonus: the frame smoulders once the body is filling
+                    // the arena, so the multiplier is felt and not just read.
+                    riskGlow = riskGlow,
                     surgeFlash = surgeFlash.value,
                     zenGlow = zenGlow,
                     // Keep particles/redraw alive through the death-burst and
@@ -429,16 +494,43 @@ fun GameScreen(
                     modifier = boardModifier,
                 )
 
-                // Centred in-run announcements (Fever Time / speed step / record):
-                // a short punch-in banner over the top of the board.
-                AnnouncementBanner(
-                    event = viewModel.bannerEvent,
-                    eventId = viewModel.bannerEventId,
-                    reduceMotion = viewModel.reduceMotion,
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 20.dp),
-                )
+                // The Shed ability lives in the board's bottom corner, where a
+                // thumb already rests: pinned over the board rather than in the
+                // control row, so it costs the board no height in any scheme.
+                if (state.status == GameStatus.Running) {
+                    // The button lives over the board, so it gets out of the way
+                    // before the snake arrives - with enough warning to react to
+                    // whatever is underneath it.
+                    //
+                    // The trigger distance is derived from the button's real
+                    // footprint *in cells*, not from a fixed cell count: the button
+                    // is a fixed 52dp while a cell shrinks with the board scale, so
+                    // a constant "5 cells" covered the button on Explorer and barely
+                    // its centre on Colossal (where the snake was already under it
+                    // before it faded). Dividing by the measured cell size makes the
+                    // clearance the same *physical* distance on every scale, and
+                    // ABILITY_CLEARANCE_FACTOR then buys the reaction time.
+                    val cellSize = minOf(maxWidth / state.board.width, maxHeight / state.board.height)
+                    val clearance = if (cellSize > 0.dp) {
+                        ceil((AbilityButtonReach / cellSize) * ABILITY_CLEARANCE_FACTOR).toInt()
+                    } else {
+                        ABILITY_CLEARANCE_FALLBACK_CELLS
+                    }
+                    val head = state.head
+                    val inCorner = head.x >= state.board.width - clearance &&
+                        head.y >= state.board.height - clearance
+                    AbilityButton(
+                        charge = state.abilityFraction,
+                        ready = state.abilityReady,
+                        reduceMotion = viewModel.reduceMotion,
+                        dimmed = inCorner,
+                        onUse = { viewModel.useAbility() },
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(end = 8.dp, bottom = 8.dp),
+                    )
+                }
+
             }
 
             if (playing) {
@@ -452,20 +544,40 @@ fun GameScreen(
             }
         }
 
+        // Centred in-run announcements (Fever Time / speed step / wave / record):
+        // pinned over the **HUD**, not over the board. They are transient, and the
+        // score line they briefly cover can wait a second - the playfield cannot,
+        // so the board stays visible in full while they punch in.
+        AnnouncementBanner(
+            event = viewModel.bannerEvent,
+            eventId = viewModel.bannerEventId,
+            reduceMotion = viewModel.reduceMotion,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 4.dp),
+        )
+
         when (state.status) {
             GameStatus.Ready -> ReadyOverlay(
                 selectedMode = viewModel.mode,
                 selectedLevel = viewModel.level,
                 selectedSnakeSpeed = viewModel.snakeSpeed,
+                selectedGrowthRate = viewModel.growthRate,
                 selectedScale = viewModel.scale,
+                // Read off the staged board, so the caption quotes the rhythm the
+                // player will actually get at the selected scale.
+                growthIntervalTicks = state.autoGrowthIntervalTicks,
                 campaignCheckpoint = viewModel.campaignCheckpoint,
                 campaignStartLevel = viewModel.campaignStartLevel,
                 onModeSelected = { viewModel.selectMode(it) },
                 onLevelSelected = { viewModel.selectLevel(it) },
                 onSnakeSpeedSelected = { viewModel.selectSnakeSpeed(it) },
+                onGrowthRateSelected = { viewModel.selectGrowthRate(it) },
                 onScaleSelected = { viewModel.selectScale(it) },
                 onCampaignStartSelected = { viewModel.selectCampaignStartLevel(it) },
                 onPlay = { viewModel.start() },
+                // Same exit as the system Back from setup: nothing is at stake here.
+                onBack = { viewModel.toSetup(); onExitToMenu() },
             )
 
             GameStatus.LevelIntro -> LevelIntroOverlay(
@@ -504,7 +616,7 @@ fun GameScreen(
                     practiceRun = viewModel.lastRunFromCheckpoint,
                     summary = viewModel.lastSummary,
                     unlocked = viewModel.newlyUnlocked.map { it.title },
-                    unlockedSkins = viewModel.newlyUnlockedSkins.map { it.displayName },
+                    newRank = viewModel.newRank?.displayName,
                     missions = viewModel.missionsProgress,
                     onPlayAgain = { viewModel.playAgain() },
                     onSetup = { viewModel.toSetup() },
@@ -529,12 +641,123 @@ fun GameScreen(
 }
 
 /**
- * Fixed vertical slot for the effect-timer chips. The height is reserved
- * unconditionally — even with no effects running — so the board below (which
- * fills the remaining `weight(1f)` space) keeps a constant size. Otherwise the
- * row would appear/disappear with each power-up and visibly resize the board,
- * making the snake seem to jump.
+ * The live **risk multiplier**: how much every point is being scaled by the share
+ * of the board the snake is filling. It only appears past the alert threshold -
+ * below that the number is near x1 and would be noise - and it warms from amber
+ * to crimson as the board closes in, so the reward and the danger are the same
+ * reading. Sits beside the combo because both are score multipliers.
  */
+@Composable
+private fun RiskChip(factor: Float, reduceMotion: Boolean) {
+    val hot = ((factor - GameState.RISK_ALERT_FACTOR) /
+        (GameState.MAX_RISK_FACTOR - GameState.RISK_ALERT_FACTOR)).coerceIn(0f, 1f)
+    val color = lerpColor(SpecialVisuals.FeverColor, SpecialVisuals.RiskColor, hot)
+    // A slow throb that quickens with the danger; frozen under reduce-motion.
+    val transition = rememberInfiniteTransition(label = "riskChip")
+    val throb by transition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.12f,
+        animationSpec = infiniteRepeatable(
+            tween(durationMillis = (1100 - 500 * hot).toInt(), easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "riskThrob",
+    )
+    val scale = if (reduceMotion) 1f else throb
+    val label = "x" + ((factor * 10).roundToInt() / 10f).toString().trimEnd('0').trimEnd('.')
+    val description = stringResource(R.string.hud_risk_description, label)
+    Text(
+        text = stringResource(R.string.hud_risk, label),
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.Bold,
+        color = color,
+        maxLines = 1,
+        modifier = Modifier
+            .padding(end = 8.dp)
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .semantics { contentDescription = description },
+    )
+}
+
+/** Linear blend between two colours (only used for the risk chip's warm ramp). */
+private fun lerpColor(from: Color, to: Color, t: Float): Color = Color(
+    red = from.red + (to.red - from.red) * t,
+    green = from.green + (to.green - from.green) * t,
+    blue = from.blue + (to.blue - from.blue) * t,
+    alpha = 1f,
+)
+
+/**
+ * The auto-growth readout: the live snake length beside a ring that fills toward
+ * the next free segment, so the pressure is always legible without a number the
+ * player has to decode. It pops once each time a segment lands ([eventId]), which
+ * is the only cue growth gets - a sound or a haptic every few seconds would nag.
+ * Sized and padded to keep the HUD's fixed height (the board must never resize).
+ */
+@Composable
+private fun GrowthMeter(
+    fraction: Float,
+    length: Int,
+    eventId: Int,
+    reduceMotion: Boolean,
+) {
+    // Smooth the per-tick steps; the wrap back to 0 is covered by the pop below.
+    val animated by animateFloatAsState(
+        targetValue = fraction.coerceIn(0f, 1f),
+        animationSpec = tween(durationMillis = 180, easing = LinearEasing),
+        label = "growthMeter",
+    )
+    val pop = remember { Animatable(1f) }
+    LaunchedEffect(eventId) {
+        if (eventId > 0 && !reduceMotion) {
+            pop.snapTo(1.45f)
+            pop.animateTo(1f, spring(dampingRatio = 0.45f))
+        }
+    }
+    val ring = MaterialTheme.colorScheme.primary
+    val track = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.22f)
+    val description = stringResource(R.string.hud_length, length)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .padding(start = 8.dp)
+            .semantics { contentDescription = description },
+    ) {
+        Box(
+            modifier = Modifier
+                .size(16.dp)
+                .graphicsLayer { scaleX = pop.value; scaleY = pop.value },
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val stroke = size.minDimension * 0.18f
+                val inset = stroke / 2f
+                drawCircle(
+                    color = track,
+                    radius = size.minDimension / 2f - inset,
+                    style = Stroke(width = stroke),
+                )
+                drawArc(
+                    color = ring,
+                    startAngle = -90f,
+                    sweepAngle = 360f * animated,
+                    useCenter = false,
+                    topLeft = Offset(inset, inset),
+                    size = Size(size.width - stroke, size.height - stroke),
+                    style = Stroke(width = stroke, cap = StrokeCap.Round),
+                )
+            }
+        }
+        Text(
+            text = length.toString(),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.85f),
+            maxLines = 1,
+            modifier = Modifier.padding(start = 4.dp),
+        )
+    }
+}
+
 /** The combo multiplier's colour, warming through tiers as the streak climbs. */
 @Composable
 private fun comboTierColor(combo: Int): Color = when {
@@ -546,9 +769,19 @@ private fun comboTierColor(combo: Int): Color = when {
 
 private val EffectTimersRowHeight = 34.dp
 
-/** A row of countdown chips for the timed effects currently running. */
+/**
+ * A row of countdown chips for the timed effects currently running, in a fixed
+ * vertical slot: the height is reserved unconditionally - even with no effects
+ * running - so the board below (which fills the remaining `weight(1f)` space)
+ * keeps a constant size. Otherwise the row would appear/disappear with each
+ * power-up and visibly resize the board, making the snake seem to jump.
+ */
 @Composable
-private fun EffectTimersRow(effects: List<com.callbackdev.snake.game.ActiveEffect>) {
+private fun EffectTimersRow(
+    effects: List<com.callbackdev.snake.game.ActiveEffect>,
+    wave: EndlessWave?,
+    waveFraction: Float,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -557,8 +790,30 @@ private fun EffectTimersRow(effects: List<com.callbackdev.snake.game.ActiveEffec
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // The wave first: it is the loudest thing happening to the board.
+        if (wave != null) WaveChip(wave = wave, fraction = waveFraction)
         effects.forEach { effect -> EffectChip(effect) }
     }
+}
+
+/**
+ * The running Endless wave, as a countdown chip in the timer row: the wave's name
+ * over a bar that drains as it passes, in the wave's own colour. Same shape as the
+ * power-up timer chips, because it is the same promise - this will end, plan for it.
+ */
+@Composable
+private fun WaveChip(wave: EndlessWave, fraction: Float) {
+    val color = when (wave) {
+        EndlessWave.Feast -> SpecialVisuals.FeastColor
+        EndlessWave.Drought -> SpecialVisuals.DroughtColor
+        EndlessWave.Hailstorm -> SpecialVisuals.HailColor
+    }
+    val label = when (wave) {
+        EndlessWave.Feast -> stringResource(R.string.wave_feast)
+        EndlessWave.Drought -> stringResource(R.string.wave_drought)
+        EndlessWave.Hailstorm -> stringResource(R.string.wave_hailstorm)
+    }
+    TimerChip(label = label, color = color, fraction = 1f - fraction.coerceIn(0f, 1f))
 }
 
 @Composable
@@ -571,6 +826,12 @@ private fun EffectChip(effect: com.callbackdev.snake.game.ActiveEffect) {
         com.callbackdev.snake.game.EffectKind.Freeze -> stringResource(R.string.effect_freeze)
         com.callbackdev.snake.game.EffectKind.Quake -> stringResource(R.string.effect_quake)
     }
+    TimerChip(label = label, color = color, fraction = effect.fraction)
+}
+
+/** A labelled chip over a draining bar - the shared body of the timer row's chips. */
+@Composable
+private fun TimerChip(label: String, color: Color, fraction: Float) {
     Column(
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
@@ -594,7 +855,7 @@ private fun EffectChip(effect: com.callbackdev.snake.game.ActiveEffect) {
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .fillMaxWidth(effect.fraction)
+                    .fillMaxWidth(fraction.coerceIn(0f, 1f))
                     .clip(RoundedCornerShape(2.dp))
                     .background(color),
             )
@@ -631,12 +892,18 @@ private fun ControlRegion(
  */
 @Composable
 private fun Hud(
+    modifier: Modifier = Modifier,
     score: Int,
     combo: Int,
+    riskFactor: Float,
     statusLabel: String,
     timeLabel: String?,
     feverActive: Boolean,
     lives: Int,
+    showGrowth: Boolean,
+    growthFraction: Float,
+    snakeLength: Int,
+    growthEventId: Int,
     showPause: Boolean,
     reduceMotion: Boolean,
     onPause: () -> Unit,
@@ -644,7 +911,7 @@ private fun Hud(
     // Rolling score counter (step 3.6).
     val animatedScore by animateIntAsState(targetValue = score, animationSpec = tween(300), label = "score")
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp),
     ) {
@@ -658,6 +925,9 @@ private fun Hud(
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f),
             )
+            if (riskFactor > 1f) {
+                RiskChip(factor = riskFactor, reduceMotion = reduceMotion)
+            }
             if (combo > 1) {
                 // Combo "juice": the multiplier punches in on each bump and warms
                 // through a colour ramp (white → gold → orange → red) as it climbs.
@@ -705,6 +975,14 @@ private fun Hud(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
+            if (showGrowth) {
+                GrowthMeter(
+                    fraction = growthFraction,
+                    length = snakeLength,
+                    eventId = growthEventId,
+                    reduceMotion = reduceMotion,
+                )
+            }
             if (lives > 0) {
                 // Levels mode: the remaining snakes/lives. The row pops briefly
                 // when a heart is banked so an extra life never goes unnoticed.
@@ -759,9 +1037,18 @@ private const val FEVER_MUSIC_TEMPO = 1.12f
 
 /**
  * A short, centred in-run announcement ("Fever ×2!", "Speed 5!", "New record!"):
- * punches in over the top of the board, holds a beat and fades. Under
+ * punches in over the top of the HUD, holds a beat and fades. Under
  * reduce-motion it appears and disappears without the punch. One banner at a
  * time — a newer event simply restarts the animation with the new text.
+ *
+ * The plate is **opaque**. It used to be a half-transparent wash, which was the
+ * right trade while the banner sat over the play area: seeing the cells under it
+ * mattered more than a perfectly crisp label. Now that it lives over the HUD that
+ * trade buys nothing - the score line it covers can wait a beat - and letting the
+ * digits underneath show through the message only made both harder to read. So it
+ * is a solid slab of the game's own material: a dark base tinted with the event's
+ * accent, a hairline rim of the same accent, and a shadow to lift it clear of the
+ * HUD instead of blending into it.
  */
 @Composable
 private fun AnnouncementBanner(
@@ -791,6 +1078,13 @@ private fun AnnouncementBanner(
         BannerKind.Fever -> stringResource(R.string.banner_fever) to SpecialVisuals.FeverColor
         BannerKind.SpeedUp -> stringResource(R.string.banner_speed_up, event.value) to SpecialVisuals.SurgeColor
         BannerKind.NewRecord -> stringResource(R.string.banner_new_record) to SpecialVisuals.RecordColor
+        BannerKind.ShedReady -> stringResource(R.string.banner_shed_ready) to SpecialVisuals.ShedColor
+        BannerKind.Wave -> when (event.wave) {
+            EndlessWave.Feast -> stringResource(R.string.banner_wave_feast) to SpecialVisuals.FeastColor
+            EndlessWave.Drought -> stringResource(R.string.banner_wave_drought) to SpecialVisuals.DroughtColor
+            EndlessWave.Hailstorm -> stringResource(R.string.banner_wave_hailstorm) to SpecialVisuals.HailColor
+            null -> "" to SpecialVisuals.FeastColor
+        }
     }
     Box(
         modifier = modifier.graphicsLayer {
@@ -800,45 +1094,62 @@ private fun AnnouncementBanner(
             alpha = t.coerceIn(0f, 1f)
         },
     ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = color,
-            maxLines = 1,
+        Box(
             modifier = Modifier
-                .clip(RoundedCornerShape(14.dp))
-                .background(Color.Black.copy(alpha = 0.45f))
-                .padding(horizontal = 18.dp, vertical = 6.dp),
-        )
+                .shadow(elevation = 10.dp, shape = BannerShape)
+                .background(
+                    brush = Brush.verticalGradient(
+                        listOf(
+                            lerp(BannerPlateTop, color, 0.18f),
+                            lerp(BannerPlateBottom, color, 0.06f),
+                        ),
+                    ),
+                    shape = BannerShape,
+                )
+                .border(width = 1.dp, color = color.copy(alpha = 0.5f), shape = BannerShape)
+                .padding(horizontal = 18.dp, vertical = 7.dp),
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = color,
+                maxLines = 1,
+            )
+        }
     }
 }
+
+/** The announcement plate: shared by its background, its rim and its shadow. */
+private val BannerShape = RoundedCornerShape(14.dp)
+
+/**
+ * The plate's base tones, top-lit like every other surface in the game. Fixed
+ * rather than taken from the colour scheme: the announcement accents are bright
+ * arcade colours drawn to sit on a dark board, so the slab stays dark in the light
+ * theme too and the message keeps the same weight in both.
+ */
+private val BannerPlateTop = Color(0xFF171E24)
+private val BannerPlateBottom = Color(0xFF0A0D11)
+
+/**
+ * The Shed button's reach from the board's bottom-end corner: its own size plus the
+ * padding that insets it. Converted to cells at the measured cell size, this is how
+ * many cells the button actually sits on.
+ */
+private val AbilityButtonReach = 60.dp
+
+/**
+ * How much further out than its own footprint the Shed button starts fading. The
+ * button has to be gone *before* the head arrives, with room to read - and react to
+ * - whatever it was covering, so the clearance is a comfortable multiple rather
+ * than a hair's breadth.
+ */
+private const val ABILITY_CLEARANCE_FACTOR = 2.8f
+
+/** Used only if the play area has not been measured yet (a degenerate first frame). */
+private const val ABILITY_CLEARANCE_FALLBACK_CELLS = 9
 
 /** How long an announcement banner holds before fading. */
 private const val BANNER_HOLD_MS = 1100L
 
-/**
- * A single-line text that steps its font size down (never below half) instead
- * of wrapping or clipping when the available width runs out — keyed on the
- * text length so it re-grows when the content gets shorter again.
- */
-@Composable
-private fun ShrinkToFitText(
-    text: String,
-    style: TextStyle,
-    color: Color,
-    modifier: Modifier = Modifier,
-) {
-    var scale by remember(text.length) { mutableFloatStateOf(1f) }
-    Text(
-        text = text,
-        style = style,
-        color = color,
-        fontWeight = FontWeight.Bold,
-        fontSize = style.fontSize * scale,
-        maxLines = 1,
-        softWrap = false,
-        onTextLayout = { if (it.hasVisualOverflow && scale > 0.5f) scale *= 0.92f },
-        modifier = modifier,
-    )
-}

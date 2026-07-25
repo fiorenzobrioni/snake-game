@@ -18,6 +18,23 @@ sealed interface GameEvent {
      */
     data class Shrunk(val food: Food, val removed: Int, val points: Int) : GameEvent
 
+    /**
+     * Auto-growth ([GrowthRate]) granted a free segment this tick: the snake kept
+     * its tail without eating and is now [length] cells long. Advisory - it drives
+     * the HUD growth meter's pop, never a rule.
+     */
+    data class AutoGrew(val length: Int) : GameEvent
+
+    /**
+     * The player spent the charged **Shed** ability: [cells] (tail-first) were cut
+     * loose and [points] paid out for the risk they were carrying. Drives the tail
+     * dissolve, the payout callout and the charge meter reset.
+     */
+    data class AbilityUsed(val cells: List<Position>, val segments: Int, val points: Int) : GameEvent
+
+    /** The Shed ability finished charging and can be spent. */
+    data object AbilityCharged : GameEvent
+
     /** The snake died on this tick. */
     data object Died : GameEvent
 
@@ -81,6 +98,17 @@ sealed interface GameEvent {
      * flash, SFX), never silent.
      */
     data class SpeedTierUp(val tier: Int) : GameEvent
+
+    /**
+     * Endless: an [EndlessWave] just started ([wave]) or just ended. Drives the
+     * announcement banner, the HUD countdown chip and the wave's sound.
+     */
+    data class WaveStarted(val wave: EndlessWave) : GameEvent
+
+    data class WaveEnded(val wave: EndlessWave) : GameEvent
+
+    /** Endless (Hailstorm): a lethal hail block landed on [cell]. */
+    data class HailLanded(val cell: Position) : GameEvent
 
     /**
      * An uneaten regular food timed out and was removed (a fresh one is spawned

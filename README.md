@@ -20,18 +20,41 @@ The classic Snake mechanics, extended with configurable features so every run fe
   the game board itself, laid on the animated **Meadow** lawn: a Retro-skin snake crawls across and
   the word **SNAKE** forms from Retro snake-body pieces in its wake, then it slips off-screen and
   the menu fades in.
+- 🐍 **Auto-growth** - the snake lengthens **by itself** as a run goes on, so circling an empty board
+  can never stall a game: every run has an arc and an end. The rhythm is a five-step **Growth** dial on
+  the Custom setup screen (*Off* for the classic food-only rules, up to *Relentless*), each step
+  declaring its own score multiplier, and it flips the food's role - grow pieces pay the score,
+  **shrink pieces buy the time**.
 - 🍽️ **Two food categories** - **grow** food makes the snake longer; **shrink** food trims it back.
 - 🔠 **Magnitude tiers + maxi sizes** - each category comes in several strengths, and a 2×2 **maxi**
   variant that amplifies the effect.
 - ❓ **Mystery pieces** - a "?" food per category with a random amount.
-- ⏳ **Time-gated progression** - early on you only see growing food; shrink, maxi and mystery pieces
-  unlock as the session goes on (sooner on harder levels), so a run ramps up in difficulty.
+- ⏳ **Time-gated progression** - maxi and mystery pieces unlock as the session goes on (sooner on
+  harder levels), so a run ramps up in difficulty. Shrink food is on the board from the first tick
+  whenever auto-growth is on - the brake is always within reach.
 - 💨 **Fresh board** - a regular food you ignore for too long fades away (with a little vanish burst)
   and reappears elsewhere, so looping around without eating won't stall the run. Special pieces stick
   around much longer (they're rare events worth reaching) but eventually time out too.
 - ✖️ **Combo multiplier** - eating in quick succession multiplies your score (up to ×5).
-- 📏 **Length-scaled scoring** - the longer your snake gets, the more each grow is worth (and you unlock
-  dedicated length achievements as you stretch out).
+- 📣 **In-run announcements** - Fever Time, each Endless speed step, a wave starting, a Shed charging and
+  beating your stored best all punch in as a short centred banner - drawn **over the HUD**, never over
+  the board, so the playfield stays visible in full.
+- 🌊 **Endless waves** - every 45 seconds of an Endless run the board is swept by an event, in a fixed
+  learnable rotation: a **Feast** (the board floods with food), a **Drought** (it all but dries up, with
+  the growth clock still ticking) and a **Hailstorm** (2×2 ice stones rain down, well clear of your head,
+  then melt). Each is announced and counts down in the HUD, so a long run has movements instead of one
+  long crescendo.
+- 🎲 **Risk bonus** - every point is multiplied by how much of the board your body is covering (up to
+  ×5). Staying long stops being pure downside and becomes a **bet**: the fuller the arena, the richer
+  every bite, right up until you run out of room. The HUD calls the live multiplier out and the board
+  frame smoulders crimson once you are deep in it.
+- ✂️ **Shed ability** - the one thing you can *do* besides steer. Eating charges a ring in the board's
+  corner; when it fills, tap it to cut a third of your tail loose and **cash in** the risk you were
+  carrying (the payout scales with the multiplier at the moment of the cut). It is the answer to being
+  boxed in with no shrinking food in sight - and spending it means giving up the fat multiplier that
+  made you rich. The button is deliberately see-through and **fades out well before the snake reaches
+  its corner** - the clearance is measured from the button's real size, so it is the same distance on
+  every board scale - and it stays tappable while faded.
 - 🚧 **Obstacles** - symmetric blocks that tend to clump into larger shapes and raise the difficulty.
 - 🎚️ **Levels & snake speed** - 5 obstacle layouts (*Beginner* → *Legend*) and 5 **independent**
   speeds (*Relaxed* → *Turbo*), mixable freely: play the dense Legend field at a gentle pace, or an
@@ -43,12 +66,10 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - 🎮 **Control schemes** - **swipe** by default (with adjustable sensitivity), a compact **wedge dial** (a single key split into four directional wedges), or one-handed **tap-to-turn**.
   A forgiving **coyote frame** makes a beat-late turn still count: the first lethal step makes the head
   hesitate one tick (instead of dying), giving you a moment to turn away - re-armed by your next safe move.
-- 🎨 **Skins** - six selectable looks, each its own palette and render style, picked in Settings from
-  **live preview cards**: each card shows the skin's snake slithering in place, drawn through the real
-  gameplay renderer so its animated body material previews exactly as it plays. **Retro** (the default) and
-  **Classic** are unlocked from the start; the rest are earned: **Neon** (score 1500 in a run), **Pixel**
-  (score 5000), **Aurora** (a 7-day Daily streak) and **Ember** (a 30-day Daily streak). Locked skins show
-  their unlock condition in Settings. The glow skins (Classic / Neon / Aurora / Ember) draw food as
+- 🎨 **Skins** - six selectable looks, each its own palette and render style, **all free from the
+  start**, picked in Settings from **live preview cards**: each card shows the skin's snake slithering in
+  place, drawn through the real gameplay renderer so its animated body material previews exactly as it
+  plays. **Retro** is the default. The glow skins (Classic / Neon / Aurora / Ember) draw food as
   haloed round pieces; the flat skins (Retro / Pixel) render food as squares (crisp on Pixel, lightly
   rounded on Retro). Each skin also has its **own snake body**: Classic a glossy tapered tube, Retro
   chiselled blocks, **Pixel** a chain of 5x5-pixel sprite tiles in classic 80s arcade colours (blue
@@ -88,8 +109,8 @@ The classic Snake mechanics, extended with configurable features so every run fe
   fiery orange-red) as the streak climbs.
 - 👻 **Ghost replay** - race a translucent "ghost" of your own best run, retracing its path tick-for-tick
   alongside the live snake (in **Endless**, **Time Attack** and **Zen**). It fades in at the start and
-  out the moment you outlast it. On by default; turn **Ghost of your best run** off in Settings for a
-  clean board.
+  out the moment you outlast it. **Off by default** - switch **Ghost of your best run** on in Settings
+  when you want something to chase.
 - 👁️ **Reduce motion & flashing** - an accessibility toggle in Settings that damps the screen shake, the
   particle bursts and the near-miss flash for a calmer, flash-free board.
 - ✨ **Rich 2D visuals** - the snake renders in each skin's own body style (see **Skins** - glossy tube,
@@ -115,23 +136,33 @@ The classic Snake mechanics, extended with configurable features so every run fe
   penalty, each with a floating callout.
 - 🏆 **Records screen** - a best-score table per difficulty × board scale (and per mode), reachable
   from the main menu.
-- 🎖️ **Achievements** - thirty local milestones (combos, scores, endurance, eating sprees, using
-  power-ups, growing a very long snake, keeping a Daily streak…) that unlock as you play, with a dedicated
-  screen and an unlock banner on the game-over screen.
+- 🎖️ **Achievements on a career ladder** - thirty-eight local milestones grouped into **five ranks**
+  (*Hatchling → Forager → Stalker → Constrictor → Mythic*). A rank reveals once you have earned enough
+  badges in total, so the list opens up as you play instead of dumping every late-game goal on you at
+  launch - and no single stubborn badge can ever wall you out, because the gate is a count, not a
+  clean sweep. The Achievements screen leads with your rank and a bar toward the next one; sealed ranks
+  say what they cost and how many feats they hide; a promotion is celebrated on the game-over screen.
+  The length badges count the segments you **earned by eating**, never the ones auto-growth handed you,
+  so they mean the same thing at every growth setting. A handful are deliberately hard: score big while
+  staying under twenty segments (*Featherweight*), grow sixty segments without ever trimming
+  (*Purist*), or last three minutes - and score 5000 - with the growth dial at *Relentless*
+  (*Unbowed*, *Apex Predator*).
 - 📊 **Run recap** - the game-over screen shows a short summary of the run: foods eaten, best combo, time
-  survived, the snake's longest length and, in Campaign, the deepest level reached.
+  survived, the snake's longest length, the segments grown from food and trimmed away, and, in Campaign,
+  the deepest level reached.
 - 🎯 **Daily missions** - three rotating per-run goals (eat so many foods, reach a combo, survive a time,
-  score, grow long, grab a power-up) that refresh each day. The main menu's **Today's Missions** strip
+  score, grow segments out of food, trim segments away, grab a power-up) that refresh each day. The main menu's **Today's Missions** strip
   tracks which you've cleared today (tap it for the full list), and the **game-over screen** shows the
   day's missions with a tick on the ones done, highlighting any you just cleared.
 - ▶️ **Quick Play** - the main menu's **Play** button drops you straight into a run with your last-used
-  settings; a separate **Custom** entry opens the full pre-game setup (mode, level, snake speed, board
-  scale) when you want to tweak everything.
+  settings; a separate **Custom** entry opens the full pre-game setup (mode, level, snake speed,
+  growth, board scale) when you want to tweak everything. Every setting is a labelled gauge with its
+  value and a one-line explanation of what it changes, and the whole screen fits without scrolling.
 - 📅 **Daily Challenge** - a date-seeded run with the same mode, level, board and **daily twist** for
   everyone that day (the twist rotates through **nine** flavours - Bonus Rush, Frenzy, Compact Arena,
   Grand Arena, Maxi Feast, Combo Rush, Overdrive, Old School or plain Standard - each described on the
-  Daily card; the obstacle layout and food sequence come from the day's seed). Beat your **best today** and build a **day streak** (which
-  unlocks the Aurora and Ember skins at 7 and 30 days). A **This Week** screen shows your last 7 days of
+  Daily card; the obstacle layout and food sequence come from the day's seed). Beat your **best today** and build a **day streak**.
+  A **This Week** screen shows your last 7 days of
   Daily results and a weekly best / total; tap any day there to **replay** that day's exact challenge -
   just for fun, your recorded results are never overwritten. Reached from the main menu.
 - 🎲 **Random Challenge** - a one-off surprise run for variety: **Shuffle** for a fresh mode / level /
@@ -175,20 +206,33 @@ The classic Snake mechanics, extended with configurable features so every run fe
 - 💎 **Polished navigation** - an **animated GPU background** behind the menus, a **branded main menu** laid out as a "game launcher" (a glowing wordmark with a small in-game-style snake emblem that follows your selected skin as the hero, over a bottom-anchored cluster of actions grouped by type so everything fits one screen), **premium action buttons** (gradient-lit, with a tactile press), and **blur-dissolve** screen transitions.
 - ⏸️ **Auto-pause** - backgrounding the app mid-run pauses the game automatically, so the snake never keeps moving while you're away.
 - 📜 **Credits screen** - an in-app **Credits / About** page (author, license and asset attribution), reachable from the main menu.
-- 🧭 **First-run tour** - a premium, skippable five-card tour on first launch, re-openable any time via **How to play** in Settings. Glass cards over the animated brand backdrop cover the goal (with the real in-game snake slithering in your skin), the food language, the power-ups / hazards, the four game modes and the daily loop (Daily Challenge, missions, achievements, skins) - legends show the actual in-game pieces, icons and colours, steering is a glanceable three-chip row, and Back pages backwards instead of bailing out.
+- 📖 **In-app Guide** - a rules reference on the main menu (between the gear and the info dot), in
+  collapsed chapters you open when you want the detail: the basics, length / risk / Shed, food,
+  power-ups, the four modes, the Endless waves, scoring, controls and progress. **Every number in it is
+  read from the game's own constants**, so the guide cannot drift out of date when the balance is tuned.
+- 🧭 **First-run tour** - a premium, skippable six-card tour on first launch, re-openable any time via **How to play** in Settings. Glass cards over the animated brand backdrop cover the goal (with the real in-game snake slithering in your skin), the food language, **length as a resource** (the growth clock, the risk bonus and the Shed button), the power-ups / hazards, the four game modes and the daily loop (Daily Challenge, missions, achievements, skins) - legends show the actual in-game pieces, icons and colours, steering is a glanceable three-chip row, and Back pages backwards instead of bailing out.
 
 ### 🍽️ Food system at a glance
 
 | Category | Tiers (standard growth/shrink) | Maxi (2×2) | Mystery "?" | Score |
 |----------|-------------------------------|------------|-------------|-------|
-| 🟢 **Grow**   | +2 / +4 / +6 / +8 | doubles the amount | random +2…+24 | `+10 × growth × combo × length bonus` |
-| 🟠 **Shrink** | −2 / −3 / −5      | doubles the amount | random −2…−14 | small symbolic bonus (5 / 10 maxi) |
+| 🟢 **Grow**   | +1 / +2 / +3 / +4 | doubles the amount | random +1…+12 | `+20 × growth × combo × risk bonus` |
+| 🟠 **Shrink** | −2 / −3 / −5      | doubles the amount | random −2…−14 | `(5 / 10 maxi) × risk bonus` |
 
 The snake never shrinks below **3 segments**. Grow food drives the score, scaled by the combo
-multiplier **and by your current length** - the longer the snake, the more each bite is worth (up to
-about ×5 for a very long snake), so growing pays off more and more as a run goes on. Shrink food is a
-tactical tool - it gives only token points but lets you cut your length to manoeuvre. Eating either
-floats the amount of segments gained or lost (**+N** / **−N**) at the food.
+multiplier **and by the risk bonus** - the more of the board your body covers, the more each bite is
+worth (up to ×5), so a loaded board pays off more and more right up to the moment it kills you.
+
+Since the body now grows on its own (see *Auto-growth*), a grow piece adds **half** the length it
+used to while paying exactly the same score, and a shrink piece out-trims what a comparable grow
+piece adds: trimming is a real play, not a last resort, and its token points scale with the length
+you cut. Eating either floats the amount of segments gained or lost (**+N** / **−N**) at the food.
+
+A shrink piece can never cut more than **30% of your current length**. The cap is shaped so it only
+bites when you are already short: at 60 segments it allows 18 - more than the biggest piece in the
+table, so a lucky find is worth every bit of what it looks like when you are in real trouble - while
+a couple of big pieces can no longer dump a long snake straight back to the minimum. Length is a
+resource you manage, not a switch you flip.
 
 ### ⚔️ Levels (obstacles)
 
@@ -229,6 +273,69 @@ uses its per-lap speed cycle.
 | 3     | Brisk   | 125       | ×1.2              |
 | 4     | Rapid   | 100       | ×1.35             |
 | 5     | Turbo   | 75        | ×1.5              |
+
+### 🐍 Auto-growth
+
+Your snake gets longer **whether or not you eat**. Every so many steps it keeps its tail instead of
+dropping it, so the body is a clock made physical: a run always builds toward a finish, and the
+question stops being "can I be careful forever?" and becomes "can I keep up?". The HUD carries a
+small ring beside the snake's live length that fills toward the next free segment.
+
+The **Growth** dial sits on the **Custom** setup screen and applies to every mode. Because a faster
+growth is strictly harder, each step declares a **score multiplier** (the same open risk/reward
+contract the Time Attack pace uses), so records stay on their existing (mode × level × scale) slots
+and nothing you already earned is orphaned.
+
+| Growth | Name       | Steps per free segment | Score |
+|--------|------------|------------------------|-------|
+| 1      | Off        | never                  | ×1    |
+| 2      | Gentle     | 24                     | ×1.1  |
+| 3      | Steady     | 16 *(default)*         | ×1.25 |
+| 4      | Brisk      | 10                     | ×1.5  |
+| 5      | Relentless | 6                      | ×1.8  |
+
+At *Relentless* that is about a segment a second at the relaxed pace. The step counts above are for
+the **Explorer** board; they scale with the board's size, so a Colossal
+arena grows the snake more often and a Cozy one less (filling a big board takes far more length than
+choking a small one). **Zen** stretches the interval further - the calm mode still has to end, but it
+must never feel like a race - and a **Campaign** respawn or level change restarts the clock with the
+snake. The seeded **Daily / Random** challenges pin *Steady* for everyone, like they already pin the
+pace and the hazard toggles.
+
+### 🎲 Risk and the Shed ability
+
+The score does not care how long your snake is - it cares **how much of the arena it covers**. The
+multiplier climbs from ×1 on an empty board to ×5 once the body fills a fifth of the playable cells
+(obstacles and Campaign walls count against that area, so a cluttered board heats up sooner). The
+same forty segments are a fortune on a Cozy board and pocket change on a Colossal one, which is
+exactly right.
+
+That turns auto-growth from a punishment into a wager, and the **Shed** ability is how you settle it.
+Ten bites charge it - five if you keep a combo alive - and spending it cuts 35% of the tail loose for
+a payout scaled by the risk you were carrying. Hold on longer and the cut pays more; hold on too long
+and you never get to make it.
+
+| | |
+|---|---|
+| Risk multiplier | ×1 → ×5, tracking body ÷ playable cells (capped at 20% fill) |
+| Shed charge | 10 bites, or 5 on a live combo |
+| Shed cut | 35% of the body, tail first |
+| Shed payout | 8 points per segment × the risk multiplier |
+
+### 🌊 Endless waves
+
+An Endless run plays undisturbed for 45 seconds, then a **wave** sweeps the board for 12 seconds, and
+another every 45 seconds after that. They rotate in a fixed order on purpose: a rhythm you can learn
+is a rhythm you can plan around.
+
+| Wave | What happens |
+|---|---|
+| 🍽️ **Feast** | The board floods with food (nine pieces at once). Gorge - or hold the length and let the risk bonus run. |
+| 🏜️ **Drought** | Food dries up to a single piece. The growth clock keeps ticking, so it is pure survival. |
+| 🧊 **Hailstorm** | Chunky 2×2 **ice stones** rain down and melt away. None lands within four cells of your head, so it is a route to solve, not an ambush. |
+
+Every wave is announced by name and counts down in the HUD's timer row, in its own colour, alongside
+any power-up timers.
 
 ### 📐 Board scale
 
@@ -284,13 +391,25 @@ baseline so AGSL GPU effects and other recent APIs are available without fallbac
 
 ## 🎮 How to play
 
-Guide the snake around the board, eat food to grow and score, and avoid the walls, the obstacles and your
-own body.
+Guide the snake around the board, eat food to score, and avoid the walls, the obstacles and your
+own body. Your snake also lengthens on its own as the run goes on, so playing safe is not a strategy -
+you have to keep eating, and eat the *right* pieces.
 
-**Food:** green = grow, warm/orange = shrink, "?" = a mystery amount. Bigger (2×2 maxi) pieces and the
-mystery and shrink foods only start appearing as the session runs on - so each run gets more eventful.
-Chain bites together to build a **combo** and multiply your score, and use shrink food to cut your length
-when the board gets tight (you never drop below 3 segments).
+**Food:** green = grow, warm/orange = shrink, "?" = a mystery amount. Bigger (2×2 maxi) and mystery
+pieces only start appearing as the session runs on - so each run gets more eventful. Chain bites
+together to build a **combo** and multiply your score. Remember the snake also grows **on its own**
+(see *Auto-growth*), so shrink food is how you keep room to manoeuvre - you never drop below 3
+segments.
+
+**The Shed button:** the ring in the board's bottom corner fills as you eat and lights up when it is
+charged. Tap it to cut your tail loose for a payout - it is deliberately unclickable while charging,
+so a stray tap during play costs nothing and still reaches the board if you steer by tapping, and it
+fades out of the way in good time before your snake reaches that corner (still tappable while faded).
+
+**Need the details?** The **Guide** button on the main menu (between the gear and the info dot) opens
+the full rules reference: the growth dial's numbers, the risk cap, what a Shed cuts and pays, every
+power-up, the wave schedule, the scoring formula. Its figures are read straight from the game's own
+constants, so they always match what you are playing.
 
 **Controls (touch):** by default you **swipe** anywhere on the board to change direction, with an
 adjustable **swipe sensitivity** in Settings (the default keeps the tuned feel). Prefer buttons? Switch
@@ -299,7 +418,7 @@ into four directional wedges (up / right / down / left) around a dead-zone hub, 
 moves between turns and the board keeps more height. For one-handed play there is also a **tap-to-turn** scheme: tap the left half of the board to
 turn left, the right half to turn right. Your choice is saved. 180° reversals are blocked, so you can't
 instantly fold back into your own body. Tap **Play** on the main menu to start instantly with your
-last-used settings, or **Custom** to pick the mode, level, snake speed and board scale first; pause and
+last-used settings, or **Custom** to pick the mode, level, snake speed, growth and board scale first; pause and
 restart from the in-game controls. Your best score is kept per (mode, level, scale).
 
 **Audio:** the game plays looping background music (it crossfades between the menu and gameplay) and
@@ -308,8 +427,8 @@ sound effects for eating, shrinking, mystery pieces, game over and button taps. 
 automatically pauses when you leave the app and yields to other apps' audio.
 
 **Game modes:** choose your mode on the **Custom** setup screen -
-**Endless** (the snake keeps accelerating through announced speed tiers the longer you survive; the
-default), **Time Attack** (score as much as possible in 120 seconds - your pace sets a declared
+**Endless** (the snake keeps accelerating through announced speed tiers the longer you survive, and
+every 45 seconds a wave sweeps the board - Feast, Drought or Hailstorm; the default), **Time Attack** (score as much as possible in 120 seconds - your pace sets a declared
 score multiplier, the exclusive **+5s** / **−3s** clock pieces stretch or shave your remaining time,
 and the last 20 seconds are **Fever Time** with double points), **Campaign** (clear fifteen shaped
 boards by eating 12 foods each, with 3 lives, an exclusive 2×2 extra-life piece, a speed-up every
@@ -334,11 +453,15 @@ a countdown chip in the HUD. **Time Attack** also has two clock-only pieces - a 
 penalty), or raise **Special blocks** to *Frenzy* for constant chaos.
 
 **Achievements:** milestones unlock automatically as you play - high combos, long runs, using
-power-ups, growing a very long snake, and more. A banner appears on the game-over screen when one
-unlocks; browse the full list from the main menu.
+power-ups, building length out of food, trimming a snake back down, and more. They sit on a **five-rank
+ladder**: each rank reveals once you have earned enough badges overall, so the goals arrive a handful
+at a time instead of all at once, and reaching a new rank is celebrated on the game-over screen. A
+banner also appears whenever a single badge unlocks; browse your rank and the whole ladder from the
+main menu.
 
 **Daily missions:** alongside the static achievements, three goals rotate each day (eat a number of
-foods, reach a combo, survive a time, hit a score, grow long, or grab a power-up). They give a single
+foods, reach a combo, survive a time, hit a score, grow segments out of food, trim segments away, or
+grab a power-up). They give a single
 run a sense of purpose: the main menu's **Today's Missions** card shows which you've cleared today, and
 completing one pops a banner on the game-over screen. The set refreshes the next day.
 

@@ -6,14 +6,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.callbackdev.snake.R
 
@@ -37,14 +34,14 @@ fun ScreenHeader(
             contentDescription = stringResource(R.string.action_back),
             modifier = Modifier.align(Alignment.CenterStart),
         )
-        Text(
+        // The branded display face is wide, so a long title ("Daily Challenge")
+        // would not fit between the back button and its mirrored margin: it
+        // scales itself down to fit rather than truncating to an ellipsis.
+        ShrinkToFitText(
             text = title,
             style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
             textAlign = TextAlign.Center,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
             modifier = Modifier
                 .align(Alignment.Center)
                 // Keep long titles clear of the back button (and its mirror space).

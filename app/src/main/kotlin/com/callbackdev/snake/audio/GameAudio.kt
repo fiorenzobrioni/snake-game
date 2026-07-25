@@ -81,6 +81,26 @@ class GameAudio(context: Context, repo: SettingsRepository) : GameSfx {
     // Passing the stored best mid-run: a bright celebratory chime.
     override fun recordBroken() = sound.play(Sfx.Jackpot, rate = 1.2f)
 
+    // The Shed ability charging up: a short, bright freeze shimmer reads as
+    // "something is now available" without needing a new asset.
+    override fun shedReady() = sound.play(Sfx.Freeze, rate = 1.45f)
+
+    // Spending it: the shrink "cut", pitched down for weight - it is a bigger,
+    // deliberate version of what a shrinking food does.
+    override fun shed() = sound.play(Sfx.Shrink, rate = 0.8f)
+
+    // Each Endless wave gets its own voice out of the existing palette: a bright
+    // jackpot fanfare for the Feast, a low freeze for the Drought's chill, a
+    // rumbling quake for the Hailstorm.
+    override fun waveStarted(wave: com.callbackdev.snake.game.EndlessWave) = when (wave) {
+        com.callbackdev.snake.game.EndlessWave.Feast -> sound.play(Sfx.Jackpot, rate = 1.1f)
+        com.callbackdev.snake.game.EndlessWave.Drought -> sound.play(Sfx.Freeze, rate = 0.75f)
+        com.callbackdev.snake.game.EndlessWave.Hailstorm -> sound.play(Sfx.Quake, rate = 1.15f)
+    }
+
+    // A hail block hitting the board: a short, dry knock.
+    override fun hailLanded() = sound.play(Sfx.Shrink, rate = 1.5f)
+
     // --- UI sound effects ------------------------------------------------
 
     fun playPause() = sound.play(Sfx.Pause)

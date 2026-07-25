@@ -17,6 +17,7 @@ import com.callbackdev.snake.game.BackBehavior
 import com.callbackdev.snake.game.ControlScheme
 import com.callbackdev.snake.game.GameMode
 import com.callbackdev.snake.game.GhostRun
+import com.callbackdev.snake.game.GrowthRate
 import com.callbackdev.snake.game.Level
 import com.callbackdev.snake.game.ScoreKey
 import com.callbackdev.snake.game.Skin
@@ -37,6 +38,8 @@ data class Settings(
     val swipeSensitivity: Float = DEFAULT_SWIPE_SENSITIVITY,
     val backBehavior: BackBehavior = BackBehavior.DEFAULT,
     val snakeSpeed: SnakeSpeed = SnakeSpeed.DEFAULT,
+    /** How fast the snake grows on its own, regardless of what it eats. */
+    val growthRate: GrowthRate = GrowthRate.DEFAULT,
     val masterVolume: Float = DEFAULT_MASTER_VOLUME,
     val musicVolume: Float = DEFAULT_MUSIC_VOLUME,
     val sfxVolume: Float = DEFAULT_SFX_VOLUME,
@@ -54,8 +57,8 @@ data class Settings(
     val themeMode: ThemeMode = ThemeMode.Dark,
     /** First-run flag: true once the player has seen (or skipped) the tutorial. */
     val onboardingCompleted: Boolean = false,
-    /** Replay a translucent ghost of your best run alongside the live one (default on). */
-    val ghostReplayEnabled: Boolean = true,
+    /** Replay a translucent ghost of your best run alongside the live one (default off). */
+    val ghostReplayEnabled: Boolean = false,
 )
 
 /**
@@ -92,6 +95,7 @@ class SettingsRepository(private val context: Context) {
             swipeSensitivity = prefs[SWIPE_SENSITIVITY] ?: DEFAULT_SWIPE_SENSITIVITY,
             backBehavior = prefs[BACK_BEHAVIOR].toEnum(BackBehavior::valueOf) ?: BackBehavior.DEFAULT,
             snakeSpeed = prefs[SNAKE_SPEED].toEnum(SnakeSpeed::valueOf) ?: SnakeSpeed.DEFAULT,
+            growthRate = prefs[GROWTH_RATE].toEnum(GrowthRate::valueOf) ?: GrowthRate.DEFAULT,
             masterVolume = prefs[MASTER_VOLUME] ?: DEFAULT_MASTER_VOLUME,
             musicVolume = prefs[MUSIC_VOLUME] ?: DEFAULT_MUSIC_VOLUME,
             sfxVolume = prefs[SFX_VOLUME] ?: DEFAULT_SFX_VOLUME,
@@ -105,7 +109,7 @@ class SettingsRepository(private val context: Context) {
             mode = prefs[MODE].toEnum(GameMode::valueOf) ?: GameMode.Endless,
             themeMode = prefs[THEME_MODE].toEnum(ThemeMode::valueOf) ?: ThemeMode.Dark,
             onboardingCompleted = prefs[ONBOARDING_COMPLETED] ?: false,
-            ghostReplayEnabled = prefs[GHOST_REPLAY_ENABLED] ?: true,
+            ghostReplayEnabled = prefs[GHOST_REPLAY_ENABLED] ?: false,
         )
     }
 
@@ -114,6 +118,9 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setSnakeSpeed(speed: SnakeSpeed) =
         edit { it[SNAKE_SPEED] = speed.name }
+
+    suspend fun setGrowthRate(rate: GrowthRate) =
+        edit { it[GROWTH_RATE] = rate.name }
 
     suspend fun setScale(scale: BoardScale) =
         edit { it[SCALE] = scale.name }
@@ -313,17 +320,6 @@ class SettingsRepository(private val context: Context) {
         edit { it[UNLOCKED_ACHIEVEMENTS] = (it[UNLOCKED_ACHIEVEMENTS] ?: emptySet()) + ids }
 
     /**
-     * The set of unlocked skin ids (enum names) beyond the always-available ones.
-     * [Skin.defaultUnlocked] are not stored here; combine with this set in the UI.
-     */
-    fun unlockedSkins(): Flow<Set<String>> =
-        context.dataStore.data.map { it[UNLOCKED_SKINS] ?: emptySet() }
-
-    /** Adds [ids] to the unlocked skin set (idempotent). */
-    suspend fun addUnlockedSkins(ids: Collection<String>) =
-        edit { it[UNLOCKED_SKINS] = (it[UNLOCKED_SKINS] ?: emptySet()) + ids }
-
-    /**
      * The mission ids completed on [epochDay] (Step 6.9.5). Completions are stored
      * tagged with their day ("epochDay/id") so the daily rotation resets naturally:
      * yesterday's completions never satisfy today's goals.
@@ -371,6 +367,7 @@ class SettingsRepository(private val context: Context) {
     private companion object {
         val LEVEL = stringPreferencesKey("level")
         val SNAKE_SPEED = stringPreferencesKey("snake_speed")
+        val GROWTH_RATE = stringPreferencesKey("growth_rate")
         val SCALE = stringPreferencesKey("board_scale")
         val CONTROL = stringPreferencesKey("control_scheme")
         val SWIPE_SENSITIVITY = floatPreferencesKey("swipe_sensitivity")
@@ -390,7 +387,6 @@ class SettingsRepository(private val context: Context) {
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         val GHOST_REPLAY_ENABLED = booleanPreferencesKey("ghost_replay_enabled")
         val UNLOCKED_ACHIEVEMENTS = stringSetPreferencesKey("unlocked_achievements")
-        val UNLOCKED_SKINS = stringSetPreferencesKey("unlocked_skins")
         val COMPLETED_MISSIONS = stringSetPreferencesKey("completed_missions")
         val DAILY_STREAK = intPreferencesKey("daily_streak")
         val DAILY_LAST_DAY = longPreferencesKey("daily_last_day")
