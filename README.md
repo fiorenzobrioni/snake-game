@@ -14,22 +14,15 @@ on the way to a polished, **Google-Play-publishable** title with animation, part
 
 ## 📸 Screenshots
 
-<p align="center">
-  <img src="docs/screenshots/screenshot-1.jpg" alt="Main menu" width="230" />
-  &nbsp;&nbsp;
-  <img src="docs/screenshots/screenshot-2.jpg" alt="Settings – skins & terrains" width="230" />
-  &nbsp;&nbsp;
-  <img src="docs/screenshots/screenshot-3.jpg" alt="Gameplay – Campaign mode" width="230" />
-</p>
-<p align="center">
-  <em>Main menu</em>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-  <em>Skins & terrains</em>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-  <em>Campaign gameplay</em>
-</p>
-
----
+<div align="center">
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/screenshot-1.jpg" width="260" alt="Main menu"><br><em>Main menu</em></td>
+    <td align="center"><img src="docs/screenshots/screenshot-2.jpg" width="260" alt="Settings - skins & terrains"><br><em>Settings - skins & terrains</em></td>
+    <td align="center"><img src="docs/screenshots/screenshot-3.jpg" width="260" alt="Gameplay - Campaign mode"><br><em>Gameplay - Campaign mode</em></td>
+  </tr>
+</table>
+</div>
 
 ## 🎯 Features
 
