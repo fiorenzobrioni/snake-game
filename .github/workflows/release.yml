@@ -1,0 +1,73 @@
+name: Release
+
+# Fires only on version tags. Builds the minified APK signed with the REAL
+# release key (GitHub Secrets) and opens a DRAFT GitHub Release with the APK
+# and the R8 mapping attached: release bodies here are hand-written, so the
+# draft carries generated notes as a starting point and nothing goes public
+# until the body is rewritten and the draft is published by a human.
+# Per-push testing builds stay in ci.yml.
+on:
+  push:
+    tags:
+      - 'v*'
+      - 'V*' # the 3.0.0 tag was pushed as V3.0.0; accept both spellings
+
+permissions:
+  contents: write # create the draft release
+
+jobs:
+  release:
+    name: Signed release build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Grant Execute Permission for Gradlew
+        run: chmod +x gradlew
+
+      # Same gate as CI: a red suite must never become a published release.
+      - name: Run unit tests and lint
+        run: ./gradlew testDebugUnitTest lintDebug
+
+      - name: Decode release keystore
+        run: echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+
+      # Gradle picks up ORG_GRADLE_PROJECT_<name> env vars as project
+      # properties - same names the signingConfig reads locally, and nothing
+      # secret on the command line or in the logs.
+      - name: Build signed release APK
+        run: ./gradlew :app:assembleRelease
+        env:
+          ORG_GRADLE_PROJECT_SNAKE_KEYSTORE: ${{ runner.temp }}/release.jks
+          ORG_GRADLE_PROJECT_SNAKE_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          ORG_GRADLE_PROJECT_SNAKE_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          ORG_GRADLE_PROJECT_SNAKE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      # Name the artifacts after the tag: the mapping must stay forever paired
+      # with the exact APK it deobfuscates.
+      - name: Rename artifacts after the tag
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk "snake-${GITHUB_REF_NAME}.apk"
+          cp app/build/outputs/mapping/release/mapping.txt "mapping-${GITHUB_REF_NAME}.txt"
+
+      - name: Create draft GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: |
+            snake-${{ github.ref_name }}.apk
+            mapping-${{ github.ref_name }}.txt
+          generate_release_notes: true

@@ -37,6 +37,17 @@ Roadmap, work in progress, TODOs, known bugs, and ideas. For the history of deve
 
 ## 🚀 Releases
 
+> **Since Aug 2026 releases ship the real-key APK.** The "Phase 7 signing" the
+> build file used to defer is done: a real release keystore (outside the repo,
+> injected via GitHub Secrets), per-push CI builds of the minified APK so R8
+> stays exercised, and a `release.yml` that turns a version tag into a draft
+> GitHub Release with the signed APK and its R8 mapping attached (bodies stay
+> hand-written; a human rewrites the notes and publishes). The releases below
+> predate this and were distributed as debug-signed APKs. Because the release
+> build drops the `.debug` id suffix, the first real-key release installs
+> alongside the 3.0.0 app - a one-off fresh install, same as the 2.0.0 → 3.0.0
+> id move. See CLAUDE.md "Release signing" for the mechanics.
+
 - **Android `3.0.0`** (`versionCode 30`, tag `v3.0.0`) - the "auto-growth" release. A major bump
   because the core loop and the app's identity both changed:
   - **The snake now grows by itself** (Phase 6.15). Length became a resource with a cost: food was
