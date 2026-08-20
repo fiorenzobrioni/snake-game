@@ -1,11 +1,12 @@
 name: Release
 
 # Fires only on version tags. Builds the minified APK signed with the REAL
-# release key (GitHub Secrets) and opens a DRAFT GitHub Release with the APK
-# and the R8 mapping attached: release bodies here are hand-written, so the
-# draft carries generated notes as a starting point and nothing goes public
-# until the body is rewritten and the draft is published by a human.
-# Per-push testing builds stay in ci.yml.
+# release key (GitHub Secrets) and publishes the GitHub Release, taking the body
+# from docs/release-notes/<tag>.md (notes are versioned in the repo since
+# 3.1.0; the 1.0.0-3.0.0 bodies were imported there retroactively). Relative
+# links in the notes are rewritten to absolute URLs pinned to the tag, so they
+# survive being read from the release page. Per-push testing builds stay in
+# ci.yml.
 on:
   push:
     tags:
@@ -13,7 +14,7 @@ on:
       - 'V*' # the 3.0.0 tag was pushed as V3.0.0; accept both spellings
 
 permissions:
-  contents: write # create the draft release
+  contents: write # create the GitHub Release
 
 jobs:
   release:
@@ -40,6 +41,18 @@ jobs:
       - name: Run unit tests and lint
         run: ./gradlew testDebugUnitTest lintDebug
 
+      # No release without its notes: fail early, before building anything.
+      # The filename is the lowercased tag, so a V3.1.0 tag still finds
+      # docs/release-notes/v3.1.0.md.
+      - name: Check release notes exist
+        run: |
+          TAG_LC="${GITHUB_REF_NAME,,}"
+          echo "TAG_LC=$TAG_LC" >> "$GITHUB_ENV"
+          test -f "docs/release-notes/${TAG_LC}.md" || {
+            echo "::error::docs/release-notes/${TAG_LC}.md not found - write the notes, then re-tag."
+            exit 1
+          }
+
       - name: Decode release keystore
         run: echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
         env:
@@ -56,6 +69,20 @@ jobs:
           ORG_GRADLE_PROJECT_SNAKE_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           ORG_GRADLE_PROJECT_SNAKE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
+      # The notes in the repo may use relative links, correct where the file
+      # lives (docs/release-notes/) but broken on a release page, which
+      # resolves them against the tag URL. Rewrite them as absolute URLs
+      # pinned to THIS tag. ../../ points at the repo root, ../ at docs/.
+      - name: Absolutize release-notes links against the tag
+        run: |
+          sed -e "s|](\.\./\.\./|](https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/|g" \
+              -e "s|](\.\./|](https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/docs/|g" \
+              "docs/release-notes/${TAG_LC}.md" > release-body.md
+          if grep -n "](\.\.\?/" release-body.md; then
+            echo "::error::relative links survived the rewrite - fix the patterns above."
+            exit 1
+          fi
+
       # Name the artifacts after the tag: the mapping must stay forever paired
       # with the exact APK it deobfuscates.
       - name: Rename artifacts after the tag
@@ -63,11 +90,10 @@ jobs:
           cp app/build/outputs/apk/release/app-release.apk "snake-${GITHUB_REF_NAME}.apk"
           cp app/build/outputs/mapping/release/mapping.txt "mapping-${GITHUB_REF_NAME}.txt"
 
-      - name: Create draft GitHub Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          draft: true
+          body_path: release-body.md
           files: |
             snake-${{ github.ref_name }}.apk
             mapping-${{ github.ref_name }}.txt
-          generate_release_notes: true
