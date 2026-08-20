@@ -41,11 +41,34 @@ jobs:
       - name: Assemble debug APK, run unit tests and lint
         run: ./gradlew assembleDebug testDebugUnitTest lintDebug
 
+      # Minified and shrunk, so it is the only build where R8 problems can show
+      # up at all. Signed with the committed debug key purely so it is
+      # installable for smoke tests - NOT a release artifact (published
+      # releases are built by release.yml with the real key).
+      - name: Assemble release APK (debug-signed, for testing only)
+        run: ./gradlew :app:assembleRelease -PsignReleaseWithDebugKey
+
       - name: Upload Debug APK
         uses: actions/upload-artifact@v7
         with:
           name: app-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
+
+      - name: Upload Release APK (testing only)
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-release-apk-testing-only
+          path: app/build/outputs/apk/release/app-release.apk
+          retention-days: 14
+
+      # The R8 map makes a release-build stack trace readable; without the run
+      # that produced the APK it is gone.
+      - name: Upload R8 Mapping
+        uses: actions/upload-artifact@v7
+        with:
+          name: r8-mapping
+          path: app/build/outputs/mapping/release/mapping.txt
           retention-days: 14
 
       - name: Upload Test & Lint Reports
