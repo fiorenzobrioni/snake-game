@@ -40,14 +40,22 @@ Roadmap, work in progress, TODOs, known bugs, and ideas. For the history of deve
 > **Since Aug 2026 releases ship the real-key APK.** The "Phase 7 signing" the
 > build file used to defer is done: a real release keystore (outside the repo,
 > injected via GitHub Secrets), per-push CI builds of the minified APK so R8
-> stays exercised, and a `release.yml` that turns a version tag into a draft
-> GitHub Release with the signed APK and its R8 mapping attached (bodies stay
-> hand-written; a human rewrites the notes and publishes). The releases below
-> predate this and were distributed as debug-signed APKs. Because the release
-> build drops the `.debug` id suffix, the first real-key release installs
-> alongside the 3.0.0 app - a one-off fresh install, same as the 2.0.0 → 3.0.0
-> id move. See CLAUDE.md "Release signing" for the mechanics.
+> stays exercised, and a `release.yml` that turns a version tag into the
+> published GitHub Release with the signed APK, its R8 mapping and the body
+> from `docs/release-notes/<tag>.md` - notes are versioned in the repo since
+> 3.1.0, and the 1.0.0-3.0.0 bodies were imported there retroactively. The
+> releases below 3.1.0 were distributed as debug-signed APKs: those APKs were
+> **removed from the release pages** (the shared debug key is public, so that
+> signature is forgeable by construction) and each body carries a banner
+> pointing at the latest release; the originals are archived off-repo. See
+> CLAUDE.md "Release signing" for the mechanics.
 
+- **Android `3.1.0`** (`versionCode 31`, tag `v3.1.0`) - the "real release build" release. Nothing
+  in the game changes; the artifact does: R8-minified, signed with the project's release key,
+  built and published by the tag workflow. Because the release build drops the `.debug`
+  application id suffix, 3.1.0 installs **alongside** a debug-signed 3.0.0 rather than updating
+  it - a one-off fresh install, same as the 2.0.0 → 3.0.0 id move; from here on releases update
+  in place.
 - **Android `3.0.0`** (`versionCode 30`, tag `v3.0.0`) - the "auto-growth" release. A major bump
   because the core loop and the app's identity both changed:
   - **The snake now grows by itself** (Phase 6.15). Length became a resource with a cost: food was
