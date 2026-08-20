@@ -20,10 +20,8 @@
 mono_crash.*
 
 # Build results
-[Dd]ebug/
-[Dd]ebugPublic/
-[Rr]elease/
-[Rr]eleases/
+# NOTE: the VS-template [Dd]ebug/ / [Rr]elease/ patterns were removed (Aug 2026):
+# in an Android repo they swallow the app/src/debug and app/src/release sourcesets.
 x64/
 x86/
 [Ww][Ii][Nn]32/
